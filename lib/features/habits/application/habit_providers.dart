@@ -41,7 +41,8 @@ final habitMetricsProvider = FutureProvider.family<HabitMetrics, Habit>((
   // write a new log — without this, the metrics would go stale until
   // something else happened to trigger a rebuild.
   ref.watch(habitLogsProvider(habit.id));
-  return ref.watch(habitRepositoryProvider).computeMetrics(habit);
+  final selectedDate = ref.watch(habitSelectedDateProvider);
+  return ref.watch(habitRepositoryProvider).computeMetrics(habit, selectedDate);
 });
 
 /// Kicks off the weekly/interval one-shot alarm catch-up described in

@@ -50,11 +50,13 @@ class CountdownFormSheet extends ConsumerStatefulWidget {
   const CountdownFormSheet({
     required this.type,
     this.existingCountdown,
+    this.unifiedHeader,
     super.key,
   });
 
   final CountdownType type;
   final Countdown? existingCountdown;
+  final Widget? unifiedHeader;
 
   @override
   ConsumerState<CountdownFormSheet> createState() => _CountdownFormSheetState();
@@ -108,6 +110,7 @@ class _CountdownFormSheetState extends ConsumerState<CountdownFormSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (widget.unifiedHeader != null) widget.unifiedHeader!,
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [

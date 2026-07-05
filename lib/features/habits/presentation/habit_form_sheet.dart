@@ -52,10 +52,11 @@ const _goalDurationOptions = ['forever', '7', '21', '30', '100', '365'];
 const _weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 class HabitFormSheet extends ConsumerStatefulWidget {
-  const HabitFormSheet({this.existingHabit, this.initialName, super.key});
+  const HabitFormSheet({this.initialName, this.existingHabit, this.unifiedHeader, super.key});
 
-  final Habit? existingHabit;
   final String? initialName;
+  final Habit? existingHabit;
+  final Widget? unifiedHeader;
 
   @override
   ConsumerState<HabitFormSheet> createState() => _HabitFormSheetState();
@@ -161,6 +162,7 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (widget.unifiedHeader != null) widget.unifiedHeader!,
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [

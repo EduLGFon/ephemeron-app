@@ -68,14 +68,15 @@ class FocusScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 32),
+                width: 280,
+                height: 280,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.4),
+                  color: palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.8),
                   boxShadow: [
                     BoxShadow(
-                      color: palette.primary.withValues(alpha: timerState.isRunning ? 0.2 : 0.05),
-                      blurRadius: timerState.isRunning ? 50 : 20,
+                      color: palette.primary.withValues(alpha: timerState.isRunning ? 0.3 : 0.05),
+                      blurRadius: timerState.isRunning ? 40 : 20,
                       spreadRadius: timerState.isRunning ? 10 : 0,
                     )
                   ],
@@ -87,31 +88,36 @@ class FocusScreen extends ConsumerWidget {
                 child: ClipOval(
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            _formatDuration(timerState.elapsed),
-                            style: TextStyle(
-                              fontFamily: 'Fraunces',
-                              fontSize: 72,
-                              fontWeight: FontWeight.w600,
-                              color: palette.text,
-                              height: 1.0,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              child: Text(
+                                _formatDuration(timerState.elapsed),
+                                style: TextStyle(
+                                  fontFamily: 'Fraunces',
+                                  fontSize: 80,
+                                  fontWeight: FontWeight.w600,
+                                  color: palette.text,
+                                  height: 1.0,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                        if (timerState.mode == FocusMode.pomodoro)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                              'of ${_formatDuration(timerState.pomodoroTarget)}',
-                              style: theme.textTheme.bodyMedium?.copyWith(color: palette.text.withValues(alpha: 0.6)),
+                          if (timerState.mode == FocusMode.pomodoro)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                'of ${_formatDuration(timerState.pomodoroTarget)}',
+                                style: theme.textTheme.bodyMedium?.copyWith(color: palette.text.withValues(alpha: 0.6)),
+                              ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

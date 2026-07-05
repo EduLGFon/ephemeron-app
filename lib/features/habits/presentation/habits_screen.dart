@@ -214,7 +214,7 @@ class _HabitTile extends ConsumerWidget {
                               children: [
                                 _StreakBadge(streak: metrics.currentStreak, color: palette.primary),
                                 const SizedBox(width: 12),
-                                ..._buildWeekStrip(metrics),
+                                ..._buildWeekStrip(metrics, ref),
                               ],
                             ),
                             loading: () => const SizedBox(height: 16),
@@ -252,8 +252,8 @@ class _HabitTile extends ConsumerWidget {
         onDoubleTap: () => repo.resetLog(habit.id, selectedDate),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
-          width: 28,
-          height: 28,
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: isCompleted ? palette.primary : Colors.transparent,
@@ -263,9 +263,13 @@ class _HabitTile extends ConsumerWidget {
             ),
           ),
           child: isCompleted
-              ? Icon(Icons.check, size: 18, color: palette.background)
+              ? Icon(Icons.check, size: 20, color: palette.background)
               : null,
-        ),
+        ).animate(target: isCompleted ? 1 : 0)
+         .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 200.ms, curve: Curves.easeOutBack)
+         .shimmer(duration: 500.ms, delay: 100.ms, color: Colors.white54)
+         .then()
+         .scale(begin: const Offset(1.1, 1.1), end: const Offset(1, 1), duration: 200.ms, curve: Curves.easeIn),
       );
     } else {
       return GestureDetector(
@@ -278,10 +282,16 @@ class _HabitTile extends ConsumerWidget {
           height: 36,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: palette.primary.withValues(alpha: 0.1),
+            color: isCompleted ? palette.primary : palette.primary.withValues(alpha: 0.1),
           ),
-          child: Icon(Icons.add, color: palette.primary, size: 20),
-        ),
+          child: isCompleted 
+              ? Icon(Icons.check, color: palette.background, size: 20)
+              : Icon(Icons.add, color: palette.primary, size: 20),
+        ).animate(target: isCompleted ? 1 : 0)
+         .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 200.ms, curve: Curves.easeOutBack)
+         .shimmer(duration: 500.ms, delay: 100.ms, color: Colors.white54)
+         .then()
+         .scale(begin: const Offset(1.1, 1.1), end: const Offset(1, 1), duration: 200.ms, curve: Curves.easeIn),
       );
     }
   }
@@ -302,26 +312,63 @@ class _HabitTile extends ConsumerWidget {
     return null;
   }
 
-  List<Widget> _buildWeekStrip(HabitMetrics metrics) {
+  List<Widget> _buildWeekStrip(HabitMetrics metrics, WidgetRef ref) {
+    final now = DateTime.now();
     return [
-      for (final status in metrics.last7Days)
-        Padding(
-          padding: const EdgeInsets.only(right: 4),
-          child: AnimatedContainer(
-            duration: 300.ms,
-            width: 6,
-            height: 18,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(3),
-              color: switch (status) {
-                HabitDayStatus.completed => palette.primary,
-                HabitDayStatus.missed => Colors.redAccent.withValues(alpha: 0.6),
-                HabitDayStatus.notDue => palette.text.withValues(alpha: 0.1),
-                HabitDayStatus.future => Colors.transparent,
-              },
+      for (int i = 0; i < metrics.last7Days.length; i++) ...[
+        () {
+          final status = metrics.last7Days[i];
+          final day = now.subtract(Duration(days: 6 - i));
+          const weekdays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+          final isCompleted = status == HabitDayStatus.completed;
+          final isMissed = status == HabitDayStatus.missed;
+          
+          return GestureDetector(
+            onTap: () {
+              ref.read(habitSelectedDateProvider.notifier).state = day;
+            },
+            child: Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    weekdays[day.weekday - 1],
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: palette.text.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  AnimatedContainer(
+                    duration: 300.ms,
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: switch (status) {
+                        HabitDayStatus.completed => palette.primary,
+                        HabitDayStatus.missed => Colors.redAccent.withValues(alpha: 0.6),
+                        HabitDayStatus.notDue => palette.text.withValues(alpha: 0.1),
+                        HabitDayStatus.future => Colors.transparent,
+                      },
+                      border: (status == HabitDayStatus.future || status == HabitDayStatus.notDue)
+                          ? Border.all(color: palette.text.withValues(alpha: 0.1))
+                          : null,
+                    ),
+                    child: isCompleted
+                        ? Icon(Icons.check, size: 8, color: palette.background)
+                        : isMissed 
+                            ? Icon(Icons.close, size: 8, color: palette.background)
+                            : null,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        }(),
+      ]
     ];
   }
 

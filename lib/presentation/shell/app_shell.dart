@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
-import '../../features/quick_add/presentation/quick_add_sheet.dart';
+import '../../features/quick_add/presentation/unified_creation_sheet.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../core/settings/app_settings_provider.dart';
 import '../../core/theme/theme_engine_provider.dart';
@@ -60,7 +60,7 @@ class AppShell extends ConsumerWidget {
                       (s) => s.branchIndex == navigationShell.currentIndex,
                     ),
                   );
-                  showQuickAddSheet(context, currentSection: currentSection);
+                  showUnifiedCreationSheet(context, currentSection: currentSection);
                 },
                 child: const Icon(Icons.add, size: 28),
               ),

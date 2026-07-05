@@ -51,10 +51,11 @@ Future<void> showTaskFormSheet(
 }
 
 class TaskFormSheet extends ConsumerStatefulWidget {
-  const TaskFormSheet({required this.listId, this.existingTask, super.key});
+  const TaskFormSheet({required this.listId, this.existingTask, this.unifiedHeader, super.key});
 
   final String listId;
   final Task? existingTask;
+  final Widget? unifiedHeader;
 
   @override
   ConsumerState<TaskFormSheet> createState() => _TaskFormSheetState();
@@ -126,6 +127,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (widget.unifiedHeader != null) widget.unifiedHeader!,
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -150,6 +152,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
                   style: TextStyle(color: palette.text),
                   decoration: InputDecoration(
                     labelText: 'Title',
+                    hintText: 'take meds #health ~personal -p4...',
                     labelStyle: TextStyle(color: palette.text.withValues(alpha: 0.6)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),

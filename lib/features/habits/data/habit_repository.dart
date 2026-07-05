@@ -216,13 +216,13 @@ class HabitRepository {
   // Metrics
   // ---------------------------------------------------------------------
 
-  Future<HabitMetrics> computeMetrics(Habit habit) async {
+  Future<HabitMetrics> computeMetrics(Habit habit, [DateTime? date]) async {
     final logs = await (_db.select(
       _db.habitLogs,
     )..where((l) => l.habitId.equals(habit.id))).get();
     final logsByDay = {for (final log in logs) _normalizeDay(log.date): log};
     final frequency = HabitFrequency.decode(habit.frequencyConfig);
-    final today = _normalizeDay(DateTime.now());
+    final today = _normalizeDay(date ?? DateTime.now());
 
     final last7 = <HabitDayStatus>[];
     for (var i = 6; i >= 0; i--) {

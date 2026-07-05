@@ -48,10 +48,11 @@ Future<void> showEventFormSheet(
 }
 
 class EventFormSheet extends ConsumerStatefulWidget {
-  const EventFormSheet({required this.initialDay, this.existingEvent, super.key});
+  const EventFormSheet({this.initialDay, this.existingEvent, this.unifiedHeader, super.key});
 
-  final DateTime initialDay;
+  final DateTime? initialDay;
   final CalendarEvent? existingEvent;
+  final Widget? unifiedHeader;
 
   @override
   ConsumerState<EventFormSheet> createState() => _EventFormSheetState();
@@ -75,7 +76,8 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
   void initState() {
     super.initState();
     final event = widget.existingEvent;
-    _start = event?.start ?? DateTime(widget.initialDay.year, widget.initialDay.month, widget.initialDay.day, 9);
+    final day = widget.initialDay ?? DateTime.now();
+    _start = event?.start ?? DateTime(day.year, day.month, day.day, 9);
     _end = event?.end ?? _start.add(const Duration(hours: 1));
     _isAllDay = event?.isAllDay ?? false;
     _colorId = event?.colorId;
@@ -119,6 +121,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (widget.unifiedHeader != null) widget.unifiedHeader!,
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
