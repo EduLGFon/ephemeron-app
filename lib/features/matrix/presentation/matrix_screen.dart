@@ -154,8 +154,21 @@ class _QuadrantWidgetState extends ConsumerState<_QuadrantWidget> {
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(Icons.circle, size: 8, color: color.withValues(alpha: 0.5)),
-                                    const SizedBox(width: 8),
+                                    GestureDetector(
+                                      onTap: () {
+                                        ref.read(taskRepositoryProvider).completeTask(task.id);
+                                      },
+                                      child: Container(
+                                        width: 16,
+                                        height: 16,
+                                        margin: const EdgeInsets.only(top: 1, right: 8),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: color.withValues(alpha: 0.8), width: 1.5),
+                                          color: Colors.transparent,
+                                        ),
+                                      ),
+                                    ),
                                     Expanded(
                                       child: Text(
                                         task.title,
