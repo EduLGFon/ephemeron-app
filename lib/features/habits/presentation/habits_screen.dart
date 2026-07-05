@@ -23,7 +23,13 @@ class HabitsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: Text('Habits', style: TextStyle(color: palette.text, fontWeight: FontWeight.bold)),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Habits', style: TextStyle(color: palette.text, fontWeight: FontWeight.bold)),
+            _DateNavigator(palette: palette),
+          ],
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -76,6 +82,74 @@ class HabitsScreen extends ConsumerWidget {
   }
 }
 
+class _DateNavigator extends ConsumerWidget {
+  const _DateNavigator({required this.palette});
+  final AppPalette palette;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedDate = ref.watch(habitSelectedDateProvider);
+    final now = DateTime.now();
+    final isToday = selectedDate.year == now.year && selectedDate.month == now.month && selectedDate.day == now.day;
+
+    String dateText;
+    if (isToday) {
+      dateText = 'Today';
+    } else {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      dateText = '${months[selectedDate.month - 1]} ${selectedDate.day}';
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: palette.surface.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: Icon(Icons.chevron_left, color: palette.text, size: 20),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            onPressed: () {
+              ref.read(habitSelectedDateProvider.notifier).state = selectedDate.subtract(const Duration(days: 1));
+            },
+          ),
+          GestureDetector(
+            onTap: () async {
+              final date = await showDatePicker(
+                context: context,
+                initialDate: selectedDate,
+                firstDate: DateTime(2000),
+                lastDate: DateTime.now().add(const Duration(days: 365)),
+              );
+              if (date != null) {
+                ref.read(habitSelectedDateProvider.notifier).state = date;
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                dateText,
+                style: TextStyle(color: palette.text, fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.chevron_right, color: palette.text, size: 20),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            onPressed: () {
+              ref.read(habitSelectedDateProvider.notifier).state = selectedDate.add(const Duration(days: 1));
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _HabitTile extends ConsumerWidget {
   const _HabitTile({required this.habit, required this.palette, required this.delay});
 
@@ -88,13 +162,14 @@ class _HabitTile extends ConsumerWidget {
     final metricsAsync = ref.watch(habitMetricsProvider(habit));
     final repo = ref.read(habitRepositoryProvider);
     final logsAsync = ref.watch(habitLogsProvider(habit.id));
-    final today = DateTime.now();
-    final todayNormalized = DateTime(today.year, today.month, today.day);
-    final todayLog = _findTodayLog(logsAsync.value, todayNormalized);
+    
+    final selectedDate = ref.watch(habitSelectedDateProvider);
+    final selectedDateNormalized = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    final selectedDateLog = _findLogForDate(logsAsync.value, selectedDateNormalized);
 
     final isCompleted = habit.goalType == 'binary' 
-        ? (todayLog?.isCompleted ?? false)
-        : ((todayLog?.amount ?? 0) >= (habit.goalAmount ?? double.infinity));
+        ? (selectedDateLog?.isCompleted ?? false)
+        : ((selectedDateLog?.amount ?? 0) >= (habit.goalAmount ?? double.infinity));
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -118,7 +193,7 @@ class _HabitTile extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 child: Row(
                   children: [
-                    _buildActionWidget(repo, todayLog, isCompleted, context, ref),
+                    _buildActionWidget(repo, selectedDateLog, isCompleted, context, ref, selectedDateNormalized),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
@@ -156,7 +231,7 @@ class _HabitTile extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          '${_formatAmount(todayLog?.amount ?? 0)} / ${_formatAmount(habit.goalAmount!)} ${habit.goalUnit ?? ''}',
+                          '${_formatAmount(selectedDateLog?.amount ?? 0)} / ${_formatAmount(habit.goalAmount!)} ${habit.goalUnit ?? ''}',
                           style: TextStyle(color: palette.text.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -170,10 +245,11 @@ class _HabitTile extends ConsumerWidget {
     ).animate().fadeIn(duration: 400.ms, delay: delay).slideY(begin: 0.2, curve: Curves.easeOutCubic);
   }
 
-  Widget _buildActionWidget(HabitRepository repo, HabitLog? todayLog, bool isCompleted, BuildContext context, WidgetRef ref) {
+  Widget _buildActionWidget(HabitRepository repo, HabitLog? selectedDateLog, bool isCompleted, BuildContext context, WidgetRef ref, DateTime selectedDate) {
     if (habit.goalType == 'binary') {
       return GestureDetector(
-        onTap: () => repo.toggleBinaryToday(habit.id),
+        onTap: () => repo.toggleBinary(habit.id, selectedDate),
+        onDoubleTap: () => repo.resetLog(habit.id, selectedDate),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           width: 28,
@@ -193,8 +269,9 @@ class _HabitTile extends ConsumerWidget {
       );
     } else {
       return GestureDetector(
-        onLongPress: () => _logAmount(context, ref, habit, todayLog),
-        onTap: () => repo.quickLogToday(habit.id),
+        onLongPress: () => _logAmount(context, ref, habit, selectedDateLog, selectedDate),
+        onTap: () => repo.quickLog(habit.id, selectedDate),
+        onDoubleTap: () => repo.resetLog(habit.id, selectedDate),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           width: 36,
@@ -215,10 +292,10 @@ class _HabitTile extends ConsumerWidget {
         : amount.toStringAsFixed(1);
   }
 
-  HabitLog? _findTodayLog(List<HabitLog>? logs, DateTime todayNormalized) {
+  HabitLog? _findLogForDate(List<HabitLog>? logs, DateTime dateNormalized) {
     if (logs == null) return null;
     for (final log in logs) {
-      if (DateTime(log.date.year, log.date.month, log.date.day) == todayNormalized) {
+      if (DateTime(log.date.year, log.date.month, log.date.day) == dateNormalized) {
         return log;
       }
     }
@@ -252,10 +329,11 @@ class _HabitTile extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     Habit habit,
-    HabitLog? todayLog,
+    HabitLog? selectedDateLog,
+    DateTime selectedDate,
   ) async {
-    final controller = TextEditingController(text: todayLog?.amount.toString() ?? '');
-    final result = await showDialog<double>(
+    final controller = TextEditingController(text: selectedDateLog?.amount.toString() ?? '');
+    final result = await showDialog<double?>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: palette.surface,
@@ -273,6 +351,13 @@ class _HabitTile extends ConsumerWidget {
         ),
         actions: [
           TextButton(
+            onPressed: () {
+              // Passing a negative number to indicate a reset
+              Navigator.pop(context, -1.0);
+            },
+            child: Text('Reset', style: TextStyle(color: Colors.redAccent.withValues(alpha: 0.8))),
+          ),
+          TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text('Cancel', style: TextStyle(color: palette.text.withValues(alpha: 0.6))),
           ),
@@ -284,10 +369,19 @@ class _HabitTile extends ConsumerWidget {
         ],
       ),
     );
+    
     if (result == null) return;
+    
+    final repo = ref.read(habitRepositoryProvider);
+    if (result == -1.0) {
+      await repo.resetLog(habit.id, selectedDate);
+      return;
+    }
+    
     final goalAmount = habit.goalAmount ?? double.infinity;
-    await ref.read(habitRepositoryProvider).logProgress(
+    await repo.logProgress(
       habit.id,
+      date: selectedDate,
       amount: result,
       isCompleted: result >= goalAmount,
     );
@@ -303,15 +397,27 @@ class _StreakBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (streak == 0) return const SizedBox.shrink();
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.local_fire_department, size: 14, color: color)
-            .animate(onPlay: (controller) => controller.repeat())
-            .shimmer(duration: 2.seconds),
-        const SizedBox(width: 4),
-        Text('$streak', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.local_fire_department, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            '$streak',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

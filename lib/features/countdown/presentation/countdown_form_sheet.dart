@@ -1,6 +1,8 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/theme_engine_provider.dart';
 import '../../../data/local/database.dart';
 import '../application/countdown_providers.dart';
 import '../domain/countdown_type.dart';
@@ -10,12 +12,37 @@ Future<void> showCountdownFormSheet(
   required CountdownType type,
   Countdown? existingCountdown,
 }) {
-  return showModalBottomSheet<void>(
+  return showGeneralDialog<void>(
     context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    builder: (context) =>
-        CountdownFormSheet(type: type, existingCountdown: existingCountdown),
+    barrierDismissible: true,
+    barrierLabel: 'Dismiss',
+    barrierColor: Colors.black54,
+    transitionDuration: const Duration(milliseconds: 300),
+    pageBuilder: (context, animation, secondaryAnimation) {
+      return Center(
+        child: SingleChildScrollView(
+          child: Material(
+            color: Colors.transparent,
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: CountdownFormSheet(type: type, existingCountdown: existingCountdown),
+            ),
+          ),
+        ),
+      );
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutBack);
+      return ScaleTransition(
+        scale: curve,
+        child: FadeTransition(
+          opacity: animation,
+          child: child,
+        ),
+      );
+    },
   );
 }
 
@@ -54,84 +81,164 @@ class _CountdownFormSheetState extends ConsumerState<CountdownFormSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+    final palette = ref.watch(themeEngineProvider);
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      constraints: const BoxConstraints(maxWidth: 500),
+      decoration: BoxDecoration(
+        color: palette.surface.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 40,
+            offset: const Offset(0, 20),
+          ),
+        ],
       ),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              _isEditing
-                  ? 'Edit ${widget.type.label.toLowerCase()}'
-                  : 'New ${widget.type.label.toLowerCase()}',
-              style: theme.textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _titleController,
-              autofocus: !_isEditing,
-              decoration: const InputDecoration(labelText: 'Title'),
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            const SizedBox(height: 16),
-            Row(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: Text(
-                    '${_targetDate.year}-${_targetDate.month.toString().padLeft(2, '0')}-'
-                    '${_targetDate.day.toString().padLeft(2, '0')}',
-                    style: theme.textTheme.bodyLarge,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _isEditing
+                          ? 'Edit ${widget.type.label.toLowerCase()}'
+                          : 'New ${widget.type.label.toLowerCase()}',
+                      style: TextStyle(color: palette.text, fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                    if (_isEditing)
+                      IconButton(
+                        icon: Icon(Icons.delete_outline, color: Colors.redAccent.withValues(alpha: 0.8)),
+                        onPressed: () async {
+                          await ref.read(countdownRepositoryProvider).deleteCountdown(widget.existingCountdown!.id);
+                          if (context.mounted) Navigator.pop(context);
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _titleController,
+                  autofocus: !_isEditing,
+                  style: TextStyle(color: palette.text),
+                  decoration: InputDecoration(
+                    labelText: 'Title',
+                    labelStyle: TextStyle(color: palette.text.withValues(alpha: 0.6)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: palette.text.withValues(alpha: 0.2))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: palette.primary, width: 2)),
+                  ),
+                  textCapitalization: TextCapitalization.sentences,
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: palette.text.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${_targetDate.year}-${_targetDate.month.toString().padLeft(2, '0')}-${_targetDate.day.toString().padLeft(2, '0')}',
+                          style: TextStyle(color: palette.text, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      TextButton(
+                        style: TextButton.styleFrom(foregroundColor: palette.primary),
+                        onPressed: _pickDate, 
+                        child: const Text('Set date', style: TextStyle(fontWeight: FontWeight.bold))
+                      ),
+                    ],
                   ),
                 ),
-                TextButton(onPressed: _pickDate, child: const Text('Set date')),
+                const SizedBox(height: 16),
+                if (widget.type.supportsAge || widget.type == CountdownType.custom)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: palette.text.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        if (widget.type.supportsAge)
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text('Show age', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
+                            subtitle: Text(
+                              _showAge
+                                  ? 'The year above is used to calculate age'
+                                  : 'Year is ignored — only month and day count',
+                              style: TextStyle(color: palette.text.withValues(alpha: 0.6), fontSize: 12),
+                            ),
+                            activeThumbColor: palette.primary,
+                            value: _showAge,
+                            onChanged: (value) => setState(() => _showAge = value),
+                          ),
+                        if (widget.type == CountdownType.custom)
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text('Repeats yearly', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
+                            activeThumbColor: palette.primary,
+                            value: _isYearly,
+                            onChanged: (value) => setState(() => _isYearly = value),
+                          ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                Text(
+                  'Alerts: 3 days before and on the day',
+                  style: TextStyle(color: palette.text.withValues(alpha: 0.5), fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: palette.text,
+                          side: BorderSide(color: palette.text.withValues(alpha: 0.2)),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: palette.primary,
+                          foregroundColor: palette.background,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        onPressed: _isSaving || _titleController.text.trim().isEmpty ? null : _save,
+                        child: _isSaving
+                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                            : Text(_isEditing ? 'Save' : 'Add', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-            if (widget.type.supportsAge) ...[
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Show age'),
-                subtitle: Text(
-                  _showAge
-                      ? 'The year above is used to calculate age'
-                      : 'Year is ignored — only month and day count',
-                ),
-                value: _showAge,
-                onChanged: (value) => setState(() => _showAge = value),
-              ),
-            ],
-            if (widget.type == CountdownType.custom) ...[
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Repeats yearly'),
-                value: _isYearly,
-                onChanged: (value) => setState(() => _isYearly = value),
-              ),
-            ],
-            const SizedBox(height: 8),
-            Text(
-              'Alerts: 3 days before and on the day',
-              style: theme.textTheme.labelSmall,
-            ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _isSaving || _titleController.text.trim().isEmpty
-                  ? null
-                  : _save,
-              child: _isSaving
-                  ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(_isEditing ? 'Save' : 'Add'),
-            ),
-          ],
+          ),
         ),
       ),
     );

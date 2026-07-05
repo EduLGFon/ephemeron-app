@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../data/local/database.dart';
 import '../../../data/local/database_provider.dart';
@@ -11,6 +12,11 @@ final habitRepositoryProvider = Provider<HabitRepository>((ref) {
     ref.watch(appDatabaseProvider),
     ref.watch(alarmSchedulerProvider),
   );
+});
+
+final habitSelectedDateProvider = StateProvider<DateTime>((ref) {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, now.day);
 });
 
 final habitsProvider = StreamProvider<List<Habit>>((ref) {

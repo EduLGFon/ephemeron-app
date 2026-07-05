@@ -67,12 +67,6 @@ class CountdownScreen extends ConsumerWidget {
         error: (error, _) =>
             Center(child: Text('Could not load countdowns: $error', style: TextStyle(color: palette.text))),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: palette.primary,
-        foregroundColor: palette.background,
-        onPressed: () => showCountdownTemplatePicker(context),
-        child: const Icon(Icons.add),
-      ).animate().scale(curve: Curves.easeOutBack, duration: 400.ms),
     );
   }
 }

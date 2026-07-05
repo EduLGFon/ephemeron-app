@@ -175,32 +175,41 @@ class HabitRepository {
         );
   }
 
-  Future<void> toggleBinaryToday(String habitId) async {
-    final today = _normalizeDay(DateTime.now());
+  Future<void> toggleBinary(String habitId, [DateTime? date]) async {
+    final targetDate = _normalizeDay(date ?? DateTime.now());
     final existing =
         await (_db.select(_db.habitLogs)
-              ..where((l) => l.habitId.equals(habitId) & l.date.equals(today)))
+              ..where((l) => l.habitId.equals(habitId) & l.date.equals(targetDate)))
             .getSingleOrNull();
-    await logProgress(habitId, isCompleted: !(existing?.isCompleted ?? false));
+    await logProgress(habitId, date: targetDate, isCompleted: !(existing?.isCompleted ?? false));
   }
 
-  /// Adds the habit's configured `logIncrement` to today's running total
-  /// — the quick one-tap log action, as opposed to [logProgress] which
-  /// sets an exact amount (used for manual correction).
-  Future<void> quickLogToday(String habitId) async {
+  /// Adds the habit's configured `logIncrement` to the running total for [date]
+  /// (defaulting to today) — the quick one-tap log action, as opposed to [logProgress]
+  /// which sets an exact amount (used for manual correction).
+  Future<void> quickLog(String habitId, [DateTime? date]) async {
     final habit = await getHabit(habitId);
     if (habit == null) return;
-    final today = _normalizeDay(DateTime.now());
+    final targetDate = _normalizeDay(date ?? DateTime.now());
     final existing =
         await (_db.select(_db.habitLogs)
-              ..where((l) => l.habitId.equals(habitId) & l.date.equals(today)))
+              ..where((l) => l.habitId.equals(habitId) & l.date.equals(targetDate)))
             .getSingleOrNull();
     final newAmount = (existing?.amount ?? 0) + habit.logIncrement;
     await logProgress(
       habitId,
+      date: targetDate,
       amount: newAmount,
       isCompleted: newAmount >= (habit.goalAmount ?? double.infinity),
     );
+  }
+
+  /// Resets the log for the given [date] (defaulting to today).
+  Future<void> resetLog(String habitId, [DateTime? date]) async {
+    final targetDate = _normalizeDay(date ?? DateTime.now());
+    await (_db.delete(_db.habitLogs)
+          ..where((l) => l.habitId.equals(habitId) & l.date.equals(targetDate)))
+        .go();
   }
 
   // ---------------------------------------------------------------------

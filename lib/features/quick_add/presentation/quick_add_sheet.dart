@@ -10,8 +10,10 @@ import '../../calendar/domain/calendar_event.dart';
 import '../../tasks/application/task_providers.dart';
 import '../../tasks/data/task_repository.dart';
 import '../../habits/presentation/habit_form_sheet.dart';
+import '../../countdown/presentation/countdown_template_picker.dart';
 import '../../../presentation/shell/nav_section.dart';
 import '../domain/quick_add_parser.dart';
+import 'dart:async';
 
 enum QuickAddTarget { task, event, habit, countdown, note }
 
@@ -158,6 +160,11 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                 label: Text('Habit'),
                 icon: Icon(Icons.repeat_outlined),
               ),
+              ButtonSegment(
+                value: QuickAddTarget.countdown,
+                label: Text('Cdwn'),
+                icon: Icon(Icons.timer_outlined),
+              ),
             ],
             selected: {_target},
             onSelectionChanged: (selection) =>
@@ -227,7 +234,9 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : Text(
-                    _target == QuickAddTarget.task ? 'Add task' : 'Add event',
+                    _target == QuickAddTarget.task ? 'Add task' : 
+                    _target == QuickAddTarget.event ? 'Add event' : 'Continue',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
           ),
         ],
@@ -271,7 +280,13 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     try {
       if (_target == QuickAddTarget.habit) {
         if (mounted) Navigator.of(context).pop();
-        showHabitFormSheet(context, initialName: _parsed.cleanTitle);
+        unawaited(showHabitFormSheet(context, initialName: _parsed.cleanTitle));
+        return;
+      }
+      
+      if (_target == QuickAddTarget.countdown) {
+        if (mounted) Navigator.of(context).pop();
+        unawaited(showCountdownTemplatePicker(context));
         return;
       }
       
