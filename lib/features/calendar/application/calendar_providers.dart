@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../data/local/database_provider.dart';
 import '../../alarms/application/alarm_scheduler_provider.dart';
@@ -28,9 +29,10 @@ final monthEventsProvider =
 /// Derives a single day's events from whatever month is currently
 /// loaded, rather than making a separate request — the common case of
 /// tapping a day within the visible month should feel instant.
-final dayEventsProvider = Provider.family<List<CalendarEvent>, DateTime>((ref, day) {
+final dayEventsProvider =
+    Provider.family<List<CalendarEvent>, DateTime>((ref, day) {
   final month = DateTime(day.year, day.month, 1);
-  final monthEvents = ref.watch(monthEventsProvider(month)).valueOrNull ?? const [];
+  final monthEvents = ref.watch(monthEventsProvider(month)).value ?? const [];
   return monthEvents.where((e) {
     final eventDay = DateTime(e.start.year, e.start.month, e.start.day);
     final targetDay = DateTime(day.year, day.month, day.day);

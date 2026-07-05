@@ -79,15 +79,13 @@ class AlarmScheduler {
 
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     await _plugin.initialize(
-      const InitializationSettings(android: androidInit),
+      settings: const InitializationSettings(android: androidInit),
       onDidReceiveNotificationResponse: _handleForegroundResponse,
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
 
-    final android = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
     if (android != null) {
       await android.createNotificationChannel(
         const AndroidNotificationChannel(
@@ -139,10 +137,8 @@ class AlarmScheduler {
     // it there would crash instead of gracefully no-op'ing. Caught during
     // the Step 9 cross-platform pass.
     if (kIsWeb || !Platform.isAndroid) return;
-    final android = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
     if (android == null) return;
 
     await android.requestNotificationsPermission();
@@ -195,14 +191,12 @@ class AlarmScheduler {
       );
 
       await _plugin.zonedSchedule(
-        ids[i],
-        title,
-        body,
-        tz.TZDateTime.from(fireAt, tz.local),
-        _detailsForPreset(preset),
+        id: ids[i],
+        title: title,
+        body: body,
+        scheduledDate: tz.TZDateTime.from(fireAt, tz.local),
+        notificationDetails: _detailsForPreset(preset),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
         payload: payload.encode(),
       );
     }
@@ -242,14 +236,12 @@ class AlarmScheduler {
     );
 
     await _plugin.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduled,
-      _detailsForPreset(preset),
+      id: id,
+      title: title,
+      body: body,
+      scheduledDate: scheduled,
+      notificationDetails: _detailsForPreset(preset),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: weekday != null
           ? DateTimeComponents.dayOfWeekAndTime
           : DateTimeComponents.time,
@@ -292,14 +284,12 @@ class AlarmScheduler {
       weekday: null,
     );
     await _plugin.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduled,
-      _detailsForPreset(preset),
+      id: id,
+      title: title,
+      body: body,
+      scheduledDate: scheduled,
+      notificationDetails: _detailsForPreset(preset),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
       payload: AlarmPayload(
         entityId: entityId,
         title: title,
@@ -341,7 +331,7 @@ class AlarmScheduler {
   /// marks something done from a notification action.
   Future<void> cancelByIds(List<int> ids) async {
     for (final id in ids) {
-      await _plugin.cancel(id);
+      await _plugin.cancel(id: id);
     }
   }
 
@@ -371,10 +361,9 @@ class AlarmScheduler {
     if (kIsWeb || Platform.isLinux) return;
 
     await _plugin.show(
-      id,
-      title,
-      null,
-      NotificationDetails(
+      id: id,
+      title: title,
+      notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           _lightChannelId,
           'Reminders',
@@ -391,7 +380,7 @@ class AlarmScheduler {
     );
   }
 
-  Future<void> cancelOngoingNotification(int id) => _plugin.cancel(id);
+  Future<void> cancelOngoingNotification(int id) => _plugin.cancel(id: id);
 
   NotificationDetails _detailsForPreset(AlarmPreset preset) {
     final actions = [
@@ -482,14 +471,12 @@ class AlarmScheduler {
       -1,
     ); // -1: reserved for the "current snooze" slot
     await _plugin.zonedSchedule(
-      id,
-      payload.title,
-      payload.body,
-      tz.TZDateTime.from(fireAt, tz.local),
-      _detailsForPreset(payload.preset),
+      id: id,
+      title: payload.title,
+      body: payload.body,
+      scheduledDate: tz.TZDateTime.from(fireAt, tz.local),
+      notificationDetails: _detailsForPreset(payload.preset),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
       payload: payload.encode(),
     );
     _actionController.add(
@@ -529,22 +516,20 @@ void notificationTapBackground(NotificationResponse response) {
       final fireAt = DateTime.now().add(const Duration(minutes: 5));
       unawaited(
         plugin.zonedSchedule(
-          Object.hash(payload.entityId, -1) & 0x7FFFFFFF,
-          payload.title,
-          payload.body,
-          tz.TZDateTime.from(fireAt, tz.local),
-          const NotificationDetails(
+          id: Object.hash(payload.entityId, -1) & 0x7FFFFFFF,
+          title: payload.title,
+          body: payload.body,
+          scheduledDate: tz.TZDateTime.from(fireAt, tz.local),
+          notificationDetails: const NotificationDetails(
             android: AndroidNotificationDetails(_mediumChannelId, 'Alarms'),
           ),
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          uiLocalNotificationDateInterpretation:
-              UILocalNotificationDateInterpretation.absoluteTime,
           payload: response.payload,
         ),
       );
     case _doneActionId:
       for (final id in payload.siblingIds) {
-        unawaited(plugin.cancel(id));
+        unawaited(plugin.cancel(id: id));
       }
   }
 }

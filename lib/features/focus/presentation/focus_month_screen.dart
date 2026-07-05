@@ -51,15 +51,15 @@ class _FocusMonthScreenState extends ConsumerState<FocusMonthScreen> {
               children: [
                 _TotalStat(
                   label: 'This month',
-                  duration: monthTotalAsync.valueOrNull,
+                  duration: monthTotalAsync.value,
                 ),
                 _TotalStat(
                   label: 'This year',
-                  duration: yearTotalAsync.valueOrNull,
+                  duration: yearTotalAsync.value,
                 ),
                 _TotalStat(
                   label: 'All time',
-                  duration: allTimeAsync.valueOrNull,
+                  duration: allTimeAsync.value,
                 ),
               ],
             ),
@@ -73,18 +73,17 @@ class _FocusMonthScreenState extends ConsumerState<FocusMonthScreen> {
                   _month.month + 1,
                   0,
                 ).day;
-                final entries =
-                    [
-                          for (var day = 1; day <= daysInMonth; day++)
-                            MapEntry(
-                              DateTime(_month.year, _month.month, day),
-                              totals[DateTime(_month.year, _month.month, day)],
-                            ),
-                        ]
-                        .where(
-                          (e) => e.value != null && e.value! > Duration.zero,
-                        )
-                        .toList();
+                final entries = [
+                  for (var day = 1; day <= daysInMonth; day++)
+                    MapEntry(
+                      DateTime(_month.year, _month.month, day),
+                      totals[DateTime(_month.year, _month.month, day)],
+                    ),
+                ]
+                    .where(
+                      (e) => e.value != null && e.value! > Duration.zero,
+                    )
+                    .toList();
 
                 if (entries.isEmpty) {
                   return Center(

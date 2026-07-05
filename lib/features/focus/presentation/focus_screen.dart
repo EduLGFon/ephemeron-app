@@ -29,8 +29,10 @@ class FocusScreen extends ConsumerWidget {
             children: [
               SegmentedButton<FocusMode>(
                 segments: const [
-                  ButtonSegment(value: FocusMode.pomodoro, label: Text('Pomodoro')),
-                  ButtonSegment(value: FocusMode.stopwatch, label: Text('Stopwatch')),
+                  ButtonSegment(
+                      value: FocusMode.pomodoro, label: Text('Pomodoro')),
+                  ButtonSegment(
+                      value: FocusMode.stopwatch, label: Text('Stopwatch')),
                 ],
                 selected: {timerState.mode},
                 onSelectionChanged: timerState.isRunning
@@ -40,7 +42,9 @@ class FocusScreen extends ConsumerWidget {
               const Spacer(),
               if (timerState.mode == FocusMode.pomodoro)
                 Text(
-                  timerState.pomodoroPhase == PomodoroPhase.work ? 'Focus' : 'Break',
+                  timerState.pomodoroPhase == PomodoroPhase.work
+                      ? 'Focus'
+                      : 'Break',
                   style: theme.textTheme.titleMedium,
                 ),
               const SizedBox(height: 8),
@@ -108,7 +112,9 @@ class _LinkPicker extends ConsumerWidget {
     return OutlinedButton.icon(
       icon: const Icon(Icons.link),
       label: Text(
-        state.linkedTaskId != null || state.linkedHabitId != null ? 'Change link' : 'Link to task/habit',
+        state.linkedTaskId != null || state.linkedHabitId != null
+            ? 'Change link'
+            : 'Link to task/habit',
       ),
       onPressed: () => _showLinkPicker(context, ref),
     );
@@ -130,7 +136,7 @@ class _LinkPicker extends ConsumerWidget {
                 Navigator.pop(context);
               },
             ),
-            if (habitsAsync.valueOrNull case final habits?)
+            if (habitsAsync.value case final habits?)
               for (final habit in habits)
                 ListTile(
                   leading: const Icon(Icons.repeat_outlined),
@@ -140,7 +146,7 @@ class _LinkPicker extends ConsumerWidget {
                     Navigator.pop(context);
                   },
                 ),
-            if (tasksAsync.valueOrNull case final tasks?)
+            if (tasksAsync.value case final tasks?)
               for (final task in tasks)
                 ListTile(
                   leading: const Icon(Icons.checklist_outlined),
@@ -216,7 +222,7 @@ class _TotalsRow extends ConsumerWidget {
             const Icon(Icons.bar_chart, size: 16, color: AppColors.petrol),
             const SizedBox(width: 6),
             Text(
-              'Today: ${_short(today.valueOrNull)}  ·  This week: ${_short(week.valueOrNull)}',
+              'Today: ${_short(today.value)}  ·  This week: ${_short(week.value)}',
               style: Theme.of(context).textTheme.labelSmall,
             ),
           ],

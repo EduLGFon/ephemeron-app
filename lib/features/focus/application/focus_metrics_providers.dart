@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'focus_repository_provider.dart';
 
@@ -19,17 +20,20 @@ final totalFocusedThisWeekProvider = FutureProvider<Duration>((ref) {
   return ref.watch(focusRepositoryProvider).totalFocusedThisWeek();
 });
 
-final monthlyFocusTotalsProvider = FutureProvider.family<Map<DateTime, Duration>, DateTime>((ref, month) {
+final monthlyFocusTotalsProvider =
+    FutureProvider.family<Map<DateTime, Duration>, DateTime>((ref, month) {
   ref.watch(focusMetricsRefreshProvider);
   return ref.watch(focusRepositoryProvider).dailyTotalsForMonth(month);
 });
 
-final totalFocusedThisMonthProvider = FutureProvider.family<Duration, DateTime>((ref, month) {
+final totalFocusedThisMonthProvider =
+    FutureProvider.family<Duration, DateTime>((ref, month) {
   ref.watch(focusMetricsRefreshProvider);
   return ref.watch(focusRepositoryProvider).totalFocusedThisMonth(month);
 });
 
-final totalFocusedThisYearProvider = FutureProvider.family<Duration, int>((ref, year) {
+final totalFocusedThisYearProvider =
+    FutureProvider.family<Duration, int>((ref, year) {
   ref.watch(focusMetricsRefreshProvider);
   return ref.watch(focusRepositoryProvider).totalFocusedThisYear(year);
 });

@@ -76,7 +76,7 @@ class _HabitTile extends ConsumerWidget {
     final logsAsync = ref.watch(habitLogsProvider(habit.id));
     final today = DateTime.now();
     final todayNormalized = DateTime(today.year, today.month, today.day);
-    final todayLog = _findTodayLog(logsAsync.valueOrNull, todayNormalized);
+    final todayLog = _findTodayLog(logsAsync.value, todayNormalized);
 
     return ListTile(
       leading: habit.goalType == 'binary'
@@ -200,9 +200,7 @@ class _HabitTile extends ConsumerWidget {
     );
     if (result == null) return;
     final goalAmount = habit.goalAmount ?? double.infinity;
-    await ref
-        .read(habitRepositoryProvider)
-        .logProgress(
+    await ref.read(habitRepositoryProvider).logProgress(
           habit.id,
           amount: result,
           isCompleted: result >= goalAmount,

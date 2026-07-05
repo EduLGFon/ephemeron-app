@@ -12,7 +12,7 @@ import '../data/task_repository.dart';
 /// that exactly like "the mirror push failed," so nothing else needs to
 /// branch on connection state separately.
 final googleTasksMirrorProvider = Provider<GoogleTasksMirror?>((ref) {
-  final account = ref.watch(googleAccountProvider).valueOrNull;
+  final account = ref.watch(googleAccountProvider).value;
   if (account == null) return null;
   return GoogleTasksMirror(ref.watch(googleAuthRepositoryProvider));
 });
