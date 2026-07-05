@@ -1,0 +1,108 @@
+name: ephemeron
+description: >
+  Ephemeron — cross-platform calendar, tasks, habits, and focus app.
+  Small tasks are ephemeral; little by little, they add up.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+# NOTE: versions below are floor constraints (^). Run `flutter pub upgrade`
+# after `flutter pub get` to resolve to the actual latest compatible
+# releases — pin exact numbers only once the project is stable.
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management / DI (providers double as the DI layer — no separate
+  # service locator needed)
+  flutter_riverpod: ^2.5.1
+
+  # Routing — StatefulShellRoute gives us persistent per-tab state across
+  # the bottom nav, which a plain Navigator does not.
+  go_router: ^17.3.0
+
+  # Local persistence — chosen over Isar/Hive for full SQL + reactive
+  # streams + genuine cross-platform support including Web (via WASM).
+  drift: ^2.30.0
+  drift_flutter: ^0.3.0
+  path_provider: ^2.1.4
+  path: ^1.9.0
+
+  # Small local settings (reducedMotion, powerSavingMode) that don't need
+  # a full relational table.
+  shared_preferences: ^2.3.2
+
+  # IDs for local-only records not yet mirrored to Google.
+  uuid: ^4.4.2
+
+  # Auth — Google Calendar sign-in/authorization (Android + Web; a
+  # desktop implementation is added later, see google_auth_repository.dart)
+  google_sign_in: ^7.1.0
+
+  # HTTP client shared by the backend auth repository and (from Step 4
+  # onward) Calendar API calls.
+  http: ^1.2.2
+
+  # Secure, platform-native storage for the backend refresh token —
+  # deliberately not SharedPreferences (see secure_token_storage.dart).
+  flutter_secure_storage: ^10.3.1
+
+  # Alarm/notification engine (Step 2) — scheduling, full-screen alerts,
+  # and the snooze/done actions.
+  # PINNED, not a floor constraint: v22 changed initialize()/
+  # zonedSchedule()/cancel()/show()'s signatures significantly from v18,
+  # which is what all the code in features/alarms/ is written against.
+  # `flutter pub upgrade --major-versions` will happily jump this to v22
+  # again and break the build — this needs a deliberate, tested rewrite
+  # against the new API before upgrading, not an automatic bump.
+  flutter_local_notifications: 18.0.1
+  timezone: 0.10.1
+  flutter_timezone: ^5.1.0
+
+  # Typed Google API clients (Step 3: tasks/v1 for the Tasks mirror;
+  # Step 4 reuses this for calendar/v3).
+  googleapis: ^16.0.0
+
+  # Month grid widget (Step 4). Note: pub.dev shows this package's own
+  # updates have slowed; if you hit compatibility issues on a future
+  # Flutter version, ensemble_table_calendar is a drop-in-compatible
+  # actively maintained fork (same API, different import).
+  table_calendar: ^3.1.2
+
+  # Screen-always-on toggle during focus sessions (Step 7).
+  wakelock_plus: ^1.2.8
+
+  # OS battery-saver detection, feeding the app's own power-saving
+  # setting (Step 9).
+  battery_plus: ^7.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  build_runner: ^2.4.11
+  drift_dev: ^2.30.0
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Bundled locally on purpose (not the google_fonts package): that
+  # package fetches font files over the network on first use, which
+  # works against the "lightweight, low battery, works offline" goal.
+  # Download the two families below from fonts.google.com and drop the
+  # .ttf files into assets/fonts/ before first run.
+  fonts:
+    - family: Fraunces
+      fonts:
+        - asset: assets/fonts/Fraunces-Regular.ttf
+        - asset: assets/fonts/Fraunces-SemiBold.ttf
+          weight: 600
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
