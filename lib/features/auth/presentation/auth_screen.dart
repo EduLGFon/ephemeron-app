@@ -171,7 +171,8 @@ class _GoogleCalendarCard extends ConsumerWidget {
             TextField(
               controller: secretController,
               decoration: const InputDecoration(
-                labelText: 'Client Secret (Optional)',
+                labelText: 'Client Secret',
+                hintText: 'Required by Google Cloud Console',
               ),
             ),
           ],
@@ -185,6 +186,12 @@ class _GoogleCalendarCard extends ConsumerWidget {
             onPressed: () async {
               final id = idController.text.trim();
               final secret = secretController.text.trim();
+              if (id.isNotEmpty && secret.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Client Secret is required when Client ID is provided.')),
+                );
+                return;
+              }
               final prefs = await SharedPreferences.getInstance();
               if (id.isEmpty) {
                 await prefs.remove('google.desktop.customClientId');
