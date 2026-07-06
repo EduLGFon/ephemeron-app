@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/settings/app_settings_provider.dart';
 import '../../../core/theme/theme_engine_provider.dart';
@@ -30,11 +31,32 @@ final calendarFormatProvider = NotifierProvider<CalendarFormatNotifier, Calendar
   () => CalendarFormatNotifier(),
 );
 
-class CalendarScreen extends ConsumerWidget {
+class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CalendarScreen> createState() => _CalendarScreenState();
+}
+
+class _CalendarScreenState extends ConsumerState<CalendarScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _requestCalendarPermission();
+  }
+
+  Future<void> _requestCalendarPermission() async {
+    // Permission.calendarFullAccess is supported on Android & iOS.
+    // Check if the system supports it or if it's already granted.
+    try {
+      if (await Permission.calendarFullAccess.isDenied) {
+        await Permission.calendarFullAccess.request();
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final palette = ref.watch(themeEngineProvider);
     final focusedMonth = ref.watch(focusedMonthProvider);
     final selectedDay = ref.watch(selectedDayProvider);

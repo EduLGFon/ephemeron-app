@@ -14,6 +14,7 @@ import '../../../data/local/database.dart';
 import '../../../data/local/database_provider.dart';
 import '../../alarms/domain/alarm_preset.dart';
 import '../../alarms/domain/reminder_offset.dart';
+import '../../alarms/application/alarm_permissions_helper.dart';
 import '../../notes/data/notes_repository.dart';
 import '../../notes/application/notes_providers.dart';
 import '../../tags/presentation/tag_autocomplete_field.dart';
@@ -1121,6 +1122,9 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
     );
 
     try {
+      if (_alarmPreset != null) {
+        await requestAlarmPermissions(_alarmPreset!);
+      }
       String savedId;
       if (_isEditing) {
         final updated = await repo.updateEvent(event,

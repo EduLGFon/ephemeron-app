@@ -22,6 +22,7 @@ dependencies:
   # Routing — StatefulShellRoute gives us persistent per-tab state across
   # the bottom nav, which a plain Navigator does not.
   go_router: ^17.3.0
+  permission_handler: ^11.3.1
 
   # Local persistence — chosen over Isar/Hive for full SQL + reactive
   # streams + genuine cross-platform support including Web (via WASM).

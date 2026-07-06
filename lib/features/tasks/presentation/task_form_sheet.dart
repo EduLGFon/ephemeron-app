@@ -12,6 +12,7 @@ import '../../../data/local/database.dart';
 import '../../alarms/domain/alarm_preset.dart';
 import '../../alarms/domain/reminder_offset.dart';
 import '../../tags/presentation/tag_autocomplete_field.dart' hide allTagsProvider;
+import '../../alarms/application/alarm_permissions_helper.dart';
 import '../application/task_providers.dart';
 import '../domain/task_recurrence.dart';
 
@@ -819,6 +820,9 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
     final description = _descriptionController.text.trim();
 
     try {
+      if (_alarmPreset != null) {
+        await requestAlarmPermissions(_alarmPreset!);
+      }
       if (_isEditing) {
         await repo.updateTask(
           widget.existingTask!.id,
