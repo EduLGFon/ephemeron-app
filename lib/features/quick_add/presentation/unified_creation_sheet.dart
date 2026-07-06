@@ -10,6 +10,7 @@ import '../../countdown/presentation/countdown_form_sheet.dart';
 import '../../countdown/domain/countdown_type.dart';
 import '../../tasks/application/task_providers.dart';
 import '../../../presentation/shell/nav_section.dart';
+import '../../../presentation/notes/note_form_sheet.dart';
 import 'quick_add_target.dart';
 
 Future<void> showUnifiedCreationSheet(BuildContext context, {NavSection? currentSection}) {
@@ -66,6 +67,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
       NavSection.habits => QuickAddTarget.habit,
       NavSection.tasks => QuickAddTarget.task,
       NavSection.countdown => QuickAddTarget.countdown,
+      NavSection.notes => QuickAddTarget.note,
       _ => QuickAddTarget.task,
     };
   }
@@ -87,6 +89,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
           ButtonSegment(value: QuickAddTarget.event, label: Text('Event')),
           ButtonSegment(value: QuickAddTarget.habit, label: Text('Habit')),
           ButtonSegment(value: QuickAddTarget.countdown, label: Text('Cdwn')),
+          ButtonSegment(value: QuickAddTarget.note, label: Text('Note')),
         ],
         selected: {_target},
         onSelectionChanged: (set) {
@@ -119,6 +122,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
         QuickAddTarget.event => EventFormSheet(unifiedHeader: header),
         QuickAddTarget.habit => HabitFormSheet(unifiedHeader: header),
         QuickAddTarget.countdown => CountdownFormSheet(type: CountdownType.custom, unifiedHeader: header),
+        QuickAddTarget.note => NoteFormSheet(unifiedHeader: header),
         _ => const SizedBox.shrink(),
       },
     );

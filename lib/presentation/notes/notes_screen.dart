@@ -12,6 +12,7 @@ import '../../features/calendar/application/calendar_providers.dart';
 import '../../features/calendar/presentation/event_form_sheet.dart';
 import '../../features/notes/application/notes_providers.dart';
 import '../../features/notes/data/notes_repository.dart';
+import 'note_form_sheet.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Notes screen
@@ -123,17 +124,31 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
     WidgetRef ref,
   ) {
     final path = <Widget>[];
+    
+    // Notes root folder breadcrumb target
     path.add(
-      GestureDetector(
-        onTap: () => ref.read(currentFolderIdProvider.notifier).setFolder(null),
-        child: Text(
-          'Folders',
-          style: TextStyle(
-            color: currentId == null ? palette.text : palette.text.withValues(alpha: 0.5),
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
+      DragTarget<Note>(
+        onWillAcceptWithDetails: (details) => details.data.folderId != null,
+        onAcceptWithDetails: (details) async {
+          final note = details.data;
+          await ref.read(notesRepositoryProvider).moveNoteToFolder(note.id, null);
+        },
+        builder: (context, candidateData, rejectedData) {
+          final isHovered = candidateData.isNotEmpty;
+          return GestureDetector(
+            onTap: () => ref.read(currentFolderIdProvider.notifier).setFolder(null),
+            child: Text(
+              'Notes',
+              style: TextStyle(
+                color: isHovered
+                    ? palette.primary
+                    : (currentId == null ? palette.text : palette.text.withValues(alpha: 0.5)),
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+          );
+        },
       ),
     );
 
@@ -152,17 +167,32 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Icon(Icons.chevron_right, color: palette.text.withValues(alpha: 0.3), size: 16),
         ));
-        path.add(GestureDetector(
-          onTap: () => ref.read(currentFolderIdProvider.notifier).setFolder(folder.id),
-          child: Text(
-            folder.name,
-            style: TextStyle(
-              color: folder.id == currentId ? palette.text : palette.text.withValues(alpha: 0.5),
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-            ),
+        
+        path.add(
+          DragTarget<Note>(
+            onWillAcceptWithDetails: (details) => details.data.folderId != folder.id,
+            onAcceptWithDetails: (details) async {
+              final note = details.data;
+              await ref.read(notesRepositoryProvider).moveNoteToFolder(note.id, folder.id);
+            },
+            builder: (context, candidateData, rejectedData) {
+              final isHovered = candidateData.isNotEmpty;
+              return GestureDetector(
+                onTap: () => ref.read(currentFolderIdProvider.notifier).setFolder(folder.id),
+                child: Text(
+                  folder.name,
+                  style: TextStyle(
+                    color: isHovered
+                        ? palette.primary
+                        : (folder.id == currentId ? palette.text : palette.text.withValues(alpha: 0.5)),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+                ),
+              );
+            },
           ),
-        ));
+        );
       }
     }
 
@@ -490,116 +520,19 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
   }
 
   void _showNoteFormSheet(BuildContext context, WidgetRef ref, {Note? existingNote}) {
-    final titleController = TextEditingController(text: existingNote?.title);
-    final contentController = TextEditingController(text: existingNote?.content);
-    final palette = ref.read(themeEngineProvider);
-
     showGeneralDialog<void>(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Dismiss',
       barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (context, anim1, anim2) {
-        return Center(
-          child: Container(
-            width: (MediaQuery.of(context).size.width * 0.9).clamp(300.0, 600.0),
-            height: (MediaQuery.of(context).size.height * 0.8).clamp(400.0, 600.0),
-            margin: const EdgeInsets.symmetric(vertical: 24),
-            decoration: BoxDecoration(
-              color: palette.surface.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: palette.text.withValues(alpha: 0.1)),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      existingNote != null ? 'Edit Note' : 'New Note',
-                      style: TextStyle(fontFamily: 'Fraunces', fontSize: 22, fontWeight: FontWeight.bold, color: palette.text),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: titleController,
-                      style: TextStyle(color: palette.text, fontWeight: FontWeight.bold, fontSize: 18),
-                      decoration: InputDecoration(
-                        hintText: 'Title',
-                        hintStyle: TextStyle(color: palette.text.withValues(alpha: 0.5)),
-                        border: InputBorder.none,
-                      ),
-                    ),
-                    const Divider(),
-                    Expanded(
-                      child: TextField(
-                        controller: contentController,
-                        maxLines: null,
-                        expands: true,
-                        style: TextStyle(color: palette.text),
-                        decoration: InputDecoration(
-                          hintText: 'Type your note here...',
-                          hintStyle: TextStyle(color: palette.text.withValues(alpha: 0.5)),
-                          border: InputBorder.none,
-                        ),
-                      ),
-                    ),
-                    // ── Shortcut → fetch + open the SPECIFIC linked event
-                    if (existingNote?.eventId != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _EventShortcutChip(
-                          eventId: existingNote!.eventId!,
-                          calendarId: existingNote.linkedCalendarId ?? 'primary',
-                          palette: palette,
-                          ref: ref,
-                          onDismiss: () => Navigator.of(context).pop(),
-                        ),
-                      ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: Text('Cancel', style: TextStyle(color: palette.text.withValues(alpha: 0.6))),
-                        ),
-                        const SizedBox(width: 8),
-                        FilledButton(
-                          style: FilledButton.styleFrom(backgroundColor: palette.primary),
-                          onPressed: () async {
-                            final title = titleController.text.trim();
-                            final content = contentController.text.trim();
-                            if (title.isEmpty && content.isEmpty) return;
-                            final folderId = ref.read(currentFolderIdProvider);
-                            final repo = ref.read(notesRepositoryProvider);
-                            if (existingNote != null) {
-                              await repo.updateNote(NotesCompanion(
-                                id: Value(existingNote.id),
-                                title: Value(title.isEmpty ? '(Untitled)' : title),
-                                content: Value(content),
-                                folderId: Value(existingNote.folderId),
-                                updatedAt: Value(DateTime.now()),
-                              ));
-                            } else {
-                              await repo.createNote(NotesCompanion.insert(
-                                title: title.isEmpty ? '(Untitled)' : title,
-                                content: content,
-                                folderId: Value(folderId),
-                              ));
-                            }
-                            if (context.mounted) Navigator.of(context).pop();
-                          },
-                          child: Text('Save', style: TextStyle(color: palette.background, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        return NoteFormSheet(existingNote: existingNote);
+      },
+      transitionBuilder: (context, anim1, anim2, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
+          child: FadeTransition(opacity: anim1, child: child),
         );
       },
     );
@@ -736,88 +669,4 @@ class _NoteCardContent extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Shortcut chip: fetches the specific Google event and opens its form sheet
-// ─────────────────────────────────────────────────────────────────────────────
 
-class _EventShortcutChip extends StatefulWidget {
-  const _EventShortcutChip({
-    required this.eventId,
-    required this.calendarId,
-    required this.palette,
-    required this.ref,
-    required this.onDismiss,
-  });
-
-  final String eventId;
-  final String calendarId;
-  final AppPalette palette;
-  final WidgetRef ref;
-  final VoidCallback onDismiss;
-
-  @override
-  State<_EventShortcutChip> createState() => _EventShortcutChipState();
-}
-
-class _EventShortcutChipState extends State<_EventShortcutChip> {
-  bool _loading = false;
-
-  Future<void> _openEvent() async {
-    setState(() => _loading = true);
-    try {
-      final repo = widget.ref.read(calendarRepositoryProvider);
-      final event = await repo.getEvent(widget.calendarId, widget.eventId);
-      if (!mounted) return;
-      if (event == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Event not found — it may have been deleted or you\'re not signed in.')),
-        );
-        return;
-      }
-      // Dismiss note dialog first, then open the event form
-      widget.onDismiss();
-      if (!mounted) return;
-      await showEventFormSheet(context, initialDay: event.start, existingEvent: event);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final p = widget.palette;
-    return GestureDetector(
-      onTap: _loading ? null : _openEvent,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: p.primary.withValues(alpha: _loading ? 0.06 : 0.10),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (_loading)
-              SizedBox(
-                width: 13,
-                height: 13,
-                child: CircularProgressIndicator(strokeWidth: 1.5, color: p.primary),
-              )
-            else
-              Icon(Icons.event_outlined, size: 14, color: p.primary),
-            const SizedBox(width: 6),
-            Text(
-              _loading ? 'Loading event...' : 'Open in Calendar',
-              style: TextStyle(color: p.primary, fontSize: 12, fontWeight: FontWeight.w600),
-            ),
-            if (!_loading) ...[
-              const SizedBox(width: 4),
-              Icon(Icons.open_in_new, size: 11, color: p.primary.withValues(alpha: 0.7)),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
