@@ -230,6 +230,7 @@ class _TaskListView extends ConsumerWidget {
                   ReorderableListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
+                    buildDefaultDragHandles: false,
                     itemCount: pendingTasks.length,
                     onReorder: (oldIdx, newIdx) async {
                       if (oldIdx < newIdx) {
@@ -248,10 +249,13 @@ class _TaskListView extends ConsumerWidget {
                     },
                     itemBuilder: (context, index) {
                       final task = pendingTasks[index];
-                      return Padding(
+                      return ReorderableDelayedDragStartListener(
                         key: ValueKey(task.id),
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: _TaskTile(task: task, palette: palette),
+                        index: index,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: _TaskTile(task: task, palette: palette),
+                        ),
                       );
                     },
                   ),
