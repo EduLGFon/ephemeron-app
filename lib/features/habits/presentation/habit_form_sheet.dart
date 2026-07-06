@@ -124,26 +124,26 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
   }
 
   void _onNameChanged() {
-    SessionRestore.saveDraftValue('habit', 'name', _nameController.text);
+    SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'name', _nameController.text);
   }
 
   void _onAmountChanged() {
-    SessionRestore.saveDraftValue('habit', 'amount', _amountController.text);
+    SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'amount', _amountController.text);
   }
 
   void _onIncrementChanged() {
-    SessionRestore.saveDraftValue('habit', 'increment', _incrementController.text);
+    SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'increment', _incrementController.text);
   }
 
   void _restoreDrafts() async {
-    final n = await SessionRestore.getDraftValue('habit', 'name');
-    final a = await SessionRestore.getDraftValue('habit', 'amount');
-    final inc = await SessionRestore.getDraftValue('habit', 'increment');
-    final f = await SessionRestore.getDraftValue('habit', 'frequencyType');
-    final u = await SessionRestore.getDraftValue('habit', 'selectedUnit');
-    final ap = await SessionRestore.getDraftValue('habit', 'alarmPreset');
-    final rh = await SessionRestore.getDraftValue('habit', 'reminderHour');
-    final rm = await SessionRestore.getDraftValue('habit', 'reminderMinute');
+    final n = await SessionRestore.getDraftValue('habit', widget.existingHabit?.id, 'name');
+    final a = await SessionRestore.getDraftValue('habit', widget.existingHabit?.id, 'amount');
+    final inc = await SessionRestore.getDraftValue('habit', widget.existingHabit?.id, 'increment');
+    final f = await SessionRestore.getDraftValue('habit', widget.existingHabit?.id, 'frequencyType');
+    final u = await SessionRestore.getDraftValue('habit', widget.existingHabit?.id, 'selectedUnit');
+    final ap = await SessionRestore.getDraftValue('habit', widget.existingHabit?.id, 'alarmPreset');
+    final rh = await SessionRestore.getDraftValue('habit', widget.existingHabit?.id, 'reminderHour');
+    final rm = await SessionRestore.getDraftValue('habit', widget.existingHabit?.id, 'reminderMinute');
     if (mounted) {
       setState(() {
         if (n != null) {
@@ -238,7 +238,7 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
                         icon: Icon(Icons.delete_outline, color: Colors.redAccent.withValues(alpha: 0.8)),
                         onPressed: () async {
                           await ref.read(habitRepositoryProvider).deleteHabit(widget.existingHabit!.id);
-                          await SessionRestore.clearDraftValues('habit');
+                          await SessionRestore.clearDraftValues('habit', widget.existingHabit?.id);
                           if (context.mounted) Navigator.pop(context);
                         },
                       ),
@@ -349,7 +349,7 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
           selected: {_frequencyType},
           onSelectionChanged: (selection) {
             setState(() => _frequencyType = selection.first);
-            SessionRestore.saveDraftValue('habit', 'frequencyType', selection.first.name);
+            SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'frequencyType', selection.first.name);
           },
         ),
         const SizedBox(height: 12),
@@ -482,7 +482,7 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
                       setState(() {
                         _selectedUnit = value;
                       });
-                      SessionRestore.saveDraftValue('habit', 'selectedUnit', value.name);
+                      SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'selectedUnit', value.name);
                     }
                   },
                 ),
@@ -578,9 +578,9 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
                     _reminderMinute = time.minute;
                     _alarmPreset ??= AlarmPreset.light;
                   });
-                  SessionRestore.saveDraftValue('habit', 'reminderHour', time.hour.toString());
-                  SessionRestore.saveDraftValue('habit', 'reminderMinute', time.minute.toString());
-                  SessionRestore.saveDraftValue('habit', 'alarmPreset', (_alarmPreset ?? AlarmPreset.light).name);
+                  SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'reminderHour', time.hour.toString());
+                  SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'reminderMinute', time.minute.toString());
+                  SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'alarmPreset', (_alarmPreset ?? AlarmPreset.light).name);
                 },
                 child: Text(
                   _reminderHour == null
@@ -598,9 +598,9 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
                       _reminderMinute = null;
                       _alarmPreset = null;
                     });
-                    SessionRestore.saveDraftValue('habit', 'alarmPreset', 'none');
-                    SessionRestore.saveDraftValue('habit', 'reminderHour', 'none');
-                    SessionRestore.saveDraftValue('habit', 'reminderMinute', 'none');
+                    SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'alarmPreset', 'none');
+                    SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'reminderHour', 'none');
+                    SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'reminderMinute', 'none');
                   },
                 ),
             ],
@@ -625,7 +625,7 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
                     ],
                     onChanged: (value) {
                       setState(() => _alarmPreset = value);
-                      if (value != null) SessionRestore.saveDraftValue('habit', 'alarmPreset', value.name);
+                      if (value != null) SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'alarmPreset', value.name);
                     },
                   ),
                 ),
@@ -690,7 +690,7 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
           alarmPreset: _alarmPreset,
         );
       }
-      await SessionRestore.clearDraftValues('habit');
+      await SessionRestore.clearDraftValues('habit', widget.existingHabit?.id);
       if (mounted) Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _isSaving = false);

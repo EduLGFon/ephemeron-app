@@ -85,14 +85,14 @@ class _CountdownFormSheetState extends ConsumerState<CountdownFormSheet> {
   }
 
   void _onTitleChanged() {
-    SessionRestore.saveDraftValue('countdown', 'title', _titleController.text);
+    SessionRestore.saveDraftValue('countdown', widget.existingCountdown?.id, 'title', _titleController.text);
   }
 
   void _restoreDrafts() async {
-    final t = await SessionRestore.getDraftValue('countdown', 'title');
-    final td = await SessionRestore.getDraftValue('countdown', 'targetDate');
-    final sa = await SessionRestore.getDraftValue('countdown', 'showAge');
-    final iy = await SessionRestore.getDraftValue('countdown', 'isYearly');
+    final t = await SessionRestore.getDraftValue('countdown', widget.existingCountdown?.id, 'title');
+    final td = await SessionRestore.getDraftValue('countdown', widget.existingCountdown?.id, 'targetDate');
+    final sa = await SessionRestore.getDraftValue('countdown', widget.existingCountdown?.id, 'showAge');
+    final iy = await SessionRestore.getDraftValue('countdown', widget.existingCountdown?.id, 'isYearly');
     if (mounted) {
       setState(() {
         if (t != null) {
@@ -172,7 +172,7 @@ class _CountdownFormSheetState extends ConsumerState<CountdownFormSheet> {
                         icon: Icon(Icons.delete_outline, color: Colors.redAccent.withValues(alpha: 0.8)),
                         onPressed: () async {
                           await ref.read(countdownRepositoryProvider).deleteCountdown(widget.existingCountdown!.id);
-                          await SessionRestore.clearDraftValues('countdown');
+                          await SessionRestore.clearDraftValues('countdown', widget.existingCountdown?.id);
                           if (context.mounted) Navigator.pop(context);
                         },
                       ),
@@ -229,7 +229,7 @@ class _CountdownFormSheetState extends ConsumerState<CountdownFormSheet> {
                               value: _showAge,
                               onChanged: (value) {
                                 setState(() => _showAge = value);
-                                SessionRestore.saveDraftValue('countdown', 'showAge', value.toString());
+                                SessionRestore.saveDraftValue('countdown', widget.existingCountdown?.id, 'showAge', value.toString());
                               },
                             ),
                           ),
@@ -243,7 +243,7 @@ class _CountdownFormSheetState extends ConsumerState<CountdownFormSheet> {
                               value: _isYearly,
                               onChanged: (value) {
                                 setState(() => _isYearly = value);
-                                SessionRestore.saveDraftValue('countdown', 'isYearly', value.toString());
+                                SessionRestore.saveDraftValue('countdown', widget.existingCountdown?.id, 'isYearly', value.toString());
                               },
                             ),
                           ),
@@ -305,7 +305,7 @@ class _CountdownFormSheetState extends ConsumerState<CountdownFormSheet> {
     );
     if (date != null) {
       setState(() => _targetDate = date);
-      SessionRestore.saveDraftValue('countdown', 'targetDate', date.toIso8601String());
+      SessionRestore.saveDraftValue('countdown', widget.existingCountdown?.id, 'targetDate', date.toIso8601String());
     }
   }
 
@@ -330,7 +330,7 @@ class _CountdownFormSheetState extends ConsumerState<CountdownFormSheet> {
           showAge: _showAge,
         );
       }
-      await SessionRestore.clearDraftValues('countdown');
+      await SessionRestore.clearDraftValues('countdown', widget.existingCountdown?.id);
       if (mounted) Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _isSaving = false);

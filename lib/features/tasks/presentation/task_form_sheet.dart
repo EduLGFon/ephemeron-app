@@ -163,20 +163,20 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
   }
 
   void _onTitleChanged() {
-    SessionRestore.saveDraftValue('task', 'title', _titleController.text);
+    SessionRestore.saveDraftValue('task', widget.existingTask?.id, 'title', _titleController.text);
   }
 
   void _onDescriptionChanged() {
-    SessionRestore.saveDraftValue('task', 'description', _descriptionController.text);
+    SessionRestore.saveDraftValue('task', widget.existingTask?.id, 'description', _descriptionController.text);
   }
 
   void _restoreDrafts() async {
-    final t = await SessionRestore.getDraftValue('task', 'title');
-    final d = await SessionRestore.getDraftValue('task', 'description');
-    final p = await SessionRestore.getDraftValue('task', 'priority');
-    final du = await SessionRestore.getDraftValue('task', 'dueDate');
-    final ht = await SessionRestore.getDraftValue('task', 'dueHasTime');
-    final ap = await SessionRestore.getDraftValue('task', 'alarmPreset');
+    final t = await SessionRestore.getDraftValue('task', widget.existingTask?.id, 'title');
+    final d = await SessionRestore.getDraftValue('task', widget.existingTask?.id, 'description');
+    final p = await SessionRestore.getDraftValue('task', widget.existingTask?.id, 'priority');
+    final du = await SessionRestore.getDraftValue('task', widget.existingTask?.id, 'dueDate');
+    final ht = await SessionRestore.getDraftValue('task', widget.existingTask?.id, 'dueHasTime');
+    final ap = await SessionRestore.getDraftValue('task', widget.existingTask?.id, 'alarmPreset');
     if (mounted) {
       setState(() {
         if (t != null) {
@@ -277,7 +277,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
                         onPressed: () async {
                           final navigator = Navigator.of(context);
                           await ref.read(taskRepositoryProvider).softDeleteTask(widget.existingTask!.id);
-                          await SessionRestore.clearDraftValues('task');
+                          await SessionRestore.clearDraftValues('task', widget.existingTask?.id);
                           navigator.pop();
                         },
                       ),
@@ -377,7 +377,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
                       tooltip: 'Set Priority',
                       onSelected: (val) {
                         setState(() => _priority = val);
-                        SessionRestore.saveDraftValue('task', 'priority', val.toString());
+                        SessionRestore.saveDraftValue('task', widget.existingTask?.id, 'priority', val.toString());
                       },
                       itemBuilder: (ctx) => [
                         PopupMenuItem(value: 3, child: Row(children: [const Icon(Icons.flag_rounded, color: AppColors.priorityHigh), const SizedBox(width: 8), Text('High Priority', style: TextStyle(color: palette.text))])),
@@ -878,12 +878,12 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
       });
 
       if (tempDate != null) {
-        SessionRestore.saveDraftValue('task', 'dueDate', tempDate.toIso8601String());
+        SessionRestore.saveDraftValue('task', widget.existingTask?.id, 'dueDate', tempDate.toIso8601String());
       } else {
-        SessionRestore.saveDraftValue('task', 'dueDate', 'none');
+        SessionRestore.saveDraftValue('task', widget.existingTask?.id, 'dueDate', 'none');
       }
-      SessionRestore.saveDraftValue('task', 'dueHasTime', tempHasTime.toString());
-      SessionRestore.saveDraftValue('task', 'alarmPreset', (tempPreset ?? AlarmPreset.light).name);
+      SessionRestore.saveDraftValue('task', widget.existingTask?.id, 'dueHasTime', tempHasTime.toString());
+      SessionRestore.saveDraftValue('task', widget.existingTask?.id, 'alarmPreset', (tempPreset ?? AlarmPreset.light).name);
     }
   }
 
@@ -1179,7 +1179,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
           reminderOffsets: _selectedOffsets.toList(),
         );
       }
-      await SessionRestore.clearDraftValues('task');
+      await SessionRestore.clearDraftValues('task', widget.existingTask?.id);
       navigator.pop();
     } finally {
       if (mounted) setState(() => _isSaving = false);

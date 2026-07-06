@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
@@ -661,11 +662,19 @@ class _NoteCardContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: Text(
-              note.content,
-              style: TextStyle(color: palette.text.withValues(alpha: 0.8), fontSize: 13, height: 1.4),
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
+            child: IgnorePointer(
+              child: ClipRect(
+                child: MarkdownBody(
+                  data: note.content,
+                  styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                    p: TextStyle(color: palette.text.withValues(alpha: 0.8), fontSize: 11, height: 1.4),
+                    h1: TextStyle(color: palette.text, fontSize: 14, fontWeight: FontWeight.bold),
+                    h2: TextStyle(color: palette.text, fontSize: 12, fontWeight: FontWeight.bold),
+                    h3: TextStyle(color: palette.text, fontSize: 11, fontWeight: FontWeight.bold),
+                    code: TextStyle(color: palette.primary, fontSize: 10),
+                  ),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 8),

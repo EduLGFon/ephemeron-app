@@ -226,26 +226,26 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
   }
 
   void _onTitleChanged() {
-    SessionRestore.saveDraftValue('event', 'title', _titleController.text);
+    SessionRestore.saveDraftValue('event', widget.existingEvent?.id, 'title', _titleController.text);
   }
 
   void _onNotesChanged() {
-    SessionRestore.saveDraftValue('event', 'notes', _notesController.text);
+    SessionRestore.saveDraftValue('event', widget.existingEvent?.id, 'notes', _notesController.text);
   }
 
   void _saveDateDrafts() {
-    SessionRestore.saveDraftValue('event', 'start', _start.toIso8601String());
-    SessionRestore.saveDraftValue('event', 'end', _end.toIso8601String());
+    SessionRestore.saveDraftValue('event', widget.existingEvent?.id, 'start', _start.toIso8601String());
+    SessionRestore.saveDraftValue('event', widget.existingEvent?.id, 'end', _end.toIso8601String());
   }
 
   void _restoreDrafts() async {
-    final t = await SessionRestore.getDraftValue('event', 'title');
-    final n = await SessionRestore.getDraftValue('event', 'notes');
-    final s = await SessionRestore.getDraftValue('event', 'start');
-    final e = await SessionRestore.getDraftValue('event', 'end');
-    final ad = await SessionRestore.getDraftValue('event', 'isAllDay');
-    final c = await SessionRestore.getDraftValue('event', 'colorId');
-    final vc = await SessionRestore.getDraftValue('event', 'addVideoConference');
+    final t = await SessionRestore.getDraftValue('event', widget.existingEvent?.id, 'title');
+    final n = await SessionRestore.getDraftValue('event', widget.existingEvent?.id, 'notes');
+    final s = await SessionRestore.getDraftValue('event', widget.existingEvent?.id, 'start');
+    final e = await SessionRestore.getDraftValue('event', widget.existingEvent?.id, 'end');
+    final ad = await SessionRestore.getDraftValue('event', widget.existingEvent?.id, 'isAllDay');
+    final c = await SessionRestore.getDraftValue('event', widget.existingEvent?.id, 'colorId');
+    final vc = await SessionRestore.getDraftValue('event', widget.existingEvent?.id, 'addVideoConference');
     if (mounted) {
       setState(() {
         if (t != null) {
@@ -368,7 +368,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                       palette: palette,
                       onChanged: (id) {
                         setState(() => _colorId = id);
-                        SessionRestore.saveDraftValue('event', 'colorId', id ?? '');
+                        SessionRestore.saveDraftValue('event', widget.existingEvent?.id, 'colorId', id ?? '');
                       },
                     ),
                     if (_isEditing) ...[
@@ -381,7 +381,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                             calendarId: widget.existingEvent!.calendarId,
                           );
                           ref.invalidate(monthEventsProvider(DateTime(_start.year, _start.month, 1)));
-                          await SessionRestore.clearDraftValues('event');
+                          await SessionRestore.clearDraftValues('event', widget.existingEvent?.id);
                           if (context.mounted) Navigator.pop(context);
                         },
                       ),
@@ -427,7 +427,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                           activeThumbColor: palette.primary,
                           onChanged: (v) {
                             setState(() => _isAllDay = v);
-                            SessionRestore.saveDraftValue('event', 'isAllDay', v.toString());
+                            SessionRestore.saveDraftValue('event', widget.existingEvent?.id, 'isAllDay', v.toString());
                           },
                         ),
                       ],
@@ -1246,7 +1246,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
 
       ref.invalidate(monthEventsProvider(DateTime(_start.year, _start.month, 1)));
       ref.invalidate(monthEventsProvider(DateTime(_end.year, _end.month, 1)));
-      await SessionRestore.clearDraftValues('event');
+      await SessionRestore.clearDraftValues('event', widget.existingEvent?.id);
       if (mounted) Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _isSaving = false);

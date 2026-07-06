@@ -51,16 +51,16 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
   }
 
   void _onTitleChanged() {
-    SessionRestore.saveDraftValue('note', 'title', _titleController.text);
+    SessionRestore.saveDraftValue('note', widget.existingNote?.id, 'title', _titleController.text);
   }
 
   void _onContentChanged() {
-    SessionRestore.saveDraftValue('note', 'content', _contentController.text);
+    SessionRestore.saveDraftValue('note', widget.existingNote?.id, 'content', _contentController.text);
   }
 
   void _restoreDrafts() async {
-    final t = await SessionRestore.getDraftValue('note', 'title');
-    final c = await SessionRestore.getDraftValue('note', 'content');
+    final t = await SessionRestore.getDraftValue('note', widget.existingNote?.id, 'title');
+    final c = await SessionRestore.getDraftValue('note', widget.existingNote?.id, 'content');
     if (mounted) {
       setState(() {
         if (t != null) {
@@ -196,7 +196,7 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
                       if (confirmed == true && mounted) {
                         final navigator = Navigator.of(context);
                         await ref.read(notesRepositoryProvider).deleteNote(existingNote.id);
-                        await SessionRestore.clearDraftValues('note');
+                        await SessionRestore.clearDraftValues('note', existingNote.id);
                         navigator.pop();
                       }
                     },
@@ -325,7 +325,7 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
                                 folderId: Value(folderId),
                               ));
                             }
-                            await SessionRestore.clearDraftValues('note');
+                            await SessionRestore.clearDraftValues('note', existingNote?.id);
                             navigator.pop();
                           } finally {
                             if (mounted) setState(() => _isSaving = false);
