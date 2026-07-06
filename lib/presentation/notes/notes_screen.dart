@@ -102,14 +102,6 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: palette.primary,
-        foregroundColor: palette.background,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        onPressed: () => _showNoteFormSheet(context, ref),
-        child: const Icon(Icons.edit_outlined, size: 24),
-      ),
     );
   }
 

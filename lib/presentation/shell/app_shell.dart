@@ -66,9 +66,7 @@ class AppShell extends ConsumerWidget {
               ),
             ).animate().scale(curve: Curves.easeOutBack, duration: 400.ms)
           : null,
-      floatingActionButtonLocation: settings.usePillNavigation 
-          ? FloatingActionButtonLocation.endFloat
-          : FloatingActionButtonLocation.endContained,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: _PremiumNavigationBar(
         isPill: settings.usePillNavigation,
         pinned: pinned,
