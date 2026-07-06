@@ -14,6 +14,7 @@ import '../data/calendar_repository.dart';
 import '../domain/calendar_event.dart';
 import 'calendar_daily_timeline_view.dart';
 import 'calendar_month_grid_view.dart';
+import 'calendar_multi_day_timeline_view.dart';
 import 'event_form_sheet.dart';
 
 class CalendarFormatNotifier extends Notifier<CalendarFormat> {
@@ -78,6 +79,18 @@ class CalendarScreen extends ConsumerWidget {
               const PopupMenuItem(
                 value: CalendarView.monthGrid,
                 child: Text('Month Grid View'),
+              ),
+              const PopupMenuItem(
+                value: CalendarView.weekTimeline,
+                child: Text('Week View'),
+              ),
+              const PopupMenuItem(
+                value: CalendarView.fourDaysTimeline,
+                child: Text('4 Days View'),
+              ),
+              const PopupMenuItem(
+                value: CalendarView.threeDaysTimeline,
+                child: Text('3 Days View'),
               ),
               const PopupMenuItem(
                 value: CalendarView.dailyTimeline,
@@ -171,7 +184,9 @@ class CalendarScreen extends ConsumerWidget {
                 ),
               ],
             ).animate().fadeIn(duration: 400.ms)
-          : calendarView == CalendarView.dailyTimeline
+          : calendarView == CalendarView.weekTimeline ||
+                  calendarView == CalendarView.fourDaysTimeline ||
+                  calendarView == CalendarView.threeDaysTimeline
               ? Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
@@ -184,9 +199,15 @@ class CalendarScreen extends ConsumerWidget {
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                       child: monthEventsAsync.when(
-                        data: (events) => CalendarDailyTimelineView(
+                        data: (events) => CalendarMultiDayTimelineView(
                           selectedDay: selectedDay,
                           events: events,
+                          daysCount: calendarView == CalendarView.weekTimeline
+                              ? 7
+                              : calendarView == CalendarView.fourDaysTimeline
+                                  ? 4
+                                  : 3,
+                          startDayOfWeek: settings.calendarStartDay,
                         ),
                         loading: () => const Center(child: CircularProgressIndicator()),
                         error: (err, _) => Center(child: Text('Error loading events: $err')),
@@ -194,7 +215,30 @@ class CalendarScreen extends ConsumerWidget {
                     ),
                   ),
                 ).animate().fadeIn(duration: 400.ms)
-              : Column(
+              : calendarView == CalendarView.dailyTimeline
+                  ? Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.5),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: monthEventsAsync.when(
+                            data: (events) => CalendarDailyTimelineView(
+                              selectedDay: selectedDay,
+                              events: events,
+                            ),
+                            loading: () => const Center(child: CircularProgressIndicator()),
+                            error: (err, _) => Center(child: Text('Error loading events: $err')),
+                          ),
+                        ),
+                      ),
+                    ).animate().fadeIn(duration: 400.ms)
+                  : Column(
               children: [
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
