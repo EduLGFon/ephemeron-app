@@ -35,6 +35,7 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
   @override
   void initState() {
     super.initState();
+    _contentPreviewMode = widget.existingNote != null;
     _contentFocusNode.addListener(() {
       if (mounted) {
         setState(() {
@@ -310,10 +311,10 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
       margin: _isFullScreen ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      width: _isFullScreen ? MediaQuery.of(context).size.width : (MediaQuery.of(context).size.width * 0.9).clamp(300.0, 600.0),
+      width: _isFullScreen ? MediaQuery.of(context).size.width : 500,
       constraints: BoxConstraints(
-        minHeight: _isFullScreen ? MediaQuery.of(context).size.height : 250,
-        maxHeight: _isFullScreen ? MediaQuery.of(context).size.height : MediaQuery.of(context).size.height * 0.85,
+        minHeight: _isFullScreen ? MediaQuery.of(context).size.height : 180,
+        maxHeight: _isFullScreen ? MediaQuery.of(context).size.height : MediaQuery.of(context).size.height * 0.65,
       ),
       decoration: BoxDecoration(
         color: palette.surface.withValues(alpha: 0.95),

@@ -28,6 +28,8 @@ class NotesScreen extends ConsumerStatefulWidget {
 class _NotesScreenState extends ConsumerState<NotesScreen> {
   /// ID of the folder currently highlighted as a DragTarget.
   String? _dragHoverId;
+  bool _isSearching = false;
+  String _searchQuery = '';
 
   @override
   Widget build(BuildContext context) {
@@ -41,31 +43,51 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.menu, color: palette.text),
-          onPressed: () => Scaffold.of(context).openDrawer(),
-        ),
-        title: foldersAsync.when(
-          data: (allFolders) => _buildBreadcrumbs(currentFolderId, allFolders, palette, ref),
-          loading: () => const SizedBox.shrink(),
-          error: (_, __) => const SizedBox.shrink(),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.create_new_folder_outlined, color: palette.text),
-            tooltip: 'New Folder',
-            onPressed: () => _showCreateFolderDialog(context, ref),
-          ),
-          IconButton(
-            icon: Icon(Icons.search, color: palette.text),
-            tooltip: 'Search',
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: Icon(Icons.more_vert, color: palette.text),
-            onPressed: () {},
-          ),
-        ],
+        leading: _isSearching
+            ? IconButton(
+                icon: Icon(Icons.arrow_back, color: palette.text),
+                onPressed: () => setState(() {
+                  _isSearching = false;
+                  _searchQuery = '';
+                }),
+              )
+            : null,
+        title: _isSearching
+            ? TextField(
+                autofocus: true,
+                style: TextStyle(color: palette.text, fontSize: 16),
+                decoration: InputDecoration(
+                  hintText: 'Search title, content, #tag...',
+                  hintStyle: TextStyle(color: palette.text.withValues(alpha: 0.4)),
+                  border: InputBorder.none,
+                ),
+                onChanged: (val) => setState(() => _searchQuery = val),
+              )
+            : foldersAsync.when(
+                data: (allFolders) => _buildBreadcrumbs(currentFolderId, allFolders, palette, ref),
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+        actions: _isSearching
+            ? [
+                if (_searchQuery.isNotEmpty)
+                  IconButton(
+                    icon: Icon(Icons.clear, color: palette.text),
+                    onPressed: () => setState(() => _searchQuery = ''),
+                  ),
+              ]
+            : [
+                IconButton(
+                  icon: Icon(Icons.create_new_folder_outlined, color: palette.text),
+                  tooltip: 'New Folder',
+                  onPressed: () => _showCreateFolderDialog(context, ref),
+                ),
+                IconButton(
+                  icon: Icon(Icons.search, color: palette.text),
+                  tooltip: 'Search',
+                  onPressed: () => setState(() => _isSearching = true),
+                ),
+              ],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -90,9 +112,26 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
               // Notes grid (Draggable cards)
               notesAsync.when(
                 data: (allNotes) {
-                  final visibleNotes = allNotes
-                      .where((n) => n.folderId == currentFolderId)
-                      .toList();
+                  final q = _searchQuery.trim().toLowerCase();
+                  final visibleNotes = allNotes.where((n) {
+                    if (q.isEmpty) {
+                      return n.folderId == currentFolderId;
+                    }
+                    final matchesText = n.title.toLowerCase().contains(q) ||
+                        n.content.toLowerCase().contains(q);
+                    bool matchesFolder = false;
+                    if (foldersAsync.value != null) {
+                      final matchingFolders = foldersAsync.value!
+                          .where((f) => f.name.toLowerCase().contains(q))
+                          .map((f) => f.id)
+                          .toSet();
+                      if (n.folderId != null && matchingFolders.contains(n.folderId)) {
+                        matchesFolder = true;
+                      }
+                    }
+                    final isInsideFolder = currentFolderId == null || n.folderId == currentFolderId;
+                    return (matchesText || matchesFolder) && isInsideFolder;
+                  }).toList();
                   return _buildNotesSection(visibleNotes, palette, ref);
                 },
                 loading: () => const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())),
@@ -351,8 +390,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 220,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
                 childAspectRatio: 0.9,
