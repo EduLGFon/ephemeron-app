@@ -218,10 +218,18 @@ class CalendarDailyTimelineView extends ConsumerWidget {
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final width = constraints.maxWidth;
+                      final positionedEvents = _layoutEvents(timedEvents);
                       return Stack(
                         children: [
-                          for (final event in timedEvents)
-                            _buildTimelineEventCard(context, ref, event, width, palette),
+                          for (final pe in positionedEvents)
+                            _buildTimelineEventCard(
+                              context,
+                              ref,
+                              pe.event,
+                              pe.leftFraction * (width - 16) + 8,
+                              pe.widthFraction * (width - 16),
+                              palette,
+                            ),
                         ],
                       );
                     },
@@ -239,7 +247,8 @@ class CalendarDailyTimelineView extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     CalendarEvent event,
-    double maxWidth,
+    double left,
+    double width,
     AppPalette palette,
   ) {
     final startLocal = event.start.toLocal();
@@ -250,51 +259,65 @@ class CalendarDailyTimelineView extends ConsumerWidget {
     final double height = _getHeight(startLocal, endLocal);
     final Color eventColor = _getEventColor(event.colorId, palette);
 
+    final showTime = height >= 42;
+    final paddingVertical = height < 50 ? 4.0 : 8.0;
+    final paddingHorizontal = height < 50 ? 8.0 : 12.0;
+
     return Positioned(
       top: top + 1, // small offset to avoid overlaying the line
-      left: 8,
-      width: maxWidth - 16,
+      left: left,
+      width: width,
       height: height - 2,
       child: GestureDetector(
         onTap: () => _onEventTapped(context, ref, event),
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.symmetric(horizontal: paddingHorizontal, vertical: paddingVertical),
           decoration: BoxDecoration(
             color: eventColor.withValues(alpha: 0.85),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(height < 50 ? 8 : 12),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
+              if (height >= 30)
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                event.title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
+          child: ClipRect(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Expanded(
+                  child: Text(
+                    event.title,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: height < 50 ? 11 : 13,
+                    ),
+                    maxLines: height < 50 ? 1 : 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                event.isAllDay
-                    ? 'All day'
-                    : '${_formatTime(startLocal)} – ${_formatTime(endLocal)}',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+                if (showTime) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    event.isAllDay
+                        ? 'All day'
+                        : '${_formatTime(startLocal)} – ${_formatTime(endLocal)}',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: height < 50 ? 9 : 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
@@ -370,4 +393,51 @@ class CalendarDailyTimelineView extends ConsumerWidget {
       _ => 'SUN',
     };
   }
+
+  List<PositionedEvent> _layoutEvents(List<CalendarEvent> dayTimedEvents) {
+    final positioned = <PositionedEvent>[];
+    dayTimedEvents.sort((a, b) => a.start.compareTo(b.start));
+
+    final groups = <List<CalendarEvent>>[];
+    for (final event in dayTimedEvents) {
+      List<CalendarEvent>? matchedGroup;
+      for (final group in groups) {
+        final overlaps = group.any((e) =>
+            event.start.isBefore(e.end) && event.end.isAfter(e.start));
+        if (overlaps) {
+          matchedGroup = group;
+          break;
+        }
+      }
+      if (matchedGroup != null) {
+        matchedGroup.add(event);
+      } else {
+        groups.add([event]);
+      }
+    }
+
+    for (final group in groups) {
+      final count = group.length;
+      for (int i = 0; i < count; i++) {
+        final e = group[i];
+        positioned.add(PositionedEvent(
+          event: e,
+          leftFraction: i / count,
+          widthFraction: 1.0 / count,
+        ));
+      }
+    }
+    return positioned;
+  }
+}
+
+class PositionedEvent {
+  final CalendarEvent event;
+  final double leftFraction;
+  final double widthFraction;
+  PositionedEvent({
+    required this.event,
+    required this.leftFraction,
+    required this.widthFraction,
+  });
 }

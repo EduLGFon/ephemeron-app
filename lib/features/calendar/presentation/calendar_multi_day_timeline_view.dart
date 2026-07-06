@@ -332,35 +332,45 @@ class CalendarMultiDayTimelineView extends ConsumerWidget {
       child: GestureDetector(
         onTap: () => _onEventTapped(context, ref, event),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          padding: EdgeInsets.symmetric(
+            horizontal: height < 40 ? 4.0 : 6.0,
+            vertical: height < 40 ? 2.0 : 4.0,
+          ),
           decoration: BoxDecoration(
             color: eventColor.withValues(alpha: 0.85),
             borderRadius: BorderRadius.circular(6),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                event.title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 10,
+          child: ClipRect(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Expanded(
+                  child: Text(
+                    event.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 1),
-              Text(
-                '${_formatTime(startLocal)} – ${_formatTime(endLocal)}',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 8,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+                if (height >= 36) ...[
+                  const SizedBox(height: 1),
+                  Text(
+                    '${_formatTime(startLocal)} – ${_formatTime(endLocal)}',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 8,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
