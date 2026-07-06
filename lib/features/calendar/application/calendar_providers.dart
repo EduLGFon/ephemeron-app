@@ -76,6 +76,7 @@ final focusedMonthProvider = NotifierProvider<FocusedMonthNotifier, DateTime>(
 enum CalendarView {
   monthGrid,
   compact,
+  dailyTimeline,
 }
 
 class CalendarViewNotifier extends Notifier<CalendarView> {

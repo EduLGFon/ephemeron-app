@@ -11,6 +11,7 @@ import '../../settings/presentation/settings_screen.dart';
 import '../application/calendar_providers.dart';
 import '../data/calendar_repository.dart';
 import '../domain/calendar_event.dart';
+import 'calendar_daily_timeline_view.dart';
 import 'calendar_month_grid_view.dart';
 import 'event_form_sheet.dart';
 
@@ -68,6 +69,10 @@ class CalendarScreen extends ConsumerWidget {
               const PopupMenuItem(
                 value: CalendarView.monthGrid,
                 child: Text('Month Grid View'),
+              ),
+              const PopupMenuItem(
+                value: CalendarView.dailyTimeline,
+                child: Text('Daily Timeline'),
               ),
               const PopupMenuItem(
                 value: CalendarView.compact,
@@ -157,7 +162,30 @@ class CalendarScreen extends ConsumerWidget {
                 ),
               ],
             ).animate().fadeIn(duration: 400.ms)
-          : Column(
+          : calendarView == CalendarView.dailyTimeline
+              ? Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.5),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: monthEventsAsync.when(
+                        data: (events) => CalendarDailyTimelineView(
+                          selectedDay: selectedDay,
+                          events: events,
+                        ),
+                        loading: () => const Center(child: CircularProgressIndicator()),
+                        error: (err, _) => Center(child: Text('Error loading events: $err')),
+                      ),
+                    ),
+                  ),
+                ).animate().fadeIn(duration: 400.ms)
+              : Column(
               children: [
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
