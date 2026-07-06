@@ -394,7 +394,7 @@ class _TaskTile extends ConsumerWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            _formatDue(task.dueDate!, task.dueHasTime) + (isLate ? ' (Overdue)' : ''),
+                            _formatDue(task.dueDate!, task.dueHasTime),
                             style: TextStyle(
                               color: dueDateColor,
                               fontSize: 12,

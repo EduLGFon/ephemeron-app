@@ -227,6 +227,7 @@ class _QuadrantWidgetState extends ConsumerState<_QuadrantWidget> {
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
+                                  trailing: const SizedBox.shrink(),
                                   tilePadding: EdgeInsets.zero,
                                   childrenPadding: EdgeInsets.zero,
                                   children: [
@@ -297,7 +298,7 @@ class _QuadrantWidgetState extends ConsumerState<_QuadrantWidget> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  task.title + (isLate ? ' (Late)' : ''),
+                  task.title,
                   style: TextStyle(
                     color: titleColor,
                     fontSize: 13,
@@ -319,7 +320,7 @@ class _QuadrantWidgetState extends ConsumerState<_QuadrantWidget> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          _formatDue(task.dueDate!, task.dueHasTime) + (isLate ? ' (Overdue)' : ''),
+                          _formatDue(task.dueDate!, task.dueHasTime),
                           style: TextStyle(
                             color: dueDateColor,
                             fontSize: 10,
