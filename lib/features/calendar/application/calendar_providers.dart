@@ -72,3 +72,21 @@ class FocusedMonthNotifier extends Notifier<DateTime> {
 final focusedMonthProvider = NotifierProvider<FocusedMonthNotifier, DateTime>(
   () => FocusedMonthNotifier(),
 );
+
+enum CalendarView {
+  monthGrid,
+  compact,
+}
+
+class CalendarViewNotifier extends Notifier<CalendarView> {
+  @override
+  CalendarView build() => CalendarView.monthGrid;
+
+  void setView(CalendarView view) {
+    state = view;
+  }
+}
+
+final calendarViewProvider = NotifierProvider<CalendarViewNotifier, CalendarView>(
+  () => CalendarViewNotifier(),
+);

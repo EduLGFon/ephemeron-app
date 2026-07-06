@@ -11,6 +11,7 @@ import '../../settings/presentation/settings_screen.dart';
 import '../application/calendar_providers.dart';
 import '../data/calendar_repository.dart';
 import '../domain/calendar_event.dart';
+import 'calendar_month_grid_view.dart';
 import 'event_form_sheet.dart';
 
 class CalendarFormatNotifier extends Notifier<CalendarFormat> {
@@ -37,6 +38,7 @@ class CalendarScreen extends ConsumerWidget {
     final calendarFormat = ref.watch(calendarFormatProvider);
     final settings = ref.watch(appSettingsProvider);
     final monthEventsAsync = ref.watch(monthEventsProvider(focusedMonth));
+    final calendarView = ref.watch(calendarViewProvider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -58,6 +60,21 @@ class CalendarScreen extends ConsumerWidget {
                 ? null
                 : () => ref.invalidate(monthEventsProvider(focusedMonth)),
           ),
+          PopupMenuButton<CalendarView>(
+            tooltip: 'Change view',
+            icon: Icon(Icons.view_module, color: palette.primary),
+            onSelected: (view) => ref.read(calendarViewProvider.notifier).setView(view),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: CalendarView.monthGrid,
+                child: Text('Month Grid View'),
+              ),
+              const PopupMenuItem(
+                value: CalendarView.compact,
+                child: Text('Compact picker'),
+              ),
+            ],
+          ),
           IconButton(
             tooltip: 'Settings',
             icon: Icon(Icons.settings_outlined, color: palette.primary),
@@ -71,98 +88,175 @@ class CalendarScreen extends ConsumerWidget {
           const SizedBox(width: 8),
         ],
       ),
-      body: Column(
-        children: [
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.5),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: TableCalendar<CalendarEvent>(
-                    firstDay: DateTime.utc(2015, 1, 1),
-                    lastDay: DateTime.utc(2035, 12, 31),
-                    focusedDay: focusedMonth,
-                    calendarFormat: calendarFormat,
-                    availableCalendarFormats: const {
-                      CalendarFormat.month: 'Month',
-                      CalendarFormat.twoWeeks: '2 Weeks',
-                      CalendarFormat.week: 'Week',
-                    },
-                    startingDayOfWeek: _startingDay(settings.calendarStartDay),
-                    selectedDayPredicate: (day) => isSameDay(day, selectedDay),
-                    eventLoader: (day) => ref.read(dayEventsProvider(day)),
-                    onDaySelected: (selected, focused) {
-                      ref.read(selectedDayProvider.notifier).setDay(DateTime(
-                        selected.year,
-                        selected.month,
-                        selected.day,
-                      ));
-                      final normalizedFocused = DateTime(
-                        focused.year,
-                        focused.month,
-                        1,
-                      );
-                      if (normalizedFocused != focusedMonth) {
-                        ref.read(focusedMonthProvider.notifier).setMonth(normalizedFocused);
-                      }
-                    },
-                    onPageChanged: (focused) {
-                      ref.read(focusedMonthProvider.notifier).setMonth(DateTime(
-                        focused.year,
-                        focused.month,
-                        1,
-                      ));
-                    },
-                    onFormatChanged: (format) {
-                      if (calendarFormat != format) {
-                        ref.read(calendarFormatProvider.notifier).setFormat(format);
-                      }
-                    },
-                    calendarStyle: CalendarStyle(
-                      markerDecoration: BoxDecoration(color: palette.primary, shape: BoxShape.circle),
-                      selectedDecoration: BoxDecoration(color: palette.primary, shape: BoxShape.circle),
-                      todayDecoration: BoxDecoration(color: palette.primary.withValues(alpha: 0.3), shape: BoxShape.circle),
-                      defaultTextStyle: TextStyle(color: palette.text),
-                      weekendTextStyle: TextStyle(color: palette.text.withValues(alpha: 0.6)),
-                      outsideTextStyle: TextStyle(color: palette.text.withValues(alpha: 0.3)),
-                    ),
-                    headerStyle: HeaderStyle(
-                      titleTextStyle: TextStyle(color: palette.text, fontSize: 18, fontWeight: FontWeight.bold),
-                      formatButtonTextStyle: TextStyle(color: palette.background, fontSize: 12),
-                      formatButtonDecoration: BoxDecoration(
-                        color: palette.text,
-                        borderRadius: BorderRadius.circular(12),
+      body: calendarView == CalendarView.monthGrid
+          ? Column(
+              children: [
+                // Month switcher row for the grid view
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.chevron_left, color: palette.text),
+                        onPressed: () {
+                          ref.read(focusedMonthProvider.notifier).setMonth(DateTime(
+                            focusedMonth.year,
+                            focusedMonth.month - 1,
+                            1,
+                          ));
+                        },
                       ),
-                      leftChevronIcon: Icon(Icons.chevron_left, color: palette.text),
-                      rightChevronIcon: Icon(Icons.chevron_right, color: palette.text),
+                      Text(
+                        _formatMonthYear(focusedMonth),
+                        style: TextStyle(
+                          color: palette.text,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.chevron_right, color: palette.text),
+                        onPressed: () {
+                          ref.read(focusedMonthProvider.notifier).setMonth(DateTime(
+                            focusedMonth.year,
+                            focusedMonth.month + 1,
+                            1,
+                          ));
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                // Grid view taking full height
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.5),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
                     ),
-                    daysOfWeekStyle: DaysOfWeekStyle(
-                      weekdayStyle: TextStyle(color: palette.text.withValues(alpha: 0.7)),
-                      weekendStyle: TextStyle(color: palette.text.withValues(alpha: 0.5)),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: monthEventsAsync.when(
+                          data: (events) => CalendarMonthGridView(
+                            focusedMonth: focusedMonth,
+                            selectedDay: selectedDay,
+                            events: events,
+                            startDayOfWeek: settings.calendarStartDay,
+                          ),
+                          loading: () => const Center(child: CircularProgressIndicator()),
+                          error: (err, _) => Center(child: Text('Error loading events: $err')),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
+            ).animate().fadeIn(duration: 400.ms)
+          : Column(
+              children: [
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.5),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: TableCalendar<CalendarEvent>(
+                          firstDay: DateTime.utc(2015, 1, 1),
+                          lastDay: DateTime.utc(2035, 12, 31),
+                          focusedDay: focusedMonth,
+                          calendarFormat: calendarFormat,
+                          availableCalendarFormats: const {
+                            CalendarFormat.month: 'Month',
+                            CalendarFormat.twoWeeks: '2 Weeks',
+                            CalendarFormat.week: 'Week',
+                          },
+                          startingDayOfWeek: _startingDay(settings.calendarStartDay),
+                          selectedDayPredicate: (day) => isSameDay(day, selectedDay),
+                          eventLoader: (day) => ref.read(dayEventsProvider(day)),
+                          onDaySelected: (selected, focused) {
+                            ref.read(selectedDayProvider.notifier).setDay(DateTime(
+                              selected.year,
+                              selected.month,
+                              selected.day,
+                            ));
+                            final normalizedFocused = DateTime(
+                              focused.year,
+                              focused.month,
+                              1,
+                            );
+                            if (normalizedFocused != focusedMonth) {
+                              ref.read(focusedMonthProvider.notifier).setMonth(normalizedFocused);
+                            }
+                          },
+                          onPageChanged: (focused) {
+                            ref.read(focusedMonthProvider.notifier).setMonth(DateTime(
+                              focused.year,
+                              focused.month,
+                              1,
+                            ));
+                          },
+                          onFormatChanged: (format) {
+                            if (calendarFormat != format) {
+                              ref.read(calendarFormatProvider.notifier).setFormat(format);
+                            }
+                          },
+                          calendarStyle: CalendarStyle(
+                            markerDecoration: BoxDecoration(color: palette.primary, shape: BoxShape.circle),
+                            selectedDecoration: BoxDecoration(color: palette.primary, shape: BoxShape.circle),
+                            todayDecoration: BoxDecoration(color: palette.primary.withValues(alpha: 0.3), shape: BoxShape.circle),
+                            defaultTextStyle: TextStyle(color: palette.text),
+                            weekendTextStyle: TextStyle(color: palette.text.withValues(alpha: 0.6)),
+                            outsideTextStyle: TextStyle(color: palette.text.withValues(alpha: 0.3)),
+                          ),
+                          headerStyle: HeaderStyle(
+                            titleTextStyle: TextStyle(color: palette.text, fontSize: 18, fontWeight: FontWeight.bold),
+                            formatButtonTextStyle: TextStyle(color: palette.background, fontSize: 12),
+                            formatButtonDecoration: BoxDecoration(
+                              color: palette.text,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            leftChevronIcon: Icon(Icons.chevron_left, color: palette.text),
+                            rightChevronIcon: Icon(Icons.chevron_right, color: palette.text),
+                          ),
+                          daysOfWeekStyle: DaysOfWeekStyle(
+                            weekdayStyle: TextStyle(color: palette.text.withValues(alpha: 0.7)),
+                            weekendStyle: TextStyle(color: palette.text.withValues(alpha: 0.5)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1),
+                Expanded(
+                  child: _DayAgenda(
+                    day: selectedDay,
+                    monthEventsAsync: monthEventsAsync,
+                    palette: palette,
+                  ),
+                ),
+              ],
             ),
-          ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1),
-          Expanded(
-            child: _DayAgenda(
-              day: selectedDay,
-              monthEventsAsync: monthEventsAsync,
-              palette: palette,
-            ),
-          ),
-        ],
-      ),
     );
+  }
+
+  String _formatMonthYear(DateTime date) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return '${months[date.month - 1]} ${date.year}';
   }
 
   static StartingDayOfWeek _startingDay(int isoDay) {
