@@ -238,16 +238,19 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
         borderRadius: _isFullScreen ? BorderRadius.zero : BorderRadius.circular(28),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-          child: Padding(
-            padding: _isFullScreen
-                ? EdgeInsets.only(
-                    top: MediaQuery.of(context).padding.top + 16,
-                    bottom: MediaQuery.of(context).padding.bottom + 16,
-                    left: 24,
-                    right: 24,
-                  )
-                : const EdgeInsets.all(24),
-            child: dialogContent,
+          child: Material(
+            color: Colors.transparent,
+            child: Padding(
+              padding: _isFullScreen
+                  ? EdgeInsets.only(
+                      top: MediaQuery.of(context).padding.top + 16,
+                      bottom: MediaQuery.of(context).padding.bottom + 16,
+                      left: 24,
+                      right: 24,
+                    )
+                  : const EdgeInsets.all(24),
+              child: dialogContent,
+            ),
           ),
         ),
       ),
