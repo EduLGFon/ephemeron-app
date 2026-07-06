@@ -193,33 +193,29 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
 
                 const SizedBox(height: 16),
 
-                // Date/Time Section (like the screenshot rows)
+                // Date/Time Section
                 _buildListSectionCard(palette, children: [
-                  _buildIconRow(
-                    icon: Icons.access_time_outlined,
-                    palette: palette,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     child: Row(
                       children: [
-                        Material(
-                          color: Colors.transparent,
-                          child: SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text('All day', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
-                            activeThumbColor: palette.primary,
-                            value: _isAllDay,
-                            onChanged: (value) => setState(() => _isAllDay = value),
-                          ),
+                        Icon(Icons.access_time_outlined, size: 18, color: palette.text.withValues(alpha: 0.4)),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text('All day', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500))),
+                        Switch(
+                          value: _isAllDay,
+                          activeThumbColor: palette.primary,
+                          onChanged: (value) => setState(() => _isAllDay = value),
                         ),
                       ],
                     ),
-                    isSwitch: true,
                   ),
                   const Divider(height: 1, thickness: 0.5),
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     child: Row(
                       children: [
-                        const SizedBox(width: 40),
+                        const SizedBox(width: 30),
                         Expanded(
                           child: _DatePickerButton(
                             value: _start,
