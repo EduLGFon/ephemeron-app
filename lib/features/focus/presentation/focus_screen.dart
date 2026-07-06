@@ -145,11 +145,14 @@ class FocusScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(16),
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: SwitchListTile(
-                      title: Text('Keep screen on', style: TextStyle(color: palette.text)),
-                      value: timerState.keepScreenOn,
-                      onChanged: controller.setKeepScreenOn,
-                      activeThumbColor: palette.primary,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: SwitchListTile(
+                        title: Text('Keep screen on', style: TextStyle(color: palette.text)),
+                        value: timerState.keepScreenOn,
+                        onChanged: controller.setKeepScreenOn,
+                        activeThumbColor: palette.primary,
+                      ),
                     ),
                   ),
                 ),

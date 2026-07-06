@@ -200,12 +200,15 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                   ),
                   child: Column(
                     children: [
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text('All day', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
-                        activeThumbColor: palette.primary,
-                        value: _isAllDay,
-                        onChanged: (value) => setState(() => _isAllDay = value),
+                      Material(
+                        color: Colors.transparent,
+                        child: SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text('All day', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
+                          activeThumbColor: palette.primary,
+                          value: _isAllDay,
+                          onChanged: (value) => setState(() => _isAllDay = value),
+                        ),
                       ),
                       _DateTimeRow(
                         label: 'Starts',

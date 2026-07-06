@@ -178,26 +178,32 @@ class _CountdownFormSheetState extends ConsumerState<CountdownFormSheet> {
                     child: Column(
                       children: [
                         if (widget.type.supportsAge)
-                          SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text('Show age', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
-                            subtitle: Text(
-                              _showAge
-                                  ? 'The year above is used to calculate age'
-                                  : 'Year is ignored — only month and day count',
-                              style: TextStyle(color: palette.text.withValues(alpha: 0.6), fontSize: 12),
+                          Material(
+                            color: Colors.transparent,
+                            child: SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text('Show age', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
+                              subtitle: Text(
+                                _showAge
+                                    ? 'The year above is used to calculate age'
+                                    : 'Year is ignored — only month and day count',
+                                style: TextStyle(color: palette.text.withValues(alpha: 0.6), fontSize: 12),
+                              ),
+                              activeThumbColor: palette.primary,
+                              value: _showAge,
+                              onChanged: (value) => setState(() => _showAge = value),
                             ),
-                            activeThumbColor: palette.primary,
-                            value: _showAge,
-                            onChanged: (value) => setState(() => _showAge = value),
                           ),
                         if (widget.type == CountdownType.custom)
-                          SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text('Repeats yearly', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
-                            activeThumbColor: palette.primary,
-                            value: _isYearly,
-                            onChanged: (value) => setState(() => _isYearly = value),
+                          Material(
+                            color: Colors.transparent,
+                            child: SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text('Repeats yearly', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
+                              activeThumbColor: palette.primary,
+                              value: _isYearly,
+                              onChanged: (value) => setState(() => _isYearly = value),
+                            ),
                           ),
                       ],
                     ),
