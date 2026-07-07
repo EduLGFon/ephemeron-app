@@ -222,20 +222,31 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     borderRadius: BorderRadius.circular(24),
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: monthEventsAsync.when(
-                        data: (events) => CalendarMultiDayTimelineView(
-                          selectedDay: selectedDay,
-                          events: events,
-                          daysCount: calendarView == CalendarView.weekTimeline
-                              ? 7
-                              : calendarView == CalendarView.fourDaysTimeline
-                                  ? 4
-                                  : 3,
-                          startDayOfWeek: settings.calendarStartDay,
-                        ),
-                        loading: () => const Center(child: CircularProgressIndicator()),
-                        error: (err, _) => Center(child: Text('Error loading events: $err')),
-                      ),
+                      child: monthEventsAsync.hasValue
+                          ? CalendarMultiDayTimelineView(
+                              selectedDay: selectedDay,
+                              events: monthEventsAsync.value!,
+                              daysCount: calendarView == CalendarView.weekTimeline
+                                  ? 7
+                                  : calendarView == CalendarView.fourDaysTimeline
+                                      ? 4
+                                      : 3,
+                              startDayOfWeek: settings.calendarStartDay,
+                            )
+                          : monthEventsAsync.when(
+                              data: (events) => CalendarMultiDayTimelineView(
+                                selectedDay: selectedDay,
+                                events: events,
+                                daysCount: calendarView == CalendarView.weekTimeline
+                                    ? 7
+                                    : calendarView == CalendarView.fourDaysTimeline
+                                        ? 4
+                                        : 3,
+                                startDayOfWeek: settings.calendarStartDay,
+                              ),
+                              loading: () => const Center(child: CircularProgressIndicator()),
+                              error: (err, _) => Center(child: Text('Error loading events: $err')),
+                            ),
                     ),
                   ),
                 ).animate().fadeIn(duration: 400.ms)
@@ -251,14 +262,19 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         borderRadius: BorderRadius.circular(24),
                         child: BackdropFilter(
                           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: monthEventsAsync.when(
-                            data: (events) => CalendarDailyTimelineView(
-                              selectedDay: selectedDay,
-                              events: events,
-                            ),
-                            loading: () => const Center(child: CircularProgressIndicator()),
-                            error: (err, _) => Center(child: Text('Error loading events: $err')),
-                          ),
+                          child: monthEventsAsync.hasValue
+                              ? CalendarDailyTimelineView(
+                                  selectedDay: selectedDay,
+                                  events: monthEventsAsync.value!,
+                                )
+                              : monthEventsAsync.when(
+                                  data: (events) => CalendarDailyTimelineView(
+                                    selectedDay: selectedDay,
+                                    events: events,
+                                  ),
+                                  loading: () => const Center(child: CircularProgressIndicator()),
+                                  error: (err, _) => Center(child: Text('Error loading events: $err')),
+                                ),
                         ),
                       ),
                     ).animate().fadeIn(duration: 400.ms)
