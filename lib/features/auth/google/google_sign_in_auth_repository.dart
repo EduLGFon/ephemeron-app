@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/utils/dev_logger.dart';
 import 'google_auth_repository.dart';
 
 /// Implements [GoogleAuthRepository] on top of google_sign_in ^7.x.
@@ -43,19 +44,25 @@ class GoogleSignInAuthRepository extends GoogleAuthRepository {
   Future<void> initialize() async {
     if (_initialized) return;
 
-    await _instance.initialize(
-      // Only Web needs an explicit client ID here — Android resolves the
-      // OAuth client via the package name + SHA-1 fingerprint registered
-      // in Cloud Console instead.
-      clientId: kIsWeb ? AppConfig.googleWebClientId : null,
-      serverClientId: kIsWeb ? null : AppConfig.googleWebClientId,
-    );
+    DevLogger.log("Initializing GoogleSignIn (kIsWeb: $kIsWeb)");
+    try {
+      await _instance.initialize(
+        clientId: kIsWeb ? AppConfig.googleWebClientId : AppConfig.googleAndroidClientId,
+        serverClientId: kIsWeb ? null : AppConfig.googleWebClientId,
+      );
+      DevLogger.log("GoogleSignIn initialized successfully.");
+    } catch (e, stack) {
+      DevLogger.logError("GoogleSignIn initialization failed", e, stack);
+      rethrow;
+    }
 
     _eventSubscription = _instance.authenticationEvents.listen(
-      _handleAuthEvent,
-      onError: (Object error) {
-        // Surfaced as a signed-out state; the sign-in button remains the
-        // recovery path rather than crashing app startup over this.
+      (event) {
+        DevLogger.log("GoogleSignIn Auth Event: $event");
+        _handleAuthEvent(event);
+      },
+      onError: (Object error, StackTrace stack) {
+        DevLogger.logError("GoogleSignIn event stream error", error, stack);
         _currentAccount = null;
         _accountController.add(null);
       },
@@ -91,19 +98,21 @@ class GoogleSignInAuthRepository extends GoogleAuthRepository {
     );
   }
 
-  @override
   Future<void> signIn() async {
     _ensureInitialized();
+    DevLogger.log("Starting Google Sign-In authenticate flow...");
     try {
       await _instance.authenticate();
-      // Resulting state arrives via the event stream (_handleAuthEvent),
-      // kept as the single source of truth rather than also setting
-      // state from this method's return value.
-    } on GoogleSignInException catch (e) {
+      DevLogger.log("Google Sign-In authenticate flow call completed.");
+    } on GoogleSignInException catch (e, stack) {
+      DevLogger.logError("Google Sign-In failed (GoogleSignInException)", e, stack);
       if (e.code == GoogleSignInExceptionCode.canceled) {
         throw const GoogleAuthCancelledException();
       }
       throw GoogleAuthException(e.description ?? e.code.name);
+    } catch (e, stack) {
+      DevLogger.logError("Google Sign-In failed (generic error)", e, stack);
+      throw GoogleAuthException(e.toString());
     }
   }
 
@@ -121,26 +130,33 @@ class GoogleSignInAuthRepository extends GoogleAuthRepository {
     _ensureInitialized();
     final signedInAccount = _signedInAccount;
     if (signedInAccount == null) {
+      DevLogger.logError("getAccessToken failed: No account signed in");
       throw const GoogleAuthException('No Google account signed in yet.');
     }
 
+    DevLogger.log("Requesting access token for scopes: $scopes");
     try {
-      // Try silently first — succeeds if the user already granted these
-      // scopes in a previous session and they haven't expired.
       final existing = await signedInAccount.authorizationClient
           .authorizationForScopes(scopes);
-      if (existing != null) return existing.accessToken;
+      if (existing != null) {
+        DevLogger.log("Found existing authorized access token.");
+        return existing.accessToken;
+      }
 
-      // Falls back to an interactive consent screen. Must be reachable
-      // from a user gesture on platforms that enforce it.
+      DevLogger.log("Consent screen required. Triggering authorizeScopes...");
       final authorized =
           await signedInAccount.authorizationClient.authorizeScopes(scopes);
+      DevLogger.log("authorizeScopes succeeded.");
       return authorized.accessToken;
-    } on GoogleSignInException catch (e) {
+    } on GoogleSignInException catch (e, stack) {
+      DevLogger.logError("getAccessToken failed (GoogleSignInException)", e, stack);
       if (e.code == GoogleSignInExceptionCode.canceled) {
         throw const GoogleAuthCancelledException();
       }
       throw GoogleAuthException(e.description ?? e.code.name);
+    } catch (e, stack) {
+      DevLogger.logError("getAccessToken failed (generic error)", e, stack);
+      throw GoogleAuthException(e.toString());
     }
   }
 

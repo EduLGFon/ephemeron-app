@@ -10,12 +10,16 @@ abstract final class AppConfig {
   /// registered against your Android-type OAuth client instead.
   /// TODO: replace with your real Web client ID before running on Web.
   static const String googleWebClientId =
+      '927111009905-59klp0614nd6qio0pmsi835j21db21lr.apps.googleusercontent.com';
+
+  /// Android OAuth client ID (type "Android" in Google Cloud Console).
+  static const String googleAndroidClientId =
       '927111009905-l49pbfisgj398bg18akim8na86urhdgd.apps.googleusercontent.com';
 
   /// Desktop OAuth client ID (type "Desktop application" in Google Cloud Console).
   /// Required for Linux/macOS/Windows custom loopback OAuth2 flow.
   static const String googleDesktopClientId =
-      'REPLACE_ME.apps.googleusercontent.com';
+      '927111009905-kgr1uf2find2vqcd3v4g5g4k58kik42n.apps.googleusercontent.com';
 
   /// Desktop OAuth client secret (Google recommends PKCE, but desktop type clients
   /// still require client secret parameter in the token endpoint, even if empty/public).

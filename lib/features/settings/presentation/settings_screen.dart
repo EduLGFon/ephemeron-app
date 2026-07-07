@@ -13,6 +13,7 @@ import '../../auth/google/google_auth_provider.dart';
 import '../../auth/google/google_auth_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../sync/application/sync_service.dart';
+import '../../../core/utils/dev_logger.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -165,6 +166,16 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.color_lens, size: 20),
             onTap: () => _editAlarmBackground(context, ref, settings.alarmBackground),
           ),
+          const Divider(),
+          const _SectionHeader('Developer Tools'),
+          ListTile(
+            title: const Text('View developer logs'),
+            subtitle: const Text('Check sync and authentication events / error messages'),
+            trailing: const Icon(Icons.bug_report, size: 20),
+            onTap: () {
+              _showDevLogsDialog(context, ref);
+            },
+          ),
         ],
       ),
     );
@@ -177,6 +188,105 @@ class SettingsScreen extends ConsumerWidget {
     } catch (_) {
       return const Color(0xFF005F73); // petrol default
     }
+  }
+
+  static void _showDevLogsDialog(BuildContext context, WidgetRef ref) {
+    final palette = ref.read(themeEngineProvider);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: palette.surface,
+          surfaceTintColor: Colors.transparent,
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Developer Logs', style: TextStyle(color: palette.text)),
+              TextButton(
+                onPressed: () {
+                  DevLogger.clear();
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Clear'),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 400,
+            child: DevLogger.logs.isEmpty
+                ? Center(
+                    child: Text(
+                      'No logs yet.',
+                      style: TextStyle(color: palette.text.withValues(alpha: 0.5)),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: DevLogger.logs.length,
+                    itemBuilder: (context, index) {
+                      final log = DevLogger.logs[DevLogger.logs.length - 1 - index];
+                      final isError = log.error != null;
+                      final timeStr = "${log.time.hour.toString().padLeft(2, '0')}:${log.time.minute.toString().padLeft(2, '0')}:${log.time.second.toString().padLeft(2, '0')}";
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isError 
+                              ? Colors.redAccent.withValues(alpha: 0.1) 
+                              : palette.text.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '[$timeStr] ${log.message}',
+                              style: TextStyle(
+                                color: isError ? Colors.redAccent : palette.text,
+                                fontFamily: 'monospace',
+                                fontSize: 12,
+                              ),
+                            ),
+                            if (log.error != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Error: ${log.error}',
+                                style: TextStyle(
+                                  color: Colors.redAccent.shade200,
+                                  fontFamily: 'monospace',
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                            if (log.stackTrace != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                log.stackTrace!,
+                                style: TextStyle(
+                                  color: palette.text.withValues(alpha: 0.4),
+                                  fontFamily: 'monospace',
+                                  fontSize: 10,
+                                ),
+                                maxLines: 5,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   static void _editSoundPath(BuildContext context, WidgetRef ref, String type, String current) {
@@ -615,7 +725,35 @@ class _SyncSettingsTile extends ConsumerWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : FilledButton.icon(
-                  onPressed: syncNotifier.sync,
+                  onPressed: () async {
+                    await syncNotifier.sync();
+                    final current = ref.read(syncServiceProvider);
+                    if (current.error != null && context.mounted) {
+                      final palette = ref.read(themeEngineProvider);
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          backgroundColor: palette.surface,
+                          surfaceTintColor: Colors.transparent,
+                          title: const Text('Sync Error'),
+                          content: Text(current.error!),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                SettingsScreen._showDevLogsDialog(context, ref);
+                              },
+                              child: const Text('View Logs'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Close'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                  },
                   icon: const Icon(Icons.sync, size: 16),
                   label: const Text('Sync Now'),
                 ),
