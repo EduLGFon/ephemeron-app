@@ -91,34 +91,52 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
     ).id ?? '');
 
     final header = Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: SegmentedButton<QuickAddTarget>(
-        segments: const [
-          ButtonSegment(value: QuickAddTarget.task, label: Text('Task')),
-          ButtonSegment(value: QuickAddTarget.event, label: Text('Event')),
-          ButtonSegment(value: QuickAddTarget.habit, label: Text('Habit')),
-          ButtonSegment(value: QuickAddTarget.countdown, label: Text('Cdwn')),
-          ButtonSegment(value: QuickAddTarget.note, label: Text('Note')),
-        ],
-        selected: {_target},
-        onSelectionChanged: (set) {
-          setState(() {
-            _target = set.first;
-          });
-        },
-        style: ButtonStyle(
-          backgroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return palette.primary.withValues(alpha: 0.2);
-            }
-            return Colors.transparent;
-          }),
-          foregroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return palette.primary;
-            }
-            return palette.text.withValues(alpha: 0.7);
-          }),
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Center(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: QuickAddTarget.values.map((target) {
+              final isSelected = _target == target;
+              final label = switch (target) {
+                QuickAddTarget.task => 'Task',
+                QuickAddTarget.event => 'Event',
+                QuickAddTarget.habit => 'Habit',
+                QuickAddTarget.countdown => 'Cdwn',
+                QuickAddTarget.note => 'Note',
+              };
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: ChoiceChip(
+                  label: Text(label),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() => _target = target);
+                    }
+                  },
+                  selectedColor: palette.primary.withValues(alpha: 0.15),
+                  labelStyle: TextStyle(
+                    color: isSelected ? palette.primary : palette.text.withValues(alpha: 0.7),
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 12,
+                  ),
+                  backgroundColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(
+                      color: isSelected ? palette.primary : palette.text.withValues(alpha: 0.1),
+                      width: 1,
+                    ),
+                  ),
+                  showCheckmark: false,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              );
+            }).toList(),
+          ),
         ),
       ),
     );

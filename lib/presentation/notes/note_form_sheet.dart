@@ -14,6 +14,7 @@ import '../../../core/settings/session_restore.dart';
 import '../../features/notes/application/notes_providers.dart';
 import '../../features/notes/data/notes_repository.dart';
 import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
+import '../widgets/confirmation_dialog.dart';
 
 class NoteFormSheet extends ConsumerStatefulWidget {
   const NoteFormSheet({this.existingNote, this.unifiedHeader, super.key});
@@ -38,17 +39,16 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
   void initState() {
     super.initState();
     _contentPreviewMode = widget.existingNote != null;
-    _contentFocusNode.addListener(() {
-      if (mounted) {
-        setState(() {
-          _contentPreviewMode = !_contentFocusNode.hasFocus;
-        });
-      }
-    });
     SessionRestore.saveOpenMenu('note', entityId: widget.existingNote?.id);
     _titleController.addListener(_onTitleChanged);
     _contentController.addListener(_onContentChanged);
     _restoreDrafts();
+  }
+
+  bool get _isDirty {
+    final originalTitle = widget.existingNote?.title ?? '';
+    final originalContent = widget.existingNote?.content ?? '';
+    return _titleController.text != originalTitle || _contentController.text != originalContent;
   }
 
   void _onTitleChanged() {
@@ -172,29 +172,15 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
                   IconButton(
                     icon: Icon(Icons.delete_outline, color: Colors.redAccent.withValues(alpha: 0.8)),
                     onPressed: () async {
-                      final confirmed = await showDialog<bool>(
+                      final confirmed = await showConfirmationDialog(
                         context: context,
-                        builder: (ctx) => AlertDialog(
-                          backgroundColor: palette.surface,
-                          title: Text('Delete note?', style: TextStyle(color: palette.text)),
-                          content: Text(
-                            'Are you sure you want to permanently delete this note?',
-                            style: TextStyle(color: palette.text.withValues(alpha: 0.7)),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              child: Text('Cancel', style: TextStyle(color: palette.text.withValues(alpha: 0.6))),
-                            ),
-                            FilledButton(
-                              style: FilledButton.styleFrom(backgroundColor: Colors.red),
-                              onPressed: () => Navigator.pop(ctx, true),
-                              child: const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                            ),
-                          ],
-                        ),
+                        ref: ref,
+                        title: 'Delete note?',
+                        content: 'Are you sure you want to permanently delete this note?',
+                        confirmLabel: 'Delete',
+                        isDestructive: true,
                       );
-                      if (confirmed == true && mounted) {
+                      if (confirmed && mounted) {
                         final navigator = Navigator.of(context);
                         await ref.read(notesRepositoryProvider).deleteNote(existingNote.id);
                         await SessionRestore.clearDraftValues('note', existingNote.id);
@@ -244,13 +230,6 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
                   expands: true,
                   style: TextStyle(color: palette.text),
                   onChanged: (text) {
-                    _contentTypingTimer?.cancel();
-                    _contentTypingTimer = Timer(const Duration(seconds: 1), () {
-                      if (mounted && _contentFocusNode.hasFocus) {
-                        _contentFocusNode.unfocus();
-                        setState(() => _contentPreviewMode = true);
-                      }
-                    });
                     setState(() {});
                   },
                   decoration: InputDecoration(
@@ -289,7 +268,20 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () async {
+                    if (_isDirty) {
+                      final discard = await showConfirmationDialog(
+                        context: context,
+                        ref: ref,
+                        title: 'Discard changes?',
+                        content: 'You have unsaved changes. Are you sure you want to discard them?',
+                        confirmLabel: 'Discard',
+                        isDestructive: true,
+                      );
+                      if (!discard) return;
+                    }
+                    if (mounted) Navigator.of(context).pop();
+                  },
                   child: Text('Cancel', style: TextStyle(color: palette.text.withValues(alpha: 0.6))),
                 ),
                 const SizedBox(width: 8),
@@ -343,45 +335,62 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
       ],
     );
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeInOut,
-      margin: _isFullScreen ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      width: _isFullScreen ? MediaQuery.of(context).size.width : 500,
-      constraints: BoxConstraints(
-        minHeight: _isFullScreen ? MediaQuery.of(context).size.height : 180,
-        maxHeight: _isFullScreen ? MediaQuery.of(context).size.height : MediaQuery.of(context).size.height * 0.65,
-      ),
-      decoration: BoxDecoration(
-        color: palette.surface.withValues(alpha: 0.95),
-        borderRadius: _isFullScreen ? BorderRadius.zero : BorderRadius.circular(28),
-        border: _isFullScreen ? null : Border.all(color: palette.text.withValues(alpha: 0.1)),
-        boxShadow: _isFullScreen
-            ? null
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 40,
-                  offset: const Offset(0, 20),
-                )
-              ],
-      ),
-      child: ClipRRect(
-        borderRadius: _isFullScreen ? BorderRadius.zero : BorderRadius.circular(28),
-        child: GlassmorphicWrapper(
-          filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-          child: Material(
-            color: Colors.transparent,
-            child: Padding(
-              padding: _isFullScreen
-                  ? EdgeInsets.only(
-                      top: MediaQuery.of(context).padding.top + 16,
-                      bottom: MediaQuery.of(context).padding.bottom + 16,
-                      left: 24,
-                      right: 24,
-                    )
-                  : const EdgeInsets.all(24),
-              child: dialogContent,
+    return PopScope(
+      canPop: !_isDirty,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final discard = await showConfirmationDialog(
+          context: context,
+          ref: ref,
+          title: 'Discard changes?',
+          content: 'You have unsaved changes. Are you sure you want to discard them?',
+          confirmLabel: 'Discard',
+          isDestructive: true,
+        );
+        if (discard && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        margin: _isFullScreen ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        width: _isFullScreen ? MediaQuery.of(context).size.width : 500,
+        constraints: BoxConstraints(
+          minHeight: _isFullScreen ? MediaQuery.of(context).size.height : 180,
+          maxHeight: _isFullScreen ? MediaQuery.of(context).size.height : MediaQuery.of(context).size.height * 0.65,
+        ),
+        decoration: BoxDecoration(
+          color: palette.surface.withValues(alpha: 0.95),
+          borderRadius: _isFullScreen ? BorderRadius.zero : BorderRadius.circular(28),
+          border: _isFullScreen ? null : Border.all(color: palette.text.withValues(alpha: 0.1)),
+          boxShadow: _isFullScreen
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 40,
+                    offset: const Offset(0, 20),
+                  )
+                ],
+        ),
+        child: ClipRRect(
+          borderRadius: _isFullScreen ? BorderRadius.zero : BorderRadius.circular(28),
+          child: GlassmorphicWrapper(
+            filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+            child: Material(
+              color: Colors.transparent,
+              child: Padding(
+                padding: _isFullScreen
+                    ? EdgeInsets.only(
+                        top: MediaQuery.of(context).padding.top + 16,
+                        bottom: MediaQuery.of(context).padding.bottom + 16,
+                        left: 24,
+                        right: 24,
+                      )
+                    : const EdgeInsets.all(24),
+                child: dialogContent,
+              ),
             ),
           ),
         ),

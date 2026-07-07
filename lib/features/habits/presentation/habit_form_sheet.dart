@@ -13,6 +13,7 @@ import '../domain/habit_goal_unit.dart';
 import '../domain/habit_section.dart';
 import '../../../core/settings/session_restore.dart';
 import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
+import '../../../../presentation/widgets/confirmation_dialog.dart';
 
 Future<void> showHabitFormSheet(BuildContext context, {Habit? existingHabit, String? initialName}) {
   return showGeneralDialog<void>(
@@ -237,9 +238,19 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
                       IconButton(
                         icon: Icon(Icons.delete_outline, color: Colors.redAccent.withValues(alpha: 0.8)),
                         onPressed: () async {
-                          await ref.read(habitRepositoryProvider).deleteHabit(widget.existingHabit!.id);
-                          await SessionRestore.clearDraftValues('habit', widget.existingHabit?.id);
-                          if (context.mounted) Navigator.pop(context);
+                          final confirmed = await showConfirmationDialog(
+                            context: context,
+                            ref: ref,
+                            title: 'Delete habit?',
+                            content: 'Are you sure you want to permanently delete this habit?',
+                            confirmLabel: 'Delete',
+                            isDestructive: true,
+                          );
+                          if (confirmed && mounted) {
+                            await ref.read(habitRepositoryProvider).deleteHabit(widget.existingHabit!.id);
+                            await SessionRestore.clearDraftValues('habit', widget.existingHabit?.id);
+                            if (context.mounted) Navigator.pop(context);
+                          }
                         },
                       ),
                     ],

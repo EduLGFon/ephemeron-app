@@ -9,6 +9,7 @@ import '../../../data/local/database.dart';
 import '../application/task_providers.dart';
 import 'task_form_sheet.dart';
 import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
+import '../../../presentation/widgets/confirmation_dialog.dart';
 
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
@@ -182,27 +183,15 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
               icon: Icon(Icons.delete_sweep_outlined, color: Colors.redAccent.withValues(alpha: 0.8)),
               tooltip: 'Delete smart list',
               onPressed: () async {
-                final confirm = await showDialog<bool>(
+                final confirm = await showConfirmationDialog(
                   context: context,
-                  builder: (context) => AlertDialog(
-                    backgroundColor: palette.surface,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    title: Text('Delete Smart List', style: TextStyle(color: palette.text, fontWeight: FontWeight.bold)),
-                    content: Text('Are you sure you want to delete this custom smart list?', style: TextStyle(color: palette.text.withValues(alpha: 0.8))),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: Text('Cancel', style: TextStyle(color: palette.text.withValues(alpha: 0.6))),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-                        child: const Text('Delete'),
-                      ),
-                    ],
-                  ),
+                  ref: ref,
+                  title: 'Delete Smart List?',
+                  content: 'Are you sure you want to delete this custom smart list?',
+                  confirmLabel: 'Delete',
+                  isDestructive: true,
                 );
-                if (confirm == true) {
+                if (confirm) {
                   final id = currentId.substring(13);
                   await ref.read(taskRepositoryProvider).deleteCustomSmartList(id);
                   ref.read(selectedListIdProvider.notifier).state = null; // Reset to default (Inbox)
@@ -688,6 +677,16 @@ class _TaskTile extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: const Icon(Icons.delete_outline, color: Colors.white),
       ),
+      confirmDismiss: (direction) async {
+        return await showConfirmationDialog(
+          context: context,
+          ref: ref,
+          title: 'Delete Task?',
+          content: 'Are you sure you want to delete this task? It will be moved to Trash.',
+          confirmLabel: 'Delete',
+          isDestructive: true,
+        );
+      },
       onDismissed: (_) => repo.softDeleteTask(task.id),
       child: Container(
         decoration: BoxDecoration(

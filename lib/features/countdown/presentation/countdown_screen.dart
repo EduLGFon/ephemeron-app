@@ -11,6 +11,7 @@ import '../domain/countdown_type.dart';
 import 'countdown_form_sheet.dart';
 import 'countdown_template_picker.dart';
 import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
+import '../../../presentation/widgets/confirmation_dialog.dart';
 
 class CountdownScreen extends ConsumerWidget {
   const CountdownScreen({super.key});
@@ -105,6 +106,16 @@ class _CountdownTile extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: const Icon(Icons.delete_outline, color: Colors.white),
         ),
+        confirmDismiss: (direction) async {
+          return await showConfirmationDialog(
+            context: context,
+            ref: ref,
+            title: 'Delete countdown?',
+            content: 'Are you sure you want to permanently delete this countdown?',
+            confirmLabel: 'Delete',
+            isDestructive: true,
+          );
+        },
         onDismissed: (_) =>
             ref.read(countdownRepositoryProvider).deleteCountdown(countdown.id),
         child: Container(

@@ -10,7 +10,7 @@ abstract final class AppConfig {
   /// registered against your Android-type OAuth client instead.
   /// TODO: replace with your real Web client ID before running on Web.
   static const String googleWebClientId =
-      'REPLACE_ME.apps.googleusercontent.com';
+      '927111009905-l49pbfisgj398bg18akim8na86urhdgd.apps.googleusercontent.com';
 
   /// Desktop OAuth client ID (type "Desktop application" in Google Cloud Console).
   /// Required for Linux/macOS/Windows custom loopback OAuth2 flow.

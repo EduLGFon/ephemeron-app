@@ -8,6 +8,7 @@ import '../application/countdown_providers.dart';
 import '../domain/countdown_type.dart';
 import '../../../core/settings/session_restore.dart';
 import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
+import '../../../../presentation/widgets/confirmation_dialog.dart';
 
 Future<void> showCountdownFormSheet(
   BuildContext context, {
@@ -172,9 +173,19 @@ class _CountdownFormSheetState extends ConsumerState<CountdownFormSheet> {
                       IconButton(
                         icon: Icon(Icons.delete_outline, color: Colors.redAccent.withValues(alpha: 0.8)),
                         onPressed: () async {
-                          await ref.read(countdownRepositoryProvider).deleteCountdown(widget.existingCountdown!.id);
-                          await SessionRestore.clearDraftValues('countdown', widget.existingCountdown?.id);
-                          if (context.mounted) Navigator.pop(context);
+                          final confirmed = await showConfirmationDialog(
+                            context: context,
+                            ref: ref,
+                            title: 'Delete countdown?',
+                            content: 'Are you sure you want to permanently delete this countdown?',
+                            confirmLabel: 'Delete',
+                            isDestructive: true,
+                          );
+                          if (confirmed && mounted) {
+                            await ref.read(countdownRepositoryProvider).deleteCountdown(widget.existingCountdown!.id);
+                            await SessionRestore.clearDraftValues('countdown', widget.existingCountdown?.id);
+                            if (context.mounted) Navigator.pop(context);
+                          }
                         },
                       ),
                     ],

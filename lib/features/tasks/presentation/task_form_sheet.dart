@@ -17,6 +17,7 @@ import '../../../core/settings/session_restore.dart';
 import '../application/task_providers.dart';
 import '../domain/task_recurrence.dart';
 import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
+import '../../../../presentation/widgets/confirmation_dialog.dart';
 
 Future<void> showTaskFormSheet(
   BuildContext context, {
@@ -276,10 +277,20 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
                       IconButton(
                         icon: Icon(Icons.delete_outline, color: Colors.redAccent.withValues(alpha: 0.8)),
                         onPressed: () async {
-                          final navigator = Navigator.of(context);
-                          await ref.read(taskRepositoryProvider).softDeleteTask(widget.existingTask!.id);
-                          await SessionRestore.clearDraftValues('task', widget.existingTask?.id);
-                          navigator.pop();
+                          final confirmed = await showConfirmationDialog(
+                            context: context,
+                            ref: ref,
+                            title: 'Delete task?',
+                            content: 'Are you sure you want to delete this task? It will be moved to Trash.',
+                            confirmLabel: 'Delete',
+                            isDestructive: true,
+                          );
+                          if (confirmed && mounted) {
+                            final navigator = Navigator.of(context);
+                            await ref.read(taskRepositoryProvider).softDeleteTask(widget.existingTask!.id);
+                            await SessionRestore.clearDraftValues('task', widget.existingTask?.id);
+                            navigator.pop();
+                          }
                         },
                       ),
                     ],

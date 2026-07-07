@@ -22,6 +22,7 @@ import '../../tags/presentation/tag_autocomplete_field.dart';
 import '../application/calendar_providers.dart';
 import '../domain/calendar_event.dart';
 import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
+import '../../../../presentation/widgets/confirmation_dialog.dart';
 
 /// Google Calendar description hard cap (bytes before base64 encoding overhead).
 /// Anything beyond this is stored locally in a Note only.
@@ -377,13 +378,23 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                       IconButton(
                         icon: Icon(Icons.delete_outline, color: Colors.redAccent.withValues(alpha: 0.8)),
                         onPressed: () async {
-                          await ref.read(calendarRepositoryProvider).deleteEvent(
-                            widget.existingEvent!.id,
-                            calendarId: widget.existingEvent!.calendarId,
+                          final confirmed = await showConfirmationDialog(
+                            context: context,
+                            ref: ref,
+                            title: 'Delete event?',
+                            content: 'Are you sure you want to permanently delete this event?',
+                            confirmLabel: 'Delete',
+                            isDestructive: true,
                           );
-                          ref.invalidate(monthEventsProvider(DateTime(_start.year, _start.month, 1)));
-                          await SessionRestore.clearDraftValues('event', widget.existingEvent?.id);
-                          if (context.mounted) Navigator.pop(context);
+                          if (confirmed && mounted) {
+                            await ref.read(calendarRepositoryProvider).deleteEvent(
+                              widget.existingEvent!.id,
+                              calendarId: widget.existingEvent!.calendarId,
+                            );
+                            ref.invalidate(monthEventsProvider(DateTime(_start.year, _start.month, 1)));
+                            await SessionRestore.clearDraftValues('event', widget.existingEvent?.id);
+                            if (context.mounted) Navigator.pop(context);
+                          }
                         },
                       ),
                     ],
