@@ -32,6 +32,21 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
   double _dragCurrentTop = 0.0;
   DateTime? _dragCurrentStart;
   DateTime? _dragCurrentEnd;
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController(
+      initialScrollOffset: CalendarDailyTimelineView.hourHeight * 7,
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   DateTime _getDateTimeFromTop(double top, DateTime originalStart) {
     final totalMinutes = (top / CalendarDailyTimelineView.hourHeight * 60.0).round();
@@ -63,10 +78,6 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
 
     final gmtOffset = _getGmtOffsetString(widget.selectedDay);
     final weekdayName = _getWeekdayName(widget.selectedDay.weekday);
-
-    // Timeline hours range from 00:00 to 24:00.
-    // We scroll automatically to show morning hours (e.g. 07:00) by default.
-    final scrollController = ScrollController(initialScrollOffset: CalendarDailyTimelineView.hourHeight * 7);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -194,7 +205,7 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
         // Scrollable Timeline grid
         Expanded(
           child: SingleChildScrollView(
-            controller: scrollController,
+            controller: _scrollController,
             child: Stack(
               children: [
                 // Horizontal grid lines and hour labels
@@ -338,6 +349,7 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
               );
               await ref.read(calendarRepositoryProvider).updateEvent(updated);
             }
+            ref.invalidate(monthEventsProvider(DateTime(newStart.year, newStart.month, 1)));
           }
         },
         child: Container(

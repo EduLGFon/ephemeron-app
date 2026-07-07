@@ -20,7 +20,7 @@ class PositionedEvent {
   });
 }
 
-class CalendarMultiDayTimelineView extends ConsumerWidget {
+class CalendarMultiDayTimelineView extends ConsumerStatefulWidget {
   const CalendarMultiDayTimelineView({
     required this.selectedDay,
     required this.events,
@@ -38,12 +38,31 @@ class CalendarMultiDayTimelineView extends ConsumerWidget {
   static const double timeColumnWidth = 60.0;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final palette = ref.watch(themeEngineProvider);
-    final visibleDays = _calculateVisibleDays(selectedDay, daysCount, startDayOfWeek);
-    final gmtOffset = _getGmtOffsetString(selectedDay);
+  ConsumerState<CalendarMultiDayTimelineView> createState() => _CalendarMultiDayTimelineViewState();
+}
 
-    final scrollController = ScrollController(initialScrollOffset: hourHeight * 7);
+class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayTimelineView> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController(
+      initialScrollOffset: CalendarMultiDayTimelineView.hourHeight * 7,
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = ref.watch(themeEngineProvider);
+    final visibleDays = _calculateVisibleDays(widget.selectedDay, widget.daysCount, widget.startDayOfWeek);
+    final gmtOffset = _getGmtOffsetString(widget.selectedDay);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -67,8 +86,8 @@ class CalendarMultiDayTimelineView extends ConsumerWidget {
                   IconButton(
                     icon: Icon(Icons.chevron_left, color: palette.text),
                     onPressed: () {
-                      final shiftDays = daysCount == 7 ? 7 : daysCount;
-                      final prevDay = selectedDay.subtract(Duration(days: shiftDays));
+                      final shiftDays = widget.daysCount == 7 ? 7 : widget.daysCount;
+                      final prevDay = widget.selectedDay.subtract(Duration(days: shiftDays));
                       ref.read(selectedDayProvider.notifier).setDay(prevDay);
                       ref.read(focusedMonthProvider.notifier).setMonth(DateTime(
                             prevDay.year,
@@ -80,8 +99,8 @@ class CalendarMultiDayTimelineView extends ConsumerWidget {
                   IconButton(
                     icon: Icon(Icons.chevron_right, color: palette.text),
                     onPressed: () {
-                      final shiftDays = daysCount == 7 ? 7 : daysCount;
-                      final nextDay = selectedDay.add(Duration(days: shiftDays));
+                      final shiftDays = widget.daysCount == 7 ? 7 : widget.daysCount;
+                      final nextDay = widget.selectedDay.add(Duration(days: shiftDays));
                       ref.read(selectedDayProvider.notifier).setDay(nextDay);
                       ref.read(focusedMonthProvider.notifier).setMonth(DateTime(
                             nextDay.year,
@@ -107,7 +126,7 @@ class CalendarMultiDayTimelineView extends ConsumerWidget {
             children: [
               // GMT label column
               Container(
-                width: timeColumnWidth,
+                width: CalendarMultiDayTimelineView.timeColumnWidth,
                 alignment: Alignment.center,
                 child: Text(
                   gmtOffset,
@@ -172,7 +191,7 @@ class CalendarMultiDayTimelineView extends ConsumerWidget {
         // Scrollable timeline columns grid
         Expanded(
           child: SingleChildScrollView(
-            controller: scrollController,
+            controller: _scrollController,
             child: Stack(
               children: [
                 // Horizontal grid lines and hour labels
@@ -180,13 +199,13 @@ class CalendarMultiDayTimelineView extends ConsumerWidget {
                   children: [
                     for (int hour = 0; hour <= 24; hour++)
                       SizedBox(
-                        height: hourHeight,
+                        height: CalendarMultiDayTimelineView.hourHeight,
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Hour label
                             Container(
-                              width: timeColumnWidth,
+                              width: CalendarMultiDayTimelineView.timeColumnWidth,
                               padding: const EdgeInsets.only(right: 8, top: 4),
                               alignment: Alignment.topRight,
                               child: Text(
@@ -212,7 +231,7 @@ class CalendarMultiDayTimelineView extends ConsumerWidget {
                 ),
                 // Layered day columns for timed events
                 Positioned.fill(
-                  left: timeColumnWidth,
+                  left: CalendarMultiDayTimelineView.timeColumnWidth,
                   child: Row(
                     children: [
                       for (final day in visibleDays)
@@ -266,7 +285,7 @@ class CalendarMultiDayTimelineView extends ConsumerWidget {
     DateTime day,
     AppPalette palette,
   ) {
-    final allDayList = events.where((e) {
+    final allDayList = widget.events.where((e) {
       if (!e.isAllDay) return false;
       final targetDay = DateTime(day.year, day.month, day.day);
       final startZero = DateTime(e.start.year, e.start.month, e.start.day);
@@ -301,7 +320,7 @@ class CalendarMultiDayTimelineView extends ConsumerWidget {
   }
 
   List<CalendarEvent> _getTimedEventsForDay(DateTime day) {
-    return events.where((e) {
+    return widget.events.where((e) {
       if (e.isAllDay) return false;
       final targetDay = DateTime(day.year, day.month, day.day);
       final eventDay = DateTime(e.start.year, e.start.month, e.start.day);
@@ -378,13 +397,13 @@ class CalendarMultiDayTimelineView extends ConsumerWidget {
   }
 
   double _getTopOffset(DateTime time) {
-    return (time.hour + time.minute / 60.0) * hourHeight;
+    return (time.hour + time.minute / 60.0) * CalendarMultiDayTimelineView.hourHeight;
   }
 
   double _getHeight(DateTime start, DateTime end) {
     final duration = end.difference(start).inMinutes;
     final actualDuration = duration <= 0 ? 30 : duration;
-    return (actualDuration / 60.0) * hourHeight;
+    return (actualDuration / 60.0) * CalendarMultiDayTimelineView.hourHeight;
   }
 
   Color _getEventColor(String? colorId, AppPalette palette) {
