@@ -1,8 +1,8 @@
 enum CountdownType {
-  holiday(label: 'Holiday', isYearlyByDefault: true, supportsAge: false),
+  holiday(label: 'Holiday', isYearlyByDefault: true, supportsAge: true),
   anniversary(label: 'Anniversary', isYearlyByDefault: true, supportsAge: true),
   birthday(label: 'Birthday', isYearlyByDefault: true, supportsAge: true),
-  custom(label: 'Countdown', isYearlyByDefault: false, supportsAge: false);
+  custom(label: 'Countdown', isYearlyByDefault: false, supportsAge: true);
 
   const CountdownType({
     required this.label,

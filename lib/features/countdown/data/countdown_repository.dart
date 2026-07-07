@@ -47,7 +47,7 @@ class CountdownRepository {
             type: Value(type.name),
             targetDate: targetDate,
             isYearly: Value(isYearly ?? type.isYearlyByDefault),
-            showAge: Value(type.supportsAge && showAge),
+            showAge: Value(showAge),
           ),
         );
     await _syncAlarms(id);

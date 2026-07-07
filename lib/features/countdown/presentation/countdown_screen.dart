@@ -165,7 +165,9 @@ class _CountdownTile extends ConsumerWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                status.age != null ? '$daysLabel · turns ${status.age}' : daysLabel,
+                                status.age != null
+                                    ? '$daysLabel · ${status.isFuture ? "turns" : "age"} ${status.age}'
+                                    : daysLabel,
                                 style: TextStyle(color: palette.text.withValues(alpha: 0.6)),
                               ),
                             ],

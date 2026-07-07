@@ -26,7 +26,8 @@ class CountdownStatus {
 
     if (!isYearly) {
       final diff = target.difference(today).inDays;
-      return CountdownStatus(isFuture: diff >= 0, days: diff.abs(), effectiveDate: target);
+      final age = (showAge && today.year - target.year >= 0) ? today.year - target.year : null;
+      return CountdownStatus(isFuture: diff >= 0, days: diff.abs(), effectiveDate: target, age: age);
     }
 
     // Yearly: find this year's occurrence, or next year's if it already
