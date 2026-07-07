@@ -8,6 +8,8 @@ import '../domain/calendar_event.dart';
 import 'event_form_sheet.dart';
 import '../../tasks/presentation/task_form_sheet.dart';
 import '../../tasks/application/task_providers.dart';
+import '../../habits/presentation/habit_form_sheet.dart';
+import '../../habits/application/habit_providers.dart';
 
 class PositionedEvent {
   final CalendarEvent event;
@@ -418,6 +420,9 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
       }
       return palette.primary;
     }
+    if (colorId.startsWith('habit:')) {
+      return palette.secondary;
+    }
     final match = GoogleEventColor.options.firstWhere(
       (c) => c.id == colorId,
       orElse: () => const GoogleEventColor('0', 'Default', 0),
@@ -432,6 +437,12 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
       final task = await ref.read(taskRepositoryProvider).getTask(taskId);
       if (task != null && context.mounted) {
         showTaskFormSheet(context, listId: task.listId, existingTask: task);
+      }
+    } else if (event.id.startsWith('habit:')) {
+      final habitId = event.id.split(':')[1];
+      final habit = await ref.read(habitRepositoryProvider).getHabit(habitId);
+      if (habit != null && context.mounted) {
+        showHabitFormSheet(context, existingHabit: habit);
       }
     } else {
       showEventFormSheet(context, initialDay: event.start, existingEvent: event);

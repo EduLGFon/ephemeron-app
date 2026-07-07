@@ -19,6 +19,8 @@ import 'calendar_multi_day_timeline_view.dart';
 import 'event_form_sheet.dart';
 import '../../tasks/presentation/task_form_sheet.dart';
 import '../../tasks/application/task_providers.dart';
+import '../../habits/presentation/habit_form_sheet.dart';
+import '../../habits/application/habit_providers.dart';
 
 class CalendarFormatNotifier extends Notifier<CalendarFormat> {
   @override
@@ -467,6 +469,9 @@ class _EventTile extends ConsumerWidget {
         }
         return palette.primary;
       }
+      if (colorId.startsWith('habit:')) {
+        return palette.secondary;
+      }
       final match = GoogleEventColor.options.firstWhere(
         (c) => c.id == colorId,
         orElse: () => GoogleEventColor.options[6],
@@ -535,6 +540,12 @@ class _EventTile extends ConsumerWidget {
                 if (task != null && context.mounted) {
                   showTaskFormSheet(context, listId: task.listId, existingTask: task);
                 }
+              } else if (event.id.startsWith('habit:')) {
+                final habitId = event.id.split(':')[1];
+                final habit = await ref.read(habitRepositoryProvider).getHabit(habitId);
+                if (habit != null && context.mounted) {
+                  showHabitFormSheet(context, existingHabit: habit);
+                }
               } else {
                 showEventFormSheet(
                   context,
@@ -557,10 +568,11 @@ class _EventTile extends ConsumerWidget {
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final isTask = event.id.startsWith('task:');
+    final isHabit = event.id.startsWith('habit:');
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(isTask ? 'Delete task?' : 'Delete event?'),
+        title: Text(isTask ? 'Delete task?' : isHabit ? 'Delete habit?' : 'Delete event?'),
         content: Text(event.title),
         actions: [
           TextButton(
@@ -579,6 +591,9 @@ class _EventTile extends ConsumerWidget {
     if (isTask) {
       final taskId = event.id.substring(5);
       await ref.read(taskRepositoryProvider).softDeleteTask(taskId);
+    } else if (isHabit) {
+      final habitId = event.id.split(':')[1];
+      await ref.read(habitRepositoryProvider).deleteHabit(habitId);
     } else {
       await ref.read(calendarRepositoryProvider).deleteEvent(event.id);
       ref.invalidate(

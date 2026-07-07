@@ -9,6 +9,8 @@ import '../domain/calendar_event.dart';
 import 'event_form_sheet.dart';
 import '../../tasks/presentation/task_form_sheet.dart';
 import '../../tasks/application/task_providers.dart';
+import '../../habits/presentation/habit_form_sheet.dart';
+import '../../habits/application/habit_providers.dart';
 
 class CalendarDailyTimelineView extends ConsumerStatefulWidget {
   const CalendarDailyTimelineView({
@@ -407,10 +409,35 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                                 : null,
                           ),
                         ),
+                      ] else if (event.id.startsWith('habit:')) ...[
+                        GestureDetector(
+                          onTap: () async {
+                            final parts = event.id.split(':');
+                            final habitId = parts[1];
+                            final dateStr = parts[2];
+                            final date = DateTime.parse(dateStr);
+                            await ref.read(habitRepositoryProvider).toggleBinary(habitId, date);
+                          },
+                          child: Container(
+                            width: height < 50 ? 14 : 18,
+                            height: height < 50 ? 14 : 18,
+                            margin: const EdgeInsets.only(right: 6),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
+                              color: event.title.startsWith('✓ ')
+                                  ? Colors.white.withValues(alpha: 0.2)
+                                  : Colors.transparent,
+                            ),
+                            child: event.title.startsWith('✓ ')
+                                ? Icon(Icons.check, size: height < 50 ? 10 : 12, color: Colors.white)
+                                : null,
+                          ),
+                        ),
                       ],
                       Expanded(
                         child: Text(
-                          event.id.startsWith('task:') ? event.title.substring(2) : event.title,
+                          (event.id.startsWith('task:') || event.id.startsWith('habit:')) ? event.title.substring(2) : event.title,
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -470,6 +497,9 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
       }
       return palette.primary;
     }
+    if (colorId.startsWith('habit:')) {
+      return palette.secondary;
+    }
     final match = GoogleEventColor.options.firstWhere(
       (c) => c.id == colorId,
       orElse: () => const GoogleEventColor('0', 'Default', 0),
@@ -484,6 +514,12 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
       final task = await ref.read(taskRepositoryProvider).getTask(taskId);
       if (task != null && context.mounted) {
         showTaskFormSheet(context, listId: task.listId, existingTask: task);
+      }
+    } else if (event.id.startsWith('habit:')) {
+      final habitId = event.id.split(':')[1];
+      final habit = await ref.read(habitRepositoryProvider).getHabit(habitId);
+      if (habit != null && context.mounted) {
+        showHabitFormSheet(context, existingHabit: habit);
       }
     } else {
       showEventFormSheet(context, initialDay: event.start, existingEvent: event);

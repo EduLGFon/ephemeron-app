@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/local/database.dart';
 import '../../../data/local/database_provider.dart';
 import '../../alarms/application/alarm_scheduler_provider.dart';
 import '../../auth/google/google_auth_provider.dart';
@@ -7,6 +8,8 @@ import '../domain/calendar_event.dart';
 import '../data/calendar_repository.dart';
 import '../../tasks/application/task_providers.dart';
 import '../../tasks/data/task_repository.dart';
+import '../../habits/application/habit_providers.dart';
+import '../../habits/domain/habit_frequency.dart';
 
 final calendarRepositoryProvider = Provider<CalendarRepository>((ref) {
   return CalendarRepository(
@@ -66,7 +69,50 @@ final monthEventsProvider =
     );
   }).toList();
 
-  return [...events, ...taskEvents];
+  // Fetch local habits
+  final habitsAsync = ref.watch(calendarHabitsProvider);
+  final habitsList = habitsAsync.value ?? [];
+
+  // Fetch habit logs
+  final habitLogsAsync = ref.watch(calendarHabitLogsProvider);
+  final habitLogsList = habitLogsAsync.value ?? [];
+
+  final habitEvents = <CalendarEvent>[];
+  for (final habit in habitsList) {
+    if (habit.reminderHour != null && habit.reminderMinute != null) {
+      final frequency = HabitFrequency.decode(habit.frequencyConfig);
+      final logsForHabit = habitLogsList.where((l) => l.habitId == habit.id).toList();
+
+      for (var day = start; day.isBefore(end); day = day.add(const Duration(days: 1))) {
+        if (frequency.isDueOn(day, habitStartDate: habit.startDate)) {
+          final dayStr = DateTime(day.year, day.month, day.day);
+          final isCompleted = logsForHabit.any((l) {
+            final logDay = DateTime(l.date.year, l.date.month, l.date.day);
+            return logDay == dayStr && l.isCompleted;
+          });
+
+          final habitStart = DateTime(day.year, day.month, day.day, habit.reminderHour!, habit.reminderMinute!);
+          final habitEnd = habitStart.add(const Duration(minutes: 30));
+
+          final prefix = isCompleted ? '✓ ' : '☐ ';
+
+          habitEvents.add(
+            CalendarEvent(
+              id: 'habit:${habit.id}:${day.year}-${day.month}-${day.day}',
+              title: '$prefix${habit.name}',
+              description: 'Habit Goal: ${habit.goalType == 'binary' ? 'Binary' : '${habit.goalAmount} ${habit.goalUnit}'}',
+              start: habitStart,
+              end: habitEnd,
+              isAllDay: false,
+              colorId: 'habit:teal',
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  return [...events, ...taskEvents, ...habitEvents];
 });
 
 /// Derives a single day's events from whatever month is currently

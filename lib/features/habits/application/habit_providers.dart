@@ -56,3 +56,12 @@ final habitAlarmsRefreshProvider = FutureProvider<void>((ref) async {
   await ref.watch(alarmSchedulerInitProvider.future);
   await ref.watch(habitRepositoryProvider).refreshOneShotAlarms();
 });
+
+final calendarHabitsProvider = StreamProvider<List<Habit>>((ref) {
+  return ref.watch(habitRepositoryProvider).watchHabits();
+});
+
+final calendarHabitLogsProvider = StreamProvider<List<HabitLog>>((ref) {
+  final db = ref.watch(appDatabaseProvider);
+  return db.select(db.habitLogs).watch();
+});
