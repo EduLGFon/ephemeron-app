@@ -2,6 +2,7 @@ import 'dart:async' show unawaited;
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/app_config.dart';
@@ -279,6 +280,22 @@ class SettingsScreen extends ConsumerWidget {
                   ),
           ),
           actions: [
+            TextButton(
+              onPressed: () {
+                final text = DevLogger.logs.map((log) {
+                  final timeStr = "${log.time.hour.toString().padLeft(2, '0')}:${log.time.minute.toString().padLeft(2, '0')}:${log.time.second.toString().padLeft(2, '0')}";
+                  var msg = '[$timeStr] ${log.message}';
+                  if (log.error != null) msg += '\nError: ${log.error}';
+                  if (log.stackTrace != null) msg += '\nStackTrace: ${log.stackTrace}';
+                  return msg;
+                }).join('\n\n');
+                Clipboard.setData(ClipboardData(text: text));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Logs copied to clipboard')),
+                );
+              },
+              child: const Text('Copy Logs'),
+            ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Close'),

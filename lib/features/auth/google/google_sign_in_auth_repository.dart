@@ -47,7 +47,7 @@ class GoogleSignInAuthRepository extends GoogleAuthRepository {
     DevLogger.log("Initializing GoogleSignIn (kIsWeb: $kIsWeb)");
     try {
       await _instance.initialize(
-        clientId: kIsWeb ? AppConfig.googleWebClientId : AppConfig.googleAndroidClientId,
+        clientId: kIsWeb ? AppConfig.googleWebClientId : null,
         serverClientId: kIsWeb ? null : AppConfig.googleWebClientId,
       );
       DevLogger.log("GoogleSignIn initialized successfully.");
