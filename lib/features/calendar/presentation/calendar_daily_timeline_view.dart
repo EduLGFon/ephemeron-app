@@ -334,9 +334,12 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
               _dragCurrentEnd = null;
             });
 
+            final taskRepo = ref.read(taskRepositoryProvider);
+            final calendarRepo = ref.read(calendarRepositoryProvider);
+
             if (oldDraggingId.startsWith('task:')) {
               final taskId = oldDraggingId.substring(5);
-              await ref.read(taskRepositoryProvider).updateTask(
+              await taskRepo.updateTask(
                 taskId,
                 dueDate: Value(newStart),
                 dueHasTime: true,
@@ -347,9 +350,11 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                 start: newStart,
                 end: newEnd,
               );
-              await ref.read(calendarRepositoryProvider).updateEvent(updated);
+              await calendarRepo.updateEvent(updated);
             }
-            ref.invalidate(monthEventsProvider(DateTime(newStart.year, newStart.month, 1)));
+            if (mounted) {
+              ref.invalidate(monthEventsProvider(DateTime(newStart.year, newStart.month, 1)));
+            }
           }
         },
         child: Container(
