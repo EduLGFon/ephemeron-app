@@ -68,9 +68,9 @@ class GoogleSignInAuthRepository extends GoogleAuthRepository {
         _handleAuthEvent(event);
       },
       onError: (Object error, StackTrace stack) {
+        // Stream errors come from failed authenticate() calls, not from
+        // explicit sign-out events — don't treat them as sign-out.
         DevLogger.logError("GoogleSignIn event stream error", error, stack);
-        _currentAccount = null;
-        _accountController.add(null);
       },
     );
 
@@ -108,6 +108,14 @@ class GoogleSignInAuthRepository extends GoogleAuthRepository {
     _ensureInitialized();
     DevLogger.log("Starting Google Sign-In authenticate flow...");
     try {
+      // Clear any stale Credential Manager state before authenticating.
+      // Without this, Android throws [16] 'Account reauth failed' when a
+      // previous credential is cached but no longer valid.
+      try {
+        await _instance.signOut();
+      } catch (_) {
+        // Ignore — we only care about the fresh sign-in below.
+      }
       await _instance.authenticate();
       DevLogger.log("Google Sign-In authenticate flow call completed.");
     } on GoogleSignInException catch (e, stack) {

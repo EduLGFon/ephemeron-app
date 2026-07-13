@@ -1,6 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../features/auth/google/google_auth_provider.dart';
 import '../../features/auth/presentation/auth_screen.dart';
 import '../../presentation/shell/app_shell.dart';
 import '../../features/calendar/presentation/calendar_screen.dart';
@@ -21,16 +24,41 @@ import 'root_navigator_key.dart';
 /// Navigator key lives in root_navigator_key.dart — shared with
 /// alarm_scheduler.dart, see that file's usage for why.
 
+/// ChangeNotifier bridging Riverpod's googleAccountProvider stream to
+/// GoRouter's refreshListenable. Whenever auth state changes the router
+/// re-runs its redirect logic automatically.
+class _AuthNotifier extends ChangeNotifier {
+  _AuthNotifier(Ref ref) {
+    ref.listen(googleAccountProvider, (_, __) => notifyListeners());
+  }
+}
+
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final authNotifier = _AuthNotifier(ref);
+
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    // Auth screen shown first, deliberately not gated by a redirect yet
-    // (that needs a Listenable bridged from Riverpod's auth streams,
-    // which is its own focused piece of work — see the router file's
-    // top comment). For now "Continue" just navigates on regardless of
-    // auth state, same as a skip button.
     initialLocation: '/auth',
     debugLogDiagnostics: false,
+    refreshListenable: authNotifier,
+    redirect: (context, state) async {
+      final isOnAuth = state.matchedLocation == '/auth';
+
+      // While auth is still initializing, don't redirect yet — stay where we are.
+      final accountAsync = ref.read(googleAccountProvider);
+      if (accountAsync.isLoading) return null;
+
+      final isSignedIn = accountAsync.whenData((a) => a).value != null;
+
+      if (isSignedIn && isOnAuth) {
+        // Already authenticated — skip the auth screen and restore last screen.
+        final prefs = await SharedPreferences.getInstance();
+        final lastScreen = prefs.getString('settings.lastScreen') ?? '/calendar';
+        return lastScreen;
+      }
+
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/auth',
