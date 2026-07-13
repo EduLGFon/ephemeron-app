@@ -360,7 +360,13 @@ class CalendarRepository {
     }
 
     final api = await _api();
-    await api.events.delete(calendarId, eventId);
+    try {
+      await api.events.delete(calendarId, eventId);
+    } on gcal.DetailedApiRequestError catch (e) {
+      if (e.status != 404 && e.status != 410) {
+        rethrow;
+      }
+    }
     await (_db.delete(_db.cachedCalendarEvents)
           ..where((e) =>
               (e.id.equals(eventId) | e.recurringEventId.equals(eventId)) &

@@ -663,9 +663,9 @@ class _EventTile extends ConsumerWidget {
         if (choice == null) return;
 
         if (choice == RecurrenceDeleteType.onlyThis) {
-          await ref.read(calendarRepositoryProvider).deleteEvent(event.id);
+          await ref.read(calendarRepositoryProvider).deleteEvent(event.id, calendarId: event.calendarId);
         } else if (choice == RecurrenceDeleteType.all) {
-          await ref.read(calendarRepositoryProvider).deleteEvent(event.recurringEventId ?? event.id);
+          await ref.read(calendarRepositoryProvider).deleteEvent(event.recurringEventId ?? event.id, calendarId: event.calendarId);
         } else if (choice == RecurrenceDeleteType.thisAndAllAfter) {
           await ref.read(calendarRepositoryProvider).deleteThisAndFutureEvents(event);
         }
@@ -682,7 +682,7 @@ class _EventTile extends ConsumerWidget {
           isDestructive: true,
         );
         if (confirmed) {
-          await ref.read(calendarRepositoryProvider).deleteEvent(event.id);
+          await ref.read(calendarRepositoryProvider).deleteEvent(event.id, calendarId: event.calendarId);
           ref.invalidate(
             monthEventsProvider(DateTime(event.start.year, event.start.month, 1)),
           );
