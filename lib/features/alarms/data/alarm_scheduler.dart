@@ -174,11 +174,22 @@ class AlarmScheduler {
     if (android == null) return;
 
     await android.requestNotificationsPermission();
-    // USE_EXACT_ALARM (declared in the manifest, see README) does not
-    // need a runtime prompt on Android — only request this if you switch
-    // the manifest to the user-granted SCHEDULE_EXACT_ALARM instead.
     await android.requestExactAlarmsPermission();
-    await android.requestFullScreenIntentPermission();
+    // Note: requestFullScreenIntentPermission() is intentionally NOT called
+    // here. It opens the "Display over other apps" settings page and must
+    // only be triggered when the user is actually setting a medium/strong
+    // alarm (see requestFullScreenPermission() below).
+  }
+
+  /// Requests full-screen intent permission — only needed for
+  /// [AlarmPreset.medium] / [AlarmPreset.strong] / [AlarmPreset.constant].
+  /// Opens a system settings page on Android 14+, so only call this
+  /// immediately before a user action that requires it.
+  Future<void> requestFullScreenPermission() async {
+    if (kIsWeb || !Platform.isAndroid) return;
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    await android?.requestFullScreenIntentPermission();
   }
 
   /// Schedules one notification per offset (skipping any offset whose
