@@ -307,7 +307,7 @@ class CalendarRepository {
     } else {
       final start = DateTime(result.start.year, result.start.month - 1, 1);
       final end = DateTime(result.start.year, result.start.month + 3, 1);
-      unawaited(refreshEventsFromRemote(rangeStart: start, rangeEnd: end));
+      await refreshEventsFromRemote(rangeStart: start, rangeEnd: end);
     }
     return result;
   }
@@ -355,7 +355,7 @@ class CalendarRepository {
     } else {
       final start = DateTime(result.start.year, result.start.month - 1, 1);
       final end = DateTime(result.start.year, result.start.month + 3, 1);
-      unawaited(refreshEventsFromRemote(rangeStart: start, rangeEnd: end));
+      await refreshEventsFromRemote(rangeStart: start, rangeEnd: end);
     }
     return result;
   }
