@@ -4,6 +4,9 @@ import '../../calendar/application/calendar_providers.dart';
 import '../../tasks/application/task_providers.dart';
 import '../../../core/settings/app_settings_provider.dart';
 import '../../../core/utils/dev_logger.dart';
+import '../../auth/google/google_auth_provider.dart';
+import '../../../data/local/database_provider.dart';
+import 'package:drift/drift.dart';
 
 class SyncState {
   final bool isSyncing;
@@ -80,6 +83,10 @@ class SyncService extends Notifier<SyncState> {
         isSyncing: false,
         lastSyncedAt: DateTime.now(),
       );
+
+      // Reschedule the auto-sync timer to avoid useless syncs in a short time
+      final settings = ref.read(appSettingsProvider);
+      _setupTimer(settings.autoSync, settings.syncIntervalMinutes);
     } catch (e, stack) {
       DevLogger.logError("Sync failed", e, stack);
       state = state.copyWith(
@@ -92,4 +99,16 @@ class SyncService extends Notifier<SyncState> {
 
 final syncServiceProvider = NotifierProvider<SyncService, SyncState>(() {
   return SyncService();
+});
+
+final hasUnsyncedChangesProvider = StreamProvider<bool>((ref) {
+  final account = ref.watch(googleAccountProvider).value;
+  if (account == null) {
+    return Stream.value(false);
+  }
+  final db = ref.watch(appDatabaseProvider);
+  return (db.select(db.tasks)
+        ..where((t) => t.googleTaskId.isNull() & t.isDeleted.equals(false)))
+      .watch()
+      .map((tasks) => tasks.isNotEmpty);
 });

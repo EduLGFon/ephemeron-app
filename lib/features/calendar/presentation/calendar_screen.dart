@@ -23,6 +23,8 @@ import '../../habits/application/habit_providers.dart';
 import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
 import '../../tasks/domain/task_recurrence.dart';
 import '../../../presentation/widgets/recurrence_delete_dialog.dart';
+import '../../sync/application/sync_service.dart';
+import '../../auth/google/google_auth_provider.dart';
 import '../../../presentation/widgets/confirmation_dialog.dart';
 import 'package:drift/drift.dart' show Value;
 
@@ -73,6 +75,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final monthEventsAsync = ref.watch(monthEventsProvider(focusedMonth));
     final calendarView = ref.watch(calendarViewProvider);
 
+    final syncState = ref.watch(syncServiceProvider);
+    final account = ref.watch(googleAccountProvider).value;
+    final hasUnsynced = ref.watch(hasUnsyncedChangesProvider).value ?? false;
+    final Color titleColor;
+    if (account == null) {
+      titleColor = palette.text;
+    } else if (hasUnsynced) {
+      titleColor = Colors.grey;
+    } else {
+      titleColor = palette.primary;
+    }
+
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): () {
@@ -84,23 +98,40 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         child: Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: Text('Calendar', style: TextStyle(color: palette.text, fontWeight: FontWeight.bold)),
+        title: GestureDetector(
+          onTap: () {
+            ref.read(syncServiceProvider.notifier).sync();
+          },
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Calendar',
+                  style: TextStyle(
+                    color: titleColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (syncState.isSyncing) ...[
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: titleColor,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          IconButton(
-            tooltip: 'Sync now',
-            icon: monthEventsAsync.isLoading
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: palette.primary),
-                  )
-                : Icon(Icons.sync, color: palette.primary),
-            onPressed: monthEventsAsync.isLoading
-                ? null
-                : () => ref.invalidate(monthEventsProvider(focusedMonth)),
-          ),
           PopupMenuButton<CalendarView>(
             tooltip: 'Change view',
             icon: Icon(Icons.view_module, color: palette.primary),
