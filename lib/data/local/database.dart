@@ -106,9 +106,11 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(customSmartLists);
           }
           if (from < 14) {
-            await m.addColumn(cachedCalendarEvents, cachedCalendarEvents.recurrence);
-            await m.addColumn(cachedCalendarEvents, cachedCalendarEvents.recurringEventId);
-            await m.addColumn(cachedCalendarEvents, cachedCalendarEvents.originalStartTime);
+            // Since cachedCalendarEvents is a cache table, we can safely drop and recreate it
+            // to avoid duplicate column errors if the table was created while these columns
+            // were already present in the Dart code.
+            await m.drop(cachedCalendarEvents);
+            await m.createTable(cachedCalendarEvents);
           }
         },
       );

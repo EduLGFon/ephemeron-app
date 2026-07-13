@@ -32,6 +32,7 @@ class GoogleSignInAuthRepository extends GoogleAuthRepository {
   // .authorizationClient); _currentAccount is our stripped-down app model.
   GoogleSignInAccount? _signedInAccount;
   GoogleAuthAccount? _currentAccount;
+  static bool _gsiInitialized = false;
   bool _initialized = false;
 
   @override
@@ -44,16 +45,21 @@ class GoogleSignInAuthRepository extends GoogleAuthRepository {
   Future<void> initialize() async {
     if (_initialized) return;
 
-    DevLogger.log("Initializing GoogleSignIn (kIsWeb: $kIsWeb)");
-    try {
-      await _instance.initialize(
-        clientId: kIsWeb ? AppConfig.googleWebClientId : null,
-        serverClientId: kIsWeb ? null : AppConfig.googleWebClientId,
-      );
-      DevLogger.log("GoogleSignIn initialized successfully.");
-    } catch (e, stack) {
-      DevLogger.logError("GoogleSignIn initialization failed", e, stack);
-      rethrow;
+    if (!_gsiInitialized) {
+      DevLogger.log('Initializing GoogleSignIn (kIsWeb: $kIsWeb)');
+      try {
+        await _instance.initialize(
+          clientId: kIsWeb ? AppConfig.googleWebClientId : null,
+          serverClientId: kIsWeb ? null : AppConfig.googleWebClientId,
+        );
+        DevLogger.log('GoogleSignIn initialized successfully.');
+        _gsiInitialized = true;
+      } catch (e, stack) {
+        DevLogger.logError('GoogleSignIn initialization failed', e, stack);
+        rethrow;
+      }
+    } else {
+      DevLogger.log('GoogleSignIn already initialized globally.');
     }
 
     _eventSubscription = _instance.authenticationEvents.listen(
