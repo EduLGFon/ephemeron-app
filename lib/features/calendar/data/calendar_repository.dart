@@ -222,8 +222,9 @@ class CalendarRepository {
       await (_db.delete(_db.cachedCalendarEvents)
             ..where((e) =>
                 e.calendarId.equals('primary') &
-                e.start.isSmallerOrEqualValue(rangeEnd) &
-                e.end.isBiggerOrEqualValue(rangeStart)))
+                (e.recurrence.isNotNull() |
+                 (e.start.isSmallerOrEqualValue(rangeEnd) &
+                  e.end.isBiggerOrEqualValue(rangeStart)))))
           .go();
       await _cacheEvents(events, calendarId: 'primary');
     } else {
@@ -242,8 +243,9 @@ class CalendarRepository {
           await (_db.delete(_db.cachedCalendarEvents)
                 ..where((e) =>
                     e.calendarId.equals(calId) &
-                    e.start.isSmallerOrEqualValue(rangeEnd) &
-                    e.end.isBiggerOrEqualValue(rangeStart)))
+                    (e.recurrence.isNotNull() |
+                     (e.start.isSmallerOrEqualValue(rangeEnd) &
+                      e.end.isBiggerOrEqualValue(rangeStart)))))
               .go();
           await _cacheEvents(events, calendarId: calId);
           return events;
@@ -292,10 +294,17 @@ class CalendarRepository {
     if (preset != null) {
       await sharedPrefs.setString('event_alarm_preset_${result.id}', preset.name);
     }
-    await _cacheEvents([result]);
-    await _scheduleEventAlarms([result]);
+    final isRecurring = result.recurrence != null && result.recurrence!.isNotEmpty;
+    if (!isRecurring) {
+      await _cacheEvents([result]);
+      await _scheduleEventAlarms([result]);
 
-    if (result.attendees.isNotEmpty) {
+      if (result.attendees.isNotEmpty) {
+        final start = DateTime(result.start.year, result.start.month - 1, 1);
+        final end = DateTime(result.start.year, result.start.month + 3, 1);
+        unawaited(refreshEventsFromRemote(rangeStart: start, rangeEnd: end));
+      }
+    } else {
       final start = DateTime(result.start.year, result.start.month - 1, 1);
       final end = DateTime(result.start.year, result.start.month + 3, 1);
       unawaited(refreshEventsFromRemote(rangeStart: start, rangeEnd: end));
@@ -332,10 +341,18 @@ class CalendarRepository {
       sendUpdates: sendInvites ? 'all' : 'none',
     );
     final result = CalendarEvent.fromGoogle(updated, calendarId: event.calendarId);
-    await _cacheEvents([result]);
-    await _scheduleEventAlarms([result]);
 
-    if (result.attendees.isNotEmpty) {
+    final isRecurring = result.recurrence != null && result.recurrence!.isNotEmpty;
+    if (!isRecurring) {
+      await _cacheEvents([result]);
+      await _scheduleEventAlarms([result]);
+
+      if (result.attendees.isNotEmpty) {
+        final start = DateTime(result.start.year, result.start.month - 1, 1);
+        final end = DateTime(result.start.year, result.start.month + 3, 1);
+        unawaited(refreshEventsFromRemote(rangeStart: start, rangeEnd: end));
+      }
+    } else {
       final start = DateTime(result.start.year, result.start.month - 1, 1);
       final end = DateTime(result.start.year, result.start.month + 3, 1);
       unawaited(refreshEventsFromRemote(rangeStart: start, rangeEnd: end));
