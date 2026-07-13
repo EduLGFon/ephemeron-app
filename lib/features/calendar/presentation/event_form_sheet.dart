@@ -738,8 +738,8 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                   ],
                 ]),
 
-                // ── 4+. RSVP (editing existing events only) ───────────────
-                if (_isEditing) ...[
+                // ── 4+. RSVP (editing existing events with other attendees only) ───────────────
+                if (_isEditing && _attendees.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   _buildRsvpSection(palette),
                 ],

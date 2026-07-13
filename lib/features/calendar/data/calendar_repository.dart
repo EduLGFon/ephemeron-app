@@ -370,7 +370,9 @@ class CalendarRepository {
     }
     if (!foundSelf) {
       // If the user is not in the attendee list, add them
+      final selfEmail = _authRepository.currentAccount?.email;
       attendees.add(gcal.EventAttendee(
+        email: selfEmail,
         responseStatus: status.googleStatus,
         self: true,
       ));
