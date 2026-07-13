@@ -292,16 +292,8 @@ class CalendarRepository {
     if (preset != null) {
       await sharedPrefs.setString('event_alarm_preset_${result.id}', preset.name);
     }
-
-    final isRecurring = result.recurrence != null && result.recurrence!.isNotEmpty;
-    if (!isRecurring) {
-      await _cacheEvents([result]);
-      await _scheduleEventAlarms([result]);
-    } else {
-      final start = DateTime(result.start.year, result.start.month - 1, 1);
-      final end = DateTime(result.start.year, result.start.month + 3, 1);
-      unawaited(refreshEventsFromRemote(rangeStart: start, rangeEnd: end));
-    }
+    await _cacheEvents([result]);
+    await _scheduleEventAlarms([result]);
     return result;
   }
 
@@ -324,6 +316,11 @@ class CalendarRepository {
     if (preset != null) {
       await sharedPrefs.setString('event_alarm_preset_${event.id}', preset.name);
     }
+
+    final existing = await getEvent(event.calendarId, event.id);
+    final dateChanged = existing != null &&
+        (existing.start != event.start || existing.end != event.end);
+
     final localTimeZone = await _getLocalTimeZone();
     final updated = await api.events.update(
       event.toGoogle(localTimeZone: localTimeZone),
@@ -333,12 +330,10 @@ class CalendarRepository {
       sendUpdates: sendInvites ? 'all' : 'none',
     );
     final result = CalendarEvent.fromGoogle(updated, calendarId: event.calendarId);
+    await _cacheEvents([result]);
+    await _scheduleEventAlarms([result]);
 
-    final isRecurring = result.recurrence != null && result.recurrence!.isNotEmpty;
-    if (!isRecurring) {
-      await _cacheEvents([result]);
-      await _scheduleEventAlarms([result]);
-    } else {
+    if (result.attendees.isNotEmpty && dateChanged) {
       final start = DateTime(result.start.year, result.start.month - 1, 1);
       final end = DateTime(result.start.year, result.start.month + 3, 1);
       unawaited(refreshEventsFromRemote(rangeStart: start, rangeEnd: end));
@@ -379,12 +374,20 @@ class CalendarRepository {
       ));
     }
     gcalEvent.attendees = attendees;
-    await api.events.patch(
+    final updated = await api.events.patch(
       gcalEvent,
       event.calendarId,
       event.id,
       sendUpdates: sendInvites ? 'all' : 'none',
     );
+    final result = CalendarEvent.fromGoogle(updated, calendarId: event.calendarId);
+    await _cacheEvents([result]);
+
+    if (result.attendees.isNotEmpty) {
+      final start = DateTime(result.start.year, result.start.month - 1, 1);
+      final end = DateTime(result.start.year, result.start.month + 3, 1);
+      unawaited(refreshEventsFromRemote(rangeStart: start, rangeEnd: end));
+    }
   }
 
   Future<void> deleteEvent(String eventId, {String calendarId = 'primary'}) async {
