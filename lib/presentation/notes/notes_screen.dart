@@ -665,6 +665,7 @@ class _NoteCardContent extends StatelessWidget {
               child: ClipRect(
                 child: MarkdownBody(
                   data: note.content,
+                  softLineBreak: true,
                   styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
                     p: TextStyle(color: palette.text.withValues(alpha: 0.8), fontSize: 11, height: 1.4),
                     h1: TextStyle(color: palette.text, fontSize: 14, fontWeight: FontWeight.bold),

@@ -318,6 +318,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
                               )
                             : MarkdownBody(
                                 data: _descriptionController.text,
+                                softLineBreak: true,
                                 styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
                                   p: TextStyle(color: palette.text, fontSize: 14),
                                 ),

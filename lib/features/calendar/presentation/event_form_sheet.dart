@@ -744,6 +744,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                       ? Text('No notes. Click to add.', style: TextStyle(color: palette.text.withValues(alpha: 0.3), fontStyle: FontStyle.italic, fontSize: 13))
                       : MarkdownBody(
                           data: _notesController.text,
+                          softLineBreak: true,
                           styleSheet: MarkdownStyleSheet(
                             p: TextStyle(color: palette.text, fontSize: 13),
                             h1: TextStyle(color: palette.text, fontSize: 18, fontWeight: FontWeight.bold),

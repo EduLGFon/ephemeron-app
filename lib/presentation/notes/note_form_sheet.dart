@@ -217,6 +217,7 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
                           )
                         : MarkdownBody(
                             data: _contentController.text,
+                            softLineBreak: true,
                             styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
                               p: TextStyle(color: palette.text, fontSize: 14),
                             ),
