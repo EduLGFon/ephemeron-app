@@ -213,7 +213,7 @@ class CalendarEvent {
     );
   }
 
-  gcal.Event toGoogle() {
+  gcal.Event toGoogle({String? localTimeZone}) {
     return gcal.Event(
       summary: title,
       description: description,
@@ -221,10 +221,16 @@ class CalendarEvent {
       colorId: colorId,
       start: isAllDay
           ? gcal.EventDateTime(date: DateTime(start.year, start.month, start.day))
-          : gcal.EventDateTime(dateTime: start),
+          : gcal.EventDateTime(
+              dateTime: start,
+              timeZone: localTimeZone,
+            ),
       end: isAllDay
           ? gcal.EventDateTime(date: DateTime(end.year, end.month, end.day))
-          : gcal.EventDateTime(dateTime: end),
+          : gcal.EventDateTime(
+              dateTime: end,
+              timeZone: localTimeZone,
+            ),
       reminders: reminderMinutes.isEmpty
           ? gcal.EventReminders(useDefault: true)
           : gcal.EventReminders(
@@ -245,7 +251,10 @@ class CalendarEvent {
           ? null
           : (isAllDay
               ? gcal.EventDateTime(date: DateTime(originalStartTime!.year, originalStartTime!.month, originalStartTime!.day))
-              : gcal.EventDateTime(dateTime: originalStartTime)),
+              : gcal.EventDateTime(
+                  dateTime: originalStartTime,
+                  timeZone: localTimeZone,
+                )),
     );
   }
 }

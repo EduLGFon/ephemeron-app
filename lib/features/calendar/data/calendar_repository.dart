@@ -12,6 +12,7 @@ import '../../alarms/domain/reminder_offset.dart';
 import '../../../core/settings/shared_preferences_provider.dart';
 import '../../auth/google/google_auth_repository.dart';
 import '../domain/calendar_event.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 
 class CalendarNotConnectedException implements Exception {
   const CalendarNotConnectedException();
@@ -52,6 +53,17 @@ class CalendarRepository {
       inner: http.Client(),
     );
     return gcal.CalendarApi(client);
+  }
+
+  Future<String?> _getLocalTimeZone() async {
+    try {
+      dynamic localTimezone = await FlutterTimezone.getLocalTimezone();
+      return (localTimezone is String)
+          ? localTimezone
+          : localTimezone.identifier as String;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _cacheEvents(List<CalendarEvent> events, {String? calendarId}) async {
@@ -255,7 +267,8 @@ class CalendarRepository {
     }
 
     final api = await _api();
-    final body = event.toGoogle();
+    final localTimeZone = await _getLocalTimeZone();
+    final body = event.toGoogle(localTimeZone: localTimeZone);
     final created = await api.events.insert(
       body,
       event.calendarId,
@@ -290,8 +303,9 @@ class CalendarRepository {
     if (preset != null) {
       await sharedPrefs.setString('event_alarm_preset_${event.id}', preset.name);
     }
+    final localTimeZone = await _getLocalTimeZone();
     final updated = await api.events.update(
-      event.toGoogle(),
+      event.toGoogle(localTimeZone: localTimeZone),
       event.calendarId,
       event.id,
       conferenceDataVersion: addVideoConference ? 1 : null,
