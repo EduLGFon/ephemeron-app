@@ -91,10 +91,16 @@ class CalendarRepository {
 
     return rows.map((row) {
       final reminderList = row.reminderMinutes != null
-          ? (jsonDecode(row.reminderMinutes!) as List<dynamic>).cast<int>().toList()
+          ? (jsonDecode(row.reminderMinutes!) as List<dynamic>?)
+                  ?.whereType<int>()
+                  .toList() ??
+              const <int>[]
           : const <int>[];
       final attendeeList = row.attendees != null
-          ? (jsonDecode(row.attendees!) as List<dynamic>).cast<String>().toList()
+          ? (jsonDecode(row.attendees!) as List<dynamic>?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              const <String>[]
           : const <String>[];
 
       return CalendarEvent(
@@ -113,7 +119,7 @@ class CalendarRepository {
         videoConferenceLink: row.videoConferenceLink,
         selfResponseStatus: RsvpStatus.values.byName(row.selfResponseStatus),
         recurrence: row.recurrence != null
-            ? (jsonDecode(row.recurrence!) as List<dynamic>).cast<String>().toList()
+            ? (jsonDecode(row.recurrence!) as List<dynamic>?)?.map((e) => e.toString()).toList()
             : null,
         recurringEventId: row.recurringEventId,
         originalStartTime: row.originalStartTime,
@@ -126,8 +132,14 @@ class CalendarRepository {
     required DateTime rangeEnd,
   }) async {
     if (_authRepository.currentAccount == null) {
-      // Mock events for Phase 3 UI testing until Phase 4 sync is built
-      return [
+      final cached = await _loadCachedEvents(rangeStart, rangeEnd);
+      if (cached.isNotEmpty) {
+        cached.sort((a, b) => a.start.compareTo(b.start));
+        await _scheduleEventAlarms(cached);
+        return cached;
+      }
+
+      final mocks = [
         CalendarEvent(
           id: 'mock_1',
           title: 'Design Review',
@@ -135,7 +147,7 @@ class CalendarRepository {
           end: DateTime.now().add(const Duration(hours: 2)),
           isAllDay: false,
           colorId: '3', // Grape
-          tags: ['Work', 'Design'],
+          tags: const ['Work', 'Design'],
         ),
         CalendarEvent(
           id: 'mock_2',
@@ -144,7 +156,7 @@ class CalendarRepository {
           end: DateTime.now().add(const Duration(days: 1, hours: -1)),
           isAllDay: false,
           colorId: '11', // Tomato
-          tags: ['Personal', 'Health'],
+          tags: const ['Personal', 'Health'],
         ),
         CalendarEvent(
           id: 'mock_3',
@@ -153,9 +165,11 @@ class CalendarRepository {
           end: DateTime.now().add(const Duration(days: 5)),
           isAllDay: true,
           colorId: '7', // Peacock
-          tags: ['Work'],
+          tags: const ['Work'],
         ),
       ];
+      await _cacheEvents(mocks);
+      return mocks;
     }
 
     // Try loading from local cache first
@@ -228,6 +242,18 @@ class CalendarRepository {
     bool sendInvites = false,
     bool addVideoConference = false,
   }) async {
+    if (_authRepository.currentAccount == null) {
+      final mockEvent = event.copyWith(
+        id: 'mock_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      if (preset != null) {
+        await sharedPrefs.setString('event_alarm_preset_${mockEvent.id}', preset.name);
+      }
+      await _cacheEvents([mockEvent]);
+      await _scheduleEventAlarms([mockEvent]);
+      return mockEvent;
+    }
+
     final api = await _api();
     final body = event.toGoogle();
     final created = await api.events.insert(
@@ -251,6 +277,15 @@ class CalendarRepository {
     bool sendInvites = false,
     bool addVideoConference = false,
   }) async {
+    if (_authRepository.currentAccount == null) {
+      if (preset != null) {
+        await sharedPrefs.setString('event_alarm_preset_${event.id}', preset.name);
+      }
+      await _cacheEvents([event]);
+      await _scheduleEventAlarms([event]);
+      return event;
+    }
+
     final api = await _api();
     if (preset != null) {
       await sharedPrefs.setString('event_alarm_preset_${event.id}', preset.name);
@@ -274,6 +309,12 @@ class CalendarRepository {
     RsvpStatus status, {
     bool sendInvites = false,
   }) async {
+    if (_authRepository.currentAccount == null) {
+      final updated = event.copyWith(selfResponseStatus: status);
+      await _cacheEvents([updated]);
+      return;
+    }
+
     final api = await _api();
     // We need to patch the self-attendee's responseStatus.
     // The safest way is to fetch the full event, mutate the self attendee, and patch.
@@ -304,6 +345,20 @@ class CalendarRepository {
   }
 
   Future<void> deleteEvent(String eventId, {String calendarId = 'primary'}) async {
+    if (_authRepository.currentAccount == null) {
+      await (_db.delete(_db.cachedCalendarEvents)
+            ..where((e) =>
+                (e.id.equals(eventId) | e.recurringEventId.equals(eventId)) &
+                e.calendarId.equals(calendarId)))
+          .go();
+      final allPossibleIds = [
+        for (final offset in ReminderOffset.presets)
+          Object.hash(eventId, offset.presetIndex) & 0x7FFFFFFF,
+      ];
+      await _alarmScheduler.cancelByIds(allPossibleIds);
+      return;
+    }
+
     final api = await _api();
     await api.events.delete(calendarId, eventId);
     await (_db.delete(_db.cachedCalendarEvents)
@@ -327,6 +382,17 @@ class CalendarRepository {
     final parentId = event.recurringEventId;
     if (parentId == null) {
       await deleteEvent(event.id, calendarId: event.calendarId);
+      return;
+    }
+
+    if (_authRepository.currentAccount == null) {
+      // Mock/Offline mode deletion of this and all future events
+      await (_db.delete(_db.cachedCalendarEvents)
+            ..where((e) =>
+                e.calendarId.equals(event.calendarId) &
+                (e.recurringEventId.equals(parentId) | e.id.equals(parentId)) &
+                e.start.isBiggerOrEqualValue(event.start)))
+          .go();
       return;
     }
 
@@ -378,12 +444,55 @@ class CalendarRepository {
   /// throws (NotConnected or 404), returns null.
   Future<CalendarEvent?> getEvent(String calendarId, String eventId) async {
     try {
-      final api = await _api();
-      final gcalEvent = await api.events.get(calendarId, eventId);
-      return CalendarEvent.fromGoogle(gcalEvent, calendarId: calendarId);
+      if (_authRepository.currentAccount != null) {
+        final api = await _api();
+        final gcalEvent = await api.events.get(calendarId, eventId);
+        return CalendarEvent.fromGoogle(gcalEvent, calendarId: calendarId);
+      }
     } catch (_) {
-      return null;
+      // Fallback to local DB check below
     }
+
+    final rows = await (_db.select(_db.cachedCalendarEvents)
+          ..where((e) => e.id.equals(eventId) & e.calendarId.equals(calendarId)))
+        .get();
+    if (rows.isNotEmpty) {
+      final row = rows.first;
+      final reminderList = row.reminderMinutes != null
+          ? (jsonDecode(row.reminderMinutes!) as List<dynamic>?)
+                  ?.whereType<int>()
+                  .toList() ??
+              const <int>[]
+          : const <int>[];
+      final attendeeList = row.attendees != null
+          ? (jsonDecode(row.attendees!) as List<dynamic>?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              const <String>[]
+          : const <String>[];
+      return CalendarEvent(
+        id: row.id,
+        calendarId: row.calendarId,
+        title: row.title,
+        description: row.description,
+        location: row.location,
+        start: row.start,
+        end: row.end,
+        isAllDay: row.isAllDay,
+        colorId: row.colorId,
+        reminderMinutes: reminderList,
+        attendees: attendeeList,
+        hasVideoConference: row.hasVideoConference,
+        videoConferenceLink: row.videoConferenceLink,
+        selfResponseStatus: RsvpStatus.values.byName(row.selfResponseStatus),
+        recurrence: row.recurrence != null
+            ? (jsonDecode(row.recurrence!) as List<dynamic>?)?.map((e) => e.toString()).toList()
+            : null,
+        recurringEventId: row.recurringEventId,
+        originalStartTime: row.originalStartTime,
+      );
+    }
+    return null;
   }
 
   Future<void> _scheduleEventAlarms(List<CalendarEvent> events) async {
