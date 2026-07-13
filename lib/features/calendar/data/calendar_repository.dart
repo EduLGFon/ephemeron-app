@@ -146,44 +146,10 @@ class CalendarRepository {
     required DateTime rangeEnd,
   }) async {
     if (_authRepository.currentAccount == null) {
-      final cached = await _loadCachedEvents(rangeStart, rangeEnd);
-      if (cached.isNotEmpty) {
-        cached.sort((a, b) => a.start.compareTo(b.start));
-        await _scheduleEventAlarms(cached);
-        return cached;
-      }
-
-      final mocks = [
-        CalendarEvent(
-          id: 'mock_1',
-          title: 'Design Review',
-          start: DateTime.now().add(const Duration(hours: 1)),
-          end: DateTime.now().add(const Duration(hours: 2)),
-          isAllDay: false,
-          colorId: '3', // Grape
-          tags: const ['Work', 'Design'],
-        ),
-        CalendarEvent(
-          id: 'mock_2',
-          title: 'Dentist Appointment',
-          start: DateTime.now().add(const Duration(days: 1, hours: -2)),
-          end: DateTime.now().add(const Duration(days: 1, hours: -1)),
-          isAllDay: false,
-          colorId: '11', // Tomato
-          tags: const ['Personal', 'Health'],
-        ),
-        CalendarEvent(
-          id: 'mock_3',
-          title: 'Company Retreat',
-          start: DateTime.now().add(const Duration(days: 3)),
-          end: DateTime.now().add(const Duration(days: 5)),
-          isAllDay: true,
-          colorId: '7', // Peacock
-          tags: const ['Work'],
-        ),
-      ];
-      await _cacheEvents(mocks);
-      return mocks;
+      await (_db.delete(_db.cachedCalendarEvents)
+            ..where((e) => e.id.like('mock_%')))
+          .go();
+      return const [];
     }
 
     // Try loading from local cache first
@@ -230,11 +196,12 @@ class CalendarRepository {
       await _cacheEvents(events, calendarId: 'primary');
     } else {
       final futures = calendars.map((cal) async {
-        final calId = cal.id;
-        if (calId == null) return <CalendarEvent>[];
+        final rawCalId = cal.id;
+        if (rawCalId == null) return <CalendarEvent>[];
+        final calId = cal.primary == true ? 'primary' : rawCalId;
         try {
           final result = await api.events.list(
-            calId,
+            rawCalId,
             timeMin: rangeStart.toUtc(),
             timeMax: rangeEnd.toUtc(),
             singleEvents: true,
@@ -271,15 +238,7 @@ class CalendarRepository {
     bool addVideoConference = false,
   }) async {
     if (_authRepository.currentAccount == null) {
-      final mockEvent = event.copyWith(
-        id: 'mock_${DateTime.now().millisecondsSinceEpoch}',
-      );
-      if (preset != null) {
-        await sharedPrefs.setString('event_alarm_preset_${mockEvent.id}', preset.name);
-      }
-      await _cacheEvents([mockEvent]);
-      await _scheduleEventAlarms([mockEvent]);
-      return mockEvent;
+      throw const CalendarNotConnectedException();
     }
 
     final api = await _api();
@@ -320,12 +279,7 @@ class CalendarRepository {
     bool addVideoConference = false,
   }) async {
     if (_authRepository.currentAccount == null) {
-      if (preset != null) {
-        await sharedPrefs.setString('event_alarm_preset_${event.id}', preset.name);
-      }
-      await _cacheEvents([event]);
-      await _scheduleEventAlarms([event]);
-      return event;
+      throw const CalendarNotConnectedException();
     }
 
     final api = await _api();
@@ -368,9 +322,7 @@ class CalendarRepository {
     bool sendInvites = false,
   }) async {
     if (_authRepository.currentAccount == null) {
-      final updated = event.copyWith(selfResponseStatus: status);
-      await _cacheEvents([updated]);
-      return;
+      throw const CalendarNotConnectedException();
     }
 
     final api = await _api();
@@ -414,17 +366,7 @@ class CalendarRepository {
 
   Future<void> deleteEvent(String eventId, {String calendarId = 'primary'}) async {
     if (_authRepository.currentAccount == null) {
-      await (_db.delete(_db.cachedCalendarEvents)
-            ..where((e) =>
-                (e.id.equals(eventId) | e.recurringEventId.equals(eventId)) &
-                e.calendarId.equals(calendarId)))
-          .go();
-      final allPossibleIds = [
-        for (final offset in ReminderOffset.presets)
-          Object.hash(eventId, offset.presetIndex) & 0x7FFFFFFF,
-      ];
-      await _alarmScheduler.cancelByIds(allPossibleIds);
-      return;
+      throw const CalendarNotConnectedException();
     }
 
     final api = await _api();
@@ -470,14 +412,7 @@ class CalendarRepository {
     }
 
     if (_authRepository.currentAccount == null) {
-      // Mock/Offline mode deletion of this and all future events
-      await (_db.delete(_db.cachedCalendarEvents)
-            ..where((e) =>
-                e.calendarId.equals(event.calendarId) &
-                (e.recurringEventId.equals(parentId) | e.id.equals(parentId)) &
-                e.start.isBiggerOrEqualValue(event.start)))
-          .go();
-      return;
+      throw const CalendarNotConnectedException();
     }
 
     final parentEvent = await getEvent(event.calendarId, parentId);

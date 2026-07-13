@@ -21,6 +21,7 @@ import '../../notes/application/notes_providers.dart';
 import '../../tags/presentation/tag_autocomplete_field.dart';
 import '../application/calendar_providers.dart';
 import '../domain/calendar_event.dart';
+import '../data/calendar_repository.dart';
 import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
 import '../../../../presentation/widgets/confirmation_dialog.dart';
 import '../../../../presentation/widgets/recurrence_delete_dialog.dart';
@@ -1431,6 +1432,16 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
       ref.invalidate(monthEventsProvider(DateTime(_end.year, _end.month, 1)));
       await SessionRestore.clearDraftValues('event', widget.existingEvent?.id);
       if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        String msg = 'Failed to save event: $e';
+        if (e is CalendarNotConnectedException) {
+          msg = 'Calendar is not connected. Please log in in Settings.';
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg)),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
