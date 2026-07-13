@@ -84,12 +84,13 @@ class FocusTimerController extends Notifier<FocusTimerState> {
     if (state.keepScreenOn) await WakelockPlus.enable();
 
     final scheduler = ref.read(alarmSchedulerProvider);
+    final isPomo = state.mode == FocusMode.pomodoro;
     await scheduler.showOngoingNotification(
       id: _ongoingNotificationId,
-      title: state.mode == FocusMode.pomodoro
-          ? 'Focus (Pomodoro)'
-          : 'Focus session',
+      title: isPomo ? 'Focus (Pomodoro)' : 'Focus session',
       startedAt: now,
+      isCountdown: isPomo,
+      duration: isPomo ? (state.pomodoroTarget - state.elapsed) : null,
     );
 
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());

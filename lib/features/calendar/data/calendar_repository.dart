@@ -73,6 +73,9 @@ class CalendarRepository {
           hasVideoConference: Value(e.hasVideoConference),
           videoConferenceLink: Value(e.videoConferenceLink),
           selfResponseStatus: Value(e.selfResponseStatus.name),
+          recurrence: Value(e.recurrence != null ? jsonEncode(e.recurrence) : null),
+          recurringEventId: Value(e.recurringEventId),
+          originalStartTime: Value(e.originalStartTime),
         ),
         mode: InsertMode.insertOrReplace,
       );
@@ -109,6 +112,11 @@ class CalendarRepository {
         hasVideoConference: row.hasVideoConference,
         videoConferenceLink: row.videoConferenceLink,
         selfResponseStatus: RsvpStatus.values.byName(row.selfResponseStatus),
+        recurrence: row.recurrence != null
+            ? (jsonDecode(row.recurrence!) as List<dynamic>).cast<String>().toList()
+            : null,
+        recurringEventId: row.recurringEventId,
+        originalStartTime: row.originalStartTime,
       );
     }).toList();
   }
@@ -298,7 +306,11 @@ class CalendarRepository {
   Future<void> deleteEvent(String eventId, {String calendarId = 'primary'}) async {
     final api = await _api();
     await api.events.delete(calendarId, eventId);
-    await (_db.delete(_db.cachedCalendarEvents)..where((e) => e.id.equals(eventId) & e.calendarId.equals(calendarId))).go();
+    await (_db.delete(_db.cachedCalendarEvents)
+          ..where((e) =>
+              (e.id.equals(eventId) | e.recurringEventId.equals(eventId)) &
+              e.calendarId.equals(calendarId)))
+        .go();
     // Cancel whatever alarms were computed for this event last time it
     // was listed — safe even if none were actually scheduled, since
     // AlarmScheduler.cancelByIds no-ops on IDs that aren't pending.
@@ -309,6 +321,57 @@ class CalendarRepository {
         Object.hash(eventId, offset.presetIndex) & 0x7FFFFFFF,
     ];
     await _alarmScheduler.cancelByIds(allPossibleIds);
+  }
+
+  Future<void> deleteThisAndFutureEvents(CalendarEvent event) async {
+    final parentId = event.recurringEventId;
+    if (parentId == null) {
+      await deleteEvent(event.id, calendarId: event.calendarId);
+      return;
+    }
+
+    final parentEvent = await getEvent(event.calendarId, parentId);
+    if (parentEvent == null) return;
+
+    final untilTime = event.start.subtract(const Duration(seconds: 1)).toUtc();
+
+    final newRecurrence = <String>[];
+    if (parentEvent.recurrence != null) {
+      for (final rrule in parentEvent.recurrence!) {
+        if (rrule.startsWith('RRULE:')) {
+          final parts = rrule.substring(6).split(';');
+          final newParts = parts.where((part) => !part.startsWith('COUNT=') && !part.startsWith('UNTIL=')).toList();
+
+          final formattedUntil = '${untilTime.year.toString().padLeft(4, '0')}'
+              '${untilTime.month.toString().padLeft(2, '0')}'
+              '${untilTime.day.toString().padLeft(2, '0')}T'
+              '${untilTime.hour.toString().padLeft(2, '0')}'
+              '${untilTime.minute.toString().padLeft(2, '0')}'
+              '${untilTime.second.toString().padLeft(2, '0')}Z';
+
+          newParts.add('UNTIL=$formattedUntil');
+          newRecurrence.add('RRULE:${newParts.join(';')}');
+        } else {
+          newRecurrence.add(rrule);
+        }
+      }
+    }
+
+    if (newRecurrence.isEmpty) {
+      await deleteEvent(parentId, calendarId: event.calendarId);
+      return;
+    }
+
+    final updatedParent = parentEvent.copyWith(recurrence: newRecurrence);
+    await updateEvent(updatedParent);
+
+    // Clean up local cache for all instances from this series starting on or after this event
+    await (_db.delete(_db.cachedCalendarEvents)
+          ..where((e) =>
+              e.calendarId.equals(event.calendarId) &
+              (e.recurringEventId.equals(parentId) | e.id.equals(parentId)) &
+              e.start.isBiggerOrEqualValue(event.start)))
+        .go();
   }
 
   /// Fetch a single event by id. Tries [calendarId] first; if that

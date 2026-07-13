@@ -23,6 +23,7 @@ import '../application/calendar_providers.dart';
 import '../domain/calendar_event.dart';
 import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
 import '../../../../presentation/widgets/confirmation_dialog.dart';
+import '../../../../presentation/widgets/recurrence_delete_dialog.dart';
 
 /// Google Calendar description hard cap (bytes before base64 encoding overhead).
 /// Anything beyond this is stored locally in a Note only.
@@ -122,6 +123,122 @@ class RecurrenceConfig {
       untilDate: untilDate ?? this.untilDate,
     );
   }
+
+  List<String> toRruleList(DateTime start) {
+    if (type == RecurrenceType.none) return const [];
+    final parts = <String>[];
+    switch (type) {
+      case RecurrenceType.daily:
+        parts.add('FREQ=DAILY');
+        if (interval > 1) parts.add('INTERVAL=$interval');
+        break;
+      case RecurrenceType.weekly:
+        parts.add('FREQ=WEEKLY');
+        if (interval > 1) parts.add('INTERVAL=$interval');
+        break;
+      case RecurrenceType.monthly:
+        parts.add('FREQ=MONTHLY');
+        if (interval > 1) parts.add('INTERVAL=$interval');
+        if (monthlyMode == MonthlyRepeatMode.dayOfWeek) {
+          final ordinal = ((start.day - 1) ~/ 7) + 1;
+          final weekdayMap = {1: 'MO', 2: 'TU', 3: 'WE', 4: 'TH', 5: 'FR', 6: 'SA', 7: 'SU'};
+          final weekdayStr = weekdayMap[start.weekday];
+          parts.add('BYDAY=$ordinal$weekdayStr');
+        } else {
+          parts.add('BYMONTHDAY=${start.day}');
+        }
+        break;
+      case RecurrenceType.yearly:
+        parts.add('FREQ=YEARLY');
+        if (interval > 1) parts.add('INTERVAL=$interval');
+        break;
+      case RecurrenceType.none:
+        return const [];
+    }
+
+    if (duration == RepeatDuration.specificTimes) {
+      parts.add('COUNT=$repeatTimes');
+    } else if (duration == RepeatDuration.until && untilDate != null) {
+      final utcUntil = untilDate!.toUtc();
+      final formatted = '${utcUntil.year.toString().padLeft(4, '0')}'
+          '${utcUntil.month.toString().padLeft(2, '0')}'
+          '${utcUntil.day.toString().padLeft(2, '0')}T'
+          '${utcUntil.hour.toString().padLeft(2, '0')}'
+          '${utcUntil.minute.toString().padLeft(2, '0')}'
+          '${utcUntil.second.toString().padLeft(2, '0')}Z';
+      parts.add('UNTIL=$formatted');
+    }
+
+    return ['RRULE:${parts.join(';')}'];
+  }
+
+  static RecurrenceConfig fromRruleList(List<String>? rruleList) {
+    if (rruleList == null || rruleList.isEmpty) return const RecurrenceConfig();
+
+    final rruleLine = rruleList.firstWhere((line) => line.startsWith('RRULE:'), orElse: () => '');
+    if (rruleLine.isEmpty) return const RecurrenceConfig();
+
+    final rruleContent = rruleLine.substring(6);
+    final parts = rruleContent.split(';');
+    final map = <String, String>{};
+    for (final part in parts) {
+      final kv = part.split('=');
+      if (kv.length == 2) {
+        map[kv[0].toUpperCase()] = kv[1];
+      }
+    }
+
+    final freq = map['FREQ'];
+    if (freq == null) return const RecurrenceConfig();
+
+    RecurrenceType type = RecurrenceType.none;
+    if (freq == 'DAILY') type = RecurrenceType.daily;
+    else if (freq == 'WEEKLY') type = RecurrenceType.weekly;
+    else if (freq == 'MONTHLY') type = RecurrenceType.monthly;
+    else if (freq == 'YEARLY') type = RecurrenceType.yearly;
+
+    if (type == RecurrenceType.none) return const RecurrenceConfig();
+
+    final interval = int.tryParse(map['INTERVAL'] ?? '') ?? 1;
+
+    MonthlyRepeatMode monthlyMode = MonthlyRepeatMode.dayOfMonth;
+    if (type == RecurrenceType.monthly) {
+      if (map.containsKey('BYDAY')) {
+        monthlyMode = MonthlyRepeatMode.dayOfWeek;
+      } else {
+        monthlyMode = MonthlyRepeatMode.dayOfMonth;
+      }
+    }
+
+    RepeatDuration duration = RepeatDuration.forever;
+    int repeatTimes = 10;
+    DateTime? untilDate;
+
+    if (map.containsKey('COUNT')) {
+      duration = RepeatDuration.specificTimes;
+      repeatTimes = int.tryParse(map['COUNT']!) ?? 10;
+    } else if (map.containsKey('UNTIL')) {
+      duration = RepeatDuration.until;
+      final untilStr = map['UNTIL']!;
+      if (untilStr.length >= 8) {
+        final year = int.tryParse(untilStr.substring(0, 4));
+        final month = int.tryParse(untilStr.substring(4, 6));
+        final day = int.tryParse(untilStr.substring(6, 8));
+        if (year != null && month != null && day != null) {
+          untilDate = DateTime(year, month, day);
+        }
+      }
+    }
+
+    return RecurrenceConfig(
+      type: type,
+      interval: interval,
+      monthlyMode: monthlyMode,
+      duration: duration,
+      repeatTimes: repeatTimes,
+      untilDate: untilDate,
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -200,6 +317,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
     _rsvpStatus = event?.selfResponseStatus ?? RsvpStatus.needsAction;
 
     if (event != null) {
+      _recurrence = RecurrenceConfig.fromRruleList(event.recurrence);
       _attendees.addAll(event.attendees);
 
       // Load merged notes: event.description is the Google-synced part;
@@ -378,22 +496,44 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                       IconButton(
                         icon: Icon(Icons.delete_outline, color: Colors.redAccent.withValues(alpha: 0.8)),
                         onPressed: () async {
-                          final confirmed = await showConfirmationDialog(
-                            context: context,
-                            ref: ref,
-                            title: 'Delete event?',
-                            content: 'Are you sure you want to permanently delete this event?',
-                            confirmLabel: 'Delete',
-                            isDestructive: true,
-                          );
-                          if (confirmed && mounted) {
-                            await ref.read(calendarRepositoryProvider).deleteEvent(
-                              widget.existingEvent!.id,
-                              calendarId: widget.existingEvent!.calendarId,
+                          final event = widget.existingEvent!;
+                          final isRecurringEvent = event.recurringEventId != null || (event.recurrence != null && event.recurrence!.isNotEmpty);
+                          if (isRecurringEvent) {
+                            final choice = await showRecurrenceDeleteDialog(
+                              context: context,
+                              ref: ref,
+                              title: 'Delete Recurring Event?',
                             );
-                            ref.invalidate(monthEventsProvider(DateTime(_start.year, _start.month, 1)));
-                            await SessionRestore.clearDraftValues('event', widget.existingEvent?.id);
-                            if (context.mounted) Navigator.pop(context);
+                            if (choice != null && mounted) {
+                              if (choice == RecurrenceDeleteType.onlyThis) {
+                                await ref.read(calendarRepositoryProvider).deleteEvent(event.id, calendarId: event.calendarId);
+                              } else if (choice == RecurrenceDeleteType.all) {
+                                await ref.read(calendarRepositoryProvider).deleteEvent(event.recurringEventId ?? event.id, calendarId: event.calendarId);
+                              } else if (choice == RecurrenceDeleteType.thisAndAllAfter) {
+                                await ref.read(calendarRepositoryProvider).deleteThisAndFutureEvents(event);
+                              }
+                              ref.invalidate(monthEventsProvider(DateTime(_start.year, _start.month, 1)));
+                              await SessionRestore.clearDraftValues('event', widget.existingEvent?.id);
+                              if (context.mounted) Navigator.pop(context);
+                            }
+                          } else {
+                            final confirmed = await showConfirmationDialog(
+                              context: context,
+                              ref: ref,
+                              title: 'Delete event?',
+                              content: 'Are you sure you want to permanently delete this event?',
+                              confirmLabel: 'Delete',
+                              isDestructive: true,
+                            );
+                            if (confirmed && mounted) {
+                              await ref.read(calendarRepositoryProvider).deleteEvent(
+                                widget.existingEvent!.id,
+                                calendarId: widget.existingEvent!.calendarId,
+                              );
+                              ref.invalidate(monthEventsProvider(DateTime(_start.year, _start.month, 1)));
+                              await SessionRestore.clearDraftValues('event', widget.existingEvent?.id);
+                              if (context.mounted) Navigator.pop(context);
+                            }
                           }
                         },
                       ),
@@ -579,21 +719,23 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                       ),
                     ),
                   ],
-                  const Divider(height: 1, thickness: 0.5),
-                  InkWell(
-                    borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
-                    onTap: () => _showRepeatDialog(context, palette),
-                    child: _buildIconRow(
-                      icon: Icons.repeat,
-                      palette: palette,
-                      child: Row(
-                        children: [
-                          Expanded(child: Text(_recurrence.label, style: TextStyle(color: _recurrence.type == RecurrenceType.none ? palette.text.withValues(alpha: 0.4) : palette.primary))),
-                          Icon(Icons.chevron_right, size: 16, color: palette.text.withValues(alpha: 0.3)),
-                        ],
+                  if (widget.existingEvent?.recurringEventId == null) ...[
+                    const Divider(height: 1, thickness: 0.5),
+                    InkWell(
+                      borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
+                      onTap: () => _showRepeatDialog(context, palette),
+                      child: _buildIconRow(
+                        icon: Icons.repeat,
+                        palette: palette,
+                        child: Row(
+                          children: [
+                            Expanded(child: Text(_recurrence.label, style: TextStyle(color: _recurrence.type == RecurrenceType.none ? palette.text.withValues(alpha: 0.4) : palette.primary))),
+                            Icon(Icons.chevron_right, size: 16, color: palette.text.withValues(alpha: 0.3)),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ]),
 
                 // ── 4+. RSVP (editing existing events only) ───────────────
@@ -1199,6 +1341,9 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
       reminderMinutes: _alarmPreset != null ? _selectedOffsets.map((o) => o.beforeDue.inMinutes).toList() : const [],
       attendees: _attendees,
       hasVideoConference: _addVideoConference,
+      recurrence: _recurrence.type == RecurrenceType.none ? null : _recurrence.toRruleList(_start),
+      recurringEventId: widget.existingEvent?.recurringEventId,
+      originalStartTime: widget.existingEvent?.originalStartTime,
     );
 
     try {

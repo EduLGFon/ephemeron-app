@@ -28,7 +28,7 @@ class AppDatabase extends _$AppDatabase {
   /// changes in a later build step (e.g. when Habits gets typed frequency
   /// columns instead of the opaque JSON blob in the skeleton).
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -64,7 +64,7 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(habits, habits.scheduledAlarmIds);
             await m.database.customStatement(
               'CREATE UNIQUE INDEX IF NOT EXISTS habit_logs_unique_day '
-              'ON habit_logs (habit_id, date)',
+               'ON habit_logs (habit_id, date)',
             );
           }
           if (from < 5) {
@@ -104,6 +104,11 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 13) {
             await m.createTable(customSmartLists);
+          }
+          if (from < 14) {
+            await m.addColumn(cachedCalendarEvents, cachedCalendarEvents.recurrence);
+            await m.addColumn(cachedCalendarEvents, cachedCalendarEvents.recurringEventId);
+            await m.addColumn(cachedCalendarEvents, cachedCalendarEvents.originalStartTime);
           }
         },
       );

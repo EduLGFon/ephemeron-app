@@ -254,6 +254,9 @@ class CachedCalendarEvents extends Table {
   BoolColumn get hasVideoConference => boolean().withDefault(const Constant(false))();
   TextColumn get videoConferenceLink => text().nullable()();
   TextColumn get selfResponseStatus => text().withDefault(const Constant('needsAction'))();
+  TextColumn get recurrence => text().nullable()(); // JSON list of RRULEs
+  TextColumn get recurringEventId => text().nullable()();
+  DateTimeColumn get originalStartTime => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id, calendarId};

@@ -86,6 +86,9 @@ class CalendarEvent {
     // RSVP — the authenticated user's own response
     this.selfResponseStatus = RsvpStatus.needsAction,
     this.isSelfVirtual = false,
+    this.recurrence,
+    this.recurringEventId,
+    this.originalStartTime,
   });
 
   final String id;
@@ -110,6 +113,11 @@ class CalendarEvent {
   final RsvpStatus selfResponseStatus;
   final bool isSelfVirtual;
 
+  // Recurrence
+  final List<String>? recurrence;
+  final String? recurringEventId;
+  final DateTime? originalStartTime;
+
   CalendarEvent copyWith({
     String? id,
     String? calendarId,
@@ -128,6 +136,9 @@ class CalendarEvent {
     String? videoConferenceLink,
     RsvpStatus? selfResponseStatus,
     bool? isSelfVirtual,
+    List<String>? recurrence,
+    String? recurringEventId,
+    DateTime? originalStartTime,
   }) {
     return CalendarEvent(
       id: id ?? this.id,
@@ -147,6 +158,9 @@ class CalendarEvent {
       videoConferenceLink: videoConferenceLink ?? this.videoConferenceLink,
       selfResponseStatus: selfResponseStatus ?? this.selfResponseStatus,
       isSelfVirtual: isSelfVirtual ?? this.isSelfVirtual,
+      recurrence: recurrence ?? this.recurrence,
+      recurringEventId: recurringEventId ?? this.recurringEventId,
+      originalStartTime: originalStartTime ?? this.originalStartTime,
     );
   }
 
@@ -193,6 +207,9 @@ class CalendarEvent {
       hasVideoConference: hasVideo,
       videoConferenceLink: hangoutLink,
       selfResponseStatus: selfStatus,
+      recurrence: event.recurrence,
+      recurringEventId: event.recurringEventId,
+      originalStartTime: event.originalStartTime?.dateTime ?? event.originalStartTime?.date,
     );
   }
 
@@ -222,6 +239,13 @@ class CalendarEvent {
           : attendees
               .map((email) => gcal.EventAttendee(email: email))
               .toList(),
+      recurrence: recurrence,
+      recurringEventId: recurringEventId,
+      originalStartTime: originalStartTime == null
+          ? null
+          : (isAllDay
+              ? gcal.EventDateTime(date: DateTime(originalStartTime!.year, originalStartTime!.month, originalStartTime!.day))
+              : gcal.EventDateTime(dateTime: originalStartTime)),
     );
   }
 }

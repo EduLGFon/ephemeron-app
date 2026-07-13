@@ -10,6 +10,9 @@ import '../application/task_providers.dart';
 import 'task_form_sheet.dart';
 import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
 import '../../../presentation/widgets/confirmation_dialog.dart';
+import '../../../presentation/widgets/recurrence_delete_dialog.dart';
+import '../domain/task_recurrence.dart';
+import 'package:drift/drift.dart' show Value;
 
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
@@ -678,14 +681,34 @@ class _TaskTile extends ConsumerWidget {
         child: const Icon(Icons.delete_outline, color: Colors.white),
       ),
       confirmDismiss: (direction) async {
-        return await showConfirmationDialog(
-          context: context,
-          ref: ref,
-          title: 'Delete Task?',
-          content: 'Are you sure you want to delete this task? It will be moved to Trash.',
-          confirmLabel: 'Delete',
-          isDestructive: true,
-        );
+        final recurrence = TaskRecurrence.decode(task.recurrenceRule);
+        if (recurrence.isRecurring) {
+          final choice = await showRecurrenceDeleteDialog(
+            context: context,
+            ref: ref,
+            title: 'Delete Recurring Task?',
+          );
+          if (choice == null) return false;
+
+          if (choice == RecurrenceDeleteType.onlyThis) {
+            final nextDue = recurrence.nextOccurrence(task.dueDate!);
+            if (nextDue != null) {
+              await repo.updateTask(task.id, dueDate: Value(nextDue));
+            }
+            return false;
+          } else {
+            return true;
+          }
+        } else {
+          return await showConfirmationDialog(
+            context: context,
+            ref: ref,
+            title: 'Delete Task?',
+            content: 'Are you sure you want to delete this task? It will be moved to Trash.',
+            confirmLabel: 'Delete',
+            isDestructive: true,
+          );
+        }
       },
       onDismissed: (_) => repo.softDeleteTask(task.id),
       child: Container(

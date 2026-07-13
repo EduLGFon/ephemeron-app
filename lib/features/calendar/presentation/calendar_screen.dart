@@ -21,6 +21,10 @@ import '../../tasks/application/task_providers.dart';
 import '../../habits/presentation/habit_form_sheet.dart';
 import '../../habits/application/habit_providers.dart';
 import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
+import '../../tasks/domain/task_recurrence.dart';
+import '../../../presentation/widgets/recurrence_delete_dialog.dart';
+import '../../../presentation/widgets/confirmation_dialog.dart';
+import 'package:drift/drift.dart' show Value;
 
 class CalendarFormatNotifier extends Notifier<CalendarFormat> {
   @override
@@ -569,36 +573,90 @@ class _EventTile extends ConsumerWidget {
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final isTask = event.id.startsWith('task:');
     final isHabit = event.id.startsWith('habit:');
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isTask ? 'Delete task?' : isHabit ? 'Delete habit?' : 'Delete event?'),
-        content: Text(event.title),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
 
     if (isTask) {
       final taskId = event.id.substring(5);
-      await ref.read(taskRepositoryProvider).softDeleteTask(taskId);
+      final task = await ref.read(taskRepositoryProvider).getTask(taskId);
+      if (task != null) {
+        final recurrence = TaskRecurrence.decode(task.recurrenceRule);
+        if (recurrence.isRecurring) {
+          final choice = await showRecurrenceDeleteDialog(
+            context: context,
+            ref: ref,
+            title: 'Delete Recurring Task?',
+          );
+          if (choice == null) return;
+          if (choice == RecurrenceDeleteType.onlyThis) {
+            final nextDue = recurrence.nextOccurrence(task.dueDate!);
+            if (nextDue != null) {
+              await ref.read(taskRepositoryProvider).updateTask(taskId, dueDate: Value(nextDue));
+            }
+          } else {
+            await ref.read(taskRepositoryProvider).softDeleteTask(taskId);
+          }
+        } else {
+          final confirmed = await showConfirmationDialog(
+            context: context,
+            ref: ref,
+            title: 'Delete Task?',
+            content: 'Are you sure you want to delete this task? It will be moved to Trash.',
+            confirmLabel: 'Delete',
+            isDestructive: true,
+          );
+          if (confirmed) {
+            await ref.read(taskRepositoryProvider).softDeleteTask(taskId);
+          }
+        }
+      }
     } else if (isHabit) {
-      final habitId = event.id.split(':')[1];
-      await ref.read(habitRepositoryProvider).deleteHabit(habitId);
-    } else {
-      await ref.read(calendarRepositoryProvider).deleteEvent(event.id);
-      ref.invalidate(
-        monthEventsProvider(DateTime(event.start.year, event.start.month, 1)),
+      final confirmed = await showConfirmationDialog(
+        context: context,
+        ref: ref,
+        title: 'Delete Habit?',
+        content: 'Are you sure you want to delete this habit?',
+        confirmLabel: 'Delete',
+        isDestructive: true,
       );
+      if (confirmed) {
+        final habitId = event.id.split(':')[1];
+        await ref.read(habitRepositoryProvider).deleteHabit(habitId);
+      }
+    } else {
+      final isRecurringEvent = event.recurringEventId != null || (event.recurrence != null && event.recurrence!.isNotEmpty);
+      if (isRecurringEvent) {
+        final choice = await showRecurrenceDeleteDialog(
+          context: context,
+          ref: ref,
+          title: 'Delete Recurring Event?',
+        );
+        if (choice == null) return;
+
+        if (choice == RecurrenceDeleteType.onlyThis) {
+          await ref.read(calendarRepositoryProvider).deleteEvent(event.id);
+        } else if (choice == RecurrenceDeleteType.all) {
+          await ref.read(calendarRepositoryProvider).deleteEvent(event.recurringEventId ?? event.id);
+        } else if (choice == RecurrenceDeleteType.thisAndAllAfter) {
+          await ref.read(calendarRepositoryProvider).deleteThisAndFutureEvents(event);
+        }
+        ref.invalidate(
+          monthEventsProvider(DateTime(event.start.year, event.start.month, 1)),
+        );
+      } else {
+        final confirmed = await showConfirmationDialog(
+          context: context,
+          ref: ref,
+          title: 'Delete Event?',
+          content: 'Are you sure you want to permanently delete this event?',
+          confirmLabel: 'Delete',
+          isDestructive: true,
+        );
+        if (confirmed) {
+          await ref.read(calendarRepositoryProvider).deleteEvent(event.id);
+          ref.invalidate(
+            monthEventsProvider(DateTime(event.start.year, event.start.month, 1)),
+          );
+        }
+      }
     }
   }
 }

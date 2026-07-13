@@ -413,12 +413,19 @@ class AlarmScheduler {
     required int id,
     required String title,
     required DateTime startedAt,
+    bool isCountdown = false,
+    Duration? duration,
   }) async {
     if (kIsWeb || Platform.isLinux) return;
+
+    final whenMs = isCountdown && duration != null
+        ? DateTime.now().add(duration).millisecondsSinceEpoch
+        : startedAt.millisecondsSinceEpoch;
 
     await _plugin.show(
       id: id,
       title: title,
+      body: isCountdown ? 'Focusing...' : 'Stopwatch running',
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           _lightChannelId,
@@ -426,10 +433,11 @@ class AlarmScheduler {
           ongoing: true,
           autoCancel: false,
           usesChronometer: true,
-          when: startedAt.millisecondsSinceEpoch,
+          chronometerCountDown: isCountdown,
+          when: whenMs,
           showWhen: true,
-          importance: Importance.low, // status display, not an alert
-          priority: Priority.low,
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
           category: AndroidNotificationCategory.status,
         ),
       ),
