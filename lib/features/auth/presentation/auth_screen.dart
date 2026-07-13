@@ -11,6 +11,7 @@ import '../backend/backend_auth_repository.dart';
 import '../google/google_auth_provider.dart';
 import '../google/google_auth_repository.dart';
 import 'google_sign_in_button.dart';
+import '../../../core/utils/safe_secure_storage.dart';
 
 class AuthScreen extends ConsumerWidget {
   const AuthScreen({super.key});
@@ -151,8 +152,10 @@ class _GoogleCalendarCard extends ConsumerWidget {
 
   Future<void> _showCredentialsDialog(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
+    const storage = SafeSecureStorage();
+    final customSecret = await storage.read(key: 'google.desktop.customClientSecret') ?? '';
     final idController = TextEditingController(text: prefs.getString('google.desktop.customClientId') ?? '');
-    final secretController = TextEditingController(text: prefs.getString('google.desktop.customClientSecret') ?? '');
+    final secretController = TextEditingController(text: customSecret);
 
     if (!context.mounted) return;
 
@@ -203,10 +206,10 @@ class _GoogleCalendarCard extends ConsumerWidget {
               final prefs = await SharedPreferences.getInstance();
               if (id.isEmpty) {
                 await prefs.remove('google.desktop.customClientId');
-                await prefs.remove('google.desktop.customClientSecret');
+                await storage.delete(key: 'google.desktop.customClientSecret');
               } else {
                 await prefs.setString('google.desktop.customClientId', id);
-                await prefs.setString('google.desktop.customClientSecret', secret);
+                await storage.write(key: 'google.desktop.customClientSecret', value: secret);
               }
               if (context.mounted) Navigator.pop(context);
             },

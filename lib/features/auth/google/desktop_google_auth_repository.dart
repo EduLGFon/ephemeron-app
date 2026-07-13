@@ -86,8 +86,7 @@ class DesktopGoogleAuthRepository extends GoogleAuthRepository {
     if (!AppConfig.googleDesktopClientSecret.startsWith('REPLACE_ME')) {
       return AppConfig.googleDesktopClientSecret;
     }
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('google.desktop.customClientSecret') ?? '';
+    return await _storage.read(key: 'google.desktop.customClientSecret') ?? '';
   }
 
   @override

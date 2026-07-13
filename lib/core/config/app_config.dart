@@ -16,14 +16,17 @@ abstract final class AppConfig {
   static const String googleAndroidClientId =
       '927111009905-l49pbfisgj398bg18akim8na86urhdgd.apps.googleusercontent.com';
 
-  /// Desktop OAuth client ID (type "Desktop application" in Google Cloud Console).
-  /// Required for Linux/macOS/Windows custom loopback OAuth2 flow.
-  static const String googleDesktopClientId =
-      '927111009905-kgr1uf2find2vqcd3v4g5g4k58kik42n.apps.googleusercontent.com';
+  static const String googleDesktopClientId = String.fromEnvironment(
+    'GOOGLE_DESKTOP_CLIENT_ID',
+    defaultValue: '927111009905-kgr1uf2find2vqcd3v4g5g4k58kik42n.apps.googleusercontent.com',
+  );
 
   /// Desktop OAuth client secret (Google recommends PKCE, but desktop type clients
   /// still require client secret parameter in the token endpoint, even if empty/public).
-  static const String googleDesktopClientSecret = 'REPLACE_ME';
+  static const String googleDesktopClientSecret = String.fromEnvironment(
+    'GOOGLE_DESKTOP_CLIENT_SECRET',
+    defaultValue: 'REPLACE_ME',
+  );
 
   /// Calendar scope requested during authorization (kept separate from
   /// sign-in/identity, per google_sign_in v7's split between
