@@ -8,7 +8,6 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../../core/settings/app_settings_provider.dart';
 import '../../../core/theme/theme_engine_provider.dart';
 import '../../../core/theme/theme_palettes.dart';
-import '../../settings/presentation/settings_screen.dart';
 import '../application/calendar_providers.dart';
 import '../data/calendar_repository.dart';
 import '../domain/calendar_event.dart';
@@ -206,12 +205,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             ],
           ),
           IconButton(
-            tooltip: 'Settings',
-            icon: Icon(Icons.settings_outlined, color: palette.primary),
+            tooltip: 'Today',
+            icon: Icon(Icons.today_outlined, color: palette.primary),
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              );
+              final now = DateTime.now();
+              ref.read(selectedDayProvider.notifier).setDay(now);
+              ref.read(focusedMonthProvider.notifier).setMonth(DateTime(now.year, now.month, 1));
             },
           ),
           const SizedBox(width: 8),

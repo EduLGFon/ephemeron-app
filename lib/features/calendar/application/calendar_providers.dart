@@ -176,14 +176,26 @@ final dayEventsProvider =
 });
 
 class SelectedDayNotifier extends Notifier<DateTime> {
+  static const _prefKey = 'calendar.selectedDay';
+
   @override
   DateTime build() {
+    final prefs = ref.watch(sharedPreferencesProvider);
+    final savedIso = prefs.getString(_prefKey);
+    if (savedIso != null) {
+      final parsed = DateTime.tryParse(savedIso);
+      if (parsed != null) {
+        return DateTime(parsed.year, parsed.month, parsed.day);
+      }
+    }
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day);
   }
 
   void setDay(DateTime day) {
-    state = day;
+    final normalized = DateTime(day.year, day.month, day.day);
+    state = normalized;
+    ref.read(sharedPreferencesProvider).setString(_prefKey, normalized.toIso8601String());
   }
 }
 
@@ -192,14 +204,26 @@ final selectedDayProvider = NotifierProvider<SelectedDayNotifier, DateTime>(
 );
 
 class FocusedMonthNotifier extends Notifier<DateTime> {
+  static const _prefKey = 'calendar.focusedMonth';
+
   @override
   DateTime build() {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, 1);
+    final prefs = ref.watch(sharedPreferencesProvider);
+    final savedIso = prefs.getString(_prefKey);
+    if (savedIso != null) {
+      final parsed = DateTime.tryParse(savedIso);
+      if (parsed != null) {
+        return DateTime(parsed.year, parsed.month, 1);
+      }
+    }
+    final selectedDay = ref.watch(selectedDayProvider);
+    return DateTime(selectedDay.year, selectedDay.month, 1);
   }
 
   void setMonth(DateTime month) {
-    state = month;
+    final normalized = DateTime(month.year, month.month, 1);
+    state = normalized;
+    ref.read(sharedPreferencesProvider).setString(_prefKey, normalized.toIso8601String());
   }
 }
 
