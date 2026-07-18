@@ -582,6 +582,14 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
       child: GestureDetector(
         onTap: () => _onEventTapped(context, ref, event),
         onLongPressStart: (details) {
+          if (event.id.startsWith('habit:')) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Habits cannot be dragged. Edit the habit to change its reminder time.'),
+              ),
+            );
+            return;
+          }
           final sLocal = event.start.toLocal();
           final duration = event.end.difference(event.start);
           if (ref.read(appSettingsProvider).hapticsEnabled) {
@@ -643,7 +651,7 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
             final calendarRepo = ref.read(calendarRepositoryProvider);
             final messenger = ScaffoldMessenger.of(context);
 
-            CalendarEvent? originalEvent;
+            final originalEvent = event;
             try {
               if (oldDraggingId.startsWith('task:')) {
                 final taskId = oldDraggingId.substring(5);
@@ -652,10 +660,12 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
                   dueDate: Value(newStart),
                   dueHasTime: true,
                 );
-              } else if (oldDraggingId.startsWith('habit:')) {
-                throw Exception('Habits cannot be dragged. Edit the habit to change its reminder time.');
+                final updatedTaskEvent = originalEvent.copyWith(
+                  start: newStart,
+                  end: newEnd,
+                );
+                ref.read(calendarEventOverridesProvider.notifier).updateEvent(updatedTaskEvent);
               } else {
-                originalEvent = widget.events.firstWhere((e) => e.id == oldDraggingId);
                 final updated = originalEvent.copyWith(
                   start: newStart,
                   end: newEnd,
@@ -677,12 +687,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
                   _dragCurrentEnd = null;
                   _dragDx = 0.0;
                 });
-                if (originalEvent != null) {
-                  await calendarRepo.cacheEvents([originalEvent]);
-                  ref.read(calendarEventOverridesProvider.notifier).updateEvent(originalEvent);
-                } else {
-                  ref.read(calendarEventOverridesProvider.notifier).removeOverride(oldDraggingId);
-                }
+                await calendarRepo.cacheEvents([originalEvent]);
+                ref.read(calendarEventOverridesProvider.notifier).updateEvent(originalEvent);
                 final msg = e is CalendarPermissionDeniedException
                     ? e.message
                     : 'Failed to update event: $e';

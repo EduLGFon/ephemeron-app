@@ -440,6 +440,14 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
       child: GestureDetector(
         onTap: () => _onEventTapped(context, ref, event),
         onLongPressStart: (details) {
+          if (event.id.startsWith('habit:')) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Habits cannot be dragged. Edit the habit to change its reminder time.'),
+              ),
+            );
+            return;
+          }
           final sLocal = event.start.toLocal();
           final duration = event.end.difference(event.start);
           if (ref.read(appSettingsProvider).hapticsEnabled) {
@@ -487,7 +495,7 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
             final calendarRepo = ref.read(calendarRepositoryProvider);
             final messenger = ScaffoldMessenger.of(context);
 
-            CalendarEvent? originalEvent;
+            final originalEvent = event;
             try {
               if (oldDraggingId.startsWith('task:')) {
                 final taskId = oldDraggingId.substring(5);
@@ -496,10 +504,12 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                   dueDate: Value(newStart),
                   dueHasTime: true,
                 );
-              } else if (oldDraggingId.startsWith('habit:')) {
-                throw Exception('Habits cannot be dragged. Edit the habit to change its reminder time.');
+                final updatedTaskEvent = originalEvent.copyWith(
+                  start: newStart,
+                  end: newEnd,
+                );
+                ref.read(calendarEventOverridesProvider.notifier).updateEvent(updatedTaskEvent);
               } else {
-                originalEvent = widget.events.firstWhere((e) => e.id == oldDraggingId);
                 final updated = originalEvent.copyWith(
                   start: newStart,
                   end: newEnd,
@@ -515,12 +525,8 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
               _pendingMovedEvents.remove(oldDraggingId);
               if (mounted) {
                 setState(() {});
-                if (originalEvent != null) {
-                  await calendarRepo.cacheEvents([originalEvent]);
-                  ref.read(calendarEventOverridesProvider.notifier).updateEvent(originalEvent);
-                } else {
-                  ref.read(calendarEventOverridesProvider.notifier).removeOverride(oldDraggingId);
-                }
+                await calendarRepo.cacheEvents([originalEvent]);
+                ref.read(calendarEventOverridesProvider.notifier).updateEvent(originalEvent);
                 final msg = e is CalendarPermissionDeniedException
                     ? 'Cannot move event: Calendar is read-only or permission is denied (403).'
                     : 'Failed to update event: $e';
