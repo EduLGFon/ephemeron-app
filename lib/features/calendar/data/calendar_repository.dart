@@ -152,16 +152,12 @@ class CalendarRepository {
       return const [];
     }
 
-    // Try loading from local cache first
+    // Load from local cache exclusively.
+    // Remote syncing is handled by SyncService (auto/manual triggers).
     final cached = await _loadCachedEvents(rangeStart, rangeEnd);
-    if (cached.isNotEmpty) {
-      cached.sort((a, b) => a.start.compareTo(b.start));
-      await _scheduleEventAlarms(cached);
-      return cached;
-    }
-
-    // If cache is empty, refresh from remote
-    return refreshEventsFromRemote(rangeStart: rangeStart, rangeEnd: rangeEnd);
+    cached.sort((a, b) => a.start.compareTo(b.start));
+    await _scheduleEventAlarms(cached);
+    return cached;
   }
 
   Future<List<CalendarEvent>> refreshEventsFromRemote({
