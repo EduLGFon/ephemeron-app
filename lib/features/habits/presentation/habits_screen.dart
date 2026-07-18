@@ -69,7 +69,7 @@ class HabitsScreen extends ConsumerWidget {
                   ),
                 ),
                 for (final habit in entry.value) 
-                  _HabitTile(habit: habit, palette: palette),
+                  RepaintBoundary(child: _HabitTile(habit: habit, palette: palette)),
               ],
             ],
           );

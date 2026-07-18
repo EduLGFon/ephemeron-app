@@ -21,9 +21,6 @@ class GlassmorphicWrapper extends ConsumerWidget {
       return child;
     }
 
-    return BackdropFilter(
-      filter: filter,
-      child: child,
-    );
+    return child;
   }
 }

@@ -47,7 +47,7 @@ Future<void> showEventFormSheet(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
-              child: EventFormSheet(initialDay: initialDay, existingEvent: existingEvent),
+              child: RepaintBoundary(child: EventFormSheet(initialDay: initialDay, existingEvent: existingEvent)),
             ),
           ),
         ),

@@ -31,7 +31,7 @@ Future<void> showHabitFormSheet(BuildContext context, {Habit? existingHabit, Str
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
-              child: HabitFormSheet(existingHabit: existingHabit, initialName: initialName),
+              child: RepaintBoundary(child: HabitFormSheet(existingHabit: existingHabit, initialName: initialName)),
             ),
           ),
         ),

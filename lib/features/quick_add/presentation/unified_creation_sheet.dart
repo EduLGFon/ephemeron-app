@@ -29,7 +29,7 @@ Future<void> showUnifiedCreationSheet(BuildContext context, {NavSection? current
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
-              child: UnifiedCreationSheet(currentSection: currentSection),
+              child: RepaintBoundary(child: UnifiedCreationSheet(currentSection: currentSection)),
             ),
           ),
         ),

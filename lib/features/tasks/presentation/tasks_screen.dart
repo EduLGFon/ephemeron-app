@@ -516,7 +516,7 @@ class _TaskListView extends ConsumerWidget {
                   final task = tasksToShow[index];
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8.0),
-                    child: _TaskTile(task: task, palette: palette),
+                    child: RepaintBoundary(child: _TaskTile(task: task, palette: palette)),
                   );
                 },
               );
@@ -570,7 +570,7 @@ class _TaskListView extends ConsumerWidget {
                         index: index,
                         child: Padding(
                           padding: const EdgeInsets.only(bottom: 8.0),
-                          child: _TaskTile(task: task, palette: palette),
+                          child: RepaintBoundary(child: _TaskTile(task: task, palette: palette)),
                         ),
                       );
                     },

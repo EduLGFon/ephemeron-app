@@ -40,7 +40,7 @@ Future<void> showTaskFormSheet(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
-              child: TaskFormSheet(listId: listId, existingTask: existingTask),
+              child: RepaintBoundary(child: TaskFormSheet(listId: listId, existingTask: existingTask)),
             ),
           ),
         ),

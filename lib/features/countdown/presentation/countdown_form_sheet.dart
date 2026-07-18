@@ -30,7 +30,7 @@ Future<void> showCountdownFormSheet(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
-              child: CountdownFormSheet(type: type, existingCountdown: existingCountdown),
+              child: RepaintBoundary(child: CountdownFormSheet(type: type, existingCountdown: existingCountdown)),
             ),
           ),
         ),

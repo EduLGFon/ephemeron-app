@@ -142,7 +142,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                 padding: EdgeInsets.only(
                   bottom: MediaQuery.of(context).viewInsets.bottom,
                 ),
-                child: NoteFormSheet(existingNote: existingNote),
+                child: RepaintBoundary(child: NoteFormSheet(existingNote: existingNote)),
               ),
             ),
           ),
