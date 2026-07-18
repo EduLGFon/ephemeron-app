@@ -31,6 +31,7 @@ windows
 macos
 web
 test
+*.py
 
 # Local DB files created at runtime (desktop/dev)
 *.sqlite

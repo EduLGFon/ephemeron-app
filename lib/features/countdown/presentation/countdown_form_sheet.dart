@@ -37,13 +37,13 @@ Future<void> showCountdownFormSheet(
       );
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
-      final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutBack);
-      return ScaleTransition(
-        scale: curve,
-        child: FadeTransition(
-          opacity: animation,
-          child: child,
-        ),
+      final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      return SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0.0, 1.0),
+          end: Offset.zero,
+        ).animate(curve),
+        child: child,
       );
     },
   );

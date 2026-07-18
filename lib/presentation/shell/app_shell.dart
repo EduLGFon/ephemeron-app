@@ -149,9 +149,13 @@ class _AppShellState extends ConsumerState<AppShell> {
         );
       },
       transitionBuilder: (context, anim1, anim2, child) {
-        return ScaleTransition(
-          scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
-          child: FadeTransition(opacity: anim1, child: child),
+        final curve = CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic);
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.0, 1.0),
+            end: Offset.zero,
+          ).animate(curve),
+          child: child,
         );
       },
     );
