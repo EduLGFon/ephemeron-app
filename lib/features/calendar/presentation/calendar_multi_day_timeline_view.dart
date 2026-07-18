@@ -54,6 +54,7 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
   DateTime? _dragOriginalStart;
   DateTime? _dragCurrentStart;
   DateTime? _dragCurrentEnd;
+  double _dragDx = 0.0;
   final Map<String, ({DateTime start, DateTime end})> _pendingMovedEvents = {};
   late final ScrollController _scrollController;
   double _baseHourHeight = 80.0;
@@ -487,9 +488,6 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
 
   List<CalendarEvent> _getTimedEventsForDay(DateTime day) {
     final mappedEvents = widget.events.map((e) {
-      if (e.id == _draggingEventId && _dragCurrentStart != null && _dragCurrentEnd != null) {
-        return e.copyWith(start: _dragCurrentStart!, end: _dragCurrentEnd!);
-      }
       final pending = _pendingMovedEvents[e.id];
       if (pending != null) {
         if (e.start.isAtSameMomentAs(pending.start) && e.end.isAtSameMomentAs(pending.end)) {
@@ -504,6 +502,13 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
     return mappedEvents.where((e) {
       if (e.isAllDay) return false;
       final targetDay = DateTime(day.year, day.month, day.day);
+
+      // Keep active dragging event mounted in its original day column so its GestureDetector isn't destroyed
+      if (_draggingEventId == e.id && _dragOriginalStart != null) {
+        final origDay = DateTime(_dragOriginalStart!.year, _dragOriginalStart!.month, _dragOriginalStart!.day);
+        return origDay == targetDay;
+      }
+
       final sLocal = e.start.toLocal();
       final eventDay = DateTime(sLocal.year, sLocal.month, sLocal.day);
       return eventDay == targetDay;
@@ -518,24 +523,26 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
     double width,
     AppPalette palette,
   ) {
-    final startLocal = _draggingEventId == event.id ? _dragCurrentStart! : event.start.toLocal();
-    final endLocal = _draggingEventId == event.id ? _dragCurrentEnd! : event.end.toLocal();
+    final isDragging = _draggingEventId == event.id;
+    final startLocal = isDragging ? _dragCurrentStart! : event.start.toLocal();
+    final endLocal = isDragging ? _dragCurrentEnd! : event.end.toLocal();
 
     final double top = _getTopOffset(startLocal);
     final double height = _getHeight(startLocal, endLocal);
     final Color eventColor = _getEventColor(event.colorId, palette);
 
-    final isDragging = _draggingEventId == event.id;
     final settings = ref.watch(appSettingsProvider);
     final animateDuration = isDragging && !settings.shouldReduceMotion
         ? const Duration(milliseconds: 120)
         : Duration.zero;
 
+    final double cardLeft = isDragging ? left + 2 + _dragDx : left + 2;
+
     return AnimatedPositioned(
       duration: animateDuration,
       curve: Curves.easeOutCubic,
       top: top + 1,
-      left: left + 2,
+      left: cardLeft,
       width: width - 4,
       height: height - 2,
       child: GestureDetector(
@@ -552,6 +559,7 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
             _dragOriginalStart = sLocal;
             _dragCurrentStart = sLocal;
             _dragCurrentEnd = sLocal.add(duration);
+            _dragDx = 0.0;
           });
         },
         onLongPressMoveUpdate: (details) {
@@ -559,21 +567,24 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
             final duration = event.end.difference(event.start);
             final hourHeight = ref.read(calendarHourHeightProvider);
             final newTop = (_dragOriginalTop + details.localOffsetFromOrigin.dy).clamp(0.0, 24.0 * hourHeight);
+            final dx = details.localOffsetFromOrigin.dx;
 
             final dayColumnWidth = (MediaQuery.of(context).size.width - CalendarMultiDayTimelineView.timeColumnWidth) / widget.daysCount;
-            final dayShift = (details.localOffsetFromOrigin.dx / dayColumnWidth).round();
+            final dayShift = (dx / dayColumnWidth).round();
             final targetDay = DateTime(_dragOriginalStart!.year, _dragOriginalStart!.month, _dragOriginalStart!.day + dayShift);
 
             final newStart = _getDateTimeFromTop(newTop, targetDay);
-            if (_dragCurrentStart != newStart) {
-              if (ref.read(appSettingsProvider).hapticsEnabled) {
-                HapticFeedback.selectionClick();
-              }
-              setState(() {
-                _dragCurrentStart = newStart;
-                _dragCurrentEnd = newStart.add(duration);
-              });
+            final hapticTriggered = _dragCurrentStart != newStart;
+
+            if (hapticTriggered && ref.read(appSettingsProvider).hapticsEnabled) {
+              HapticFeedback.selectionClick();
             }
+
+            setState(() {
+              _dragDx = dx;
+              _dragCurrentStart = newStart;
+              _dragCurrentEnd = newStart.add(duration);
+            });
           }
         },
         onLongPressEnd: (details) async {
@@ -586,8 +597,10 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
 
             setState(() {
               _draggingEventId = null;
+              _dragOriginalStart = null;
               _dragCurrentStart = null;
               _dragCurrentEnd = null;
+              _dragDx = 0.0;
             });
 
             final taskRepo = ref.read(taskRepositoryProvider);
@@ -621,7 +634,13 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
             } catch (e) {
               _pendingMovedEvents.remove(oldDraggingId);
               if (mounted) {
-                setState(() {});
+                setState(() {
+                  _draggingEventId = null;
+                  _dragOriginalStart = null;
+                  _dragCurrentStart = null;
+                  _dragCurrentEnd = null;
+                  _dragDx = 0.0;
+                });
                 if (originalEvent != null) {
                   await calendarRepo.cacheEvents([originalEvent]);
                   ref.read(calendarEventOverridesProvider.notifier).updateEvent(originalEvent);
