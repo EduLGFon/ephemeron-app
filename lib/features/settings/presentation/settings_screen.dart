@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/settings/app_settings_provider.dart';
 import '../../../core/theme/theme_engine_provider.dart';
-import '../../../core/theme/theme_palettes.dart';
 import '../../../presentation/shell/pinned_sections_provider.dart';
 import '../../auth/google/google_auth_provider.dart';
 import '../../auth/google/google_auth_repository.dart';
@@ -29,30 +28,52 @@ class SettingsScreen extends ConsumerWidget {
           const _SectionHeader('Google Account'),
           const _GoogleAccountTile(),
           const Divider(),
-          const _SectionHeader('Appearance (Premium Palettes)'),
+          const _SectionHeader('Appearance'),
           Consumer(
             builder: (context, ref, child) {
               final currentPalette = ref.watch(themeEngineProvider);
               return Column(
-                children: AppPalette.values.map((palette) {
-                  return RadioListTile<AppPaletteType>(
-                    title: Text(palette.name),
-                    value: palette.type,
-                    groupValue: currentPalette.type, // ignore: deprecated_member_use
-                    onChanged: (value) { // ignore: deprecated_member_use
-                      if (value != null) ref.read(themeEngineProvider.notifier).setPalette(value);
-                    },
-                    secondary: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: palette.background,
-                        border: Border.all(color: palette.primary, width: 2),
-                      ),
+                children: [
+                  ListTile(
+                    title: const Text('Primary Color'),
+                    subtitle: Row(
+                      children: [
+                        Container(
+                          width: 24,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: currentPalette.primary,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text('#${currentPalette.primary.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}'),
+                      ],
                     ),
-                  );
-                }).toList(),
+                    trailing: const Icon(Icons.color_lens, size: 20),
+                    onTap: () => _editThemeColor(context, ref, 'Primary', currentPalette.primary),
+                  ),
+                  ListTile(
+                    title: const Text('Background Color'),
+                    subtitle: Row(
+                      children: [
+                        Container(
+                          width: 24,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: currentPalette.background,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.grey, width: 0.5),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text('#${currentPalette.background.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}'),
+                      ],
+                    ),
+                    trailing: const Icon(Icons.color_lens, size: 20),
+                    onTap: () => _editThemeColor(context, ref, 'Background', currentPalette.background),
+                  ),
+                ],
               );
             },
           ),
@@ -181,11 +202,51 @@ class SettingsScreen extends ConsumerWidget {
 
   static Color _parseColor(String hex) {
     try {
-      final c = hex.replaceAll('#', '');
-      return Color(int.parse('FF$c', radix: 16));
+      var c = hex.replaceAll('#', '').trim();
+      if (c.length == 6) {
+        c = 'FF$c';
+      }
+      return Color(int.parse(c, radix: 16));
     } catch (_) {
       return const Color(0xFF005F73); // petrol default
     }
+  }
+
+  static void _editThemeColor(BuildContext context, WidgetRef ref, String type, Color current) {
+    final hexString = '#${current.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}';
+    final controller = TextEditingController(text: hexString);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
+        title: Text('Edit $type Color', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: controller,
+          style: const TextStyle(fontSize: 14),
+          decoration: const InputDecoration(hintText: '#FF6C63FF'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              final val = controller.text.trim();
+              if (val.isNotEmpty) {
+                try {
+                  final color = _parseColor(val);
+                  if (type == 'Primary') {
+                    ref.read(themeEngineProvider.notifier).setPrimaryColor(color);
+                  } else {
+                    ref.read(themeEngineProvider.notifier).setBackgroundColor(color);
+                  }
+                } catch (_) {}
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   static void _showDevLogsDialog(BuildContext context, WidgetRef ref) {

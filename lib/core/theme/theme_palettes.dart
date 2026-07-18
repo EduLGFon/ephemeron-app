@@ -5,6 +5,7 @@ enum AppPaletteType {
   aurora,
   minimalist,
   amoled,
+  custom,
 }
 
 class AppPalette {
