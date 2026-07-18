@@ -9,6 +9,7 @@ import '../../tasks/application/task_providers.dart';
 import '../../tasks/data/task_repository.dart';
 import '../../habits/application/habit_providers.dart';
 import '../../habits/domain/habit_frequency.dart';
+import '../../../core/settings/shared_preferences_provider.dart';
 
 class CalendarHourHeightNotifier extends Notifier<double> {
   @override
@@ -179,11 +180,23 @@ enum CalendarView {
 }
 
 class CalendarViewNotifier extends Notifier<CalendarView> {
+  static const _prefKey = 'calendar.lastView';
+
   @override
-  CalendarView build() => CalendarView.monthGrid;
+  CalendarView build() {
+    final prefs = ref.watch(sharedPreferencesProvider);
+    final savedViewName = prefs.getString(_prefKey);
+    if (savedViewName != null) {
+      for (final v in CalendarView.values) {
+        if (v.name == savedViewName) return v;
+      }
+    }
+    return CalendarView.monthGrid;
+  }
 
   void setView(CalendarView view) {
     state = view;
+    ref.read(sharedPreferencesProvider).setString(_prefKey, view.name);
   }
 }
 
