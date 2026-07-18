@@ -614,8 +614,10 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
               HapticFeedback.selectionClick();
             }
 
+            final snappedDx = dayShift * dayColumnWidth;
+
             setState(() {
-              _dragDx = dx;
+              _dragDx = snappedDx;
               _dragCurrentStart = newStart;
               _dragCurrentEnd = newStart.add(duration);
             });
