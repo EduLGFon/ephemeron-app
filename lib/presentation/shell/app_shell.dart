@@ -261,18 +261,7 @@ class _AppShellState extends ConsumerState<AppShell> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SizedBox(height: 12),
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: palette.text.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   for (int i = 0; i < overflow.length; i++)
                     ListTile(
                       leading: Container(
