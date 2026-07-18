@@ -194,8 +194,11 @@ class SelectedDayNotifier extends Notifier<DateTime> {
 
   void setDay(DateTime day) {
     final normalized = DateTime(day.year, day.month, day.day);
-    state = normalized;
-    ref.read(sharedPreferencesProvider).setString(_prefKey, normalized.toIso8601String());
+    if (state == normalized) return;
+    Future.microtask(() {
+      state = normalized;
+      ref.read(sharedPreferencesProvider).setString(_prefKey, normalized.toIso8601String());
+    });
   }
 }
 
@@ -216,14 +219,17 @@ class FocusedMonthNotifier extends Notifier<DateTime> {
         return DateTime(parsed.year, parsed.month, 1);
       }
     }
-    final selectedDay = ref.watch(selectedDayProvider);
-    return DateTime(selectedDay.year, selectedDay.month, 1);
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, 1);
   }
 
   void setMonth(DateTime month) {
     final normalized = DateTime(month.year, month.month, 1);
-    state = normalized;
-    ref.read(sharedPreferencesProvider).setString(_prefKey, normalized.toIso8601String());
+    if (state == normalized) return;
+    Future.microtask(() {
+      state = normalized;
+      ref.read(sharedPreferencesProvider).setString(_prefKey, normalized.toIso8601String());
+    });
   }
 }
 
@@ -256,8 +262,11 @@ class CalendarViewNotifier extends Notifier<CalendarView> {
   }
 
   void setView(CalendarView view) {
-    state = view;
-    ref.read(sharedPreferencesProvider).setString(_prefKey, view.name);
+    if (state == view) return;
+    Future.microtask(() {
+      state = view;
+      ref.read(sharedPreferencesProvider).setString(_prefKey, view.name);
+    });
   }
 }
 
@@ -275,8 +284,11 @@ class CalendarScrollOffsetNotifier extends Notifier<double?> {
   }
 
   void setOffset(double offset) {
-    state = offset;
-    ref.read(sharedPreferencesProvider).setDouble(_prefKey, offset);
+    if (state == offset) return;
+    Future.microtask(() {
+      state = offset;
+      ref.read(sharedPreferencesProvider).setDouble(_prefKey, offset);
+    });
   }
 }
 

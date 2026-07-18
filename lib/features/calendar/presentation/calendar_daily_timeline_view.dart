@@ -44,6 +44,8 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
   final Map<String, ({DateTime start, DateTime end})> _pendingMovedEvents = {};
   late final ScrollController _scrollController;
   double _baseHourHeight = 80.0;
+  bool _isZooming = false;
+  int _activePointers = 0;
 
   @override
   void initState() {
@@ -62,7 +64,12 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
 
   void _onScroll() {
     if (_scrollController.hasClients) {
-      ref.read(calendarScrollOffsetProvider.notifier).setOffset(_scrollController.offset);
+      final offset = _scrollController.offset;
+      Future.microtask(() {
+        if (mounted) {
+          ref.read(calendarScrollOffsetProvider.notifier).setOffset(offset);
+        }
+      });
     }
   }
 
@@ -72,7 +79,10 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
     if (oldWidget.selectedDay != widget.selectedDay) {
       final dayDiff = widget.selectedDay.difference(_anchorDate).inDays;
       final targetPage = _initialPage + dayDiff;
-      if (_pageController.hasClients && _pageController.page?.round() != targetPage) {
+      final isScrolling = _pageController.hasClients &&
+          _pageController.position.haveDimensions &&
+          _pageController.position.isScrollingNotifier.value;
+      if (_pageController.hasClients && !isScrolling && _pageController.page?.round() != targetPage) {
         _pageController.jumpToPage(targetPage);
       }
     }
@@ -298,6 +308,24 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
             child: Focus(
               autofocus: true,
               child: Listener(
+                onPointerDown: (event) {
+                  _activePointers++;
+                  if (_activePointers >= 2 && !_isZooming) {
+                    setState(() => _isZooming = true);
+                  }
+                },
+                onPointerUp: (event) {
+                  _activePointers = (_activePointers - 1).clamp(0, 10);
+                  if (_activePointers < 2 && _isZooming) {
+                    setState(() => _isZooming = false);
+                  }
+                },
+                onPointerCancel: (event) {
+                  _activePointers = 0;
+                  if (_isZooming) {
+                    setState(() => _isZooming = false);
+                  }
+                },
                 onPointerSignal: (pointerSignal) {
                   if (pointerSignal is PointerScrollEvent) {
                     final isControlPressed = HardwareKeyboard.instance.isControlPressed;
@@ -312,13 +340,22 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                 child: GestureDetector(
                   onScaleStart: (details) {
                     _baseHourHeight = ref.read(calendarHourHeightProvider);
+                    if (details.pointerCount > 1 && !_isZooming) {
+                      setState(() => _isZooming = true);
+                    }
                   },
                   onScaleUpdate: (details) {
                     ref.read(calendarHourHeightProvider.notifier).state =
                         (_baseHourHeight * details.scale).clamp(40.0, 240.0);
                   },
+                  onScaleEnd: (details) {
+                    if (_isZooming && _activePointers < 2) {
+                      setState(() => _isZooming = false);
+                    }
+                  },
                   child: SingleChildScrollView(
                     controller: _scrollController,
+                    physics: _isZooming ? const NeverScrollableScrollPhysics() : const BouncingScrollPhysics(),
                     child: Stack(
                       children: [
                         // Horizontal grid lines and hour labels
@@ -329,41 +366,41 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                                 height: hourHeight,
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Hour label
-                            Container(
-                              width: CalendarDailyTimelineView.timeColumnWidth,
-                              padding: const EdgeInsets.only(right: 8, top: 4),
-                              alignment: Alignment.topRight,
-                              child: Text(
-                                _formatHour(hour),
-                                style: TextStyle(
-                                  color: palette.text.withValues(alpha: 0.4),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
+                                  children: [
+                                    // Hour label
+                                    Container(
+                                      width: CalendarDailyTimelineView.timeColumnWidth,
+                                      padding: const EdgeInsets.only(right: 8, top: 4),
+                                      alignment: Alignment.topRight,
+                                      child: Text(
+                                        _formatHour(hour),
+                                        style: TextStyle(
+                                          color: palette.text.withValues(alpha: 0.4),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    // Horizontal grid line
+                                    Expanded(
+                                      child: Container(
+                                        height: 0.5,
+                                        color: palette.text.withValues(alpha: 0.08),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                            // Horizontal grid line
-                            Expanded(
-                              child: Container(
-                                height: 0.5,
-                                color: palette.text.withValues(alpha: 0.08),
-                              ),
-                            ),
                           ],
                         ),
-                      ),
-                  ],
-                ),
-                // Stacked events layered over the timeline
-                Positioned.fill(
-                  left: CalendarDailyTimelineView.timeColumnWidth,
-                  child: PageView.builder(
-                    controller: _pageController,
-                    physics: _draggingEventId != null
-                        ? const NeverScrollableScrollPhysics()
-                        : const BouncingScrollPhysics(),
+                        // Stacked events layered over the timeline
+                        Positioned.fill(
+                          left: CalendarDailyTimelineView.timeColumnWidth,
+                          child: PageView.builder(
+                            controller: _pageController,
+                            physics: (_draggingEventId != null || _isZooming)
+                                ? const NeverScrollableScrollPhysics()
+                                : const BouncingScrollPhysics(),
                     onPageChanged: (index) {
                       final dayDiff = index - _initialPage;
                       final targetDay = _anchorDate.add(Duration(days: dayDiff));

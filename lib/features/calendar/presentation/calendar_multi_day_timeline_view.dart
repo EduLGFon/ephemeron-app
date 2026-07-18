@@ -61,12 +61,20 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
   final Map<String, ({DateTime start, DateTime end})> _pendingMovedEvents = {};
   late final ScrollController _scrollController;
   double _baseHourHeight = 80.0;
+  bool _isZooming = false;
+  int _activePointers = 0;
 
   @override
   void initState() {
     super.initState();
     final sDay = widget.selectedDay;
-    _anchorDate = DateTime(sDay.year, sDay.month, sDay.day);
+    if (widget.daysCount == 7) {
+      int diff = sDay.weekday - widget.startDayOfWeek;
+      if (diff < 0) diff += 7;
+      _anchorDate = sDay.subtract(Duration(days: diff));
+    } else {
+      _anchorDate = DateTime(sDay.year, sDay.month, sDay.day);
+    }
     _pageController = PageController(
       initialPage: _initialPage,
       viewportFraction: 1.0 / widget.daysCount,
@@ -88,25 +96,41 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
 
   void _onScroll() {
     if (_scrollController.hasClients) {
-      ref.read(calendarScrollOffsetProvider.notifier).setOffset(_scrollController.offset);
+      final offset = _scrollController.offset;
+      Future.microtask(() {
+        if (mounted) {
+          ref.read(calendarScrollOffsetProvider.notifier).setOffset(offset);
+        }
+      });
     }
   }
 
   @override
   void didUpdateWidget(CalendarMultiDayTimelineView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.daysCount != widget.daysCount) {
+    if (oldWidget.daysCount != widget.daysCount || oldWidget.startDayOfWeek != widget.startDayOfWeek) {
       final sDay = widget.selectedDay;
-      _anchorDate = DateTime(sDay.year, sDay.month, sDay.day);
+      if (widget.daysCount == 7) {
+        int diff = sDay.weekday - widget.startDayOfWeek;
+        if (diff < 0) diff += 7;
+        _anchorDate = sDay.subtract(Duration(days: diff));
+      } else {
+        _anchorDate = DateTime(sDay.year, sDay.month, sDay.day);
+      }
       _pageController.dispose();
       _pageController = PageController(
         initialPage: _initialPage,
         viewportFraction: 1.0 / widget.daysCount,
       );
     } else if (oldWidget.selectedDay != widget.selectedDay) {
-      final dayDiff = widget.selectedDay.difference(_anchorDate).inDays;
+      final visibleDays = _calculateVisibleDays(widget.selectedDay, widget.daysCount, widget.startDayOfWeek);
+      final firstDay = visibleDays.first;
+      final dayDiff = firstDay.difference(_anchorDate).inDays;
       final targetPage = _initialPage + dayDiff;
-      if (_pageController.hasClients && _pageController.page?.round() != targetPage) {
+      final isScrolling = _pageController.hasClients &&
+          _pageController.position.haveDimensions &&
+          _pageController.position.isScrollingNotifier.value;
+      if (_pageController.hasClients && !isScrolling && _pageController.page?.round() != targetPage) {
         _pageController.jumpToPage(targetPage);
       }
     }
@@ -311,6 +335,24 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
             child: Focus(
               autofocus: true,
               child: Listener(
+                onPointerDown: (event) {
+                  _activePointers++;
+                  if (_activePointers >= 2 && !_isZooming) {
+                    setState(() => _isZooming = true);
+                  }
+                },
+                onPointerUp: (event) {
+                  _activePointers = (_activePointers - 1).clamp(0, 10);
+                  if (_activePointers < 2 && _isZooming) {
+                    setState(() => _isZooming = false);
+                  }
+                },
+                onPointerCancel: (event) {
+                  _activePointers = 0;
+                  if (_isZooming) {
+                    setState(() => _isZooming = false);
+                  }
+                },
                 onPointerSignal: (pointerSignal) {
                   if (pointerSignal is PointerScrollEvent) {
                     final isControlPressed = HardwareKeyboard.instance.isControlPressed;
@@ -325,13 +367,22 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
                 child: GestureDetector(
                   onScaleStart: (details) {
                     _baseHourHeight = ref.read(calendarHourHeightProvider);
+                    if (details.pointerCount > 1 && !_isZooming) {
+                      setState(() => _isZooming = true);
+                    }
                   },
                   onScaleUpdate: (details) {
                     ref.read(calendarHourHeightProvider.notifier).state =
                         (_baseHourHeight * details.scale).clamp(40.0, 240.0);
                   },
+                  onScaleEnd: (details) {
+                    if (_isZooming && _activePointers < 2) {
+                      setState(() => _isZooming = false);
+                    }
+                  },
                   child: SingleChildScrollView(
                     controller: _scrollController,
+                    physics: _isZooming ? const NeverScrollableScrollPhysics() : const BouncingScrollPhysics(),
                     child: Stack(
                       children: [
                         // Horizontal grid lines and hour labels
@@ -342,78 +393,78 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
                                 height: hourHeight,
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Hour label
-                            Container(
-                              width: CalendarMultiDayTimelineView.timeColumnWidth,
-                              padding: const EdgeInsets.only(right: 8, top: 4),
-                              alignment: Alignment.topRight,
-                              child: Text(
-                                _formatHour(hour),
-                                style: TextStyle(
-                                  color: palette.text.withValues(alpha: 0.4),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
+                                  children: [
+                                    // Hour label
+                                    Container(
+                                      width: CalendarMultiDayTimelineView.timeColumnWidth,
+                                      padding: const EdgeInsets.only(right: 8, top: 4),
+                                      alignment: Alignment.topRight,
+                                      child: Text(
+                                        _formatHour(hour),
+                                        style: TextStyle(
+                                          color: palette.text.withValues(alpha: 0.4),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    // Horizontal grid line
+                                    Expanded(
+                                      child: Container(
+                                        height: 0.5,
+                                        color: palette.text.withValues(alpha: 0.08),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                            // Horizontal grid line
-                            Expanded(
-                              child: Container(
-                                height: 0.5,
-                                color: palette.text.withValues(alpha: 0.08),
-                              ),
-                            ),
                           ],
                         ),
-                      ),
-                  ],
-                ),
-                // Layered day columns for timed events
-                Positioned.fill(
-                  left: CalendarMultiDayTimelineView.timeColumnWidth,
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final dayColumnWidth = constraints.maxWidth / widget.daysCount;
-                      return PageView.builder(
-                        controller: _pageController,
-                        padEnds: false,
-                        physics: _draggingEventId != null
-                            ? const NeverScrollableScrollPhysics()
-                            : const BouncingScrollPhysics(),
-                        onPageChanged: (index) {
-                          final dayDiff = index - _initialPage;
-                          final targetDay = _anchorDate.add(Duration(days: dayDiff));
-                          if (targetDay != widget.selectedDay) {
-                            ref.read(selectedDayProvider.notifier).setDay(targetDay);
-                            if (targetDay.month != ref.read(focusedMonthProvider).month ||
-                                targetDay.year != ref.read(focusedMonthProvider).year) {
-                              ref.read(focusedMonthProvider.notifier).setMonth(
-                                DateTime(targetDay.year, targetDay.month, 1),
+                        // Layered day columns for timed events
+                        Positioned.fill(
+                          left: CalendarMultiDayTimelineView.timeColumnWidth,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final dayColumnWidth = constraints.maxWidth / widget.daysCount;
+                              return PageView.builder(
+                                controller: _pageController,
+                                padEnds: false,
+                                physics: (_draggingEventId != null || _isZooming)
+                                    ? const NeverScrollableScrollPhysics()
+                                    : const BouncingScrollPhysics(),
+                                onPageChanged: (index) {
+                                  final dayDiff = index - _initialPage;
+                                  final targetDay = _anchorDate.add(Duration(days: dayDiff));
+                                  if (targetDay != widget.selectedDay) {
+                                    ref.read(selectedDayProvider.notifier).setDay(targetDay);
+                                    if (targetDay.month != ref.read(focusedMonthProvider).month ||
+                                        targetDay.year != ref.read(focusedMonthProvider).year) {
+                                      ref.read(focusedMonthProvider.notifier).setMonth(
+                                        DateTime(targetDay.year, targetDay.month, 1),
+                                      );
+                                    }
+                                  }
+                                },
+                                itemBuilder: (context, index) {
+                                  final dayDiff = index - _initialPage;
+                                  final currentDay = _anchorDate.add(Duration(days: dayDiff));
+                                  return SizedBox(
+                                    width: dayColumnWidth,
+                                    child: _buildDayColumn(context, ref, currentDay, dayColumnWidth, palette),
+                                  );
+                                },
                               );
-                            }
-                          }
-                        },
-                        itemBuilder: (context, index) {
-                          final dayDiff = index - _initialPage;
-                          final currentDay = _anchorDate.add(Duration(days: dayDiff));
-                          return SizedBox(
-                            width: dayColumnWidth,
-                            child: _buildDayColumn(context, ref, currentDay, dayColumnWidth, palette),
-                          );
-                        },
-                      );
-                    },
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ),
-      ),
-    ),
-  ),
-),
       ],
     );
   }
