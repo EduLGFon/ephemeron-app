@@ -99,7 +99,7 @@ class DesktopGoogleAuthRepository extends GoogleAuthRepository {
     // 1. Bind local loopback HTTP server
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     final port = server.port;
-    final redirectUri = 'http://localhost:$port';
+    final redirectUri = 'http://127.0.0.1:$port';
 
     // 2. State & PKCE (Google doesn't strictly require PKCE on loopback but it is best practice)
     final state = DateTime.now().millisecondsSinceEpoch.toString();
@@ -331,11 +331,11 @@ class DesktopGoogleAuthRepository extends GoogleAuthRepository {
 
   Future<void> _launchBrowser(String url) async {
     if (Platform.isLinux) {
-      await Process.run('xdg-open', [url]);
+      await Process.start('xdg-open', [url]);
     } else if (Platform.isMacOS) {
-      await Process.run('open', [url]);
+      await Process.start('open', [url]);
     } else if (Platform.isWindows) {
-      await Process.run('cmd', ['/c', 'start', '', url]);
+      await Process.start('cmd', ['/c', 'start', '', url]);
     } else {
       throw const GoogleAuthException('Unsupported platform for desktop authentication.');
     }

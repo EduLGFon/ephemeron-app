@@ -311,8 +311,44 @@ class CalendarRepository {
     final localTimeZone = await _getLocalTimeZone();
     gcal.Event updated;
     try {
+      final gcalEvent = await api.events.get(event.calendarId, event.id);
+
+      gcalEvent.summary = event.title;
+      gcalEvent.description = event.description;
+      gcalEvent.location = event.location;
+      gcalEvent.colorId = event.colorId;
+      gcalEvent.start = event.isAllDay
+          ? gcal.EventDateTime(date: DateTime(event.start.year, event.start.month, event.start.day))
+          : gcal.EventDateTime(dateTime: event.start, timeZone: localTimeZone);
+      gcalEvent.end = event.isAllDay
+          ? gcal.EventDateTime(date: DateTime(event.end.year, event.end.month, event.end.day))
+          : gcal.EventDateTime(dateTime: event.end, timeZone: localTimeZone);
+      gcalEvent.reminders = event.reminderMinutes.isEmpty
+          ? gcal.EventReminders(useDefault: true)
+          : gcal.EventReminders(
+              useDefault: false,
+              overrides: event.reminderMinutes.map((m) => gcal.EventReminder(method: 'popup', minutes: m)).toList(),
+            );
+
+      if (event.attendees.isNotEmpty || (gcalEvent.attendees != null && gcalEvent.attendees!.isNotEmpty)) {
+        final existingAttendees = gcalEvent.attendees ?? <gcal.EventAttendee>[];
+        final emailsToKeep = event.attendees.toSet();
+        
+        // Remove attendees that were deleted by the user, but keep the user themselves (self == true)
+        existingAttendees.retainWhere((a) => a.self == true || (a.email != null && emailsToKeep.contains(a.email)));
+        
+        // Add new attendees
+        final existingEmails = existingAttendees.map((a) => a.email).toSet();
+        for (final email in event.attendees) {
+          if (!existingEmails.contains(email)) {
+            existingAttendees.add(gcal.EventAttendee(email: email));
+          }
+        }
+        gcalEvent.attendees = existingAttendees;
+      }
+
       updated = await api.events.update(
-        event.toGoogle(localTimeZone: localTimeZone),
+        gcalEvent,
         event.calendarId,
         event.id,
         conferenceDataVersion: addVideoConference ? 1 : null,
