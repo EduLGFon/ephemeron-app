@@ -12,6 +12,8 @@ import '../../tasks/presentation/task_form_sheet.dart';
 import '../../tasks/application/task_providers.dart';
 import '../../habits/presentation/habit_form_sheet.dart';
 import '../../habits/application/habit_providers.dart';
+import 'package:drift/drift.dart' show Value;
+import '../data/calendar_repository.dart';
 
 class PositionedEvent {
   final CalendarEvent event;
@@ -46,6 +48,11 @@ class CalendarMultiDayTimelineView extends ConsumerStatefulWidget {
 }
 
 class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayTimelineView> {
+  String? _draggingEventId;
+  double _dragCurrentTop = 0.0;
+  double _dragOriginalTop = 0.0;
+  DateTime? _dragCurrentStart;
+  DateTime? _dragCurrentEnd;
   late final ScrollController _scrollController;
   double _baseHourHeight = 80.0;
 
@@ -412,6 +419,16 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
     );
   }
 
+  DateTime _getDateTimeFromTop(double top, DateTime originalStart) {
+    final hourHeight = ref.read(calendarHourHeightProvider);
+    final totalMinutes = (top / hourHeight * 60.0).round();
+    final snappedMinutes = (totalMinutes / 15.0).round() * 15;
+    final clampedMinutes = snappedMinutes.clamp(0, 24 * 60 - 15);
+    final hour = clampedMinutes ~/ 60;
+    final minute = clampedMinutes % 60;
+    return DateTime(originalStart.year, originalStart.month, originalStart.day, hour, minute);
+  }
+
   List<Widget> _buildAllDayEventsForDay(
     BuildContext context,
     WidgetRef ref,
@@ -469,10 +486,10 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
     double width,
     AppPalette palette,
   ) {
-    final startLocal = event.start.toLocal();
-    final endLocal = event.end.toLocal();
+    final startLocal = _draggingEventId == event.id ? _dragCurrentStart! : event.start.toLocal();
+    final endLocal = _draggingEventId == event.id ? _dragCurrentEnd! : event.end.toLocal();
 
-    final double top = _getTopOffset(startLocal);
+    final double top = _draggingEventId == event.id ? _dragCurrentTop : _getTopOffset(startLocal);
     final double height = _getHeight(startLocal, endLocal);
     final Color eventColor = _getEventColor(event.colorId, palette);
 
@@ -483,14 +500,91 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
       height: height - 2,
       child: GestureDetector(
         onTap: () => _onEventTapped(context, ref, event),
+        onLongPressStart: (details) {
+          final sLocal = event.start.toLocal();
+          final duration = event.end.difference(event.start);
+          setState(() {
+            _draggingEventId = event.id;
+            _dragOriginalTop = _getTopOffset(sLocal);
+            _dragCurrentTop = _dragOriginalTop;
+            _dragCurrentStart = sLocal;
+            _dragCurrentEnd = sLocal.add(duration);
+          });
+        },
+        onLongPressMoveUpdate: (details) {
+          if (_draggingEventId == event.id) {
+            final duration = event.end.difference(event.start);
+            setState(() {
+              final hourHeight = ref.read(calendarHourHeightProvider);
+              _dragCurrentTop = _dragOriginalTop + details.localOffsetFromOrigin.dy;
+              _dragCurrentTop = _dragCurrentTop.clamp(0.0, 24.0 * hourHeight);
+              _dragCurrentStart = _getDateTimeFromTop(_dragCurrentTop, event.start.toLocal());
+              _dragCurrentEnd = _dragCurrentStart!.add(duration);
+            });
+          }
+        },
+        onLongPressEnd: (details) async {
+          if (_draggingEventId == event.id) {
+            final newStart = _dragCurrentStart!;
+            final newEnd = _dragCurrentEnd!;
+            final oldDraggingId = _draggingEventId!;
+
+            setState(() {
+              _draggingEventId = null;
+              _dragCurrentStart = null;
+              _dragCurrentEnd = null;
+            });
+
+            final taskRepo = ref.read(taskRepositoryProvider);
+            final calendarRepo = ref.read(calendarRepositoryProvider);
+            final messenger = ScaffoldMessenger.of(context);
+
+            try {
+              if (oldDraggingId.startsWith('task:')) {
+                final taskId = oldDraggingId.substring(5);
+                await taskRepo.updateTask(
+                  taskId,
+                  dueDate: Value(newStart),
+                  dueHasTime: true,
+                );
+              } else if (oldDraggingId.startsWith('habit:')) {
+                throw Exception('Habits cannot be dragged. Edit the habit to change its reminder time.');
+              } else {
+                final originalEvent = widget.events.firstWhere((e) => e.id == oldDraggingId);
+                final updated = originalEvent.copyWith(
+                  start: newStart,
+                  end: newEnd,
+                );
+                await calendarRepo.updateEvent(updated);
+              }
+            } catch (e) {
+              if (mounted) {
+                final msg = e is CalendarPermissionDeniedException
+                    ? e.message
+                    : 'Failed to update event: $e';
+                messenger.showSnackBar(
+                  SnackBar(content: Text(msg)),
+                );
+              }
+            }
+          }
+        },
         child: Container(
           padding: EdgeInsets.symmetric(
             horizontal: height < 40 ? 4.0 : 6.0,
             vertical: height < 40 ? 2.0 : 4.0,
           ),
           decoration: BoxDecoration(
-            color: eventColor.withValues(alpha: 0.85),
+            color: eventColor.withValues(alpha: _draggingEventId == event.id ? 0.7 : 0.85),
             borderRadius: BorderRadius.circular(6),
+            boxShadow: [
+              if (height >= 30)
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: _draggingEventId == event.id ? 0.2 : 0.1),
+                  blurRadius: _draggingEventId == event.id ? 8 : 4,
+                  offset: Offset(0, _draggingEventId == event.id ? 4 : 2),
+                ),
+            ],
           ),
           child: ClipRect(
             child: Column(

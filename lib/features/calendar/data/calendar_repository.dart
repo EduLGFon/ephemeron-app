@@ -239,10 +239,10 @@ class CalendarRepository {
 
   Never _handleApiError(Object e) {
     if (e is gcal.DetailedApiRequestError && e.status == 403) {
-      throw const CalendarPermissionDeniedException();
+      throw CalendarPermissionDeniedException('Permission denied (403): ${e.message ?? 'You do not have edit access to this calendar.'}');
     }
     if (e.toString().contains('403') || e.toString().contains('Forbidden')) {
-      throw const CalendarPermissionDeniedException();
+      throw CalendarPermissionDeniedException('Permission denied (403): ${e.toString()}');
     }
     throw e;
   }

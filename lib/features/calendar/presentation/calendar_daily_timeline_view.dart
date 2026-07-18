@@ -465,6 +465,8 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                   dueDate: Value(newStart),
                   dueHasTime: true,
                 );
+              } else if (oldDraggingId.startsWith('habit:')) {
+                throw Exception('Habits cannot be dragged. Edit the habit to change its reminder time.');
               } else {
                 final originalEvent = widget.events.firstWhere((e) => e.id == oldDraggingId);
                 final updated = originalEvent.copyWith(
