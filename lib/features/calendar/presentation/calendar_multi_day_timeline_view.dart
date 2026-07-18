@@ -101,9 +101,7 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
         _pageController.jumpToPage(targetPage);
       }
     }
-    if (oldWidget.selectedDay != widget.selectedDay ||
-        oldWidget.daysCount != widget.daysCount ||
-        oldWidget.startDayOfWeek != widget.startDayOfWeek) {
+    if (oldWidget.daysCount != widget.daysCount) {
       final hourHeight = ref.read(calendarHourHeightProvider);
       final offset = _calculateInitialScrollOffset(
         widget.selectedDay,

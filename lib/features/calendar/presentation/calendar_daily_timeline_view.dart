@@ -66,15 +66,6 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
       if (_pageController.hasClients && _pageController.page?.round() != targetPage) {
         _pageController.jumpToPage(targetPage);
       }
-      final hourHeight = ref.read(calendarHourHeightProvider);
-      final offset = _calculateInitialScrollOffset(widget.selectedDay, hourHeight);
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          offset,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutCubic,
-        );
-      }
     }
   }
 
