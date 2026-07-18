@@ -342,72 +342,44 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
                 // Layered day columns for timed events
                 Positioned.fill(
                   left: CalendarMultiDayTimelineView.timeColumnWidth,
-                  child: Row(
-                    children: [
-                      for (final day in visibleDays)
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              border: Border(
-                                right: BorderSide(
-                                  color: palette.text.withValues(alpha: 0.04),
-                                  width: 0.5,
-                                ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final totalWidth = constraints.maxWidth;
+                      final dayColumnWidth = totalWidth / visibleDays.length;
+
+                      final draggingDayIndex = _draggingEventId == null || _dragOriginalStart == null
+                          ? -1
+                          : visibleDays.indexWhere((d) =>
+                              d.year == _dragOriginalStart!.year &&
+                              d.month == _dragOriginalStart!.month &&
+                              d.day == _dragOriginalStart!.day);
+
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          // Non-dragging day columns first
+                          for (int i = 0; i < visibleDays.length; i++)
+                            if (i != draggingDayIndex)
+                              Positioned(
+                                left: i * dayColumnWidth,
+                                top: 0,
+                                bottom: 0,
+                                width: dayColumnWidth,
+                                child: _buildDayColumn(context, ref, visibleDays[i], dayColumnWidth, palette),
                               ),
-                            ),
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                final width = constraints.maxWidth;
-                                final timedEvents = _getTimedEventsForDay(day);
-                                final positionedEvents = _layoutEvents(timedEvents);
 
-                                final now = DateTime.now();
-                                final isToday = day.year == now.year &&
-                                    day.month == now.month &&
-                                    day.day == now.day;
-
-                                return Stack(
-                                  children: [
-                                    for (final pe in positionedEvents)
-                                      _buildEventCard(
-                                        context,
-                                        ref,
-                                        pe.event,
-                                        pe.leftFraction * width,
-                                        pe.widthFraction * width,
-                                        palette,
-                                      ),
-                                    if (isToday)
-                                      Positioned(
-                                        top: _getTopOffset(now) - 4, // center the 8px dot/line vertically
-                                        left: 0,
-                                        right: 0,
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              width: 8,
-                                              height: 8,
-                                              decoration: const BoxDecoration(
-                                                color: Colors.redAccent,
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                            Expanded(
-                                              child: Container(
-                                                height: 2,
-                                                color: Colors.redAccent,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                  ],
-                                );
-                              },
+                          // Dragging day column LAST (highest Z-index so it floats above all adjacent columns)
+                          if (draggingDayIndex != -1 && draggingDayIndex < visibleDays.length)
+                            Positioned(
+                              left: draggingDayIndex * dayColumnWidth,
+                              top: 0,
+                              bottom: 0,
+                              width: dayColumnWidth,
+                              child: _buildDayColumn(context, ref, visibleDays[draggingDayIndex], dayColumnWidth, palette),
                             ),
-                          ),
-                        ),
-                    ],
+                        ],
+                      );
+                    },
                   ),
                 ),
               ],
@@ -513,6 +485,68 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
       final eventDay = DateTime(sLocal.year, sLocal.month, sLocal.day);
       return eventDay == targetDay;
     }).toList();
+  }
+
+  Widget _buildDayColumn(
+    BuildContext context,
+    WidgetRef ref,
+    DateTime day,
+    double width,
+    AppPalette palette,
+  ) {
+    final timedEvents = _getTimedEventsForDay(day);
+    final positionedEvents = _layoutEvents(timedEvents);
+    final now = DateTime.now();
+    final isToday = day.year == now.year && day.month == now.month && day.day == now.day;
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          right: BorderSide(
+            color: palette.text.withValues(alpha: 0.04),
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          for (final pe in positionedEvents)
+            _buildEventCard(
+              context,
+              ref,
+              pe.event,
+              pe.leftFraction * width,
+              pe.widthFraction * width,
+              palette,
+            ),
+          if (isToday)
+            Positioned(
+              top: _getTopOffset(now) - 4,
+              left: 0,
+              right: 0,
+              child: Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Colors.redAccent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      height: 2,
+                      color: Colors.redAccent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _buildEventCard(
