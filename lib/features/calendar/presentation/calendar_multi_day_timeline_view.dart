@@ -596,38 +596,132 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
   }
 
   List<PositionedEvent> _layoutEvents(List<CalendarEvent> dayTimedEvents) {
-    final positioned = <PositionedEvent>[];
-    dayTimedEvents.sort((a, b) => a.start.compareTo(b.start));
+    if (dayTimedEvents.isEmpty) return [];
 
-    final groups = <List<CalendarEvent>>[];
-    for (final event in dayTimedEvents) {
-      List<CalendarEvent>? matchedGroup;
-      for (final group in groups) {
-        final overlaps = group.any((e) =>
-            event.start.isBefore(e.end) && event.end.isAfter(e.start));
-        if (overlaps) {
-          matchedGroup = group;
-          break;
+    final sorted = List<CalendarEvent>.from(dayTimedEvents)..sort((a, b) {
+      final startCmp = a.start.compareTo(b.start);
+      if (startCmp != 0) return startCmp;
+      final durA = a.end.difference(a.start);
+      final durB = b.end.difference(b.start);
+      return durB.compareTo(durA);
+    });
+
+    final roots = <_EventLayoutNode>[];
+
+    for (final event in sorted) {
+      final node = _EventLayoutNode(event);
+      _EventLayoutNode? bestParent;
+
+      void findParent(_EventLayoutNode current) {
+        final pDur = current.event.end.difference(current.event.start);
+        final eDur = event.end.difference(event.start);
+        final encloses = !event.start.isBefore(current.event.start) &&
+            !event.end.isAfter(current.event.end) &&
+            pDur > eDur;
+        if (encloses) {
+          bestParent = current;
+          for (final child in current.children) {
+            findParent(child);
+          }
         }
       }
-      if (matchedGroup != null) {
-        matchedGroup.add(event);
+
+      for (final root in roots) {
+        findParent(root);
+      }
+
+      if (bestParent != null) {
+        bestParent!.children.add(node);
       } else {
-        groups.add([event]);
+        roots.add(node);
       }
     }
 
-    for (final group in groups) {
-      final count = group.length;
-      for (int i = 0; i < count; i++) {
-        final e = group[i];
-        positioned.add(PositionedEvent(
-          event: e,
-          leftFraction: i / count,
-          widthFraction: 1.0 / count,
-        ));
+    final positioned = <PositionedEvent>[];
+
+    void layoutLevel(List<_EventLayoutNode> nodes, double availLeft, double availWidth) {
+      if (nodes.isEmpty) return;
+
+      final clusters = <List<_EventLayoutNode>>[];
+      for (final node in nodes) {
+        List<_EventLayoutNode>? matchedCluster;
+        for (final cluster in clusters) {
+          final overlaps = cluster.any((n) =>
+              node.event.start.isBefore(n.event.end) &&
+              node.event.end.isAfter(n.event.start));
+          if (overlaps) {
+            matchedCluster = cluster;
+            break;
+          }
+        }
+        if (matchedCluster != null) {
+          matchedCluster.add(node);
+        } else {
+          clusters.add([node]);
+        }
+      }
+
+      for (final cluster in clusters) {
+        final nodeCols = <_EventLayoutNode, int>{};
+        final colEndTimes = <int, DateTime>{};
+
+        for (final node in cluster) {
+          int assignedCol = 0;
+          while (colEndTimes.containsKey(assignedCol) &&
+              colEndTimes[assignedCol]!.isAfter(node.event.start)) {
+            assignedCol++;
+          }
+          nodeCols[node] = assignedCol;
+          colEndTimes[assignedCol] = node.event.end;
+        }
+
+        final maxCols = (nodeCols.values.isEmpty ? 0 : nodeCols.values.reduce((a, b) => a > b ? a : b)) + 1;
+        final colWidth = availWidth / maxCols;
+
+        for (final node in cluster) {
+          final col = nodeCols[node]!;
+
+          int colSpan = 1;
+          for (int c = col + 1; c < maxCols; c++) {
+            final isFree = cluster.every((other) {
+              if (nodeCols[other] != c) return true;
+              return !node.event.end.isAfter(other.event.start) ||
+                  !node.event.start.isBefore(other.event.end);
+            });
+            if (isFree) {
+              colSpan++;
+            } else {
+              break;
+            }
+          }
+
+          final leftFrac = availLeft + col * colWidth;
+          final widthFrac = colSpan * colWidth;
+
+          positioned.add(PositionedEvent(
+            event: node.event,
+            leftFraction: leftFrac,
+            widthFraction: widthFrac,
+          ));
+
+          if (node.children.isNotEmpty) {
+            final inset = (widthFrac * 0.14).clamp(0.04, 0.14);
+            final innerLeft = leftFrac + inset;
+            final innerWidth = (widthFrac - inset - 0.01).clamp(0.05, 1.0);
+            layoutLevel(node.children, innerLeft, innerWidth);
+          }
+        }
       }
     }
+
+    layoutLevel(roots, 0.0, 1.0);
     return positioned;
   }
+}
+
+class _EventLayoutNode {
+  final CalendarEvent event;
+  final List<_EventLayoutNode> children = [];
+
+  _EventLayoutNode(this.event);
 }
