@@ -219,6 +219,80 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 ),
                 // Grid view taking full height
                 Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onHorizontalDragEnd: (details) {
+                      if (details.primaryVelocity != null) {
+                        if (details.primaryVelocity! < -200) {
+                          // Swipe left -> Next Month
+                          ref.read(focusedMonthProvider.notifier).setMonth(
+                            DateTime(focusedMonth.year, focusedMonth.month + 1, 1),
+                          );
+                        } else if (details.primaryVelocity! > 200) {
+                          // Swipe right -> Previous Month
+                          ref.read(focusedMonthProvider.notifier).setMonth(
+                            DateTime(focusedMonth.year, focusedMonth.month - 1, 1),
+                          );
+                        }
+                      }
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.5),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: GlassmorphicWrapper(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: monthEventsAsync.when(
+                            data: (events) => CalendarMonthGridView(
+                              focusedMonth: focusedMonth,
+                              selectedDay: selectedDay,
+                              events: events,
+                              startDayOfWeek: settings.calendarStartDay,
+                            ),
+                            loading: () => const Center(child: AppLoadingIndicator()),
+                            error: (err, _) => Center(child: Text('Error loading events: $err')),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : calendarView == CalendarView.weekTimeline ||
+                  calendarView == CalendarView.fourDaysTimeline ||
+                  calendarView == CalendarView.threeDaysTimeline
+              ? GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onHorizontalDragEnd: (details) {
+                    if (details.primaryVelocity != null) {
+                      final daysCount = calendarView == CalendarView.weekTimeline
+                          ? 7
+                          : calendarView == CalendarView.fourDaysTimeline
+                              ? 4
+                              : 3;
+                      if (details.primaryVelocity! < -200) {
+                        // Swipe left -> Next period
+                        final newDay = selectedDay.add(Duration(days: daysCount));
+                        ref.read(selectedDayProvider.notifier).setDay(newDay);
+                        if (newDay.month != focusedMonth.month || newDay.year != focusedMonth.year) {
+                          ref.read(focusedMonthProvider.notifier).setMonth(DateTime(newDay.year, newDay.month, 1));
+                        }
+                      } else if (details.primaryVelocity! > 200) {
+                        // Swipe right -> Previous period
+                        final newDay = selectedDay.subtract(Duration(days: daysCount));
+                        ref.read(selectedDayProvider.notifier).setDay(newDay);
+                        if (newDay.month != focusedMonth.month || newDay.year != focusedMonth.year) {
+                          ref.read(focusedMonthProvider.notifier).setMonth(DateTime(newDay.year, newDay.month, 1));
+                        }
+                      }
+                    }
+                  },
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
@@ -230,89 +304,82 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       borderRadius: BorderRadius.circular(24),
                       child: GlassmorphicWrapper(
                         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: monthEventsAsync.when(
-                          data: (events) => CalendarMonthGridView(
-                            focusedMonth: focusedMonth,
-                            selectedDay: selectedDay,
-                            events: events,
-                            startDayOfWeek: settings.calendarStartDay,
-                          ),
-                          loading: () => const Center(child: AppLoadingIndicator()),
-                          error: (err, _) => Center(child: Text('Error loading events: $err')),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            )
-          : calendarView == CalendarView.weekTimeline ||
-                  calendarView == CalendarView.fourDaysTimeline ||
-                  calendarView == CalendarView.threeDaysTimeline
-              ? Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.5),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
-                    child: GlassmorphicWrapper(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: monthEventsAsync.hasValue
-                          ? CalendarMultiDayTimelineView(
-                              selectedDay: selectedDay,
-                              events: monthEventsAsync.value!,
-                              daysCount: calendarView == CalendarView.weekTimeline
-                                  ? 7
-                                  : calendarView == CalendarView.fourDaysTimeline
-                                      ? 4
-                                      : 3,
-                              startDayOfWeek: settings.calendarStartDay,
-                            )
-                          : monthEventsAsync.when(
-                              data: (events) => CalendarMultiDayTimelineView(
+                        child: monthEventsAsync.hasValue
+                            ? CalendarMultiDayTimelineView(
                                 selectedDay: selectedDay,
-                                events: events,
+                                events: monthEventsAsync.value!,
                                 daysCount: calendarView == CalendarView.weekTimeline
                                     ? 7
                                     : calendarView == CalendarView.fourDaysTimeline
                                         ? 4
                                         : 3,
                                 startDayOfWeek: settings.calendarStartDay,
+                              )
+                            : monthEventsAsync.when(
+                                data: (events) => CalendarMultiDayTimelineView(
+                                  selectedDay: selectedDay,
+                                  events: events,
+                                  daysCount: calendarView == CalendarView.weekTimeline
+                                      ? 7
+                                      : calendarView == CalendarView.fourDaysTimeline
+                                          ? 4
+                                          : 3,
+                                  startDayOfWeek: settings.calendarStartDay,
+                                ),
+                                loading: () => const Center(child: AppLoadingIndicator()),
+                                error: (err, _) => Center(child: Text('Error loading events: $err')),
                               ),
-                              loading: () => const Center(child: AppLoadingIndicator()),
-                              error: (err, _) => Center(child: Text('Error loading events: $err')),
-                            ),
+                      ),
                     ),
                   ),
                 )
               : calendarView == CalendarView.dailyTimeline
-                  ? Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.5),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(24),
-                        child: GlassmorphicWrapper(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: monthEventsAsync.hasValue
-                              ? CalendarDailyTimelineView(
-                                  selectedDay: selectedDay,
-                                  events: monthEventsAsync.value!,
-                                )
-                              : monthEventsAsync.when(
-                                  data: (events) => CalendarDailyTimelineView(
+                  ? GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onHorizontalDragEnd: (details) {
+                        if (details.primaryVelocity != null) {
+                          if (details.primaryVelocity! < -200) {
+                            // Swipe left -> Next day
+                            final newDay = selectedDay.add(const Duration(days: 1));
+                            ref.read(selectedDayProvider.notifier).setDay(newDay);
+                            if (newDay.month != focusedMonth.month || newDay.year != focusedMonth.year) {
+                              ref.read(focusedMonthProvider.notifier).setMonth(DateTime(newDay.year, newDay.month, 1));
+                            }
+                          } else if (details.primaryVelocity! > 200) {
+                            // Swipe right -> Previous day
+                            final newDay = selectedDay.subtract(const Duration(days: 1));
+                            ref.read(selectedDayProvider.notifier).setDay(newDay);
+                            if (newDay.month != focusedMonth.month || newDay.year != focusedMonth.year) {
+                              ref.read(focusedMonthProvider.notifier).setMonth(DateTime(newDay.year, newDay.month, 1));
+                            }
+                          }
+                        }
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.5),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: GlassmorphicWrapper(
+                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                            child: monthEventsAsync.hasValue
+                                ? CalendarDailyTimelineView(
                                     selectedDay: selectedDay,
-                                    events: events,
+                                    events: monthEventsAsync.value!,
+                                  )
+                                : monthEventsAsync.when(
+                                    data: (events) => CalendarDailyTimelineView(
+                                      selectedDay: selectedDay,
+                                      events: events,
+                                    ),
+                                    loading: () => const Center(child: AppLoadingIndicator()),
+                                    error: (err, _) => Center(child: Text('Error loading events: $err')),
                                   ),
-                                  loading: () => const Center(child: AppLoadingIndicator()),
-                                  error: (err, _) => Center(child: Text('Error loading events: $err')),
-                                ),
+                          ),
                         ),
                       ),
                     )
