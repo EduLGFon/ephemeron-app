@@ -147,3 +147,7 @@ dependency_overrides:
     path: packages/flutter_timezone
   wakelock_plus:
     path: packages/wakelock_plus
+  device_calendar_plus_android:
+    path: packages/device_calendar_plus_android
+  pasteboard:
+    path: packages/pasteboard
