@@ -990,7 +990,7 @@ class _InAppAlarmDialogState extends State<_InAppAlarmDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
+    final screenSize = MediaQuery.sizeOf(context);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -1006,7 +1006,7 @@ class _InAppAlarmDialogState extends State<_InAppAlarmDialog> {
           ),
           Center(
             child: Container(
-              width: (mediaQuery.size.width * 0.85).clamp(280.0, 420.0),
+              width: (screenSize.width * 0.85).clamp(280.0, 420.0),
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: const Color(0xFF1E292B), // premium deep petrol dark color

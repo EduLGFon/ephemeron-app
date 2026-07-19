@@ -413,10 +413,10 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeInOut,
         margin: _isFullScreen ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        width: _isFullScreen ? MediaQuery.of(context).size.width : 500,
+        width: _isFullScreen ? MediaQuery.sizeOf(context).width : 500,
         constraints: BoxConstraints(
-          minHeight: _isFullScreen ? MediaQuery.of(context).size.height : 180,
-          maxHeight: _isFullScreen ? MediaQuery.of(context).size.height : MediaQuery.of(context).size.height * 0.65,
+          minHeight: _isFullScreen ? MediaQuery.sizeOf(context).height : 180,
+          maxHeight: _isFullScreen ? MediaQuery.sizeOf(context).height : MediaQuery.sizeOf(context).height * 0.65,
         ),
         decoration: BoxDecoration(
           color: palette.surface.withValues(alpha: 0.95),
@@ -441,8 +441,8 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
               child: Padding(
                 padding: _isFullScreen
                     ? EdgeInsets.only(
-                        top: MediaQuery.of(context).padding.top + 16,
-                        bottom: MediaQuery.of(context).padding.bottom + 16,
+                        top: MediaQuery.paddingOf(context).top + 16,
+                        bottom: MediaQuery.paddingOf(context).bottom + 16,
                         left: 24,
                         right: 24,
                       )

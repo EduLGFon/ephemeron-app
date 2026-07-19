@@ -25,7 +25,18 @@ import '../../notes/data/notes_repository.dart';
 import '../../../data/local/database.dart';
 import 'quick_add_target.dart';
 
+import '../../../presentation/widgets/keyboard_avoid_padding.dart';
+
 Future<void> showUnifiedCreationSheet(BuildContext context, {NavSection? currentSection, Object? entity}) {
+  final sheet = SingleChildScrollView(
+    child: Material(
+      color: Colors.transparent,
+      child: RepaintBoundary(
+        child: UnifiedCreationSheet(currentSection: currentSection, entity: entity),
+      ),
+    ),
+  );
+
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -33,21 +44,9 @@ Future<void> showUnifiedCreationSheet(BuildContext context, {NavSection? current
     elevation: 0,
     barrierColor: Colors.black54,
     builder: (context) {
-      return Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 12,
-          right: 12,
-          top: 12,
-        ),
-        child: SingleChildScrollView(
-          child: Material(
-            color: Colors.transparent,
-            child: RepaintBoundary(
-              child: UnifiedCreationSheet(currentSection: currentSection, entity: entity),
-            ),
-          ),
-        ),
+      return KeyboardAvoidPadding(
+        padding: const EdgeInsets.all(12),
+        child: sheet,
       );
     },
   );
@@ -331,9 +330,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
   @override
   Widget build(BuildContext context) {
     final palette = ref.watch(themeEngineProvider);
-    final screenHeight = MediaQuery.of(context).size.height;
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-    final fullScreenHeight = screenHeight - keyboardHeight;
+    final screenHeight = MediaQuery.sizeOf(context).height;
 
     return PopScope(
       canPop: !_hasChanges,
@@ -345,12 +342,9 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
         onTapOutside: (event) {
           _closeSheet();
         },
-        child: AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-      height: _isExpanded ? fullScreenHeight : null,
+        child: Container(
       constraints: BoxConstraints(
-        maxHeight: _isExpanded ? fullScreenHeight : screenHeight * 0.5,
+        maxHeight: _isExpanded ? screenHeight * 0.9 : screenHeight * 0.75,
       ),
       decoration: BoxDecoration(
         color: palette.surface,
@@ -432,7 +426,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
           TextField(
             controller: _titleController,
             focusNode: _titleFocusNode,
-            autofocus: widget.entity == null,
+            autofocus: false,
             style: TextStyle(color: palette.text, fontSize: 18, fontWeight: FontWeight.w500),
             decoration: InputDecoration(
               hintText: _titleHint,

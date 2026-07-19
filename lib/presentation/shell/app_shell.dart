@@ -23,6 +23,7 @@ import '../notes/note_form_sheet.dart';
 import 'nav_section.dart';
 import 'pinned_sections_provider.dart';
 import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
+import '../widgets/keyboard_avoid_padding.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({required this.navigationShell, super.key});
@@ -127,7 +128,17 @@ class _AppShellState extends ConsumerState<AppShell> {
     });
   }
 
+
   void _showNoteFormSheet(BuildContext context, Note? existingNote) {
+    final sheet = Center(
+      child: SingleChildScrollView(
+        child: Material(
+          color: Colors.transparent,
+          child: RepaintBoundary(child: NoteFormSheet(existingNote: existingNote)),
+        ),
+      ),
+    );
+
     showGeneralDialog<void>(
       context: context,
       barrierDismissible: true,
@@ -135,19 +146,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       barrierColor: Colors.black54,
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (context, anim1, anim2) {
-        return Center(
-          child: SingleChildScrollView(
-            child: Material(
-              color: Colors.transparent,
-              child: Padding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom,
-                ),
-                child: RepaintBoundary(child: NoteFormSheet(existingNote: existingNote)),
-              ),
-            ),
-          ),
-        );
+        return KeyboardAvoidPadding(child: sheet);
       },
       transitionBuilder: (context, anim1, anim2, child) {
         final curve = CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic);
@@ -315,7 +314,7 @@ class _PremiumNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
     
     Widget navBar = Container(
       height: 72,
@@ -437,9 +436,7 @@ class _KeyboardAttachedFabLocation extends FloatingActionButtonLocation {
   @override
   Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
     final double fabX = (scaffoldGeometry.scaffoldSize.width - scaffoldGeometry.floatingActionButtonSize.width) / 2.0;
-    final isKeyboardOpen = scaffoldGeometry.minInsets.bottom > 0;
-    final double margin = isKeyboardOpen ? 0.0 : 16.0;
-    final double fabY = scaffoldGeometry.contentBottom - scaffoldGeometry.floatingActionButtonSize.height - margin;
+    final double fabY = scaffoldGeometry.scaffoldSize.height - scaffoldGeometry.floatingActionButtonSize.height - 88.0;
     return Offset(fabX, fabY);
   }
 }

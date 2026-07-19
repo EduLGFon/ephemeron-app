@@ -10,11 +10,22 @@ import '../../../core/settings/session_restore.dart';
 import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
 import '../../../../presentation/widgets/confirmation_dialog.dart';
 
+import '../../../presentation/widgets/keyboard_avoid_padding.dart';
+
 Future<void> showCountdownFormSheet(
   BuildContext context, {
   required CountdownType type,
   Countdown? existingCountdown,
 }) {
+  final sheet = Center(
+    child: SingleChildScrollView(
+      child: Material(
+        color: Colors.transparent,
+        child: RepaintBoundary(child: CountdownFormSheet(type: type, existingCountdown: existingCountdown)),
+      ),
+    ),
+  );
+
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
@@ -22,19 +33,7 @@ Future<void> showCountdownFormSheet(
     barrierColor: Colors.black54,
     transitionDuration: const Duration(milliseconds: 300),
     pageBuilder: (context, animation, secondaryAnimation) {
-      return Center(
-        child: SingleChildScrollView(
-          child: Material(
-            color: Colors.transparent,
-            child: Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: RepaintBoundary(child: CountdownFormSheet(type: type, existingCountdown: existingCountdown)),
-            ),
-          ),
-        ),
-      );
+      return KeyboardAvoidPadding(child: sheet);
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
       final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);

@@ -20,11 +20,22 @@ import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
 import '../../../../presentation/widgets/confirmation_dialog.dart';
 import '../../../../presentation/widgets/recurrence_delete_dialog.dart';
 
+import '../../../presentation/widgets/keyboard_avoid_padding.dart';
+
 Future<void> showTaskFormSheet(
   BuildContext context, {
   required String listId,
   Task? existingTask,
 }) {
+  final sheet = Center(
+    child: SingleChildScrollView(
+      child: Material(
+        color: Colors.transparent,
+        child: RepaintBoundary(child: TaskFormSheet(listId: listId, existingTask: existingTask)),
+      ),
+    ),
+  );
+
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
@@ -32,19 +43,7 @@ Future<void> showTaskFormSheet(
     barrierColor: Colors.black54,
     transitionDuration: const Duration(milliseconds: 300),
     pageBuilder: (context, animation, secondaryAnimation) {
-      return Center(
-        child: SingleChildScrollView(
-          child: Material(
-            color: Colors.transparent,
-            child: Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: RepaintBoundary(child: TaskFormSheet(listId: listId, existingTask: existingTask)),
-            ),
-          ),
-        ),
-      );
+      return KeyboardAvoidPadding(child: sheet);
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
       final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
