@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:google_sign_in_platform_interface/google_sign_in_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/config/app_config.dart';
@@ -94,17 +95,6 @@ class GoogleSignInAuthRepository extends GoogleAuthRepository {
     );
 
     _initialized = true;
-
-    if (_currentAccount != null && _signedInAccount == null) {
-      try {
-        final restored = await _instance.attemptLightweightAuthentication();
-        if (restored != null) {
-          _signedInAccount = restored;
-        }
-      } catch (e) {
-        DevLogger.log('Silent lightweight auth attempt on init: $e');
-      }
-    }
   }
 
   void _handleAuthEvent(GoogleSignInAuthenticationEvent event) {
@@ -208,22 +198,46 @@ class GoogleSignInAuthRepository extends GoogleAuthRepository {
     var signedInAccount = _signedInAccount;
 
     if (signedInAccount == null) {
-      try {
-        final restored = await _instance.attemptLightweightAuthentication();
-        if (restored != null) {
-          _signedInAccount = restored;
+      // If we don't have a signed in SDK account but we DO have a persisted
+      // account, we can request authorization tokens silently by passing the
+      // email directly to the platform interface. This avoids calling
+      // attemptLightweightAuthentication() which triggers the One Tap UI
+      // bottom sheet on Android even for silent requests.
+      if (_currentAccount != null) {
+        DevLogger.log('No active SDK session. Requesting token via platform interface for ${_currentAccount!.email}');
+        try {
+          final tokens = await GoogleSignInPlatform.instance.clientAuthorizationTokensForScopes(
+            ClientAuthorizationTokensForScopesParameters(
+              request: AuthorizationRequestDetails(
+                scopes: scopes,
+                userId: _currentAccount!.id,
+                email: _currentAccount!.email,
+                promptIfUnauthorized: promptIfNecessary,
+              ),
+            ),
+          );
+          if (tokens != null) {
+            return tokens.accessToken;
+          }
+        } catch (e) {
+          DevLogger.log('Silent token request via platform interface failed: $e');
         }
-        for (var i = 0; i < 5; i++) {
-          if (_signedInAccount != null) break;
-          await Future<void>.delayed(const Duration(milliseconds: 20));
-        }
-        signedInAccount = _signedInAccount;
-      } catch (_) {}
-    }
 
-    if (signedInAccount == null) {
-      DevLogger.logError('getAccessToken failed: No account signed in');
-      throw const GoogleAuthException('No Google account signed in yet.');
+        if (!promptIfNecessary) {
+          DevLogger.log('No cached token for scopes and promptIfNecessary is false.');
+          throw const GoogleAuthException('Scope authorization token not available silently.');
+        }
+
+        DevLogger.log('Consent screen required. Triggering full signIn...');
+        await signIn();
+        signedInAccount = _signedInAccount;
+        if (signedInAccount == null) {
+          throw const GoogleAuthException('Failed to restore SDK session for authorization prompt.');
+        }
+      } else {
+        DevLogger.logError('getAccessToken failed: No account signed in');
+        throw const GoogleAuthException('No Google account signed in yet.');
+      }
     }
 
     DevLogger.log('Requesting access token for scopes: $scopes');
