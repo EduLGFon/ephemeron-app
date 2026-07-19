@@ -20,3 +20,5 @@
 - **Efficiency**: Every solution built must be highly efficient on battery (use
   as less battery as possible) and the app must be as much smoother and
   lightweight as possible.
+- **Performance**: The app and all of its screens, menus, sheets, settings,
+  etc must be able to boot/start/run smoothly and as fast as possible.
