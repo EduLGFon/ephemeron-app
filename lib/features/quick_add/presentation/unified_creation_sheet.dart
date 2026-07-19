@@ -111,6 +111,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
   RecurrenceConfig _recurrence = const RecurrenceConfig();
   Set<ReminderOffset> _selectedOffsets = {};
   final List<String> _attendees = [];
+  bool _isAllDay = false;
 
   void _insertMarkdownAtCursor(String prefix) {
     final text = _descController.text;
@@ -268,6 +269,10 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
       _startTime = ev.start;
       _endTime = ev.end;
       _location = ev.location;
+      _calendarId = ev.calendarId;
+      _attendees.clear();
+      _attendees.addAll(ev.attendees);
+      _isAllDay = ev.isAllDay;
     } else if (widget.entity is Habit) {
       final h = widget.entity as Habit;
       _target = QuickAddTarget.habit;
@@ -769,7 +774,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
             description: desc,
             start: _startTime,
             end: _endTime,
-            isAllDay: false,
+            isAllDay: _isAllDay,
             location: _location,
             attendees: _attendees,
             recurrence: _recurrence.toRruleList(_startTime),
@@ -970,6 +975,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
       initialEnd: _endTime,
       initialRecurrence: _recurrence,
       initialReminderOffsets: _selectedOffsets,
+      initialIsAllDay: _isAllDay,
     );
     if (result != null) {
       setState(() {
@@ -977,6 +983,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
         _endTime = result.end;
         _recurrence = result.recurrence;
         _selectedOffsets = result.reminderOffsets;
+        _isAllDay = result.isAllDay;
       });
       _markChanged();
     }
@@ -1218,7 +1225,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
           description: desc,
           start: _startTime,
           end: _endTime,
-          isAllDay: false,
+          isAllDay: _isAllDay,
         ),
       );
     } else if (_target == QuickAddTarget.habit) {
