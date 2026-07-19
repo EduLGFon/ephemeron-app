@@ -32,11 +32,11 @@ class SmartListFormatter extends TextInputFormatter {
     final previousLine = textBeforeInsertion.substring(previousNewlineIndex + 1);
 
     // Regex to match list prefixes:
-    // Checkboxes: "- [ ] ", "- [x] "
+    // Checkboxes: "- [ ] ", "- [x] ", "[ ] ", "[x] "
     // Bullets: "- ", "* "
     // Numbers: "1. "
     // Arrows: "-> ", "=> "
-    final RegExp prefixRegex = RegExp(r'^(\s*)(-\s\[\s\]\s|-\s\[x\]\s|-\s|\*\s|\d+\.\s|->\s|=>\s)(.*)$');
+    final RegExp prefixRegex = RegExp(r'^(\s*)(-\s\[\s\]\s|-\s\[x\]\s|\[\s\]\s|\[x\]\s|-\s|\*\s|\d+\.\s|->\s|=>\s)(.*)$');
     final match = prefixRegex.firstMatch(previousLine);
 
     if (match != null) {

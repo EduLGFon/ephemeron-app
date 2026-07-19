@@ -16,16 +16,16 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
     if (lineStart >= lineEnd) return false;
 
     final line = text.substring(lineStart, lineEnd);
-    final match = RegExp(r'^(\s*-\s\[)([ x])(\]\s)').firstMatch(line);
+    final match = RegExp(r'^(\s*(?:-\s)?)(\[[ x]\])(\s)').firstMatch(line);
     
     if (match != null) {
       final checkboxStart = lineStart + match.start;
       final checkboxEnd = lineStart + match.end;
 
       if (offset >= checkboxStart && offset <= checkboxEnd) {
-        final isChecked = match.group(2) == 'x';
+        final isChecked = match.group(2)!.contains('x');
         final newChar = isChecked ? ' ' : 'x';
-        final replaceStart = lineStart + match.start + match.group(1)!.length;
+        final replaceStart = lineStart + match.start + match.group(1)!.length + 1;
         
         final newText = text.replaceRange(replaceStart, replaceStart + 1, newChar);
         
@@ -45,9 +45,9 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
     TextStyle? style,
     required bool withComposing,
   }) {
-    final List<TextSpan> spans = [];
+    final List<InlineSpan> spans = [];
     final pattern = RegExp(
-      r'(?<bold>\*\*(?<boldContent>.*?)\*\*)|(?<italic>_(?<italicContent>.*?)_|\*(?<italicContent2>.*?)\*)|(?<heading>(?<headingSyntax>#{1,6}\s)(?<headingContent>.*))|(?<checkbox>^\s*-\s\[[ x]\]\s)|(?<list>^\s*[-*]\s.*|^\s*\d+\.\s.*)|(?<link>\[(?<linkContent>.*?)\]\((?<linkUrl>.*?)\))',
+      r'(?<bold>\*\*(?<boldContent>.*?)\*\*)|(?<italic>_(?<italicContent>.*?)_|\*(?<italicContent2>.*?)\*)|(?<heading>(?<headingSyntax>#{1,6}\s)(?<headingContent>.*))|(?<checkbox>^\s*(?:-\s)?\[[ x]\]\s)|(?<list>^\s*[-*]\s.*|^\s*\d+\.\s.*)|(?<link>\[(?<linkContent>.*?)\]\((?<linkUrl>.*?)\))',
       multiLine: true,
     );
 
@@ -105,18 +105,58 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
       } else if (match.namedGroup('checkbox') != null) {
         final matchText = text.substring(match.start, match.end);
         final isChecked = matchText.contains('[x]');
-        spans.add(TextSpan(
-          text: matchText,
-          style: style?.copyWith(
-            color: isChecked ? Colors.grey : Colors.blueAccent,
-            fontWeight: FontWeight.bold,
-          ),
-        ));
+        
+        final innerMatch = RegExp(r'^(\s*(?:-\s)?)(\[[ x]\])(\s)$').firstMatch(matchText);
+        if (innerMatch != null) {
+          final prefix = innerMatch.group(1)!;
+          final suffix = innerMatch.group(3)!;
+          
+          if (prefix.isNotEmpty) {
+            spans.add(TextSpan(text: prefix, style: hiddenStyle));
+          }
+          
+          spans.add(TextSpan(text: '[', style: hiddenStyle));
+          spans.add(WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Icon(
+              isChecked ? Icons.check_box : Icons.check_box_outline_blank,
+              size: (style?.fontSize ?? 14) + 6,
+              color: isChecked ? Colors.grey : Colors.blueAccent,
+            ),
+          ));
+          spans.add(TextSpan(text: ']', style: hiddenStyle));
+          
+          if (suffix.isNotEmpty) {
+            spans.add(TextSpan(text: suffix, style: style));
+          }
+        }
       } else if (match.namedGroup('list') != null) {
-        spans.add(TextSpan(
-          text: text.substring(match.start, match.end),
-          style: style?.copyWith(color: Colors.blueAccent),
-        ));
+        final matchText = text.substring(match.start, match.end);
+        final innerMatch = RegExp(r'^(\s*)([-*]\s|\d+\.\s)(.*)$').firstMatch(matchText);
+        if (innerMatch != null) {
+          final indent = innerMatch.group(1)!;
+          final bullet = innerMatch.group(2)!;
+          final content = innerMatch.group(3)!;
+          
+          if (indent.isNotEmpty) {
+            spans.add(TextSpan(text: indent, style: style));
+          }
+          
+          if (bullet.trim() == '-' || bullet.trim() == '*') {
+            spans.add(TextSpan(text: bullet[0], style: hiddenStyle));
+            spans.add(WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                child: Icon(Icons.circle, size: (style?.fontSize ?? 14) * 0.4, color: style?.color?.withValues(alpha: 0.7) ?? Colors.grey),
+              ),
+            ));
+          } else {
+            spans.add(TextSpan(text: bullet, style: style?.copyWith(fontWeight: FontWeight.bold, color: Colors.blueAccent)));
+          }
+          
+          spans.add(TextSpan(text: content, style: style));
+        }
       } else if (match.namedGroup('link') != null) {
         final linkContent = match.namedGroup('linkContent')!;
         final linkUrl = match.namedGroup('linkUrl')!;
