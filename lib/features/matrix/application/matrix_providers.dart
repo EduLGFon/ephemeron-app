@@ -15,13 +15,14 @@ final showCompletedMatrixTasksProvider = NotifierProvider<ShowCompletedMatrixTas
   return ShowCompletedMatrixTasksNotifier();
 });
 
-final pendingMatrixTasksProvider = StreamProvider.family<List<Task>, MatrixQuadrant>((ref, quadrant) {
+final pendingMatrixTasksProvider = StreamProvider.family<List<Task>, MatrixQuadrant>((ref, quadrant) async* {
   final repo = ref.watch(taskRepositoryProvider);
   final sortOption = ref.watch(taskSortOptionProvider);
-  return repo.watchMatrixTasks(quadrant, isCompleted: false, sortOption: sortOption);
+  yield* repo.watchMatrixTasks(quadrant, isCompleted: false, sortOption: sortOption);
 });
 
-final completedMatrixTasksProvider = StreamProvider.family<List<Task>, MatrixQuadrant>((ref, quadrant) {
+final completedMatrixTasksProvider = StreamProvider.family<List<Task>, MatrixQuadrant>((ref, quadrant) async* {
   final repo = ref.watch(taskRepositoryProvider);
-  return repo.watchMatrixTasks(quadrant, isCompleted: true);
+  yield* repo.watchMatrixTasks(quadrant, isCompleted: true);
 });
+

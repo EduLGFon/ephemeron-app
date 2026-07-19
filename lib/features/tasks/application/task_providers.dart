@@ -27,35 +27,35 @@ final taskRepositoryProvider = Provider<TaskRepository>((ref) {
   );
 });
 
-final listsProvider = StreamProvider<List<TaskList>>((ref) {
-  return ref.watch(taskRepositoryProvider).watchLists();
+final listsProvider = StreamProvider<List<TaskList>>((ref) async* {
+  yield* ref.watch(taskRepositoryProvider).watchLists();
 });
 
 final tasksInListProvider = StreamProvider.family<List<Task>, String>((
   ref,
   listId,
-) {
-  return ref.watch(taskRepositoryProvider).watchTasksInList(listId);
+) async* {
+  yield* ref.watch(taskRepositoryProvider).watchTasksInList(listId);
 });
 
-final customSmartListsProvider = StreamProvider<List<CustomSmartList>>((ref) {
-  return ref.watch(taskRepositoryProvider).watchCustomSmartLists();
+final customSmartListsProvider = StreamProvider<List<CustomSmartList>>((ref) async* {
+  yield* ref.watch(taskRepositoryProvider).watchCustomSmartLists();
 });
 
-final customSmartListByIdProvider = StreamProvider.family<CustomSmartList?, String>((ref, id) {
-  return ref.watch(taskRepositoryProvider).watchCustomSmartListById(id);
+final customSmartListByIdProvider = StreamProvider.family<CustomSmartList?, String>((ref, id) async* {
+  yield* ref.watch(taskRepositoryProvider).watchCustomSmartListById(id);
 });
 
-final tasksForListProvider = StreamProvider.family<List<Task>, String>((ref, listId) {
+final tasksForListProvider = StreamProvider.family<List<Task>, String>((ref, listId) async* {
   final repo = ref.watch(taskRepositoryProvider);
   if (listId.startsWith('smart:')) {
     final typeStr = listId.substring(6);
     final type = SmartListType.values.firstWhere((e) => e.name == typeStr);
-    return repo.watchSmartList(type);
+    yield* repo.watchSmartList(type);
   } else if (listId.startsWith('custom_smart:')) {
     final id = listId.substring(13);
     final smartListAsync = ref.watch(customSmartListByIdProvider(id));
-    return smartListAsync.when(
+    yield* smartListAsync.when(
       data: (smartList) {
         if (smartList == null) return Stream.value(<Task>[]);
         return repo.watchTasksForCustomSmartList(smartList);
@@ -64,41 +64,41 @@ final tasksForListProvider = StreamProvider.family<List<Task>, String>((ref, lis
       error: (err, stack) => Stream<List<Task>>.error(err, stack),
     );
   } else {
-    return repo.watchTasksInList(listId);
+    yield* repo.watchTasksInList(listId);
   }
 });
 
-final allPendingTasksProvider = StreamProvider<List<Task>>((ref) {
-  return ref.watch(taskRepositoryProvider).watchAllPendingTasks();
+final allPendingTasksProvider = StreamProvider<List<Task>>((ref) async* {
+  yield* ref.watch(taskRepositoryProvider).watchAllPendingTasks();
 });
 
-final allActiveTasksProvider = StreamProvider<List<Task>>((ref) {
-  return ref.watch(taskRepositoryProvider).watchAllActiveTasks();
+final allActiveTasksProvider = StreamProvider<List<Task>>((ref) async* {
+  yield* ref.watch(taskRepositoryProvider).watchAllActiveTasks();
 });
 
 final subtasksProvider = StreamProvider.family<List<Task>, String>((
   ref,
   parentTaskId,
-) {
-  return ref.watch(taskRepositoryProvider).watchSubtasks(parentTaskId);
+) async* {
+  yield* ref.watch(taskRepositoryProvider).watchSubtasks(parentTaskId);
 });
 
 final smartListProvider = StreamProvider.family<List<Task>, SmartListType>((
   ref,
   type,
-) {
-  return ref.watch(taskRepositoryProvider).watchSmartList(type);
+) async* {
+  yield* ref.watch(taskRepositoryProvider).watchSmartList(type);
 });
 
-final allTagsProvider = StreamProvider<List<Tag>>((ref) {
-  return ref.watch(taskRepositoryProvider).watchAllTags();
+final allTagsProvider = StreamProvider<List<Tag>>((ref) async* {
+  yield* ref.watch(taskRepositoryProvider).watchAllTags();
 });
 
 final taskTagsProvider = StreamProvider.family<List<Tag>, String>((
   ref,
   taskId,
-) {
-  return ref.watch(taskRepositoryProvider).watchTagsForTask(taskId);
+) async* {
+  yield* ref.watch(taskRepositoryProvider).watchTagsForTask(taskId);
 });
 
 
@@ -155,18 +155,18 @@ List<Task> _applyInMemorySort(List<Task> tasks, TaskSortOption sortOption, {requ
   return filtered;
 }
 
-final pendingTasksInListProvider = StreamProvider.family<List<Task>, String>((ref, listId) {
+final pendingTasksInListProvider = StreamProvider.family<List<Task>, String>((ref, listId) async* {
   final repo = ref.watch(taskRepositoryProvider);
   final sortOption = ref.watch(taskSortOptionProvider);
 
   if (listId.startsWith('smart:')) {
     final typeStr = listId.substring(6);
     final type = SmartListType.values.firstWhere((e) => e.name == typeStr);
-    return repo.watchSmartList(type).map((tasks) => _applyInMemorySort(tasks, sortOption, isCompleted: false));
+    yield* repo.watchSmartList(type).map((tasks) => _applyInMemorySort(tasks, sortOption, isCompleted: false));
   } else if (listId.startsWith('custom_smart:')) {
     final id = listId.substring(13);
     final smartListAsync = ref.watch(customSmartListByIdProvider(id));
-    return smartListAsync.when(
+    yield* smartListAsync.when(
       data: (smartList) {
         if (smartList == null) return Stream.value(<Task>[]);
         return repo.watchTasksForCustomSmartList(smartList).map((tasks) => _applyInMemorySort(tasks, sortOption, isCompleted: false));
@@ -175,21 +175,21 @@ final pendingTasksInListProvider = StreamProvider.family<List<Task>, String>((re
       error: (err, stack) => Stream<List<Task>>.error(err, stack),
     );
   } else {
-    return repo.watchTasksInList(listId, isCompleted: false, sortOption: sortOption);
+    yield* repo.watchTasksInList(listId, isCompleted: false, sortOption: sortOption);
   }
 });
 
-final completedTasksInListProvider = StreamProvider.family<List<Task>, String>((ref, listId) {
+final completedTasksInListProvider = StreamProvider.family<List<Task>, String>((ref, listId) async* {
   final repo = ref.watch(taskRepositoryProvider);
   
   if (listId.startsWith('smart:')) {
     final typeStr = listId.substring(6);
     final type = SmartListType.values.firstWhere((e) => e.name == typeStr);
-    return repo.watchSmartList(type).map((tasks) => _applyInMemorySort(tasks, TaskSortOption.priority, isCompleted: true));
+    yield* repo.watchSmartList(type).map((tasks) => _applyInMemorySort(tasks, TaskSortOption.priority, isCompleted: true));
   } else if (listId.startsWith('custom_smart:')) {
     final id = listId.substring(13);
     final smartListAsync = ref.watch(customSmartListByIdProvider(id));
-    return smartListAsync.when(
+    yield* smartListAsync.when(
       data: (smartList) {
         if (smartList == null) return Stream.value(<Task>[]);
         return repo.watchTasksForCustomSmartList(smartList).map((tasks) => _applyInMemorySort(tasks, TaskSortOption.priority, isCompleted: true));
@@ -198,13 +198,13 @@ final completedTasksInListProvider = StreamProvider.family<List<Task>, String>((
       error: (err, stack) => Stream<List<Task>>.error(err, stack),
     );
   } else {
-    return repo.watchTasksInList(listId, isCompleted: true);
+    yield* repo.watchTasksInList(listId, isCompleted: true);
   }
 });
 
 final selectedListIdProvider = StateProvider<String?>((ref) => null);
 
-final calendarTasksProvider = StreamProvider<List<TaskCalendarEntry>>((ref) {
-  return ref.watch(taskRepositoryProvider).watchTasksForCalendar();
+final calendarTasksProvider = StreamProvider<List<TaskCalendarEntry>>((ref) async* {
+  yield* ref.watch(taskRepositoryProvider).watchTasksForCalendar();
 });
 
