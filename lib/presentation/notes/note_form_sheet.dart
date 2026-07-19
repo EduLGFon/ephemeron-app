@@ -213,7 +213,7 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
             style: TextStyle(color: palette.text),
             inputFormatters: [SmartListFormatter()],
             onTap: () {
-              if (_contentController.toggleCheckboxAtCursor()) {
+              if (_contentController.handleTapAtCursor()) {
                 setState(() {});
               }
             },

@@ -3,7 +3,36 @@ import 'package:flutter/material.dart';
 class MarkdownSyntaxHighlighter extends TextEditingController {
   MarkdownSyntaxHighlighter({super.text});
 
-  bool toggleCheckboxAtCursor() {
+  bool _moveLineUp(int lineStart, int lineEnd) {
+    if (lineStart == 0) return false;
+    final currentLine = text.substring(lineStart, lineEnd);
+    final previousLineStart = text.lastIndexOf('\n', lineStart - 2) + 1;
+    final previousLine = text.substring(previousLineStart, lineStart - 1);
+    
+    final newText = text.replaceRange(previousLineStart, lineEnd, '$currentLine\n$previousLine');
+    value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: previousLineStart + (selection.baseOffset - lineStart)),
+    );
+    return true;
+  }
+
+  bool _moveLineDown(int lineStart, int lineEnd) {
+    if (lineEnd == text.length) return false;
+    final currentLine = text.substring(lineStart, lineEnd);
+    final nextLineEndIndex = text.indexOf('\n', lineEnd + 1);
+    final nextLineEnd = nextLineEndIndex == -1 ? text.length : nextLineEndIndex;
+    final nextLine = text.substring(lineEnd + 1, nextLineEnd);
+    
+    final newText = text.replaceRange(lineStart, nextLineEnd, '$nextLine\n$currentLine');
+    value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: lineStart + nextLine.length + 1 + (selection.baseOffset - lineStart)),
+    );
+    return true;
+  }
+
+  bool handleTapAtCursor() {
     final offset = selection.baseOffset;
     if (offset < 0) return false;
 
@@ -14,28 +43,63 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
     final lineEnd = lineEndIndex == -1 ? text.length : offset + lineEndIndex;
 
     if (lineStart >= lineEnd) return false;
-
     final line = text.substring(lineStart, lineEnd);
-    final match = RegExp(r'^(\s*(?:-\s)?)(\[[ x]\])(\s)').firstMatch(line);
-    
-    if (match != null) {
-      final checkboxStart = lineStart + match.start;
-      final checkboxEnd = lineStart + match.end;
 
-      if (offset >= checkboxStart && offset <= checkboxEnd) {
-        final isChecked = match.group(2)!.contains('x');
+    final checkboxMatch = RegExp(r'^(\s*)(-\s)?(\[[ x]\])(\s)').firstMatch(line);
+    if (checkboxMatch != null) {
+      final indent = checkboxMatch.group(1)!;
+      final dash = checkboxMatch.group(2);
+      
+      final contentStart = lineStart + indent.length;
+      final localOffset = offset - contentStart;
+      
+      bool isUp = false;
+      bool isDown = false;
+      bool isCheck = false;
+      
+      if (dash != null) {
+        if (localOffset == 0) { isUp = true; }
+        else if (localOffset == 1 || localOffset == 2) { isDown = true; }
+        else if (localOffset >= 3 && localOffset <= 5) { isCheck = true; }
+      } else {
+        if (localOffset == 0) { isUp = true; }
+        else if (localOffset == 1) { isDown = true; }
+        else if (localOffset >= 2 && localOffset <= 4) { isCheck = true; }
+      }
+      
+      if (isUp) return _moveLineUp(lineStart, lineEnd);
+      if (isDown) return _moveLineDown(lineStart, lineEnd);
+      if (isCheck) {
+        final isChecked = checkboxMatch.group(3)!.contains('x');
         final newChar = isChecked ? ' ' : 'x';
-        final replaceStart = lineStart + match.start + match.group(1)!.length + 1;
-        
+        final replaceStart = contentStart + (dash?.length ?? 0) + 1;
         final newText = text.replaceRange(replaceStart, replaceStart + 1, newChar);
-        
-        value = TextEditingValue(
-          text: newText,
-          selection: TextSelection.collapsed(offset: offset),
-        );
+        value = TextEditingValue(text: newText, selection: TextSelection.collapsed(offset: offset));
         return true;
       }
+      return false;
     }
+
+    final listMatch = RegExp(r'^(\s*)([-*]\s|\d+\.\s)').firstMatch(line);
+    if (listMatch != null) {
+      final indent = listMatch.group(1)!;
+      final bullet = listMatch.group(2)!;
+      
+      final contentStart = lineStart + indent.length;
+      final localOffset = offset - contentStart;
+      
+      bool isUp = false;
+      bool isDown = false;
+      
+      if (bullet.trim() == '-' || bullet.trim() == '*') {
+        if (localOffset == 0) { isUp = true; }
+        else if (localOffset == 1 || localOffset == 2) { isDown = true; }
+        
+        if (isUp) return _moveLineUp(lineStart, lineEnd);
+        if (isDown) return _moveLineDown(lineStart, lineEnd);
+      }
+    }
+    
     return false;
   }
 
@@ -106,29 +170,47 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
         final matchText = text.substring(match.start, match.end);
         final isChecked = matchText.contains('[x]');
         
-        final innerMatch = RegExp(r'^(\s*(?:-\s)?)(\[[ x]\])(\s)$').firstMatch(matchText);
+        final innerMatch = RegExp(r'^(\s*)(-\s)?(\[[ x]\])(\s)$').firstMatch(matchText);
         if (innerMatch != null) {
-          final prefix = innerMatch.group(1)!;
-          final suffix = innerMatch.group(3)!;
+          final indent = innerMatch.group(1)!;
+          final dash = innerMatch.group(2);
+          final suffix = innerMatch.group(4)!;
           
-          if (prefix.isNotEmpty) {
-            spans.add(TextSpan(text: prefix, style: hiddenStyle));
-          }
-          
-          spans.add(TextSpan(text: '[', style: hiddenStyle));
-          spans.add(WidgetSpan(
+          if (indent.isNotEmpty) spans.add(TextSpan(text: indent, style: style));
+
+          WidgetSpan upArrow = WidgetSpan(
             alignment: PlaceholderAlignment.middle,
-            child: Icon(
-              isChecked ? Icons.check_box : Icons.check_box_outline_blank,
-              size: (style?.fontSize ?? 14) + 6,
-              color: isChecked ? Colors.grey : Colors.blueAccent,
+            child: Icon(Icons.arrow_upward, size: 16, color: Colors.grey.withValues(alpha: 0.6)),
+          );
+          WidgetSpan downArrow = WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Icon(Icons.arrow_downward, size: 16, color: Colors.grey.withValues(alpha: 0.6)),
+          );
+          WidgetSpan checkboxIcon = WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 4.0),
+              child: Icon(
+                isChecked ? Icons.check_box : Icons.check_box_outline_blank,
+                size: (style?.fontSize ?? 14) + 6,
+                color: isChecked ? Colors.grey : Colors.blueAccent,
+              ),
             ),
-          ));
-          spans.add(TextSpan(text: ']', style: hiddenStyle));
+          );
           
-          if (suffix.isNotEmpty) {
-            spans.add(TextSpan(text: suffix, style: style));
+          if (dash != null) {
+            spans.add(upArrow);
+            spans.add(downArrow);
+            spans.add(TextSpan(text: '[', style: hiddenStyle));
+            spans.add(checkboxIcon);
+            spans.add(TextSpan(text: ']', style: hiddenStyle));
+          } else {
+            spans.add(upArrow);
+            spans.add(downArrow);
+            spans.add(checkboxIcon);
           }
+          
+          if (suffix.isNotEmpty) spans.add(TextSpan(text: suffix, style: style));
         }
       } else if (match.namedGroup('list') != null) {
         final matchText = text.substring(match.start, match.end);
@@ -138,19 +220,27 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
           final bullet = innerMatch.group(2)!;
           final content = innerMatch.group(3)!;
           
-          if (indent.isNotEmpty) {
-            spans.add(TextSpan(text: indent, style: style));
-          }
+          if (indent.isNotEmpty) spans.add(TextSpan(text: indent, style: style));
           
           if (bullet.trim() == '-' || bullet.trim() == '*') {
-            spans.add(TextSpan(text: bullet[0], style: hiddenStyle));
-            spans.add(WidgetSpan(
+            WidgetSpan upArrow = WidgetSpan(
               alignment: PlaceholderAlignment.middle,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                child: Icon(Icons.circle, size: (style?.fontSize ?? 14) * 0.4, color: style?.color?.withValues(alpha: 0.7) ?? Colors.grey),
+              child: Icon(Icons.arrow_upward, size: 16, color: Colors.grey.withValues(alpha: 0.6)),
+            );
+            WidgetSpan downAndBullet = WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.arrow_downward, size: 16, color: Colors.grey.withValues(alpha: 0.6)),
+                  const SizedBox(width: 4),
+                  Icon(Icons.circle, size: (style?.fontSize ?? 14) * 0.4, color: style?.color?.withValues(alpha: 0.7) ?? Colors.grey),
+                  const SizedBox(width: 4),
+                ],
               ),
-            ));
+            );
+            spans.add(upArrow);
+            spans.add(downAndBullet);
           } else {
             spans.add(TextSpan(text: bullet, style: style?.copyWith(fontWeight: FontWeight.bold, color: Colors.blueAccent)));
           }
