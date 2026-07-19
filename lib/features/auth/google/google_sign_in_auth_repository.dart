@@ -95,11 +95,13 @@ class GoogleSignInAuthRepository extends GoogleAuthRepository {
 
     _initialized = true;
 
-    // The previous session from SharedPreferences has already been restored above.
-    // We intentionally skip attemptLightweightAuthentication() here to avoid triggering
-    // the native Google Credential Manager UI (which can show a bottom sheet or toast)
-    // every time the app opens. It will be called silently inside getAccessToken()
-    // only when an API call is actually made.
+    if (_currentAccount != null && _signedInAccount == null) {
+      try {
+        await _instance.attemptLightweightAuthentication();
+      } catch (e) {
+        DevLogger.log('Silent lightweight auth attempt on init: $e');
+      }
+    }
   }
 
   void _handleAuthEvent(GoogleSignInAuthenticationEvent event) {
@@ -189,18 +191,18 @@ class GoogleSignInAuthRepository extends GoogleAuthRepository {
   Future<String> getAccessToken(List<String> scopes) async {
     _ensureInitialized();
     var signedInAccount = _signedInAccount;
+
     if (signedInAccount == null) {
       try {
         await _instance.attemptLightweightAuthentication();
+        for (var i = 0; i < 5; i++) {
+          if (_signedInAccount != null) break;
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
         signedInAccount = _signedInAccount;
       } catch (_) {}
     }
-    if (signedInAccount == null) {
-      try {
-        await _instance.authenticate();
-        signedInAccount = _signedInAccount;
-      } catch (_) {}
-    }
+
     if (signedInAccount == null) {
       DevLogger.logError('getAccessToken failed: No account signed in');
       throw const GoogleAuthException('No Google account signed in yet.');

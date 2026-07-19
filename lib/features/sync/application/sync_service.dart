@@ -62,17 +62,16 @@ class SyncService extends Notifier<SyncState> {
       final start = DateTime(now.year, now.month - 1, 1);
       final end = DateTime(now.year, now.month + 3, 1);
       
-      DevLogger.log('Syncing calendar events from $start to $end...');
+      DevLogger.log('Syncing calendar events & tasks from remote in parallel...');
       ref.read(deviceCalendarRepositoryProvider).clearCache();
       final calendarRepo = ref.read(calendarRepositoryProvider);
-      await calendarRepo.refreshEventsFromRemote(rangeStart: start, rangeEnd: end);
-      DevLogger.log('Calendar events sync completed.');
-
-      // 2. Sync Tasks
-      DevLogger.log('Syncing tasks with remote...');
       final taskRepo = ref.read(taskRepositoryProvider);
-      await taskRepo.syncTasksWithRemote();
-      DevLogger.log('Tasks sync completed.');
+
+      await Future.wait([
+        calendarRepo.refreshEventsFromRemote(rangeStart: start, rangeEnd: end),
+        taskRepo.syncTasksWithRemote(),
+      ]);
+      DevLogger.log('Calendar events & tasks sync completed.');
 
       // 3. Invalidate/Refresh relevant providers to update the UI
       ref.invalidate(monthEventsProvider);

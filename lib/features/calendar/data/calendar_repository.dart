@@ -221,14 +221,16 @@ class CalendarRepository {
             orderBy: 'startTime',
           );
           final events = (result.items ?? []).map((e) => CalendarEvent.fromGoogle(e, calendarId: calId)).toList();
-          await (_db.delete(_db.cachedCalendarEvents)
-                ..where((e) =>
-                    e.calendarId.equals(calId) &
-                    (e.recurrence.isNotNull() |
-                     (e.start.isSmallerOrEqualValue(rangeEnd) &
-                      e.end.isBiggerOrEqualValue(rangeStart)))))
-              .go();
-          await _cacheEvents(events, calendarId: calId);
+          await _db.transaction(() async {
+            await (_db.delete(_db.cachedCalendarEvents)
+                  ..where((e) =>
+                      e.calendarId.equals(calId) &
+                      (e.recurrence.isNotNull() |
+                       (e.start.isSmallerOrEqualValue(rangeEnd) &
+                        e.end.isBiggerOrEqualValue(rangeStart)))))
+                .go();
+            await _cacheEvents(events, calendarId: calId);
+          });
           return events;
         } catch (_) {
           return <CalendarEvent>[];
@@ -587,23 +589,28 @@ class CalendarRepository {
   }
 
   Future<void> _scheduleEventAlarms(List<CalendarEvent> events) async {
+    final now = DateTime.now();
+    final alarmFutures = <Future<void>>[];
     for (final event in events) {
       if (event.reminderMinutes.isEmpty) continue;
-      if (event.start.isBefore(DateTime.now())) continue;
+      if (event.start.isBefore(now)) continue;
       final offsets = event.reminderMinutes
           .map(ReminderOffset.fromMinutes)
           .toList();
       final presetName = sharedPrefs.getString('event_alarm_preset_${event.id}') ?? 'light';
       final preset = AlarmPreset.values.byName(presetName);
 
-      await _alarmScheduler.scheduleAlarmsForOffsets(
+      alarmFutures.add(_alarmScheduler.scheduleAlarmsForOffsets(
         entityId: event.id,
         title: event.title,
         body: event.location ?? '',
         dueAt: event.start,
         offsets: offsets,
         preset: preset,
-      );
+      ));
+    }
+    if (alarmFutures.isNotEmpty) {
+      await Future.wait(alarmFutures);
     }
   }
 

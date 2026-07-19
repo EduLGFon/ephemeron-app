@@ -752,44 +752,53 @@ class TaskRepository {
 
     final inbox = await _inboxList();
 
-    for (final remote in remoteTasks) {
-      if (remote.id == null) continue;
-      final existing = await (_db.select(_db.tasks)..where((t) => t.googleTaskId.equals(remote.id!))).getSingleOrNull();
+    final existingTasks = await (_db.select(_db.tasks)
+          ..where((t) => t.googleTaskId.isNotNull()))
+        .get();
+    final existingMap = {
+      for (final t in existingTasks)
+        if (t.googleTaskId != null) t.googleTaskId!: t
+    };
 
-      final title = remote.title ?? '(No Title)';
-      final description = remote.notes;
-      final isCompleted = remote.status == 'completed';
-      final dueDate = remote.due != null ? DateTime.tryParse(remote.due!) : null;
+    await _db.transaction(() async {
+      final now = DateTime.now();
+      for (final remote in remoteTasks) {
+        if (remote.id == null) continue;
+        final existing = existingMap[remote.id];
 
-      if (existing == null) {
-        // Create locally
-        final id = _uuid.v4();
-        await _db.into(_db.tasks).insert(
-          TasksCompanion.insert(
-            id: Value(id),
-            googleTaskId: Value(remote.id),
-            listId: inbox.id,
-            title: title,
-            description: Value(description),
-            isCompleted: Value(isCompleted),
-            dueDate: Value(dueDate),
-            createdAt: Value(DateTime.now()),
-            updatedAt: Value(DateTime.now()),
-          ),
-        );
-      } else {
-        // Update locally
-        await (_db.update(_db.tasks)..where((t) => t.id.equals(existing.id))).write(
-          TasksCompanion(
-            title: Value(title),
-            description: Value(description),
-            isCompleted: Value(isCompleted),
-            dueDate: Value(dueDate),
-            updatedAt: Value(DateTime.now()),
-          ),
-        );
+        final title = remote.title ?? '(No Title)';
+        final description = remote.notes;
+        final isCompleted = remote.status == 'completed';
+        final dueDate = remote.due != null ? DateTime.tryParse(remote.due!) : null;
+
+        if (existing == null) {
+          final id = _uuid.v4();
+          await _db.into(_db.tasks).insert(
+            TasksCompanion.insert(
+              id: Value(id),
+              googleTaskId: Value(remote.id),
+              listId: inbox.id,
+              title: title,
+              description: Value(description),
+              isCompleted: Value(isCompleted),
+              dueDate: Value(dueDate),
+              createdAt: Value(now),
+              updatedAt: Value(now),
+            ),
+          );
+        } else {
+          await (_db.update(_db.tasks)..where((t) => t.id.equals(existing.id))).write(
+            TasksCompanion(
+              title: Value(title),
+              description: Value(description),
+              isCompleted: Value(isCompleted),
+              dueDate: Value(dueDate),
+              updatedAt: Value(now),
+            ),
+          );
+        }
       }
-    }
+    });
   }
 
   /// Updates the sortOrder of tasks in the transaction to match custom order.

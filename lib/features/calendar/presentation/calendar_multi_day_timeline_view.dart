@@ -684,7 +684,7 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
             final newTop = (_dragOriginalTop + details.localOffsetFromOrigin.dy).clamp(0.0, 24.0 * hourHeight);
             final dx = details.localOffsetFromOrigin.dx;
 
-            final dayColumnWidth = (MediaQuery.of(context).size.width - CalendarMultiDayTimelineView.timeColumnWidth) / widget.daysCount;
+            final dayColumnWidth = (MediaQuery.sizeOf(context).width - CalendarMultiDayTimelineView.timeColumnWidth) / widget.daysCount;
             final dayShift = (dx / dayColumnWidth).round();
             final targetDay = DateTime(_dragOriginalStart!.year, _dragOriginalStart!.month, _dragOriginalStart!.day + dayShift);
 
