@@ -638,10 +638,19 @@ class _NoteCardContent extends StatelessWidget {
   String _preparePreviewContent(String content) {
     // flutter_markdown requires checkboxes to be prefixed with a list bullet (e.g. "- [ ]")
     // This regex converts standalone "[ ]" or "[x]" at the start of lines to "- [ ]" or "- [x]"
-    return content.replaceAllMapped(
+    String processed = content.replaceAllMapped(
       RegExp(r'^(\s*)\[([ x])\]', multiLine: true),
       (match) => '${match.group(1)}- [${match.group(2)}]',
     );
+    
+    // flutter_markdown doesn't support our custom ![alt|height](url) syntax.
+    // Strip the |height part for the list preview.
+    processed = processed.replaceAllMapped(
+      RegExp(r'!\[([^\|\]]*?)\|(\d+)\]\('),
+      (match) => '![${match.group(1)}]('
+    );
+    
+    return processed;
   }
 
   @override

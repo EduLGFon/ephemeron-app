@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' show Value;
 import 'dart:io';
-import 'package:image_picker/image_picker.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:file_selector/file_selector.dart';
+import 'package:pasteboard/pasteboard.dart';
 
 import 'markdown_syntax_highlighter.dart';
 import 'smart_list_formatter.dart';
@@ -47,30 +49,58 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
     _titleController.addListener(_onTitleChanged);
     _contentController.addListener(_onContentChanged);
     _restoreDrafts();
+    _contentFocusNode.onKeyEvent = (node, event) {
+      if (event is KeyDownEvent &&
+          event.logicalKey == LogicalKeyboardKey.keyV &&
+          (HardwareKeyboard.instance.isControlPressed || HardwareKeyboard.instance.isMetaPressed)) {
+        _handleManualImagePaste();
+      }
+      return KeyEventResult.ignored;
+    };
   }
 
-  Future<void> _attachImage() async {
-    final picker = ImagePicker();
-    final xfile = await picker.pickImage(source: ImageSource.gallery);
-    if (xfile == null) return;
-    
-    final appDir = await getApplicationDocumentsDirectory();
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}_${xfile.name}';
-    final savedImage = await File(xfile.path).copy('${appDir.path}/$fileName');
-    
-    final imageMarkdown = '\n![Image](file://${savedImage.path})\n';
-    
+  Future<void> _handleManualImagePaste() async {
+    try {
+      final imageBytes = await Pasteboard.image;
+      if (imageBytes != null && imageBytes.isNotEmpty) {
+        final appDir = await getApplicationDocumentsDirectory();
+        final fileName = 'pasted_${DateTime.now().millisecondsSinceEpoch}.png';
+        final savedImage = File('${appDir.path}/$fileName');
+        await savedImage.writeAsBytes(imageBytes);
+        final imageMarkdown = '\n![Image|250](file://${savedImage.path})\n';
+        _insertAtCursor(imageMarkdown);
+      }
+    } catch (_) {}
+  }
+
+  void _insertAtCursor(String textToInsert) {
     final currentText = _contentController.text;
     final selection = _contentController.selection;
     if (selection.baseOffset >= 0) {
-      final newText = currentText.replaceRange(selection.start, selection.end, imageMarkdown);
+      final newText = currentText.replaceRange(selection.start, selection.end, textToInsert);
       _contentController.value = TextEditingValue(
         text: newText,
-        selection: TextSelection.collapsed(offset: selection.start + imageMarkdown.length),
+        selection: TextSelection.collapsed(offset: selection.start + textToInsert.length),
       );
     } else {
-      _contentController.text += imageMarkdown;
+      _contentController.text += textToInsert;
     }
+  }
+
+  Future<void> _attachImage() async {
+    const typeGroup = XTypeGroup(
+      label: 'Images',
+      extensions: <String>['jpg', 'jpeg', 'png', 'gif', 'webp'],
+    );
+    final XFile? file = await openFile(acceptedTypeGroups: <XTypeGroup>[typeGroup]);
+    if (file == null) return;
+    
+    final appDir = await getApplicationDocumentsDirectory();
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+    final savedImage = await File(file.path).copy('${appDir.path}/$fileName');
+    
+    final imageMarkdown = '\n![Image|250](file://${savedImage.path})\n';
+    _insertAtCursor(imageMarkdown);
   }
 
   bool get _isDirty {
@@ -234,6 +264,22 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
                 setState(() {});
               }
             },
+            contentInsertionConfiguration: ContentInsertionConfiguration(
+              allowedMimeTypes: const ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
+              onContentInserted: (KeyboardInsertedContent content) async {
+                if (content.data != null) {
+                  final appDir = await getApplicationDocumentsDirectory();
+                  String ext = 'png';
+                  if (content.mimeType.contains('jpeg')) ext = 'jpg';
+                  if (content.mimeType.contains('gif')) ext = 'gif';
+                  final fileName = 'pasted_${DateTime.now().millisecondsSinceEpoch}.$ext';
+                  final savedImage = File('${appDir.path}/$fileName');
+                  await savedImage.writeAsBytes(content.data!);
+                  final imageMarkdown = '\n![Image|250](file://${savedImage.path})\n';
+                  _insertAtCursor(imageMarkdown);
+                }
+              },
+            ),
             onChanged: (text) {
               setState(() {});
             },

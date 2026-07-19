@@ -1,4 +1,106 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+
+class InlineImageWidget extends StatefulWidget {
+  final File file;
+  final double initialHeight;
+  final bool hideSyntax;
+  final TextStyle? syntaxStyle;
+  final ValueChanged<double> onResizeEnd;
+
+  const InlineImageWidget({
+    required this.file,
+    required this.initialHeight,
+    required this.hideSyntax,
+    this.syntaxStyle,
+    required this.onResizeEnd,
+    super.key,
+  });
+
+  @override
+  State<InlineImageWidget> createState() => _InlineImageWidgetState();
+}
+
+class _InlineImageWidgetState extends State<InlineImageWidget> {
+  late double _height;
+
+  @override
+  void initState() {
+    super.initState();
+    _height = widget.initialHeight;
+  }
+
+  @override
+  void didUpdateWidget(InlineImageWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialHeight != widget.initialHeight) {
+      _height = widget.initialHeight;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!widget.hideSyntax) Text('!', style: widget.syntaxStyle),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4.0),
+          child: Stack(
+            children: [
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.sizeOf(context).width > 48 ? MediaQuery.sizeOf(context).width - 48 : MediaQuery.sizeOf(context).width,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    widget.file,
+                    width: double.infinity,
+                    height: _height,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 50,
+                      color: Colors.grey.withValues(alpha: 0.1),
+                      child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: GestureDetector(
+                  onVerticalDragUpdate: (details) {
+                    setState(() {
+                      _height += details.delta.dy;
+                      if (_height < 50) _height = 50;
+                    });
+                  },
+                  onVerticalDragEnd: (details) {
+                    widget.onResizeEnd(_height);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        bottomRight: Radius.circular(12),
+                      ),
+                    ),
+                    child: const Icon(Icons.drag_handle, color: Colors.white, size: 20),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class MarkdownSyntaxHighlighter extends TextEditingController {
   MarkdownSyntaxHighlighter({super.text, this.showReorderArrows = false});
@@ -123,7 +225,7 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
   }) {
     final List<InlineSpan> spans = [];
     final pattern = RegExp(
-      r'(?<bold>\*\*(?<boldContent>.*?)\*\*)|(?<italic>_(?<italicContent>.*?)_|\*(?<italicContent2>.*?)\*)|(?<heading>(?<headingSyntax>#{1,6}\s)(?<headingContent>.*))|(?<checkbox>^\s*(?:-\s)?\[[ x]\]\s)|(?<list>^\s*[-*]\s.*|^\s*\d+\.\s.*)|(?<link>\[(?<linkContent>.*?)\]\((?<linkUrl>.*?)\))',
+      r'(?<bold>\*\*(?<boldContent>.*?)\*\*)|(?<italic>_(?<italicContent>.*?)_|\*(?<italicContent2>.*?)\*)|(?<heading>(?<headingSyntax>#{1,6}\s)(?<headingContent>.*))|(?<checkbox>^\s*(?:-\s)?\[[ x]\]\s)|(?<list>^\s*[-*]\s.*|^\s*\d+\.\s.*)|(?<image>!\[(?<imageAlt>[^\|\]]*?)(?:\|(?<imageHeight>\d+))?\]\((?<imageUrl>[^\)]+)\))|(?<link>\[(?<linkContent>.*?)\]\((?<linkUrl>.*?)\))',
       multiLine: true,
     );
 
@@ -279,6 +381,66 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
           }
           
           spans.add(TextSpan(text: content, style: style));
+        }
+      } else if (match.namedGroup('image') != null) {
+        final imageAlt = match.namedGroup('imageAlt') ?? '';
+        final imageHeightStr = match.namedGroup('imageHeight');
+        final imageUrl = match.namedGroup('imageUrl')!;
+        final syntaxStyle = hideSyntax ? hiddenStyle : style?.copyWith(color: Colors.grey);
+        
+        final filePath = imageUrl.startsWith('file://') ? imageUrl.replaceFirst('file://', '') : null;
+        double currentHeight = imageHeightStr != null ? double.tryParse(imageHeightStr) ?? 150.0 : 150.0;
+        
+        if (filePath != null) {
+          spans.add(WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: InlineImageWidget(
+              file: File(filePath),
+              initialHeight: currentHeight,
+              hideSyntax: hideSyntax,
+              syntaxStyle: syntaxStyle,
+              onResizeEnd: (newHeight) {
+                final intHeight = newHeight.round();
+                final start = match.start;
+                final end = match.end;
+                final replacement = '![$imageAlt|$intHeight]($imageUrl)';
+                
+                final newText = text.replaceRange(start, end, replacement);
+                
+                int cursorOffset = selection.baseOffset;
+                if (cursorOffset > end) {
+                  cursorOffset += (replacement.length - (end - start));
+                } else if (cursorOffset > start && cursorOffset <= end) {
+                  cursorOffset = start + replacement.length;
+                }
+                
+                value = TextEditingValue(
+                  text: newText,
+                  selection: TextSelection.collapsed(offset: cursorOffset < 0 ? 0 : cursorOffset),
+                );
+              },
+            ),
+          ));
+          
+          spans.add(TextSpan(text: '[', style: syntaxStyle));
+          spans.add(TextSpan(text: imageAlt, style: syntaxStyle));
+          if (imageHeightStr != null) {
+            spans.add(TextSpan(text: '|', style: syntaxStyle));
+            spans.add(TextSpan(text: imageHeightStr, style: syntaxStyle));
+          }
+          spans.add(TextSpan(text: '](', style: syntaxStyle));
+          spans.add(TextSpan(text: imageUrl, style: syntaxStyle));
+          spans.add(TextSpan(text: ')', style: syntaxStyle));
+        } else {
+          spans.add(TextSpan(text: '![', style: syntaxStyle));
+          spans.add(TextSpan(text: imageAlt, style: syntaxStyle));
+          if (imageHeightStr != null) {
+            spans.add(TextSpan(text: '|', style: syntaxStyle));
+            spans.add(TextSpan(text: imageHeightStr, style: syntaxStyle));
+          }
+          spans.add(TextSpan(text: '](', style: syntaxStyle));
+          spans.add(TextSpan(text: imageUrl, style: syntaxStyle));
+          spans.add(TextSpan(text: ')', style: syntaxStyle));
         }
       } else if (match.namedGroup('link') != null) {
         final linkContent = match.namedGroup('linkContent')!;
