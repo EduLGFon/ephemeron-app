@@ -285,6 +285,7 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
                       );
                       if (!discard) return;
                     }
+                    await SessionRestore.clearDraftValues('note', widget.existingNote?.id);
                     if (mounted) Navigator.of(context).pop(); // ignore: use_build_context_synchronously
                   },
                   child: Text('Cancel', style: TextStyle(color: palette.text.withValues(alpha: 0.6))),
@@ -343,7 +344,10 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
     return PopScope(
       canPop: !_isDirty,
       onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
+        if (didPop) {
+          await SessionRestore.clearDraftValues('note', widget.existingNote?.id);
+          return;
+        }
         final discard = await showConfirmationDialog(
           context: context,
           ref: ref,
@@ -352,8 +356,11 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
           confirmLabel: 'Discard',
           isDestructive: true,
         );
-        if (discard && context.mounted) {
-          Navigator.of(context).pop();
+        if (discard) {
+          await SessionRestore.clearDraftValues('note', widget.existingNote?.id);
+          if (context.mounted) {
+            Navigator.of(context).pop();
+          }
         }
       },
       child: AnimatedContainer(
