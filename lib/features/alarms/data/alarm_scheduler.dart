@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert' show jsonDecode;
-import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:drift/drift.dart' show Value, DoUpdate;
@@ -18,6 +17,7 @@ import '../../../data/local/database.dart';
 import '../../tasks/domain/task_recurrence.dart';
 import '../domain/alarm_payload.dart';
 import '../domain/alarm_preset.dart';
+import 'desktop_alarm_sound_stub.dart' if (dart.library.io) 'desktop_alarm_sound.dart';
 import '../domain/reminder_offset.dart';
 import '../presentation/alarm_ring_screen.dart';
 
@@ -72,11 +72,11 @@ class AlarmAction {
 class AlarmScheduler {
   /// Immediate (non-scheduled) notifications via [showOngoingNotification]
   /// still work on web — only scheduling/repetition doesn't.
-  bool get supportsScheduledAlarms => !kIsWeb && Platform.isAndroid;
+  bool get supportsScheduledAlarms => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   Timer? _localAlarmTimer;
   final List<LocalAlarm> _localAlarms = [];
-  Process? _activeSoundProcess;
+  final _desktopAlarmSound = DesktopAlarmSound();
 
   AlarmScheduler() : _plugin = FlutterLocalNotificationsPlugin();
 
@@ -92,7 +92,7 @@ class AlarmScheduler {
       _startLocalAlarmPolling();
     }
 
-    if (!kIsWeb && !Platform.isAndroid) {
+    if (!kIsWeb && defaultTargetPlatform != TargetPlatform.android) {
       try {
         await localNotifier.setup(appName: 'Ephemeron');
       } catch (e) {
@@ -173,11 +173,11 @@ class AlarmScheduler {
   /// dialog before the user has any context why is bad UX. Call this
   /// from onboarding or the first time the user actually sets an alarm.
   Future<void> requestPermissions() async {
-    // kIsWeb must be checked first — dart:io's Platform.isAndroid throws
+    // kIsWeb must be checked first — defaultTargetPlatform is safe though
     // at runtime on web rather than just returning false, so evaluating
     // it there would crash instead of gracefully no-op'ing. Caught during
     // the Step 9 cross-platform pass.
-    if (kIsWeb || !Platform.isAndroid) return;
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     final android = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     if (android == null) return;
@@ -195,7 +195,7 @@ class AlarmScheduler {
   /// Opens a system settings page on Android 14+, so only call this
   /// immediately before a user action that requires it.
   Future<void> requestFullScreenPermission() async {
-    if (kIsWeb || !Platform.isAndroid) return;
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     final android = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     await android?.requestFullScreenIntentPermission();
@@ -458,7 +458,7 @@ class AlarmScheduler {
       category: AndroidNotificationCategory.status,
     );
 
-    if (Platform.isAndroid) {
+    if (defaultTargetPlatform == TargetPlatform.android) {
       final android = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
       if (android != null) {
@@ -489,7 +489,7 @@ class AlarmScheduler {
   Future<void> cancelOngoingNotification(int id) async {
     if (!supportsScheduledAlarms) return;
 
-    if (Platform.isAndroid) {
+    if (defaultTargetPlatform == TargetPlatform.android) {
       final android = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
       if (android != null) {
@@ -663,7 +663,7 @@ class AlarmScheduler {
     final isLongSound = alarm.preset == AlarmPreset.strong || isConstant;
     _playAlarmSound(longSound: isLongSound, loop: isConstant);
 
-    if (!kIsWeb && !Platform.isAndroid) {
+    if (!kIsWeb && defaultTargetPlatform != TargetPlatform.android) {
       try {
         final notification = LocalNotification(
           title: alarm.title,
@@ -766,48 +766,18 @@ class AlarmScheduler {
   }
 
   void _playAlarmSound({bool longSound = false, bool loop = false}) async {
-    _activeSoundProcess?.kill();
-    _activeSoundProcess = null;
+    _desktopAlarmSound.stop();
 
     final prefs = await SharedPreferences.getInstance();
     final soundPath = longSound
         ? (prefs.getString('settings.alarmLongSoundPath') ?? '/usr/share/sounds/ocean/stereo/phone-incoming-call.oga')
         : (prefs.getString('settings.alarmShortSoundPath') ?? '/usr/share/sounds/ocean/stereo/alarm-clock-elapsed.oga');
 
-    Future<void> runPlay() async {
-      try {
-        _activeSoundProcess = await Process.start('paplay', [soundPath]);
-        if (loop) {
-          unawaited(_activeSoundProcess?.exitCode.then((code) {
-            if (_activeSoundProcess != null) {
-              unawaited(runPlay());
-            }
-          }));
-        }
-      } catch (_) {
-        try {
-          _activeSoundProcess = await Process.start('pw-play', [soundPath]);
-          if (loop) {
-            unawaited(_activeSoundProcess?.exitCode.then((code) {
-              if (_activeSoundProcess != null) {
-                unawaited(runPlay());
-              }
-            }));
-          }
-        } catch (_) {
-          try {
-            _activeSoundProcess = await Process.start('aplay', ['/usr/share/sounds/alsa/Front_Center.wav']);
-          } catch (_) {}
-        }
-      }
-    }
-
-    unawaited(runPlay());
+    _desktopAlarmSound.play(soundPath, loop, () {});
   }
 
   void _stopAlarmSound() {
-    _activeSoundProcess?.kill();
-    _activeSoundProcess = null;
+    _desktopAlarmSound.stop();
   }
 
   void dispose() {

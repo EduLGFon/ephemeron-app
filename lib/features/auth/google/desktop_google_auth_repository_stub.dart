@@ -17,7 +17,10 @@ class DesktopGoogleAuthRepository implements GoogleAuthRepository {
   Future<void> signOut() async {}
   
   @override
-  Future<String?> getAccessToken() async => null;
+  Future<String> getAccessToken(List<String> scopes) async => '';
+
+  @override
+  Future<String> getCalendarAccessToken() async => '';
 
   void dispose() {}
 }

@@ -1,6 +1,4 @@
-import 'dart:io' show Platform;
-
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/services.dart';
 
 /// Thin Dart wrapper around the native MethodChannel that drives Android's
@@ -14,7 +12,7 @@ import 'package:flutter/services.dart';
 class PromotedNotificationChannel {
   static const _channel = MethodChannel('ephemeron/promoted_notification');
 
-  static bool get _isAndroid => !kIsWeb && Platform.isAndroid;
+  static bool get _isAndroid => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   /// Show (or update) the live timer pill.
   ///
