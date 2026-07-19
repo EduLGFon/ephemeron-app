@@ -75,6 +75,9 @@ dependencies:
   # Screen-always-on toggle during focus sessions (Step 7).
   wakelock_plus: ^1.2.8
 
+  # Access to the native device calendar (Step 10)
+  device_calendar_plus: ^0.4.0
+
   # OS battery-saver detection, feeding the app's own power-saving
   # setting (Step 9).
   battery_plus: ^7.1.0

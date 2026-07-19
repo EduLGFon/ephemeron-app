@@ -12,6 +12,7 @@ import '../../auth/google/google_auth_provider.dart';
 import '../../auth/google/google_auth_repository.dart';
 import '../../sync/application/sync_service.dart';
 import '../../../core/utils/dev_logger.dart';
+import '../../calendar/application/calendar_providers.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -151,6 +152,15 @@ class SettingsScreen extends ConsumerWidget {
               _showStartDayPicker(context, ref, settings.calendarStartDay);
             },
           ),
+          if (!kIsWeb)
+            ListTile(
+              title: const Text('Device Calendars'),
+              subtitle: const Text('Toggle display of local phone calendars'),
+              trailing: const Icon(Icons.chevron_right, size: 20),
+              onTap: () {
+                _showDeviceCalendarsSheet(context, ref);
+              },
+            ),
           const Divider(),
           const _SectionHeader('Sync & Caching'),
           const _SyncSettingsTile(),
@@ -467,6 +477,140 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               const SizedBox(height: 8),
             ],
+          ),
+        );
+      },
+    );
+  }
+
+  static void _showDeviceCalendarsSheet(BuildContext context, WidgetRef ref) {
+    final palette = ref.read(themeEngineProvider);
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: palette.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Consumer(
+            builder: (context, ref, _) {
+              final calendarsAsync = ref.watch(deviceCalendarsProvider);
+              final settings = ref.watch(appSettingsProvider);
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'Device Calendars',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: palette.text,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Text(
+                      'Select which calendars from your phone you want to see inside Ephemeron.',
+                      style: TextStyle(
+                        color: palette.text.withValues(alpha: 0.6),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  const Divider(),
+                  Flexible(
+                    child: calendarsAsync.when(
+                      data: (calendars) {
+                        if (calendars.isEmpty) {
+                          return Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(
+                                'No calendars found. Please check calendar permissions in your phone settings.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: palette.text.withValues(alpha: 0.6)),
+                              ),
+                            ),
+                          );
+                        }
+                        return ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: calendars.length,
+                          itemBuilder: (context, index) {
+                            final cal = calendars[index];
+                            final isEnabled = settings.enabledDeviceCalendarIds.contains(cal.id);
+                            final calColor = cal.color ?? palette.primary;
+
+                            return SwitchListTile(
+                              title: Row(
+                                children: [
+                                  Container(
+                                    width: 14,
+                                    height: 14,
+                                    decoration: BoxDecoration(
+                                      color: calColor,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      cal.name,
+                                      style: TextStyle(color: palette.text),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              subtitle: cal.accountName != null
+                                  ? Text(
+                                      cal.accountName!,
+                                      style: TextStyle(
+                                        color: palette.text.withValues(alpha: 0.5),
+                                        fontSize: 11,
+                                      ),
+                                    )
+                                  : null,
+                              value: isEnabled,
+                              onChanged: (val) {
+                                final currentSet = Set<String>.from(settings.enabledDeviceCalendarIds);
+                                if (val) {
+                                  currentSet.add(cal.id);
+                                } else {
+                                  currentSet.remove(cal.id);
+                                }
+                                ref.read(appSettingsProvider.notifier).setEnabledDeviceCalendarIds(currentSet);
+                              },
+                            );
+                          },
+                        );
+                      },
+                      loading: () => const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+                      error: (err, _) => Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            'Error loading calendars: $err',
+                            style: const TextStyle(color: Colors.redAccent),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              );
+            },
           ),
         );
       },

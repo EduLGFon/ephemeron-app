@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:device_calendar_plus/device_calendar_plus.dart' as dev_cal;
 
 import '../../../core/settings/app_settings_provider.dart';
 import '../../../core/theme/theme_engine_provider.dart';
@@ -534,6 +535,20 @@ class _EventTile extends ConsumerWidget {
 
   Color _getTileColor(String? colorId, AppPalette palette) {
     if (colorId != null) {
+      if (colorId.startsWith('device:')) {
+        final hex = colorId.substring(7);
+        if (hex.isNotEmpty) {
+          try {
+            final c = hex.replaceAll('#', '');
+            if (c.length == 8) {
+              return Color(int.parse(c, radix: 16));
+            } else if (c.length == 6) {
+              return Color(int.parse('FF$c', radix: 16));
+            }
+          } catch (_) {}
+        }
+        return palette.primary;
+      }
       if (colorId.startsWith('task:')) {
         final hex = colorId.substring(5);
         if (hex.isNotEmpty) {
@@ -621,6 +636,12 @@ class _EventTile extends ConsumerWidget {
                 if (habit != null && context.mounted) {
                   showHabitFormSheet(context, existingHabit: habit); // ignore: unawaited_futures
                 }
+              } else if (event.id.startsWith('device:')) {
+                final parts = event.id.split(':');
+                if (parts.length >= 3) {
+                  final eventId = parts.skip(2).join(':');
+                  await dev_cal.DeviceCalendar().showEventModal(eventId);
+                }
               } else {
                 showEventFormSheet( // ignore: unawaited_futures
                   context,
@@ -693,6 +714,27 @@ class _EventTile extends ConsumerWidget {
         await ref.read(habitRepositoryProvider).deleteHabit(habitId);
       }
     } else {
+      if (event.id.startsWith('device:')) {
+        final confirmed = await showConfirmationDialog(
+          context: context,
+          ref: ref,
+          title: 'Delete Device Event?',
+          content: 'Are you sure you want to permanently delete this event from your phone\'s calendar?',
+          confirmLabel: 'Delete',
+          isDestructive: true,
+        );
+        if (confirmed) {
+          final parts = event.id.split(':');
+          if (parts.length >= 3) {
+            final eventId = parts.skip(2).join(':');
+            await ref.read(deviceCalendarRepositoryProvider).deleteEvent(event.calendarId, eventId);
+            ref.invalidate(
+              monthEventsProvider(DateTime(event.start.year, event.start.month, 1)),
+            );
+          }
+        }
+        return;
+      }
       final isRecurringEvent = event.recurringEventId != null || (event.recurrence != null && event.recurrence!.isNotEmpty);
       if (isRecurringEvent) {
         final choice = await showRecurrenceDeleteDialog(

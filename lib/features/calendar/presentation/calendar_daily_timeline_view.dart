@@ -768,6 +768,20 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
 
   Color _getEventColor(String? colorId, AppPalette palette) {
     if (colorId == null) return palette.primary;
+    if (colorId.startsWith('device:')) {
+      final hex = colorId.substring(7);
+      if (hex.isNotEmpty) {
+        try {
+          final c = hex.replaceAll('#', '');
+          if (c.length == 8) {
+            return Color(int.parse(c, radix: 16));
+          } else if (c.length == 6) {
+            return Color(int.parse('FF$c', radix: 16));
+          }
+        } catch (_) {}
+      }
+      return palette.primary;
+    }
     if (colorId.startsWith('task:')) {
       final hex = colorId.substring(5);
       if (hex.isNotEmpty) {

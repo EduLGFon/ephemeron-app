@@ -1,10 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:device_calendar_plus/device_calendar_plus.dart' as dev_cal;
 
 import '../../../data/local/database_provider.dart';
 import '../../alarms/application/alarm_scheduler_provider.dart';
 import '../../auth/google/google_auth_provider.dart';
 import '../domain/calendar_event.dart';
 import '../data/calendar_repository.dart';
+import '../data/device_calendar_repository.dart';
+import '../../../core/settings/app_settings_provider.dart';
 import '../../tasks/application/task_providers.dart';
 import '../../tasks/data/task_repository.dart';
 import '../../habits/application/habit_providers.dart';
@@ -28,6 +31,10 @@ final calendarRepositoryProvider = Provider<CalendarRepository>((ref) {
     ref.watch(appDatabaseProvider),
     ref.watch(alarmSchedulerProvider),
   );
+});
+
+final deviceCalendarRepositoryProvider = Provider<DeviceCalendarRepository>((ref) {
+  return DeviceCalendarRepository();
 });
 
 /// Keyed by the first-of-month, normalized to midnight — always compute
@@ -72,11 +79,20 @@ final monthEventsProvider =
   }));
   final overrides = ref.watch(calendarEventOverridesProvider);
   final repo = ref.watch(calendarRepositoryProvider);
+  final deviceRepo = ref.watch(deviceCalendarRepositoryProvider);
+  final settings = ref.watch(appSettingsProvider);
   final start = DateTime(month.year, month.month, 1);
   final end = DateTime(month.year, month.month + 1, 1);
 
   // Fetch calendar events
   final events = await repo.listEvents(rangeStart: start, rangeEnd: end);
+
+  // Fetch device calendar events
+  final deviceEvents = await deviceRepo.retrieveEvents(
+    rangeStart: start,
+    rangeEnd: end,
+    enabledCalendarIds: settings.enabledDeviceCalendarIds,
+  );
 
   // Fetch local tasks
   final entries = await ref.watch(calendarTasksProvider.future);
@@ -155,7 +171,7 @@ final monthEventsProvider =
     }
   }
 
-  final allEvents = [...events, ...taskEvents, ...habitEvents];
+  final allEvents = [...events, ...deviceEvents, ...taskEvents, ...habitEvents];
   return allEvents.map((e) => overrides[e.id] ?? e).toList();
 });
 
@@ -296,3 +312,7 @@ final calendarScrollOffsetProvider =
     NotifierProvider<CalendarScrollOffsetNotifier, double?>(
   CalendarScrollOffsetNotifier.new,
 );
+
+final deviceCalendarsProvider = FutureProvider<List<dev_cal.Calendar>>((ref) {
+  return ref.watch(deviceCalendarRepositoryProvider).retrieveCalendars();
+});

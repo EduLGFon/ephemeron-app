@@ -21,6 +21,7 @@ class AppSettings {
     this.alarmBackground = '#005F73', // Petrol default hex color
     this.glassmorphismEnabled = false,
     this.hapticsEnabled = true,
+    this.enabledDeviceCalendarIds = const {},
   });
 
   final bool reducedMotion;
@@ -48,6 +49,7 @@ class AppSettings {
   final String alarmBackground;
   final bool glassmorphismEnabled;
   final bool hapticsEnabled;
+  final Set<String> enabledDeviceCalendarIds;
 
   /// Effective "should we skip decorative animation" flag: the user's
   /// explicit toggle, their manual power-saving override, OR the OS
@@ -68,6 +70,7 @@ class AppSettings {
     String? alarmBackground,
     bool? glassmorphismEnabled,
     bool? hapticsEnabled,
+    Set<String>? enabledDeviceCalendarIds,
   }) {
     return AppSettings(
       reducedMotion: reducedMotion ?? this.reducedMotion,
@@ -82,6 +85,7 @@ class AppSettings {
       alarmBackground: alarmBackground ?? this.alarmBackground,
       glassmorphismEnabled: glassmorphismEnabled ?? this.glassmorphismEnabled,
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
+      enabledDeviceCalendarIds: enabledDeviceCalendarIds ?? this.enabledDeviceCalendarIds,
     );
   }
 }
@@ -98,6 +102,7 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
   static const _alarmBackgroundKey = 'settings.alarmBackground';
   static const _glassmorphismEnabledKey = 'settings.glassmorphismEnabled';
   static const _hapticsEnabledKey = 'settings.hapticsEnabled';
+  static const _enabledDeviceCalendarIdsKey = 'settings.enabledDeviceCalendarIds';
   final _battery = Battery();
 
   @override
@@ -123,6 +128,7 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
       alarmBackground: prefs.getString(_alarmBackgroundKey) ?? '#005F73',
       glassmorphismEnabled: prefs.getBool(_glassmorphismEnabledKey) ?? false,
       hapticsEnabled: prefs.getBool(_hapticsEnabledKey) ?? true,
+      enabledDeviceCalendarIds: (prefs.getStringList(_enabledDeviceCalendarIdsKey) ?? const []).toSet(),
     );
   }
 
@@ -205,6 +211,12 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     state = state.copyWith(hapticsEnabled: value);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_hapticsEnabledKey, value);
+  }
+
+  Future<void> setEnabledDeviceCalendarIds(Set<String> value) async {
+    state = state.copyWith(enabledDeviceCalendarIds: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_enabledDeviceCalendarIdsKey, value.toList());
   }
 }
 
