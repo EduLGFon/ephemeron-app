@@ -28,6 +28,7 @@ import '../../auth/google/google_auth_provider.dart';
 import '../../../presentation/widgets/confirmation_dialog.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:ephemeron/core/widgets/app_loading_indicator.dart';
+import '../../settings/presentation/settings_screen.dart';
 
 class CalendarFormatNotifier extends Notifier<CalendarFormat> {
   @override
@@ -212,6 +213,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               final now = DateTime.now();
               ref.read(selectedDayProvider.notifier).setDay(now);
               ref.read(focusedMonthProvider.notifier).setMonth(DateTime(now.year, now.month, 1));
+            },
+          ),
+          IconButton(
+            tooltip: 'Manage Device Calendars',
+            icon: Icon(Icons.calendar_month_outlined, color: palette.primary),
+            onPressed: () {
+              SettingsScreen.showDeviceCalendarsSheet(context, ref);
             },
           ),
           const SizedBox(width: 8),

@@ -171,7 +171,19 @@ final monthEventsProvider =
     }
   }
 
-  final allEvents = [...events, ...deviceEvents, ...taskEvents, ...habitEvents];
+  final rawEvents = [...events, ...deviceEvents, ...taskEvents, ...habitEvents];
+  final allEvents = <CalendarEvent>[];
+  final seenIds = <String>{};
+  final seenTitleStarts = <String>{};
+  for (final e in rawEvents) {
+    if (seenIds.add(e.id)) {
+      final titleStartKey = '${e.title}_${e.start.millisecondsSinceEpoch}';
+      if (seenTitleStarts.add(titleStartKey)) {
+        allEvents.add(e);
+      }
+    }
+  }
+
   return allEvents.map((e) => overrides[e.id] ?? e).toList();
 });
 

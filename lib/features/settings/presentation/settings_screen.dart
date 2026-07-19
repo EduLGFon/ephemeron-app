@@ -158,7 +158,7 @@ class SettingsScreen extends ConsumerWidget {
               subtitle: const Text('Toggle display of local phone calendars'),
               trailing: const Icon(Icons.chevron_right, size: 20),
               onTap: () {
-                _showDeviceCalendarsSheet(context, ref);
+                SettingsScreen.showDeviceCalendarsSheet(context, ref);
               },
             ),
           const Divider(),
@@ -483,7 +483,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  static void _showDeviceCalendarsSheet(BuildContext context, WidgetRef ref) {
+  static void showDeviceCalendarsSheet(BuildContext context, WidgetRef ref) {
     final palette = ref.read(themeEngineProvider);
     showModalBottomSheet<void>(
       context: context,
