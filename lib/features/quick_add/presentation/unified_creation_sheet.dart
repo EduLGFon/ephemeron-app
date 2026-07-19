@@ -203,7 +203,39 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
               const Spacer(),
               _buildPrioritySelector(palette),
               const SizedBox(width: 4),
-              _buildIconButton(Icons.more_vert, palette, onPressed: () {}),
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, color: palette.text.withValues(alpha: 0.6)),
+                color: palette.surface,
+                onSelected: (val) {
+                  // Handle options
+                },
+                itemBuilder: (context) {
+                  final items = <PopupMenuEntry<String>>[];
+                  
+                  // Common options
+                  items.add(PopupMenuItem(value: 'date_time', child: Row(children: [Icon(Icons.access_time_rounded, color: palette.text, size: 20), const SizedBox(width: 12), Text('Date, Time & Alarm', style: TextStyle(color: palette.text))])));
+                  
+                  // Specific options
+                  if (_target == QuickAddTarget.task) {
+                    items.add(PopupMenuItem(value: 'subtasks', child: Row(children: [Icon(Icons.checklist, color: palette.text, size: 20), const SizedBox(width: 12), Text('Subtasks', style: TextStyle(color: palette.text))])));
+                    items.add(PopupMenuItem(value: 'wont_do', child: Row(children: [Icon(Icons.block, color: palette.text, size: 20), const SizedBox(width: 12), Text('Toggle Won\'t Do', style: TextStyle(color: palette.text))])));
+                  } else if (_target == QuickAddTarget.event) {
+                    items.add(PopupMenuItem(value: 'location', child: Row(children: [Icon(Icons.location_on_outlined, color: palette.text, size: 20), const SizedBox(width: 12), Text('Location', style: TextStyle(color: palette.text))])));
+                    items.add(PopupMenuItem(value: 'url', child: Row(children: [Icon(Icons.link, color: palette.text, size: 20), const SizedBox(width: 12), Text('URL', style: TextStyle(color: palette.text))])));
+                  } else if (_target == QuickAddTarget.habit) {
+                    items.add(PopupMenuItem(value: 'color', child: Row(children: [Icon(Icons.palette_outlined, color: palette.text, size: 20), const SizedBox(width: 12), Text('Color', style: TextStyle(color: palette.text))])));
+                  }
+                  
+                  // Edit options
+                  if (widget.entity != null) {
+                    items.add(const PopupMenuDivider());
+                    items.add(PopupMenuItem(value: 'duplicate', child: Row(children: [Icon(Icons.copy, color: palette.text, size: 20), const SizedBox(width: 12), Text('Duplicate', style: TextStyle(color: palette.text))])));
+                    items.add(const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline, color: Colors.redAccent, size: 20), SizedBox(width: 12), Text('Delete', style: TextStyle(color: Colors.redAccent))])));
+                  }
+                  
+                  return items;
+                },
+              ),
             ],
           ),
           const SizedBox(height: 12),
