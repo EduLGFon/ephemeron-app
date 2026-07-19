@@ -174,15 +174,19 @@ class _AppShellState extends ConsumerState<AppShell> {
     );
     final selectedIndex = currentPinnedIndex == -1 ? pinned.length : currentPinnedIndex;
     final showQuickAdd = _sectionsWithQuickAdd.contains(widget.navigationShell.currentIndex);
-    final isExpanded = ref.watch(quickAddProvider).state == QuickAddState.expanded;
-
-    // Save active screen branch to SharedPreferences
-    final currentBranchIndex = widget.navigationShell.currentIndex;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final prefs = await SharedPreferences.getInstance();
-      final paths = ['/calendar', '/tasks', '/matrix', '/habits', '/countdown', '/focus', '/notes'];
-      if (currentBranchIndex >= 0 && currentBranchIndex < paths.length) {
-        await prefs.setString('settings.lastScreen', paths[currentBranchIndex]);
+    ref.listen<QuickAddData>(quickAddProvider, (prev, next) {
+      if (next.state == QuickAddState.expanded && (prev == null || prev.state != QuickAddState.expanded)) {
+        final currentSection = pinned.firstWhere(
+          (s) => s.branchIndex == widget.navigationShell.currentIndex,
+          orElse: () => overflow.firstWhere(
+            (s) => s.branchIndex == widget.navigationShell.currentIndex,
+          ),
+        );
+        showUnifiedCreationSheet(context, currentSection: currentSection, entity: next.entity).then((_) {
+          if (mounted) {
+            ref.read(quickAddProvider.notifier).close();
+          }
+        });
       }
     });
 
@@ -200,7 +204,7 @@ class _AppShellState extends ConsumerState<AppShell> {
               ),
             )
           : null,
-      floatingActionButtonLocation: _KeyboardAttachedFabLocation(isExpanded: isExpanded),
+      floatingActionButtonLocation: const _KeyboardAttachedFabLocation(),
       bottomNavigationBar: MediaQuery.of(context).viewInsets.bottom > 0
           ? const SizedBox.shrink()
           : _PremiumNavigationBar(
@@ -429,20 +433,14 @@ class _NavItem extends StatelessWidget {
 }
 
 class _KeyboardAttachedFabLocation extends FloatingActionButtonLocation {
-  final bool isExpanded;
-  const _KeyboardAttachedFabLocation({this.isExpanded = false});
+  const _KeyboardAttachedFabLocation();
 
   @override
   Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
     final double fabX = (scaffoldGeometry.scaffoldSize.width - scaffoldGeometry.floatingActionButtonSize.width) / 2.0;
     final isKeyboardOpen = scaffoldGeometry.minInsets.bottom > 0;
     final double margin = isKeyboardOpen ? 0.0 : 16.0;
-    
-    // Use scaffoldSize.height if keyboard is closed AND the pill is expanded so it covers the navbar
-    final double baseBottom = isKeyboardOpen 
-        ? scaffoldGeometry.contentBottom 
-        : (isExpanded ? scaffoldGeometry.scaffoldSize.height : scaffoldGeometry.contentBottom);
-    final double fabY = baseBottom - scaffoldGeometry.floatingActionButtonSize.height - margin;
+    final double fabY = scaffoldGeometry.contentBottom - scaffoldGeometry.floatingActionButtonSize.height - margin;
     return Offset(fabX, fabY);
   }
 }
@@ -453,8 +451,6 @@ class _QuickAddPill extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final quickAddData = ref.watch(quickAddProvider);
-    final isExpanded = quickAddData.state == QuickAddState.expanded;
     final palette = ref.watch(themeEngineProvider);
     final selectedDay = ref.watch(selectedDayProvider);
     
@@ -468,66 +464,48 @@ class _QuickAddPill extends ConsumerWidget {
       return 'Add ${currentSection.label}';
     }
 
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOutCubic,
-          child: isExpanded
-            ? Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: Material(
-                  color: Colors.transparent,
-                  elevation: 8, // Adds some shadow so it pops above content
-                  borderRadius: BorderRadius.circular(28),
-                  child: UnifiedCreationSheet(
-                    currentSection: currentSection,
-                    entity: quickAddData.entity,
-                    onClose: () => ref.read(quickAddProvider.notifier).close(),
-                  ),
-                ),
-              )
-            : Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 48.0),
-                child: Material(
-                  color: palette.surface.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(32),
-                  elevation: 0,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(32),
-                    onTap: () {
-                      ref.read(quickAddProvider.notifier).expand();
-                    },
-                    child: Container(
-                      height: 56,
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(32),
-                        border: Border.all(
-                          color: palette.text.withValues(alpha: 0.1),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            getPillText(),
-                            style: TextStyle(
-                              color: palette.text.withValues(alpha: 0.8),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Icon(
-                            Icons.add,
-                            color: palette.text.withValues(alpha: 0.8),
-                            size: 24,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 48.0),
+      child: Material(
+        color: palette.surface.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(32),
+        elevation: 6,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(32),
+          onTap: () {
+            showUnifiedCreationSheet(context, currentSection: currentSection);
+          },
+          child: Container(
+            height: 56,
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(
+                color: palette.text.withValues(alpha: 0.1),
+                width: 1,
               ),
-        );
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  getPillText(),
+                  style: TextStyle(
+                    color: palette.text.withValues(alpha: 0.8),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Icon(
+                  Icons.add,
+                  color: palette.text.withValues(alpha: 0.8),
+                  size: 24,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -25,23 +25,29 @@ import '../../notes/data/notes_repository.dart';
 import '../../../data/local/database.dart';
 import 'quick_add_target.dart';
 
-Future<void> showUnifiedCreationSheet(BuildContext context, {NavSection? currentSection}) {
+Future<void> showUnifiedCreationSheet(BuildContext context, {NavSection? currentSection, Object? entity}) {
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Dismiss',
     barrierColor: Colors.black54,
-    transitionDuration: const Duration(milliseconds: 300),
+    transitionDuration: const Duration(milliseconds: 250),
     pageBuilder: (context, animation, secondaryAnimation) {
-      return Center(
-        child: SingleChildScrollView(
+      final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+      return Align(
+        alignment: Alignment.bottomCenter,
+        child: AnimatedPadding(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOutCubic,
+          padding: EdgeInsets.only(
+            bottom: keyboardHeight > 0 ? keyboardHeight + 8 : 24,
+            left: 12,
+            right: 12,
+          ),
           child: Material(
             color: Colors.transparent,
-            child: Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: RepaintBoundary(child: UnifiedCreationSheet(currentSection: currentSection)),
+            child: SingleChildScrollView(
+              child: RepaintBoundary(child: UnifiedCreationSheet(currentSection: currentSection, entity: entity)),
             ),
           ),
         ),
@@ -122,8 +128,14 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
     _markChanged();
   }
 
+  String _initialTitle = '';
+  String _initialDesc = '';
+
   void _markChanged() {
-    if (!_hasChanges) setState(() => _hasChanges = true);
+    final hasRealChanges = _titleController.text != _initialTitle || _descController.text != _initialDesc;
+    if (hasRealChanges != _hasChanges) {
+      setState(() => _hasChanges = hasRealChanges);
+    }
   }
 
   @override
@@ -273,12 +285,14 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
       _descController.text = n.content;
     }
     
-    // Reset changes flag after initial load
+    _initialTitle = _titleController.text;
+    _initialDesc = _descController.text;
     _hasChanges = false;
   }
 
   @override
   void dispose() {
+    SessionRestore.clearOpenMenu();
     _titleController.removeListener(_markChanged);
     _descController.removeListener(_markChanged);
     _titleController.dispose();
