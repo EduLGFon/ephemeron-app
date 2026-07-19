@@ -174,6 +174,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     );
     final selectedIndex = currentPinnedIndex == -1 ? pinned.length : currentPinnedIndex;
     final showQuickAdd = _sectionsWithQuickAdd.contains(widget.navigationShell.currentIndex);
+    final isExpanded = ref.watch(quickAddProvider).state == QuickAddState.expanded;
 
     // Save active screen branch to SharedPreferences
     final currentBranchIndex = widget.navigationShell.currentIndex;
@@ -199,7 +200,7 @@ class _AppShellState extends ConsumerState<AppShell> {
               ),
             )
           : null,
-      floatingActionButtonLocation: const _KeyboardAttachedFabLocation(),
+      floatingActionButtonLocation: _KeyboardAttachedFabLocation(isExpanded: isExpanded),
       bottomNavigationBar: MediaQuery.of(context).viewInsets.bottom > 0
           ? const SizedBox.shrink()
           : _PremiumNavigationBar(
@@ -428,7 +429,8 @@ class _NavItem extends StatelessWidget {
 }
 
 class _KeyboardAttachedFabLocation extends FloatingActionButtonLocation {
-  const _KeyboardAttachedFabLocation();
+  final bool isExpanded;
+  const _KeyboardAttachedFabLocation({this.isExpanded = false});
 
   @override
   Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
@@ -436,8 +438,10 @@ class _KeyboardAttachedFabLocation extends FloatingActionButtonLocation {
     final isKeyboardOpen = scaffoldGeometry.minInsets.bottom > 0;
     final double margin = isKeyboardOpen ? 0.0 : 16.0;
     
-    // Use scaffoldSize.height if keyboard is closed so the pill covers the navbar
-    final double baseBottom = isKeyboardOpen ? scaffoldGeometry.contentBottom : scaffoldGeometry.scaffoldSize.height;
+    // Use scaffoldSize.height if keyboard is closed AND the pill is expanded so it covers the navbar
+    final double baseBottom = isKeyboardOpen 
+        ? scaffoldGeometry.contentBottom 
+        : (isExpanded ? scaffoldGeometry.scaffoldSize.height : scaffoldGeometry.contentBottom);
     final double fabY = baseBottom - scaffoldGeometry.floatingActionButtonSize.height - margin;
     return Offset(fabX, fabY);
   }
