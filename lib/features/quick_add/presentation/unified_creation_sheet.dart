@@ -26,41 +26,28 @@ import '../../../data/local/database.dart';
 import 'quick_add_target.dart';
 
 Future<void> showUnifiedCreationSheet(BuildContext context, {NavSection? currentSection, Object? entity}) {
-  return showGeneralDialog<void>(
+  return showModalBottomSheet<void>(
     context: context,
-    barrierDismissible: true,
-    barrierLabel: 'Dismiss',
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    elevation: 0,
     barrierColor: Colors.black54,
-    transitionDuration: const Duration(milliseconds: 250),
-    pageBuilder: (context, animation, secondaryAnimation) {
-      final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-      return Align(
-        alignment: Alignment.bottomCenter,
-        child: AnimatedPadding(
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOutCubic,
-          padding: EdgeInsets.only(
-            bottom: keyboardHeight > 0 ? keyboardHeight + 8 : 24,
-            left: 12,
-            right: 12,
-          ),
+    builder: (context) {
+      return Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          left: 12,
+          right: 12,
+          top: 12,
+        ),
+        child: SingleChildScrollView(
           child: Material(
             color: Colors.transparent,
-            child: SingleChildScrollView(
-              child: RepaintBoundary(child: UnifiedCreationSheet(currentSection: currentSection, entity: entity)),
+            child: RepaintBoundary(
+              child: UnifiedCreationSheet(currentSection: currentSection, entity: entity),
             ),
           ),
         ),
-      );
-    },
-    transitionBuilder: (context, animation, secondaryAnimation, child) {
-      final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
-      return SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0.0, 1.0),
-          end: Offset.zero,
-        ).animate(curve),
-        child: child,
       );
     },
   );
@@ -161,7 +148,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
     _startTime = DateTime(selectedDay.year, selectedDay.month, selectedDay.day, now.hour + 1, now.minute);
     _endTime = _startTime.add(const Duration(minutes: 30));
     
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    Future.delayed(const Duration(milliseconds: 250), () {
       if (mounted && widget.entity == null) {
         _titleFocusNode.requestFocus();
       }
