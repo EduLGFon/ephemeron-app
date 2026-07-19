@@ -12,6 +12,8 @@ import '../../../../presentation/widgets/confirmation_dialog.dart';
 
 import '../../../presentation/widgets/keyboard_avoid_padding.dart';
 
+import '../../calendar/presentation/date_time_config_sheet.dart';
+
 Future<void> showCountdownFormSheet(
   BuildContext context, {
   required CountdownType type,
@@ -308,13 +310,18 @@ class _CountdownFormSheetState extends ConsumerState<CountdownFormSheet> {
   }
 
   Future<void> _pickDate() async {
-    final date = await showDatePicker(
+    final palette = ref.read(themeEngineProvider);
+    final result = await showDateTimeConfigSheet(
       context: context,
-      initialDate: _targetDate,
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 100)),
+      palette: palette,
+      initialStart: _targetDate,
+      isRange: false,
+      showAllDay: false,
+      showReminder: false,
+      showRepeat: false,
     );
-    if (date != null) {
+    if (result != null) {
+      final date = result.start;
       setState(() => _targetDate = date);
       SessionRestore.saveDraftValue('countdown', widget.existingCountdown?.id, 'targetDate', date.toIso8601String()); // ignore: unawaited_futures
     }

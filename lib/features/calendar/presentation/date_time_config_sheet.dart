@@ -7,16 +7,16 @@ import 'package:intl/intl.dart';
 
 class DateTimeConfigResult {
   final DateTime start;
-  final DateTime end;
-  final RecurrenceConfig recurrence;
-  final Set<ReminderOffset> reminderOffsets;
+  final DateTime? end;
+  final RecurrenceConfig? recurrence;
+  final Set<ReminderOffset>? reminderOffsets;
   final bool isAllDay;
 
   DateTimeConfigResult({
     required this.start,
-    required this.end,
-    required this.recurrence,
-    required this.reminderOffsets,
+    this.end,
+    this.recurrence,
+    this.reminderOffsets,
     this.isAllDay = false,
   });
 }
@@ -24,19 +24,27 @@ class DateTimeConfigResult {
 class DateTimeConfigSheet extends StatefulWidget {
   final AppPalette palette;
   final DateTime initialStart;
-  final DateTime initialEnd;
-  final RecurrenceConfig initialRecurrence;
-  final Set<ReminderOffset> initialReminderOffsets;
+  final DateTime? initialEnd;
+  final RecurrenceConfig? initialRecurrence;
+  final Set<ReminderOffset>? initialReminderOffsets;
   final bool initialIsAllDay;
+  final bool isRange;
+  final bool showAllDay;
+  final bool showReminder;
+  final bool showRepeat;
 
   const DateTimeConfigSheet({
     super.key,
     required this.palette,
     required this.initialStart,
-    required this.initialEnd,
-    required this.initialRecurrence,
-    required this.initialReminderOffsets,
-    required this.initialIsAllDay,
+    this.initialEnd,
+    this.initialRecurrence,
+    this.initialReminderOffsets,
+    this.initialIsAllDay = false,
+    this.isRange = true,
+    this.showAllDay = true,
+    this.showReminder = true,
+    this.showRepeat = true,
   });
 
   @override
@@ -58,9 +66,9 @@ class _DateTimeConfigSheetState extends State<DateTimeConfigSheet> {
     super.initState();
     _focusedDay = widget.initialStart;
     _selectedStart = widget.initialStart;
-    _selectedEnd = widget.initialEnd;
-    _recurrence = widget.initialRecurrence;
-    _reminderOffsets = widget.initialReminderOffsets;
+    _selectedEnd = widget.initialEnd ?? widget.initialStart.add(const Duration(minutes: 30));
+    _recurrence = widget.initialRecurrence ?? const RecurrenceConfig();
+    _reminderOffsets = widget.initialReminderOffsets ?? {};
     _isAllDay = widget.initialIsAllDay;
   }
 
@@ -155,21 +163,39 @@ class _DateTimeConfigSheetState extends State<DateTimeConfigSheet> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 24),
-                GestureDetector(
-                  onTap: () => setState(() => _isDurationTab = true),
-                  child: Text(
-                    'Duration',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: _isDurationTab ? palette.primary : palette.text.withValues(alpha: 0.5),
-                      decoration: _isDurationTab ? TextDecoration.underline : TextDecoration.none,
-                      decorationColor: palette.primary,
-                      decorationThickness: 2,
+                if (widget.isRange) ...[
+                  const SizedBox(width: 24),
+                  GestureDetector(
+                    onTap: () => setState(() => _isDurationTab = true),
+                    child: Text(
+                      'Duration',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: _isDurationTab ? palette.primary : palette.text.withValues(alpha: 0.5),
+                        decoration: _isDurationTab ? TextDecoration.underline : TextDecoration.none,
+                        decorationColor: palette.primary,
+                        decorationThickness: 2,
+                      ),
                     ),
                   ),
-                ),
+                ] else ...[
+                  const SizedBox(width: 24),
+                  GestureDetector(
+                    onTap: () => setState(() => _isDurationTab = true),
+                    child: Text(
+                      'Time',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: _isDurationTab ? palette.primary : palette.text.withValues(alpha: 0.5),
+                        decoration: _isDurationTab ? TextDecoration.underline : TextDecoration.none,
+                        decorationColor: palette.primary,
+                        decorationThickness: 2,
+                      ),
+                    ),
+                  ),
+                ],
                 const Spacer(),
                 IconButton(
                   icon: Icon(Icons.check, color: palette.text),
@@ -369,14 +395,21 @@ class _DateTimeConfigSheetState extends State<DateTimeConfigSheet> {
                          final t1 = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(_selectedStart));
                          if (!mounted) return;
                          if (t1 != null) {
-                           final t2 = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(_selectedEnd));
-                           if (t2 != null && mounted) {
+                           if (widget.isRange) {
+                             final t2 = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(_selectedEnd));
+                             if (!mounted) return;
+                             if (t2 != null) {
+                               setState(() {
+                                 _selectedStart = DateTime(_selectedStart.year, _selectedStart.month, _selectedStart.day, t1.hour, t1.minute);
+                                 _selectedEnd = DateTime(_selectedStart.year, _selectedStart.month, _selectedStart.day, t2.hour, t2.minute);
+                                 if (_selectedEnd.isBefore(_selectedStart)) {
+                                   _selectedEnd = _selectedEnd.add(const Duration(days: 1));
+                                 }
+                               });
+                             }
+                           } else {
                              setState(() {
                                _selectedStart = DateTime(_selectedStart.year, _selectedStart.month, _selectedStart.day, t1.hour, t1.minute);
-                               _selectedEnd = DateTime(_selectedStart.year, _selectedStart.month, _selectedStart.day, t2.hour, t2.minute);
-                               if (_selectedEnd.isBefore(_selectedStart)) {
-                                 _selectedEnd = _selectedEnd.add(const Duration(days: 1));
-                               }
                              });
                            }
                          }
@@ -392,19 +425,26 @@ class _DateTimeConfigSheetState extends State<DateTimeConfigSheet> {
                            children: [
                              Text('Time', style: TextStyle(color: palette.text.withValues(alpha: 0.7), fontSize: 14)),
                              const SizedBox(height: 8),
-                             Text('${DateFormat('HH:mm').format(_selectedStart)} - ${DateFormat('HH:mm').format(_selectedEnd)}', style: TextStyle(color: palette.primary, fontSize: 18, fontWeight: FontWeight.bold)),
-                             const SizedBox(height: 8),
                              Text(
-                               () {
-                                 final diff = _selectedEnd.difference(_selectedStart);
-                                 final hrs = diff.inHours;
-                                 final mins = diff.inMinutes % 60;
-                                 if (hrs > 0 && mins > 0) return 'Duration: ${hrs}h ${mins}m';
-                                 if (hrs > 0) return 'Duration: $hrs hour${hrs > 1 ? 's' : ''}';
-                                 return 'Duration: $mins min';
-                               }(),
-                               style: TextStyle(color: palette.text.withValues(alpha: 0.5), fontSize: 12),
+                               widget.isRange 
+                                   ? '${DateFormat('HH:mm').format(_selectedStart)} - ${DateFormat('HH:mm').format(_selectedEnd)}'
+                                   : DateFormat('HH:mm').format(_selectedStart), 
+                               style: TextStyle(color: palette.primary, fontSize: 18, fontWeight: FontWeight.bold)
                              ),
+                             if (widget.isRange) ...[
+                               const SizedBox(height: 8),
+                               Text(
+                                 () {
+                                   final diff = _selectedEnd.difference(_selectedStart);
+                                   final hrs = diff.inHours;
+                                   final mins = diff.inMinutes % 60;
+                                   if (hrs > 0 && mins > 0) return 'Duration: ${hrs}h ${mins}m';
+                                   if (hrs > 0) return 'Duration: $hrs hour${hrs > 1 ? 's' : ''}';
+                                   return 'Duration: $mins min';
+                                 }(),
+                                 style: TextStyle(color: palette.text.withValues(alpha: 0.5), fontSize: 12),
+                               ),
+                             ],
                            ],
                          ),
                        ),
@@ -413,64 +453,68 @@ class _DateTimeConfigSheetState extends State<DateTimeConfigSheet> {
                  ],
                ),
              ),
-             Container(
-               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-               decoration: BoxDecoration(
-                 color: palette.text.withValues(alpha: 0.05),
-                 borderRadius: BorderRadius.circular(16),
+             if (widget.showAllDay)
+               Container(
+                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                 decoration: BoxDecoration(
+                   color: palette.text.withValues(alpha: 0.05),
+                   borderRadius: BorderRadius.circular(16),
+                 ),
+                 child: SwitchListTile(
+                   title: Text('All day', style: TextStyle(color: palette.text, fontSize: 16)),
+                   value: _isAllDay,
+                   activeTrackColor: palette.primary,
+                   onChanged: (val) {
+                     setState(() {
+                       _isAllDay = val;
+                     });
+                   },
+                 ),
                ),
-               child: SwitchListTile(
-                 title: Text('All day', style: TextStyle(color: palette.text, fontSize: 16)),
-                 value: _isAllDay,
-                 activeTrackColor: palette.primary,
-                 onChanged: (val) {
-                   setState(() {
-                     _isAllDay = val;
-                   });
-                 },
-               ),
-             ),
              // List Tiles (Reminder, Repeat)
-             Container(
-               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-               decoration: BoxDecoration(
-                 color: palette.text.withValues(alpha: 0.05),
-                 borderRadius: BorderRadius.circular(16),
-               ),
-               child: Column(
-                 children: [
-                   ListTile(
-                     leading: Icon(Icons.alarm, color: palette.text.withValues(alpha: 0.7)),
-                     title: Text('Reminder', style: TextStyle(color: palette.text)),
-                     trailing: Row(
-                       mainAxisSize: MainAxisSize.min,
-                       children: [
-                         Text(_reminderOffsets.isNotEmpty ? _reminderOffsets.first.label : 'None', style: TextStyle(color: palette.text.withValues(alpha: 0.7))),
-                         const SizedBox(width: 8),
-                         GestureDetector(
-                           onTap: () => setState(() => _reminderOffsets.clear()),
-                           child: Icon(Icons.close, size: 16, color: palette.text.withValues(alpha: 0.5)),
+             if (widget.showReminder || widget.showRepeat)
+               Container(
+                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                 decoration: BoxDecoration(
+                   color: palette.text.withValues(alpha: 0.05),
+                   borderRadius: BorderRadius.circular(16),
+                 ),
+                 child: Column(
+                   children: [
+                     if (widget.showReminder)
+                       ListTile(
+                         leading: Icon(Icons.alarm, color: palette.text.withValues(alpha: 0.7)),
+                         title: Text('Reminder', style: TextStyle(color: palette.text)),
+                         trailing: Row(
+                           mainAxisSize: MainAxisSize.min,
+                           children: [
+                             Text(_reminderOffsets.isNotEmpty ? _reminderOffsets.first.label : 'None', style: TextStyle(color: palette.text.withValues(alpha: 0.7))),
+                             const SizedBox(width: 8),
+                             GestureDetector(
+                               onTap: () => setState(() => _reminderOffsets.clear()),
+                               child: Icon(Icons.close, size: 16, color: palette.text.withValues(alpha: 0.5)),
+                             ),
+                           ],
                          ),
-                       ],
-                     ),
-                     onTap: _pickReminder,
-                   ),
-                   ListTile(
-                     leading: Icon(Icons.repeat, color: palette.text.withValues(alpha: 0.7)),
-                     title: Text('Repeat', style: TextStyle(color: palette.text)),
-                     trailing: Row(
-                       mainAxisSize: MainAxisSize.min,
-                       children: [
-                         Text(_recurrence.label, style: TextStyle(color: palette.text.withValues(alpha: 0.7))),
-                         const SizedBox(width: 8),
-                         Icon(Icons.chevron_right, size: 20, color: palette.text.withValues(alpha: 0.5)),
-                       ],
-                     ),
-                     onTap: _pickRepeat,
-                   ),
-                 ],
+                         onTap: _pickReminder,
+                       ),
+                     if (widget.showRepeat)
+                       ListTile(
+                         leading: Icon(Icons.repeat, color: palette.text.withValues(alpha: 0.7)),
+                         title: Text('Repeat', style: TextStyle(color: palette.text)),
+                         trailing: Row(
+                           mainAxisSize: MainAxisSize.min,
+                           children: [
+                             Text(_recurrence.label, style: TextStyle(color: palette.text.withValues(alpha: 0.7))),
+                             const SizedBox(width: 8),
+                             Icon(Icons.chevron_right, size: 20, color: palette.text.withValues(alpha: 0.5)),
+                           ],
+                         ),
+                         onTap: _pickRepeat,
+                       ),
+                   ],
+                 ),
                ),
-             ),
              const SizedBox(height: 24),
              TextButton(
                onPressed: () {
@@ -495,10 +539,14 @@ Future<DateTimeConfigResult?> showDateTimeConfigSheet({
   required BuildContext context,
   required AppPalette palette,
   required DateTime initialStart,
-  required DateTime initialEnd,
-  required RecurrenceConfig initialRecurrence,
-  required Set<ReminderOffset> initialReminderOffsets,
+  DateTime? initialEnd,
+  RecurrenceConfig? initialRecurrence,
+  Set<ReminderOffset>? initialReminderOffsets,
   bool initialIsAllDay = false,
+  bool isRange = true,
+  bool showAllDay = true,
+  bool showReminder = true,
+  bool showRepeat = true,
 }) {
   return showModalBottomSheet<DateTimeConfigResult>(
     context: context,
@@ -511,6 +559,10 @@ Future<DateTimeConfigResult?> showDateTimeConfigSheet({
       initialRecurrence: initialRecurrence,
       initialReminderOffsets: initialReminderOffsets,
       initialIsAllDay: initialIsAllDay,
+      isRange: isRange,
+      showAllDay: showAllDay,
+      showReminder: showReminder,
+      showRepeat: showRepeat,
     ),
   );
 }

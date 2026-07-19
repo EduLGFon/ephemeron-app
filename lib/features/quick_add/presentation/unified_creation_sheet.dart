@@ -919,14 +919,18 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
   }
 
   Future<void> _pickDate(BuildContext context, DateTime? initial, ValueChanged<DateTime> onPicked) async {
-    final picked = await showDatePicker(
+    final palette = ref.read(themeEngineProvider);
+    final picked = await showDateTimeConfigSheet(
       context: context,
-      initialDate: initial ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 3650)),
+      palette: palette,
+      initialStart: initial ?? DateTime.now(),
+      isRange: false,
+      showAllDay: false,
+      showReminder: false,
+      showRepeat: false,
     );
     if (picked != null) {
-      onPicked(picked);
+      onPicked(picked.start);
       _markChanged();
     }
   }
@@ -980,9 +984,9 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
     if (result != null) {
       setState(() {
         _startTime = result.start;
-        _endTime = result.end;
-        _recurrence = result.recurrence;
-        _selectedOffsets = result.reminderOffsets;
+        _endTime = result.end ?? _endTime;
+        _recurrence = result.recurrence ?? _recurrence;
+        _selectedOffsets = result.reminderOffsets ?? _selectedOffsets;
         _isAllDay = result.isAllDay;
       });
       _markChanged();

@@ -12,6 +12,7 @@ import '../domain/habit_section.dart';
 import 'habit_form_sheet.dart';
 import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
 import 'package:ephemeron/core/widgets/app_loading_indicator.dart';
+import '../../calendar/presentation/date_time_config_sheet.dart';
 
 class HabitsScreen extends ConsumerWidget {
   const HabitsScreen({super.key});
@@ -126,14 +127,17 @@ class _DateNavigator extends ConsumerWidget {
           ),
           GestureDetector(
             onTap: () async {
-              final date = await showDatePicker(
+              final result = await showDateTimeConfigSheet(
                 context: context,
-                initialDate: selectedDate,
-                firstDate: DateTime(2000),
-                lastDate: DateTime.now().add(const Duration(days: 365)),
+                palette: palette,
+                initialStart: selectedDate,
+                isRange: false,
+                showAllDay: false,
+                showReminder: false,
+                showRepeat: false,
               );
-              if (date != null) {
-                ref.read(habitSelectedDateProvider.notifier).state = date;
+              if (result != null) {
+                ref.read(habitSelectedDateProvider.notifier).state = result.start;
               }
             },
             child: Padding(
