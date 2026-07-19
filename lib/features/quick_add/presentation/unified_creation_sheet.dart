@@ -2,16 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/theme_engine_provider.dart';
-import '../../tasks/presentation/task_form_sheet.dart';
-import '../../calendar/presentation/event_form_sheet.dart';
-import '../../habits/presentation/habit_form_sheet.dart';
-import '../../countdown/presentation/countdown_form_sheet.dart';
-import '../../countdown/domain/countdown_type.dart';
-import '../../tasks/application/task_providers.dart';
+import '../../../core/theme/theme_palettes.dart';
 import '../../../presentation/shell/nav_section.dart';
-import '../../../presentation/notes/note_form_sheet.dart';
 import '../../../core/settings/session_restore.dart';
-import 'quick_add_target.dart';
 
 Future<void> showUnifiedCreationSheet(BuildContext context, {NavSection? currentSection}) {
   return showGeneralDialog<void>(
@@ -57,24 +50,19 @@ class UnifiedCreationSheet extends ConsumerStatefulWidget {
 }
 
 class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
-  late QuickAddTarget _target;
+  final _titleController = TextEditingController();
+  final _descController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _target = switch (widget.currentSection) {
-      NavSection.calendar => QuickAddTarget.event,
-      NavSection.habits => QuickAddTarget.habit,
-      NavSection.tasks => QuickAddTarget.task,
-      NavSection.countdown => QuickAddTarget.countdown,
-      NavSection.notes => QuickAddTarget.note,
-      _ => QuickAddTarget.task,
-    };
     SessionRestore.saveOpenMenu('quick_add');
   }
 
   @override
   void dispose() {
+    _titleController.dispose();
+    _descController.dispose();
     SessionRestore.clearOpenMenu();
     super.dispose();
   }
@@ -82,87 +70,73 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
   @override
   Widget build(BuildContext context) {
     final palette = ref.watch(themeEngineProvider);
-    final listsAsync = ref.watch(listsProvider);
-    final selectedListId = ref.watch(selectedListIdProvider);
-    final defaultListId = selectedListId ?? (listsAsync.value?.firstWhere(
-      (l) => l.isInbox, 
-      orElse: () => listsAsync.value!.first
-    ).id ?? '');
 
-    final header = Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Center(
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: QuickAddTarget.values.map((target) {
-              final isSelected = _target == target;
-              final label = switch (target) {
-                QuickAddTarget.task => 'Task',
-                QuickAddTarget.event => 'Event',
-                QuickAddTarget.habit => 'Habit',
-                QuickAddTarget.countdown => 'Cdwn',
-                QuickAddTarget.note => 'Note',
-              };
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: ChoiceChip(
-                  label: Text(label),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    if (selected) {
-                      setState(() => _target = target);
-                    }
-                  },
-                  selectedColor: palette.primary.withValues(alpha: 0.15),
-                  labelStyle: TextStyle(
-                    color: isSelected ? palette.primary : palette.text.withValues(alpha: 0.7),
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 12,
-                  ),
-                  backgroundColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(
-                      color: isSelected ? palette.primary : palette.text.withValues(alpha: 0.1),
-                      width: 1,
-                    ),
-                  ),
-                  showCheckmark: false,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              );
-            }).toList(),
+    return Container(
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _titleController,
+            autofocus: true,
+            style: TextStyle(color: palette.text, fontSize: 18, fontWeight: FontWeight.w500),
+            decoration: InputDecoration(
+              hintText: 'What would you like to do?',
+              hintStyle: TextStyle(color: palette.text.withValues(alpha: 0.5)),
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: const EdgeInsets.only(bottom: 8),
+            ),
           ),
-        ),
+          TextField(
+            controller: _descController,
+            style: TextStyle(color: palette.text, fontSize: 14),
+            decoration: InputDecoration(
+              hintText: 'Description',
+              hintStyle: TextStyle(color: palette.text.withValues(alpha: 0.5)),
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: const EdgeInsets.only(bottom: 16),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _buildIconButton(Icons.calendar_today_outlined, palette),
+              const SizedBox(width: 8),
+              _buildIconButton(Icons.flag_outlined, palette),
+              const SizedBox(width: 8),
+              _buildIconButton(Icons.local_offer_outlined, palette),
+              const SizedBox(width: 8),
+              _buildIconButton(Icons.drive_file_move_outlined, palette),
+              const SizedBox(width: 8),
+              _buildIconButton(Icons.more_horiz, palette),
+              const Spacer(),
+              _buildIconButton(Icons.mic_none, palette),
+            ],
+          ),
+        ],
       ),
     );
+  }
 
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (Widget child, Animation<double> animation) {
-          return FadeTransition(
-            opacity: animation,
-            child: ScaleTransition(
-              scale: Tween<double>(begin: 0.95, end: 1.0).animate(animation),
-              child: child,
-            ),
-          );
-        },
-        child: switch (_target) {
-          QuickAddTarget.task => TaskFormSheet(key: const ValueKey('task'), listId: defaultListId, unifiedHeader: header),
-          QuickAddTarget.event => EventFormSheet(key: const ValueKey('event'), unifiedHeader: header),
-          QuickAddTarget.habit => HabitFormSheet(key: const ValueKey('habit'), unifiedHeader: header),
-          QuickAddTarget.countdown => CountdownFormSheet(key: const ValueKey('countdown'), type: CountdownType.custom, unifiedHeader: header),
-          QuickAddTarget.note => NoteFormSheet(key: const ValueKey('note'), unifiedHeader: header),
-        },
+  Widget _buildIconButton(IconData icon, AppPalette palette) {
+    return Container(
+      decoration: BoxDecoration(
+        color: palette.text.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: IconButton(
+        icon: Icon(icon, size: 20),
+        color: palette.text.withValues(alpha: 0.7),
+        onPressed: () {},
+        padding: const EdgeInsets.all(8),
+        constraints: const BoxConstraints(),
       ),
     );
   }

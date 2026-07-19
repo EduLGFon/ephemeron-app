@@ -189,37 +189,16 @@ class _AppShellState extends ConsumerState<AppShell> {
       extendBody: false, // Content is padded to fit above the bottom navigation bar
       body: widget.navigationShell,
       floatingActionButton: showQuickAdd
-          ? Container(
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: palette.primary.withValues(alpha: 0.4),
-                    blurRadius: 20,
-                    spreadRadius: 2,
-                    offset: const Offset(0, 8),
-                  )
-                ],
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: FloatingActionButton(
-                backgroundColor: palette.primary,
-                foregroundColor: palette.background,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                onPressed: () {
-                  final currentSection = pinned.firstWhere(
-                    (s) => s.branchIndex == widget.navigationShell.currentIndex,
-                    orElse: () => overflow.firstWhere(
-                      (s) => s.branchIndex == widget.navigationShell.currentIndex,
-                    ),
-                  );
-                  showUnifiedCreationSheet(context, currentSection: currentSection);
-                },
-                child: const Icon(Icons.add, size: 28),
+          ? _QuickAddPill(
+              currentSection: pinned.firstWhere(
+                (s) => s.branchIndex == widget.navigationShell.currentIndex,
+                orElse: () => overflow.firstWhere(
+                  (s) => s.branchIndex == widget.navigationShell.currentIndex,
+                ),
               ),
             )
           : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       bottomNavigationBar: _PremiumNavigationBar(
         isPill: settings.usePillNavigation,
         pinned: pinned,
@@ -439,6 +418,71 @@ class _NavItem extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickAddPill extends ConsumerWidget {
+  final NavSection currentSection;
+  const _QuickAddPill({required this.currentSection});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final palette = ref.watch(themeEngineProvider);
+    final selectedDay = ref.watch(selectedDayProvider);
+    
+    String getPillText() {
+      if (currentSection == NavSection.calendar) {
+        final monthStr = [
+          '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        ][selectedDay.month];
+        return 'Add on $monthStr ${selectedDay.day}';
+      }
+      return 'Add ${currentSection.label}';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 48.0),
+      child: Material(
+        color: palette.surface.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(32),
+        elevation: 0,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(32),
+          onTap: () {
+            showUnifiedCreationSheet(context, currentSection: currentSection);
+          },
+          child: Container(
+            height: 56,
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(
+                color: palette.text.withValues(alpha: 0.1),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  getPillText(),
+                  style: TextStyle(
+                    color: palette.text.withValues(alpha: 0.8),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Icon(
+                  Icons.add,
+                  color: palette.text.withValues(alpha: 0.8),
+                  size: 24,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
