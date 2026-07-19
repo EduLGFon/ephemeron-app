@@ -24,34 +24,44 @@ void main() async {
   runApp(const ProviderScope(child: EphemeronApp()));
 }
 
-class EphemeronApp extends ConsumerWidget {
+class EphemeronApp extends ConsumerStatefulWidget {
   const EphemeronApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(appSettingsProvider);
-    final router = ref.watch(appRouterProvider);
+  ConsumerState<EphemeronApp> createState() => _EphemeronAppState();
+}
+
+class _EphemeronAppState extends ConsumerState<EphemeronApp> {
+  @override
+  void initState() {
+    super.initState();
     // Fire-and-forget: kicks off channel setup/timezone resolution at
     // startup without blocking the first frame on it. Permission prompts
     // are a separate, deliberately-not-automatic step — see
     // AlarmScheduler.requestPermissions's doc comment.
-    ref.watch(alarmSchedulerInitProvider);
+    ref.read(alarmSchedulerInitProvider);
     // Catches up weekly/interval habit reminders whose last-computed
     // one-shot occurrence already fired — see HabitRepository
     // .refreshOneShotAlarms's doc comment for why daily habits don't
     // need this (they're genuinely OS-recurring).
-    ref.watch(habitAlarmsRefreshProvider);
+    ref.read(habitAlarmsRefreshProvider);
     // Same idea for yearly countdowns rolling forward past their date.
-    ref.watch(countdownAlarmsRefreshProvider);
+    ref.read(countdownAlarmsRefreshProvider);
     // Handles notification done/snooze actions while the app is alive.
-    ref.watch(alarmActionManagerProvider);
+    ref.read(alarmActionManagerProvider);
     // Listens to app lifecycle changes to refresh battery state
-    ref.watch(powerSavingManagerProvider);
+    ref.read(powerSavingManagerProvider);
     // Initialize Google Auth — this silently restores a previous session
     // so Calendar/Tasks sync work immediately without visiting auth screen.
-    ref.watch(googleAuthInitProvider);
+    ref.read(googleAuthInitProvider);
     // Initialize sync service (kick off background periodic timer based on settings)
-    ref.watch(syncServiceProvider);
+    ref.read(syncServiceProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = ref.watch(appSettingsProvider);
+    final router = ref.watch(appRouterProvider);
 
     // Pre-warming of primary providers has been removed to avoid blocking the UI thread
     // during the critical first frame layout. These providers will lazy-load when their
