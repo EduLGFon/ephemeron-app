@@ -78,6 +78,22 @@ class CalendarRepository {
     }
   }
 
+  Future<List<Map<String, String>>> getAvailableCalendars() async {
+    if (_authRepository.currentAccount == null) return const [];
+    try {
+      final api = await _api();
+      final calendarList = await api.calendarList.list();
+      final calendars = calendarList.items ?? [];
+      return calendars.map((c) => {
+        'id': (c.primary == true ? 'primary' : c.id) ?? 'primary',
+        'name': c.summary ?? 'Unknown Calendar',
+      }).toList();
+    } catch (e) {
+      DevLogger.log('getAvailableCalendars failed: $e');
+      return const [];
+    }
+  }
+
   Future<void> cacheEvents(List<CalendarEvent> events, {String? calendarId}) async {
     if (events.isEmpty) return;
     await _db.batch((batch) {

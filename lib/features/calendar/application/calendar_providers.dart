@@ -334,3 +334,7 @@ final calendarScrollOffsetProvider =
 final deviceCalendarsProvider = FutureProvider<List<dev_cal.Calendar>>((ref) {
   return ref.watch(deviceCalendarRepositoryProvider).retrieveCalendars();
 });
+
+final googleCalendarsProvider = FutureProvider<List<Map<String, String>>>((ref) {
+  return ref.watch(calendarRepositoryProvider).getAvailableCalendars();
+});
