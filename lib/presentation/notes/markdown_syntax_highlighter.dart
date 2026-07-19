@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 class MarkdownSyntaxHighlighter extends TextEditingController {
-  MarkdownSyntaxHighlighter({super.text});
+  MarkdownSyntaxHighlighter({super.text, this.showReorderArrows = false});
+
+  bool showReorderArrows;
 
   bool _moveLineUp(int lineStart, int lineEnd) {
     if (lineStart == 0) return false;
@@ -57,14 +59,22 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
       bool isDown = false;
       bool isCheck = false;
       
-      if (dash != null) {
-        if (localOffset == 0) { isUp = true; }
-        else if (localOffset == 1 || localOffset == 2) { isDown = true; }
-        else if (localOffset >= 3 && localOffset <= 5) { isCheck = true; }
+      if (showReorderArrows) {
+        if (dash != null) {
+          if (localOffset == 0) { isUp = true; }
+          else if (localOffset == 1 || localOffset == 2) { isDown = true; }
+          else if (localOffset >= 3 && localOffset <= 5) { isCheck = true; }
+        } else {
+          if (localOffset == 0) { isUp = true; }
+          else if (localOffset == 1) { isDown = true; }
+          else if (localOffset >= 2 && localOffset <= 4) { isCheck = true; }
+        }
       } else {
-        if (localOffset == 0) { isUp = true; }
-        else if (localOffset == 1) { isDown = true; }
-        else if (localOffset >= 2 && localOffset <= 4) { isCheck = true; }
+        if (dash != null) {
+          if (localOffset >= 2 && localOffset <= 4) { isCheck = true; }
+        } else {
+          if (localOffset >= 0 && localOffset <= 2) { isCheck = true; }
+        }
       }
       
       if (isUp) return _moveLineUp(lineStart, lineEnd);
@@ -80,23 +90,25 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
       return false;
     }
 
-    final listMatch = RegExp(r'^(\s*)([-*]\s|\d+\.\s)').firstMatch(line);
-    if (listMatch != null) {
-      final indent = listMatch.group(1)!;
-      final bullet = listMatch.group(2)!;
-      
-      final contentStart = lineStart + indent.length;
-      final localOffset = offset - contentStart;
-      
-      bool isUp = false;
-      bool isDown = false;
-      
-      if (bullet.trim() == '-' || bullet.trim() == '*') {
-        if (localOffset == 0) { isUp = true; }
-        else if (localOffset == 1 || localOffset == 2) { isDown = true; }
+    if (showReorderArrows) {
+      final listMatch = RegExp(r'^(\s*)([-*]\s|\d+\.\s)').firstMatch(line);
+      if (listMatch != null) {
+        final indent = listMatch.group(1)!;
+        final bullet = listMatch.group(2)!;
         
-        if (isUp) return _moveLineUp(lineStart, lineEnd);
-        if (isDown) return _moveLineDown(lineStart, lineEnd);
+        final contentStart = lineStart + indent.length;
+        final localOffset = offset - contentStart;
+        
+        bool isUp = false;
+        bool isDown = false;
+        
+        if (bullet.trim() == '-' || bullet.trim() == '*') {
+          if (localOffset == 0) { isUp = true; }
+          else if (localOffset == 1 || localOffset == 2) { isDown = true; }
+          
+          if (isUp) return _moveLineUp(lineStart, lineEnd);
+          if (isDown) return _moveLineDown(lineStart, lineEnd);
+        }
       }
     }
     
@@ -178,14 +190,6 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
           
           if (indent.isNotEmpty) spans.add(TextSpan(text: indent, style: style));
 
-          WidgetSpan upArrow = WidgetSpan(
-            alignment: PlaceholderAlignment.middle,
-            child: Icon(Icons.arrow_upward, size: 16, color: Colors.grey.withValues(alpha: 0.6)),
-          );
-          WidgetSpan downArrow = WidgetSpan(
-            alignment: PlaceholderAlignment.middle,
-            child: Icon(Icons.arrow_downward, size: 16, color: Colors.grey.withValues(alpha: 0.6)),
-          );
           WidgetSpan checkboxIcon = WidgetSpan(
             alignment: PlaceholderAlignment.middle,
             child: Padding(
@@ -197,17 +201,35 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
               ),
             ),
           );
-          
-          if (dash != null) {
-            spans.add(upArrow);
-            spans.add(downArrow);
+
+          if (showReorderArrows) {
+            WidgetSpan upArrow = WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Icon(Icons.arrow_upward, size: 16, color: Colors.grey.withValues(alpha: 0.6)),
+            );
+            WidgetSpan downArrow = WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Icon(Icons.arrow_downward, size: 16, color: Colors.grey.withValues(alpha: 0.6)),
+            );
+            
+            if (dash != null) {
+              spans.add(upArrow);
+              spans.add(downArrow);
+              spans.add(TextSpan(text: '[', style: hiddenStyle));
+              spans.add(checkboxIcon);
+              spans.add(TextSpan(text: ']', style: hiddenStyle));
+            } else {
+              spans.add(upArrow);
+              spans.add(downArrow);
+              spans.add(checkboxIcon);
+            }
+          } else {
+            if (dash != null) {
+              spans.add(TextSpan(text: dash, style: hiddenStyle));
+            }
             spans.add(TextSpan(text: '[', style: hiddenStyle));
             spans.add(checkboxIcon);
             spans.add(TextSpan(text: ']', style: hiddenStyle));
-          } else {
-            spans.add(upArrow);
-            spans.add(downArrow);
-            spans.add(checkboxIcon);
           }
           
           if (suffix.isNotEmpty) spans.add(TextSpan(text: suffix, style: style));
@@ -223,24 +245,35 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
           if (indent.isNotEmpty) spans.add(TextSpan(text: indent, style: style));
           
           if (bullet.trim() == '-' || bullet.trim() == '*') {
-            WidgetSpan upArrow = WidgetSpan(
-              alignment: PlaceholderAlignment.middle,
-              child: Icon(Icons.arrow_upward, size: 16, color: Colors.grey.withValues(alpha: 0.6)),
-            );
-            WidgetSpan downAndBullet = WidgetSpan(
-              alignment: PlaceholderAlignment.middle,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.arrow_downward, size: 16, color: Colors.grey.withValues(alpha: 0.6)),
-                  const SizedBox(width: 4),
-                  Icon(Icons.circle, size: (style?.fontSize ?? 14) * 0.4, color: style?.color?.withValues(alpha: 0.7) ?? Colors.grey),
-                  const SizedBox(width: 4),
-                ],
-              ),
-            );
-            spans.add(upArrow);
-            spans.add(downAndBullet);
+            if (showReorderArrows) {
+              WidgetSpan upArrow = WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Icon(Icons.arrow_upward, size: 16, color: Colors.grey.withValues(alpha: 0.6)),
+              );
+              WidgetSpan downAndBullet = WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.arrow_downward, size: 16, color: Colors.grey.withValues(alpha: 0.6)),
+                    const SizedBox(width: 4),
+                    Icon(Icons.circle, size: (style?.fontSize ?? 14) * 0.4, color: style?.color?.withValues(alpha: 0.7) ?? Colors.grey),
+                    const SizedBox(width: 4),
+                  ],
+                ),
+              );
+              spans.add(upArrow);
+              spans.add(downAndBullet);
+            } else {
+              spans.add(TextSpan(text: bullet[0], style: hiddenStyle));
+              spans.add(WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  child: Icon(Icons.circle, size: (style?.fontSize ?? 14) * 0.4, color: style?.color?.withValues(alpha: 0.7) ?? Colors.grey),
+                ),
+              ));
+            }
           } else {
             spans.add(TextSpan(text: bullet, style: style?.copyWith(fontWeight: FontWeight.bold, color: Colors.blueAccent)));
           }

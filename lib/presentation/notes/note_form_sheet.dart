@@ -38,6 +38,7 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
   Timer? _contentTypingTimer;
   bool _isSaving = false;
   bool _isFullScreen = false;
+  bool _showReorderArrows = false;
 
   @override
   void initState() {
@@ -176,6 +177,22 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
                   icon: Icon(Icons.image_outlined, color: palette.text.withValues(alpha: 0.7)),
                   tooltip: 'Attach Image',
                   onPressed: _attachImage,
+                ),
+                IconButton(
+                  icon: Icon(
+                    _showReorderArrows ? Icons.swap_vert : Icons.reorder,
+                    color: _showReorderArrows ? palette.primary : palette.text.withValues(alpha: 0.7),
+                  ),
+                  tooltip: 'Toggle Reorder Arrows',
+                  onPressed: () {
+                    setState(() {
+                      _showReorderArrows = !_showReorderArrows;
+                      _contentController.showReorderArrows = _showReorderArrows;
+                      // Force text layout rebuild
+                      final text = _contentController.text;
+                      _contentController.value = _contentController.value.copyWith(text: text);
+                    });
+                  },
                 ),
                 if (existingNote != null)
                   IconButton(
