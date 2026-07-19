@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/theme_engine_provider.dart';
@@ -7,7 +8,13 @@ import '../../../core/theme/app_colors.dart';
 import '../../../presentation/shell/nav_section.dart';
 import '../../../core/settings/session_restore.dart';
 import '../../calendar/application/calendar_providers.dart';
+import '../../calendar/domain/calendar_event.dart';
 import '../../tasks/application/task_providers.dart';
+import '../../habits/application/habit_providers.dart';
+import '../../habits/domain/habit_frequency.dart';
+import '../../countdown/application/countdown_providers.dart';
+import '../../countdown/domain/countdown_type.dart';
+import '../../notes/data/notes_repository.dart';
 import '../../../data/local/database.dart';
 import 'quick_add_target.dart';
 
@@ -426,6 +433,120 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
     );
   }
 
+  Future<void> _saveEntity() async {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) return;
+    final desc = _descController.text.trim();
+
+    if (_target == QuickAddTarget.task) {
+      if (widget.entity != null && widget.entity is Task) {
+        final task = widget.entity as Task;
+        await ref.read(taskRepositoryProvider).updateTask(
+          task.id,
+          title: title,
+          description: desc,
+          priority: _priority,
+        );
+      } else {
+        await ref.read(taskRepositoryProvider).createTask(
+          listId: 'inbox',
+          title: title,
+          description: desc,
+          priority: _priority,
+        );
+      }
+    } else if (_target == QuickAddTarget.event) {
+      if (widget.entity != null && widget.entity is CalendarEvent) {
+        final ev = widget.entity as CalendarEvent;
+        await ref.read(calendarRepositoryProvider).updateEvent(
+          ev.copyWith(
+            title: title,
+            description: desc,
+          ),
+        );
+      } else {
+        _startTime = DateTime.now();
+        _endTime = DateTime.now().add(const Duration(hours: 1));
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _titleFocusNode.requestFocus();
+          }
+        });
+        await ref.read(calendarRepositoryProvider).createEvent(
+          CalendarEvent(
+            id: '',
+            title: title,
+            description: desc,
+            start: DateTime.now(),
+            end: DateTime.now().add(const Duration(hours: 1)),
+            isAllDay: false,
+          ),
+        );
+      }
+    } else if (_target == QuickAddTarget.habit) {
+      if (widget.entity != null && widget.entity is Habit) {
+        final h = widget.entity as Habit;
+        await ref.read(habitRepositoryProvider).updateHabit(
+          h.id,
+          name: title,
+        );
+      } else {
+        await ref.read(habitRepositoryProvider).createHabit(
+          name: title,
+          section: 'default',
+          frequency: const HabitFrequency.daily(),
+          goalType: 'binary',
+        );
+      }
+    } else if (_target == QuickAddTarget.countdown) {
+      if (widget.entity != null && widget.entity is Countdown) {
+        final c = widget.entity as Countdown;
+        await ref.read(countdownRepositoryProvider).updateCountdown(
+          c.id,
+          title: title,
+        );
+      } else {
+        await ref.read(countdownRepositoryProvider).createCountdown(
+          title: title,
+          type: CountdownType.custom,
+          targetDate: DateTime.now().add(const Duration(days: 1)),
+        );
+      }
+    } else if (_target == QuickAddTarget.note) {
+      if (widget.entity != null && widget.entity is Note) {
+        final n = widget.entity as Note;
+        await ref.read(notesRepositoryProvider).updateNote(
+          NotesCompanion(
+            id: Value(n.id),
+            title: Value(title),
+            content: Value(desc),
+            folderId: Value(n.folderId),
+            updatedAt: Value(DateTime.now()),
+          )
+        );
+      } else {
+        await ref.read(notesRepositoryProvider).createNote(
+          NotesCompanion.insert(
+            title: title,
+            content: desc,
+            folderId: const Value('default'),
+            createdAt: Value(DateTime.now()),
+            updatedAt: Value(DateTime.now()),
+          )
+        );
+      }
+    }
+
+    if (widget.onClose != null) {
+      widget.onClose!();
+    } else {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    }
+  }
+
   Widget _buildSendButton(AppPalette palette) {
     return Container(
       width: 40,
@@ -437,12 +558,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
       child: IconButton(
         icon: Icon(Icons.send, color: palette.background, size: 20),
         onPressed: () {
-          // Future: Parse input and save entity
-          if (widget.onClose != null) {
-            widget.onClose!();
-          } else {
-            Navigator.of(context).pop();
-          }
+          _saveEntity();
         },
         padding: EdgeInsets.zero,
       ),

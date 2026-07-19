@@ -5,10 +5,8 @@ import '../../../core/theme/theme_engine_provider.dart';
 import '../../../core/theme/theme_palettes.dart';
 import '../application/calendar_providers.dart';
 import '../domain/calendar_event.dart';
-import 'event_form_sheet.dart';
-import '../../tasks/presentation/task_form_sheet.dart';
 import '../../tasks/application/task_providers.dart';
-import '../../habits/presentation/habit_form_sheet.dart';
+import '../../quick_add/application/quick_add_provider.dart';
 import '../../habits/application/habit_providers.dart';
 
 class CalendarMonthGridView extends ConsumerWidget {
@@ -357,16 +355,16 @@ class CalendarMonthGridView extends ConsumerWidget {
       final taskId = event.id.substring(5);
       final task = await ref.read(taskRepositoryProvider).getTask(taskId);
       if (task != null && context.mounted) {
-        showTaskFormSheet(context, listId: task.listId, existingTask: task); // ignore: unawaited_futures
+        ref.read(quickAddProvider.notifier).expand(task);
       }
     } else if (event.id.startsWith('habit:')) {
       final habitId = event.id.split(':')[1];
       final habit = await ref.read(habitRepositoryProvider).getHabit(habitId);
       if (habit != null && context.mounted) {
-        showHabitFormSheet(context, existingHabit: habit); // ignore: unawaited_futures
+        ref.read(quickAddProvider.notifier).expand(habit);
       }
     } else {
-      showEventFormSheet(context, initialDay: event.start, existingEvent: event); // ignore: unawaited_futures
+      ref.read(quickAddProvider.notifier).expand(event);
     }
   }
 

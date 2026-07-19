@@ -15,10 +15,8 @@ import '../domain/calendar_event.dart';
 import 'calendar_daily_timeline_view.dart';
 import 'calendar_month_grid_view.dart';
 import 'calendar_multi_day_timeline_view.dart';
-import 'event_form_sheet.dart';
-import '../../tasks/presentation/task_form_sheet.dart';
+import '../../quick_add/application/quick_add_provider.dart';
 import '../../tasks/application/task_providers.dart';
-import '../../habits/presentation/habit_form_sheet.dart';
 import '../../habits/application/habit_providers.dart';
 import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
 import '../../tasks/domain/task_recurrence.dart';
@@ -636,13 +634,13 @@ class _EventTile extends ConsumerWidget {
                 final taskId = event.id.substring(5);
                 final task = await ref.read(taskRepositoryProvider).getTask(taskId);
                 if (task != null && context.mounted) {
-                  showTaskFormSheet(context, listId: task.listId, existingTask: task); // ignore: unawaited_futures
+                  ref.read(quickAddProvider.notifier).expand(task);
                 }
               } else if (event.id.startsWith('habit:')) {
                 final habitId = event.id.split(':')[1];
                 final habit = await ref.read(habitRepositoryProvider).getHabit(habitId);
                 if (habit != null && context.mounted) {
-                  showHabitFormSheet(context, existingHabit: habit); // ignore: unawaited_futures
+                  ref.read(quickAddProvider.notifier).expand(habit);
                 }
               } else if (event.id.startsWith('device:')) {
                 final parts = event.id.split(':');
@@ -651,11 +649,7 @@ class _EventTile extends ConsumerWidget {
                   await dev_cal.DeviceCalendar().showEventModal(eventId);
                 }
               } else {
-                showEventFormSheet( // ignore: unawaited_futures
-                  context,
-                  initialDay: event.start,
-                  existingEvent: event,
-                );
+                ref.read(quickAddProvider.notifier).expand(event);
               }
             },
             onLongPress: () => _confirmDelete(context, ref),
