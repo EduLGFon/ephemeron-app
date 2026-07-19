@@ -7,8 +7,10 @@ import '../../../data/local/database.dart';
 import '../../alarms/data/alarm_scheduler.dart';
 import '../../alarms/domain/alarm_preset.dart';
 import '../../alarms/domain/reminder_offset.dart';
+import '../../matrix/domain/matrix_quadrant.dart';
 import '../domain/smart_list_type.dart';
 import '../domain/task_recurrence.dart';
+import '../domain/task_sort_option.dart';
 import 'google_tasks_mirror.dart';
 
 const _uuid = Uuid();
@@ -82,20 +84,107 @@ class TaskRepository {
   // Watches
   // ---------------------------------------------------------------------
 
-  Stream<List<Task>> watchTasksInList(String listId) {
-    return (_db.select(_db.tasks)
-          ..where(
-            (t) =>
-                t.listId.equals(listId) &
-                t.isDeleted.equals(false) &
-                t.parentTaskId.isNull(),
-          )
-          ..orderBy([
-            (t) => OrderingTerm.desc(t.isPinned),
-            (t) => OrderingTerm.asc(t.dueDate),
-            (t) => OrderingTerm.asc(t.createdAt),
-          ]))
-        .watch();
+  Stream<List<Task>> watchTasksInList(
+    String listId, {
+    bool? isCompleted,
+    TaskSortOption? sortOption,
+  }) {
+    final query = _db.select(_db.tasks)
+      ..where((t) =>
+          t.listId.equals(listId) &
+          t.isDeleted.equals(false) &
+          t.parentTaskId.isNull());
+
+    if (isCompleted != null) {
+      query.where((t) => t.isCompleted.equals(isCompleted));
+      if (isCompleted) {
+        // Completed tasks ignore standard sort options and sort by completion time
+        query.orderBy([
+          (t) => OrderingTerm.desc(coalesce([t.completedAt, t.updatedAt])),
+        ]);
+        return query.watch();
+      }
+    }
+
+    _applySortOption(query, sortOption);
+    return query.watch();
+  }
+
+  Stream<List<Task>> watchMatrixTasks(
+    MatrixQuadrant quadrant, {
+    required bool isCompleted,
+    TaskSortOption? sortOption,
+  }) {
+    final now = DateTime.now();
+    final endOfTomorrow = DateTime(now.year, now.month, now.day).add(const Duration(days: 2));
+
+    final query = _db.select(_db.tasks)
+      ..where((t) =>
+          t.isDeleted.equals(false) &
+          t.isWontDo.equals(false) &
+          t.parentTaskId.isNull() &
+          t.isCompleted.equals(isCompleted));
+
+    final isImportant = _db.tasks.priority.isBiggerOrEqualValue(2);
+    final isUrgent = _db.tasks.dueDate.isNotNull() & _db.tasks.dueDate.isSmallerThanValue(endOfTomorrow);
+
+    switch (quadrant) {
+      case MatrixQuadrant.doFirst:
+        query.where((t) => isImportant & isUrgent);
+      case MatrixQuadrant.schedule:
+        query.where((t) => isImportant & isUrgent.not());
+      case MatrixQuadrant.delegate:
+        query.where((t) => isImportant.not() & isUrgent);
+      case MatrixQuadrant.eliminate:
+        query.where((t) => isImportant.not() & isUrgent.not());
+    }
+
+    if (isCompleted) {
+      query.orderBy([
+        (t) => OrderingTerm.desc(coalesce([t.completedAt, t.updatedAt])),
+      ]);
+    } else {
+      _applySortOption(query, sortOption);
+    }
+    return query.watch();
+  }
+
+  void _applySortOption(SimpleSelectStatement<$TasksTable, Task> query, TaskSortOption? sortOption) {
+    if (sortOption == null) {
+      query.orderBy([
+        (t) => OrderingTerm.desc(t.isPinned),
+        (t) => OrderingTerm.asc(t.dueDate),
+        (t) => OrderingTerm.asc(t.createdAt),
+      ]);
+      return;
+    }
+    switch (sortOption) {
+      case TaskSortOption.priority:
+        query.orderBy([
+          (t) => OrderingTerm.desc(t.isPinned),
+          (t) => OrderingTerm.desc(t.priority),
+          (t) => OrderingTerm.asc(t.dueDate.isNull()),
+          (t) => OrderingTerm.asc(t.dueDate),
+          (t) => OrderingTerm.asc(t.createdAt),
+        ]);
+      case TaskSortOption.dueDate:
+        query.orderBy([
+          (t) => OrderingTerm.desc(t.isPinned),
+          (t) => OrderingTerm.asc(t.dueDate.isNull()),
+          (t) => OrderingTerm.asc(t.dueDate),
+          (t) => OrderingTerm.desc(t.priority),
+        ]);
+      case TaskSortOption.createdAt:
+        query.orderBy([
+          (t) => OrderingTerm.desc(t.isPinned),
+          (t) => OrderingTerm.desc(t.createdAt),
+        ]);
+      case TaskSortOption.custom:
+        query.orderBy([
+          (t) => OrderingTerm.desc(t.isPinned),
+          (t) => OrderingTerm.asc(t.sortOrder),
+        ]);
+    }
   }
 
   Stream<List<Task>> watchAllPendingTasks() {

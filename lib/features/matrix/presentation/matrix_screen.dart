@@ -6,6 +6,7 @@ import '../../../core/theme/theme_engine_provider.dart';
 import '../../../core/theme/theme_palettes.dart';
 import '../../../data/local/database.dart';
 import '../../tasks/application/task_providers.dart';
+import '../../tasks/domain/task_sort_option.dart';
 import '../../tasks/presentation/task_form_sheet.dart';
 import '../application/matrix_providers.dart';
 import '../domain/matrix_quadrant.dart';
@@ -110,8 +111,10 @@ class _QuadrantWidget extends ConsumerStatefulWidget {
 class _QuadrantWidgetState extends ConsumerState<_QuadrantWidget> {
   @override
   Widget build(BuildContext context) {
-    final pendingTasks = ref.watch(pendingMatrixTasksProvider(widget.quadrant));
-    final completedTasks = ref.watch(completedMatrixTasksProvider(widget.quadrant));
+    final pendingTasksAsync = ref.watch(pendingMatrixTasksProvider(widget.quadrant));
+    final completedTasksAsync = ref.watch(completedMatrixTasksProvider(widget.quadrant));
+    final pendingTasks = pendingTasksAsync.value ?? [];
+    final completedTasks = completedTasksAsync.value ?? [];
     final color = widget.quadrant.color;
     final totalCount = pendingTasks.length + completedTasks.length;
 

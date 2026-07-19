@@ -6,6 +6,7 @@ import '../../../data/local/database_provider.dart';
 import '../../alarms/application/alarm_scheduler_provider.dart';
 import '../../auth/google/google_auth_provider.dart';
 import '../domain/smart_list_type.dart';
+import '../domain/task_sort_option.dart';
 import '../data/google_tasks_mirror.dart';
 import '../data/task_repository.dart';
 
@@ -100,21 +101,7 @@ final taskTagsProvider = StreamProvider.family<List<Tag>, String>((
   return ref.watch(taskRepositoryProvider).watchTagsForTask(taskId);
 });
 
-enum TaskSortOption {
-  priority,
-  dueDate,
-  createdAt,
-  custom;
 
-  String get label {
-    switch (this) {
-      case TaskSortOption.priority: return 'Priority';
-      case TaskSortOption.dueDate: return 'Due Date';
-      case TaskSortOption.createdAt: return 'Creation Date';
-      case TaskSortOption.custom: return 'Custom Order';
-    }
-  }
-}
 
 class TaskSortOptionNotifier extends Notifier<TaskSortOption> {
   @override
@@ -129,52 +116,90 @@ final taskSortOptionProvider = NotifierProvider<TaskSortOptionNotifier, TaskSort
   return TaskSortOptionNotifier();
 });
 
-final pendingTasksInListProvider = Provider.family<AsyncValue<List<Task>>, String>((ref, listId) {
-  final tasksAsync = ref.watch(tasksForListProvider(listId));
-  final sortOption = ref.watch(taskSortOptionProvider);
-
-  return tasksAsync.whenData((tasks) {
-    final pending = tasks.where((t) => !t.isCompleted).toList();
-    
-    switch (sortOption) {
-      case TaskSortOption.priority:
-        pending.sort((a, b) {
-          final pComp = b.priority.compareTo(a.priority); // high first
-          if (pComp != 0) return pComp;
-          if (a.dueDate == null && b.dueDate == null) return a.createdAt.compareTo(b.createdAt);
-          if (a.dueDate == null) return 1;
-          if (b.dueDate == null) return -1;
-          return a.dueDate!.compareTo(b.dueDate!);
-        });
-      case TaskSortOption.dueDate:
-        pending.sort((a, b) {
-          if (a.dueDate == null && b.dueDate == null) return b.priority.compareTo(a.priority);
-          if (a.dueDate == null) return 1;
-          if (b.dueDate == null) return -1;
-          final dComp = a.dueDate!.compareTo(b.dueDate!);
-          if (dComp != 0) return dComp;
-          return b.priority.compareTo(a.priority);
-        });
-      case TaskSortOption.createdAt:
-        pending.sort((a, b) => b.createdAt.compareTo(a.createdAt)); // newest first
-      case TaskSortOption.custom:
-        pending.sort((a, b) => a.sortOrder.compareTo(b.sortOrder)); // ascending sortOrder
-    }
-    return pending;
-  });
-});
-
-final completedTasksInListProvider = Provider.family<AsyncValue<List<Task>>, String>((ref, listId) {
-  final tasksAsync = ref.watch(tasksForListProvider(listId));
-  return tasksAsync.whenData((tasks) {
-    final completed = tasks.where((t) => t.isCompleted).toList();
-    completed.sort((a, b) {
+List<Task> _applyInMemorySort(List<Task> tasks, TaskSortOption sortOption, {required bool isCompleted}) {
+  final filtered = tasks.where((t) => t.isCompleted == isCompleted).toList();
+  
+  if (isCompleted) {
+    filtered.sort((a, b) {
       final ca = a.completedAt ?? a.updatedAt;
       final cb = b.completedAt ?? b.updatedAt;
-      return cb.compareTo(ca); // last completed comes first
+      return cb.compareTo(ca);
     });
-    return completed;
-  });
+    return filtered;
+  }
+
+  switch (sortOption) {
+    case TaskSortOption.priority:
+      filtered.sort((a, b) {
+        final pComp = b.priority.compareTo(a.priority);
+        if (pComp != 0) return pComp;
+        if (a.dueDate == null && b.dueDate == null) return a.createdAt.compareTo(b.createdAt);
+        if (a.dueDate == null) return 1;
+        if (b.dueDate == null) return -1;
+        return a.dueDate!.compareTo(b.dueDate!);
+      });
+    case TaskSortOption.dueDate:
+      filtered.sort((a, b) {
+        if (a.dueDate == null && b.dueDate == null) return b.priority.compareTo(a.priority);
+        if (a.dueDate == null) return 1;
+        if (b.dueDate == null) return -1;
+        final dComp = a.dueDate!.compareTo(b.dueDate!);
+        if (dComp != 0) return dComp;
+        return b.priority.compareTo(a.priority);
+      });
+    case TaskSortOption.createdAt:
+      filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    case TaskSortOption.custom:
+      filtered.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+  }
+  return filtered;
+}
+
+final pendingTasksInListProvider = StreamProvider.family<List<Task>, String>((ref, listId) {
+  final repo = ref.watch(taskRepositoryProvider);
+  final sortOption = ref.watch(taskSortOptionProvider);
+
+  if (listId.startsWith('smart:')) {
+    final typeStr = listId.substring(6);
+    final type = SmartListType.values.firstWhere((e) => e.name == typeStr);
+    return repo.watchSmartList(type).map((tasks) => _applyInMemorySort(tasks, sortOption, isCompleted: false));
+  } else if (listId.startsWith('custom_smart:')) {
+    final id = listId.substring(13);
+    final smartListAsync = ref.watch(customSmartListByIdProvider(id));
+    return smartListAsync.when(
+      data: (smartList) {
+        if (smartList == null) return Stream.value(<Task>[]);
+        return repo.watchTasksForCustomSmartList(smartList).map((tasks) => _applyInMemorySort(tasks, sortOption, isCompleted: false));
+      },
+      loading: () => const Stream<List<Task>>.empty(),
+      error: (err, stack) => Stream<List<Task>>.error(err, stack),
+    );
+  } else {
+    return repo.watchTasksInList(listId, isCompleted: false, sortOption: sortOption);
+  }
+});
+
+final completedTasksInListProvider = StreamProvider.family<List<Task>, String>((ref, listId) {
+  final repo = ref.watch(taskRepositoryProvider);
+  
+  if (listId.startsWith('smart:')) {
+    final typeStr = listId.substring(6);
+    final type = SmartListType.values.firstWhere((e) => e.name == typeStr);
+    return repo.watchSmartList(type).map((tasks) => _applyInMemorySort(tasks, TaskSortOption.priority, isCompleted: true));
+  } else if (listId.startsWith('custom_smart:')) {
+    final id = listId.substring(13);
+    final smartListAsync = ref.watch(customSmartListByIdProvider(id));
+    return smartListAsync.when(
+      data: (smartList) {
+        if (smartList == null) return Stream.value(<Task>[]);
+        return repo.watchTasksForCustomSmartList(smartList).map((tasks) => _applyInMemorySort(tasks, TaskSortOption.priority, isCompleted: true));
+      },
+      loading: () => const Stream<List<Task>>.empty(),
+      error: (err, stack) => Stream<List<Task>>.error(err, stack),
+    );
+  } else {
+    return repo.watchTasksInList(listId, isCompleted: true);
+  }
 });
 
 final selectedListIdProvider = StateProvider<String?>((ref) => null);
