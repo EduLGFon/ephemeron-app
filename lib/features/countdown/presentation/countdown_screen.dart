@@ -1,4 +1,4 @@
-import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,7 +9,6 @@ import '../application/countdown_providers.dart';
 import '../domain/countdown_status.dart';
 import '../domain/countdown_type.dart';
 import 'countdown_form_sheet.dart';
-import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
 import '../../../presentation/widgets/confirmation_dialog.dart';
 import 'package:ephemeron/core/widgets/app_loading_indicator.dart';
 
@@ -25,7 +24,8 @@ class CountdownScreen extends ConsumerWidget {
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: Text('Countdown', style: TextStyle(color: palette.text, fontWeight: FontWeight.bold)),
+        title: Text('Countdown',
+            style: TextStyle(color: palette.text, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -35,7 +35,10 @@ class CountdownScreen extends ConsumerWidget {
             return Center(
               child: Text(
                 'No countdowns yet',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: palette.text),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: palette.text),
               ),
             );
           }
@@ -65,8 +68,9 @@ class CountdownScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: AppLoadingIndicator()),
-        error: (error, _) =>
-            Center(child: Text('Could not load countdowns: $error', style: TextStyle(color: palette.text))),
+        error: (error, _) => Center(
+            child: Text('Could not load countdowns: $error',
+                style: TextStyle(color: palette.text))),
       ),
     );
   }
@@ -74,8 +78,8 @@ class CountdownScreen extends ConsumerWidget {
 
 class _CountdownTile extends ConsumerWidget {
   const _CountdownTile({
-    required this.countdown, 
-    required this.status, 
+    required this.countdown,
+    required this.status,
     required this.palette,
   });
 
@@ -90,8 +94,8 @@ class _CountdownTile extends ConsumerWidget {
     final daysLabel = status.days == 0
         ? 'Today'
         : status.isFuture
-        ? '${status.days} day${status.days == 1 ? '' : 's'} left'
-        : '${status.days} day${status.days == 1 ? '' : 's'} since';
+            ? '${status.days} day${status.days == 1 ? '' : 's'} left'
+            : '${status.days} day${status.days == 1 ? '' : 's'} since';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -112,7 +116,8 @@ class _CountdownTile extends ConsumerWidget {
             context: context,
             ref: ref,
             title: 'Delete countdown?',
-            content: 'Are you sure you want to permanently delete this countdown?',
+            content:
+                'Are you sure you want to permanently delete this countdown?',
             confirmLabel: 'Delete',
             isDestructive: true,
           );
@@ -121,84 +126,86 @@ class _CountdownTile extends ConsumerWidget {
             ref.read(countdownRepositoryProvider).deleteCountdown(countdown.id),
         child: Container(
           decoration: BoxDecoration(
-            color: palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.4),
+            color:
+                palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.4),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: palette.text.withValues(alpha: 0.1)),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(20),
-            child: GlassmorphicWrapper(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => showCountdownFormSheet(
-                    context,
-                    type: type,
-                    existingCountdown: countdown,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: palette.primary.withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: palette.primary.withValues(alpha: 0.5)),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            '${status.days}',
-                            style: TextStyle(
-                              fontSize: status.days > 999 ? 12 : 16, 
-                              color: palette.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => showCountdownFormSheet(
+                  context,
+                  type: type,
+                  existingCountdown: countdown,
+                ),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: palette.primary.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: palette.primary.withValues(alpha: 0.5)),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '${status.days}',
+                          style: TextStyle(
+                            fontSize: status.days > 999 ? 12 : 16,
+                            color: palette.primary,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                countdown.title,
-                                style: TextStyle(
-                                  color: palette.text,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              countdown.title,
+                              style: TextStyle(
+                                color: palette.text,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                status.age != null
-                                    ? '$daysLabel · ${status.isFuture ? "turns" : "age"} ${status.age}'
-                                    : daysLabel,
-                                style: TextStyle(color: palette.text.withValues(alpha: 0.6)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: palette.text.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            type.label, 
-                            style: TextStyle(
-                              color: palette.text.withValues(alpha: 0.5), 
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
                             ),
+                            const SizedBox(height: 4),
+                            Text(
+                              status.age != null
+                                  ? '$daysLabel · ${status.isFuture ? "turns" : "age"} ${status.age}'
+                                  : daysLabel,
+                              style: TextStyle(
+                                  color: palette.text.withValues(alpha: 0.6)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: palette.text.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          type.label,
+                          style: TextStyle(
+                            color: palette.text.withValues(alpha: 0.5),
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),

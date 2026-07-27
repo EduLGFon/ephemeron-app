@@ -10,9 +10,11 @@ class ThemeEngineNotifier extends Notifier<AppPalette> {
   @override
   AppPalette build() {
     final prefs = ref.watch(sharedPreferencesProvider);
-    final primaryValue = prefs.getInt(_primaryKey) ?? 0xFF6C63FF; // obsidian primary
-    final backgroundValue = prefs.getInt(_backgroundKey) ?? 0xFF121212; // obsidian background
-    
+    final primaryValue =
+        prefs.getInt(_primaryKey) ?? 0xFF6C63FF; // obsidian primary
+    final backgroundValue =
+        prefs.getInt(_backgroundKey) ?? 0xFF121212; // obsidian background
+
     return _buildPalette(Color(primaryValue), Color(backgroundValue));
   }
 

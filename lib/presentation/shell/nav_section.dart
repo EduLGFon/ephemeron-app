@@ -9,7 +9,8 @@ enum NavSection {
   tasks(1, 'Tasks', Icons.checklist_outlined, Icons.checklist),
   matrix(2, 'Matrix', Icons.grid_view_outlined, Icons.grid_view),
   habits(3, 'Habits', Icons.repeat_outlined, Icons.repeat),
-  countdown(4, 'Countdown', Icons.hourglass_bottom_outlined, Icons.hourglass_bottom),
+  countdown(
+      4, 'Countdown', Icons.hourglass_bottom_outlined, Icons.hourglass_bottom),
   focus(5, 'Focus', Icons.timer_outlined, Icons.timer),
   notes(6, 'Notes', Icons.notes_outlined, Icons.notes);
 

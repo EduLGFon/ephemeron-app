@@ -19,8 +19,8 @@ class AlarmForegroundService {
   }) async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
 
-    final android = _plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
     if (android == null) return;
 
     final details = AndroidNotificationDetails(
@@ -34,7 +34,8 @@ class AlarmForegroundService {
       ongoing: true,
       actions: const [
         AndroidNotificationAction('snooze', 'Snooze'),
-        AndroidNotificationAction('done', 'Mark done', cancelNotification: true),
+        AndroidNotificationAction('done', 'Mark done',
+            cancelNotification: true),
       ],
     );
 
@@ -46,7 +47,7 @@ class AlarmForegroundService {
         notificationDetails: details,
         payload: payload,
       );
-      
+
       _autoDismissTimer?.cancel();
       _autoDismissTimer = Timer(const Duration(minutes: 10), () {
         stopForegroundService();
@@ -59,8 +60,8 @@ class AlarmForegroundService {
   Future<void> stopForegroundService() async {
     _autoDismissTimer?.cancel();
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
-    final android = _plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
     await android?.stopForegroundService();
   }
 }

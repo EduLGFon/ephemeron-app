@@ -26,7 +26,8 @@ class DevLogger {
     if (stack != null) {
       print(stack); // ignore: avoid_print
     }
-    logs.add(LogEntry(message, error: error?.toString(), stackTrace: stack?.toString()));
+    logs.add(LogEntry(message,
+        error: error?.toString(), stackTrace: stack?.toString()));
     if (logs.length > 200) logs.removeAt(0);
   }
 

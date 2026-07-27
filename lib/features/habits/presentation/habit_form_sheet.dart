@@ -1,4 +1,4 @@
-import 'dart:ui';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,17 +12,19 @@ import '../domain/habit_frequency.dart';
 import '../domain/habit_goal_unit.dart';
 import '../domain/habit_section.dart';
 import '../../../core/settings/session_restore.dart';
-import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
 import '../../../../presentation/widgets/confirmation_dialog.dart';
 
 import '../../../presentation/widgets/keyboard_avoid_padding.dart';
 
-Future<void> showHabitFormSheet(BuildContext context, {Habit? existingHabit, String? initialName}) {
+Future<void> showHabitFormSheet(BuildContext context,
+    {Habit? existingHabit, String? initialName}) {
   final sheet = Center(
     child: SingleChildScrollView(
       child: Material(
         color: Colors.transparent,
-        child: RepaintBoundary(child: HabitFormSheet(existingHabit: existingHabit, initialName: initialName)),
+        child: RepaintBoundary(
+            child: HabitFormSheet(
+                existingHabit: existingHabit, initialName: initialName)),
       ),
     ),
   );
@@ -37,7 +39,8 @@ Future<void> showHabitFormSheet(BuildContext context, {Habit? existingHabit, Str
       return KeyboardAvoidPadding(child: sheet);
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
-      final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      final curve =
+          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
       return SlideTransition(
         position: Tween<Offset>(
           begin: const Offset(0.0, 1.0),
@@ -53,7 +56,8 @@ const _goalDurationOptions = ['forever', '7', '21', '30', '100', '365'];
 const _weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 class HabitFormSheet extends ConsumerStatefulWidget {
-  const HabitFormSheet({this.initialName, this.existingHabit, this.unifiedHeader, super.key});
+  const HabitFormSheet(
+      {this.initialName, this.existingHabit, this.unifiedHeader, super.key});
 
   final String? initialName;
   final Habit? existingHabit;
@@ -89,7 +93,8 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
   void initState() {
     super.initState();
     late final String amountText;
-    if (widget.existingHabit != null && widget.existingHabit!.goalAmount != null) {
+    if (widget.existingHabit != null &&
+        widget.existingHabit!.goalAmount != null) {
       amountText = widget.existingHabit!.goalAmount!.toInt().toString();
     } else {
       amountText = '';
@@ -110,7 +115,8 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
     _weekdays = frequency.weekdays.toSet();
     _timesPerWeek = frequency.timesPerWeek ?? 3;
     _intervalController.text = (frequency.intervalDays ?? 1).toString();
-    _selectedUnit = HabitGoalUnit.tryParse(habit?.goalUnit) ?? HabitGoalUnit.times;
+    _selectedUnit =
+        HabitGoalUnit.tryParse(habit?.goalUnit) ?? HabitGoalUnit.times;
     _reminderHour = habit?.reminderHour;
     _reminderMinute = habit?.reminderMinute;
     _alarmPreset = habit?.alarmPreset != null
@@ -124,26 +130,37 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
   }
 
   void _onNameChanged() {
-    SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'name', _nameController.text);
+    SessionRestore.saveDraftValue(
+        'habit', widget.existingHabit?.id, 'name', _nameController.text);
   }
 
   void _onAmountChanged() {
-    SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'amount', _amountController.text);
+    SessionRestore.saveDraftValue(
+        'habit', widget.existingHabit?.id, 'amount', _amountController.text);
   }
 
   void _onIncrementChanged() {
-    SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'increment', _incrementController.text);
+    SessionRestore.saveDraftValue('habit', widget.existingHabit?.id,
+        'increment', _incrementController.text);
   }
 
   void _restoreDrafts() async {
-    final n = await SessionRestore.getDraftValue('habit', widget.existingHabit?.id, 'name');
-    final a = await SessionRestore.getDraftValue('habit', widget.existingHabit?.id, 'amount');
-    final inc = await SessionRestore.getDraftValue('habit', widget.existingHabit?.id, 'increment');
-    final f = await SessionRestore.getDraftValue('habit', widget.existingHabit?.id, 'frequencyType');
-    final u = await SessionRestore.getDraftValue('habit', widget.existingHabit?.id, 'selectedUnit');
-    final ap = await SessionRestore.getDraftValue('habit', widget.existingHabit?.id, 'alarmPreset');
-    final rh = await SessionRestore.getDraftValue('habit', widget.existingHabit?.id, 'reminderHour');
-    final rm = await SessionRestore.getDraftValue('habit', widget.existingHabit?.id, 'reminderMinute');
+    final n = await SessionRestore.getDraftValue(
+        'habit', widget.existingHabit?.id, 'name');
+    final a = await SessionRestore.getDraftValue(
+        'habit', widget.existingHabit?.id, 'amount');
+    final inc = await SessionRestore.getDraftValue(
+        'habit', widget.existingHabit?.id, 'increment');
+    final f = await SessionRestore.getDraftValue(
+        'habit', widget.existingHabit?.id, 'frequencyType');
+    final u = await SessionRestore.getDraftValue(
+        'habit', widget.existingHabit?.id, 'selectedUnit');
+    final ap = await SessionRestore.getDraftValue(
+        'habit', widget.existingHabit?.id, 'alarmPreset');
+    final rh = await SessionRestore.getDraftValue(
+        'habit', widget.existingHabit?.id, 'reminderHour');
+    final rm = await SessionRestore.getDraftValue(
+        'habit', widget.existingHabit?.id, 'reminderMinute');
     if (mounted) {
       setState(() {
         if (n != null) {
@@ -163,7 +180,9 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
         }
         if (f != null) _frequencyType = HabitFrequencyType.values.byName(f);
         if (u != null) _selectedUnit = HabitGoalUnit.values.byName(u);
-        if (ap != null) _alarmPreset = ap == 'none' ? null : AlarmPreset.values.byName(ap);
+        if (ap != null) {
+          _alarmPreset = ap == 'none' ? null : AlarmPreset.values.byName(ap);
+        }
         if (rh != null) _reminderHour = int.tryParse(rh);
         if (rm != null) _reminderMinute = int.tryParse(rm);
       });
@@ -183,14 +202,15 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
   @override
   Widget build(BuildContext context) {
     final palette = ref.watch(themeEngineProvider);
-    
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       constraints: const BoxConstraints(maxWidth: 580),
       decoration: BoxDecoration(
         color: palette.surface.withValues(alpha: 0.88),
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
+        border:
+            Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.3),
@@ -201,104 +221,127 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
-        child: GlassmorphicWrapper(
-          filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (widget.unifiedHeader != null) widget.unifiedHeader!,
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _nameController,
-                        autofocus: !_isEditing,
-                        onChanged: (_) => setState(() {}),
-                        style: TextStyle(color: palette.text, fontSize: 22, fontWeight: FontWeight.bold),
-                        decoration: InputDecoration(
-                          hintText: 'Habit Name',
-                          hintStyle: TextStyle(color: palette.text.withValues(alpha: 0.3), fontSize: 22, fontWeight: FontWeight.bold),
-                          border: InputBorder.none,
-                          enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: palette.text.withValues(alpha: 0.15))),
-                          focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: palette.primary, width: 2)),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 6),
-                        ),
-                        textCapitalization: TextCapitalization.sentences,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (widget.unifiedHeader != null) widget.unifiedHeader!,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _nameController,
+                      autofocus: !_isEditing,
+                      onChanged: (_) => setState(() {}),
+                      style: TextStyle(
+                          color: palette.text,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold),
+                      decoration: InputDecoration(
+                        hintText: 'Habit Name',
+                        hintStyle: TextStyle(
+                            color: palette.text.withValues(alpha: 0.3),
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold),
+                        border: InputBorder.none,
+                        enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(
+                                color: palette.text.withValues(alpha: 0.15))),
+                        focusedBorder: UnderlineInputBorder(
+                            borderSide:
+                                BorderSide(color: palette.primary, width: 2)),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 6),
                       ),
+                      textCapitalization: TextCapitalization.sentences,
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(Icons.repeat, color: palette.primary),
+                  if (_isEditing) ...[
                     const SizedBox(width: 8),
-                    Icon(Icons.repeat, color: palette.primary),
-                    if (_isEditing) ...[
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: Icon(Icons.delete_outline, color: Colors.redAccent.withValues(alpha: 0.8)),
-                        onPressed: () async {
-                          final confirmed = await showConfirmationDialog(
-                            context: context,
-                            ref: ref,
-                            title: 'Delete habit?',
-                            content: 'Are you sure you want to permanently delete this habit?',
-                            confirmLabel: 'Delete',
-                            isDestructive: true,
-                          );
-                          if (confirmed && mounted) {
-                            await ref.read(habitRepositoryProvider).deleteHabit(widget.existingHabit!.id);
-                            await SessionRestore.clearDraftValues('habit', widget.existingHabit?.id);
-                            if (context.mounted) Navigator.pop(context);
-                          }
-                        },
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildSectionPicker(palette),
-                const SizedBox(height: 16),
-                _buildFrequencyPicker(palette),
-                const SizedBox(height: 16),
-                _buildGoalPicker(palette),
-                const SizedBox(height: 16),
-                _buildGoalDurationPicker(palette),
-                const SizedBox(height: 16),
-                _buildReminderPicker(palette),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: palette.text,
-                          side: BorderSide(color: palette.text.withValues(alpha: 0.2)),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: palette.primary,
-                          foregroundColor: palette.background,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        onPressed: _isSaving || _nameController.text.trim().isEmpty ? null : _save,
-                        child: _isSaving
-                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                            : Text(_isEditing ? 'Save' : 'Add habit', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      ),
+                    IconButton(
+                      icon: Icon(Icons.delete_outline,
+                          color: Colors.redAccent.withValues(alpha: 0.8)),
+                      onPressed: () async {
+                        final confirmed = await showConfirmationDialog(
+                          context: context,
+                          ref: ref,
+                          title: 'Delete habit?',
+                          content:
+                              'Are you sure you want to permanently delete this habit?',
+                          confirmLabel: 'Delete',
+                          isDestructive: true,
+                        );
+                        if (confirmed && mounted) {
+                          await ref
+                              .read(habitRepositoryProvider)
+                              .deleteHabit(widget.existingHabit!.id);
+                          await SessionRestore.clearDraftValues(
+                              'habit', widget.existingHabit?.id);
+                          if (context.mounted) Navigator.pop(context);
+                        }
+                      },
                     ),
                   ],
-                ),
-              ],
-            ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildSectionPicker(palette),
+              const SizedBox(height: 16),
+              _buildFrequencyPicker(palette),
+              const SizedBox(height: 16),
+              _buildGoalPicker(palette),
+              const SizedBox(height: 16),
+              _buildGoalDurationPicker(palette),
+              const SizedBox(height: 16),
+              _buildReminderPicker(palette),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: palette.text,
+                        side: BorderSide(
+                            color: palette.text.withValues(alpha: 0.2)),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: palette.primary,
+                        foregroundColor: palette.background,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                      ),
+                      onPressed:
+                          _isSaving || _nameController.text.trim().isEmpty
+                              ? null
+                              : _save,
+                      child: _isSaving
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : Text(_isEditing ? 'Save' : 'Add habit',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -314,7 +357,9 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
       ),
       child: Row(
         children: [
-          Text('Section', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
+          Text('Section',
+              style:
+                  TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
           const Spacer(),
           DropdownButton<String>(
             dropdownColor: palette.surface,
@@ -342,7 +387,8 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Frequency', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
+        Text('Frequency',
+            style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
         const SizedBox(height: 8),
         SegmentedButton<HabitFrequencyType>(
           style: SegmentedButton.styleFrom(
@@ -352,81 +398,96 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
             selectedForegroundColor: palette.primary,
           ),
           segments: const [
-            ButtonSegment(value: HabitFrequencyType.daily, label: Text('Daily')),
-            ButtonSegment(value: HabitFrequencyType.weekly, label: Text('Weekly')),
-            ButtonSegment(value: HabitFrequencyType.interval, label: Text('Interval')),
+            ButtonSegment(
+                value: HabitFrequencyType.daily, label: Text('Daily')),
+            ButtonSegment(
+                value: HabitFrequencyType.weekly, label: Text('Weekly')),
+            ButtonSegment(
+                value: HabitFrequencyType.interval, label: Text('Interval')),
           ],
           selected: {_frequencyType},
           onSelectionChanged: (selection) {
             setState(() => _frequencyType = selection.first);
-            SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'frequencyType', selection.first.name);
+            SessionRestore.saveDraftValue('habit', widget.existingHabit?.id,
+                'frequencyType', selection.first.name);
           },
         ),
         const SizedBox(height: 12),
         switch (_frequencyType) {
           HabitFrequencyType.daily => Wrap(
-            spacing: 6,
-            children: [
-              for (var i = 0; i < 7; i++)
-                FilterChip(
-                  label: Text(_weekdayLabels[i], style: TextStyle(color: _weekdays.contains(i + 1) ? palette.background : palette.text)),
-                  selected: _weekdays.contains(i + 1),
-                  selectedColor: palette.primary,
-                  backgroundColor: palette.text.withValues(alpha: 0.05),
-                  onSelected: (selected) => setState(() {
-                    if (selected) {
-                      _weekdays.add(i + 1);
-                    } else {
-                      _weekdays.remove(i + 1);
-                    }
-                  }),
-                ),
-            ],
-          ),
+              spacing: 6,
+              children: [
+                for (var i = 0; i < 7; i++)
+                  FilterChip(
+                    label: Text(_weekdayLabels[i],
+                        style: TextStyle(
+                            color: _weekdays.contains(i + 1)
+                                ? palette.background
+                                : palette.text)),
+                    selected: _weekdays.contains(i + 1),
+                    selectedColor: palette.primary,
+                    backgroundColor: palette.text.withValues(alpha: 0.05),
+                    onSelected: (selected) => setState(() {
+                      if (selected) {
+                        _weekdays.add(i + 1);
+                      } else {
+                        _weekdays.remove(i + 1);
+                      }
+                    }),
+                  ),
+              ],
+            ),
           HabitFrequencyType.weekly => Row(
-            children: [
-              Text('Times per week:', style: TextStyle(color: palette.text)),
-              Expanded(
-                child: Slider(
-                  activeColor: palette.primary,
-                  inactiveColor: palette.text.withValues(alpha: 0.1),
-                  value: _timesPerWeek.toDouble(),
-                  min: 1,
-                  max: 7,
-                  divisions: 6,
-                  label: '$_timesPerWeek',
-                  onChanged: (value) => setState(() => _timesPerWeek = value.round()),
-                ),
-              ),
-              Text('$_timesPerWeek', style: TextStyle(color: palette.text, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          HabitFrequencyType.interval => Row(
-            children: [
-              Text('Every', style: TextStyle(color: palette.text)),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 60,
-                child: TextField(
-                  controller: _intervalController,
-                  keyboardType: TextInputType.number,
-                  style: TextStyle(color: palette.text),
-                  textAlign: TextAlign.center,
-                  decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              children: [
+                Text('Times per week:', style: TextStyle(color: palette.text)),
+                Expanded(
+                  child: Slider(
+                    activeColor: palette.primary,
+                    inactiveColor: palette.text.withValues(alpha: 0.1),
+                    value: _timesPerWeek.toDouble(),
+                    min: 1,
+                    max: 7,
+                    divisions: 6,
+                    label: '$_timesPerWeek',
+                    onChanged: (value) =>
+                        setState(() => _timesPerWeek = value.round()),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text('days', style: TextStyle(color: palette.text)),
-            ],
-          ),
+                Text('$_timesPerWeek',
+                    style: TextStyle(
+                        color: palette.text, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          HabitFrequencyType.interval => Row(
+              children: [
+                Text('Every', style: TextStyle(color: palette.text)),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 60,
+                  child: TextField(
+                    controller: _intervalController,
+                    keyboardType: TextInputType.number,
+                    style: TextStyle(color: palette.text),
+                    textAlign: TextAlign.center,
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 8),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text('days', style: TextStyle(color: palette.text)),
+              ],
+            ),
         },
         if (_frequencyType == HabitFrequencyType.daily && _weekdays.isEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text('No days selected = every day', style: TextStyle(color: palette.text.withValues(alpha: 0.6), fontSize: 12)),
+            child: Text('No days selected = every day',
+                style: TextStyle(
+                    color: palette.text.withValues(alpha: 0.6), fontSize: 12)),
           ),
       ],
     );
@@ -438,7 +499,9 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
       children: [
         Row(
           children: [
-            Text('Goal', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
+            Text('Goal',
+                style: TextStyle(
+                    color: palette.text, fontWeight: FontWeight.w500)),
             const Spacer(),
             SegmentedButton<String>(
               style: SegmentedButton.styleFrom(
@@ -452,7 +515,8 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
                 ButtonSegment(value: 'amount', label: Text('Amount')),
               ],
               selected: {_goalType},
-              onSelectionChanged: (selection) => setState(() => _goalType = selection.first),
+              onSelectionChanged: (selection) =>
+                  setState(() => _goalType = selection.first),
             ),
           ],
         ),
@@ -467,8 +531,10 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
                   style: TextStyle(color: palette.text),
                   decoration: InputDecoration(
                     labelText: 'Goal amount',
-                    labelStyle: TextStyle(color: palette.text.withValues(alpha: 0.6)),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    labelStyle:
+                        TextStyle(color: palette.text.withValues(alpha: 0.6)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ),
@@ -480,8 +546,10 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
                   style: TextStyle(color: palette.text),
                   decoration: InputDecoration(
                     labelText: 'Unit',
-                    labelStyle: TextStyle(color: palette.text.withValues(alpha: 0.6)),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    labelStyle:
+                        TextStyle(color: palette.text.withValues(alpha: 0.6)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   items: [
                     for (final unit in HabitGoalUnit.values)
@@ -492,7 +560,8 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
                       setState(() {
                         _selectedUnit = value;
                       });
-                      SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'selectedUnit', value.name);
+                      SessionRestore.saveDraftValue('habit',
+                          widget.existingHabit?.id, 'selectedUnit', value.name);
                     }
                   },
                 ),
@@ -513,12 +582,16 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
                   textAlign: TextAlign.center,
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              Expanded(child: Text(_currentUnitLabel(), style: TextStyle(color: palette.text), overflow: TextOverflow.ellipsis)),
+              Expanded(
+                  child: Text(_currentUnitLabel(),
+                      style: TextStyle(color: palette.text),
+                      overflow: TextOverflow.ellipsis)),
             ],
           ),
         ],
@@ -540,7 +613,9 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
       ),
       child: Row(
         children: [
-          Text('Goal length', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
+          Text('Goal length',
+              style:
+                  TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
           const Spacer(),
           DropdownButton<String>(
             dropdownColor: palette.surface,
@@ -549,9 +624,13 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
             value: _goalDuration,
             items: [
               for (final option in _goalDurationOptions)
-                DropdownMenuItem(value: option, child: Text(option == 'forever' ? 'Forever' : '$option days')),
+                DropdownMenuItem(
+                    value: option,
+                    child:
+                        Text(option == 'forever' ? 'Forever' : '$option days')),
             ],
-            onChanged: (value) => setState(() => _goalDuration = value ?? _goalDuration),
+            onChanged: (value) =>
+                setState(() => _goalDuration = value ?? _goalDuration),
           ),
         ],
       ),
@@ -570,7 +649,9 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
         children: [
           Row(
             children: [
-              Text('Reminder', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
+              Text('Reminder',
+                  style: TextStyle(
+                      color: palette.text, fontWeight: FontWeight.w500)),
               const Spacer(),
               TextButton(
                 style: TextButton.styleFrom(foregroundColor: palette.primary),
@@ -588,9 +669,22 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
                     _reminderMinute = time.minute;
                     _alarmPreset ??= AlarmPreset.light;
                   });
-                  SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'reminderHour', time.hour.toString()); // ignore: unawaited_futures
-                  SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'reminderMinute', time.minute.toString()); // ignore: unawaited_futures
-                  SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'alarmPreset', (_alarmPreset ?? AlarmPreset.light).name); // ignore: unawaited_futures
+                  SessionRestore.saveDraftValue(
+                      'habit',
+                      widget.existingHabit?.id,
+                      'reminderHour',
+                      time.hour.toString()); // ignore: unawaited_futures
+                  SessionRestore.saveDraftValue(
+                      'habit',
+                      widget.existingHabit?.id,
+                      'reminderMinute',
+                      time.minute.toString()); // ignore: unawaited_futures
+                  SessionRestore.saveDraftValue(
+                      'habit',
+                      widget.existingHabit?.id,
+                      'alarmPreset',
+                      (_alarmPreset ?? AlarmPreset.light)
+                          .name); // ignore: unawaited_futures
                 },
                 child: Text(
                   _reminderHour == null
@@ -601,16 +695,20 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
               ),
               if (_reminderHour != null)
                 IconButton(
-                  icon: Icon(Icons.close, color: palette.text.withValues(alpha: 0.6)),
+                  icon: Icon(Icons.close,
+                      color: palette.text.withValues(alpha: 0.6)),
                   onPressed: () {
                     setState(() {
                       _reminderHour = null;
                       _reminderMinute = null;
                       _alarmPreset = null;
                     });
-                    SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'alarmPreset', 'none');
-                    SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'reminderHour', 'none');
-                    SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'reminderMinute', 'none');
+                    SessionRestore.saveDraftValue('habit',
+                        widget.existingHabit?.id, 'alarmPreset', 'none');
+                    SessionRestore.saveDraftValue('habit',
+                        widget.existingHabit?.id, 'reminderHour', 'none');
+                    SessionRestore.saveDraftValue('habit',
+                        widget.existingHabit?.id, 'reminderMinute', 'none');
                   },
                 ),
             ],
@@ -618,7 +716,9 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
           if (_reminderHour != null)
             Row(
               children: [
-                Text('Sound: ', style: TextStyle(color: palette.text.withValues(alpha: 0.6))),
+                Text('Sound: ',
+                    style:
+                        TextStyle(color: palette.text.withValues(alpha: 0.6))),
                 const SizedBox(width: 8),
                 Expanded(
                   child: DropdownButton<AlarmPreset>(
@@ -628,14 +728,28 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
                     isExpanded: true,
                     value: _alarmPreset ?? AlarmPreset.light,
                     items: const [
-                      DropdownMenuItem(value: AlarmPreset.light, child: Text('Light (Notification)')),
-                      DropdownMenuItem(value: AlarmPreset.medium, child: Text('Medium (Full Screen)')),
-                      DropdownMenuItem(value: AlarmPreset.strong, child: Text('Strong (Long Sound)')),
-                      DropdownMenuItem(value: AlarmPreset.constant, child: Text('Constant Alert')),
+                      DropdownMenuItem(
+                          value: AlarmPreset.light,
+                          child: Text('Light (Notification)')),
+                      DropdownMenuItem(
+                          value: AlarmPreset.medium,
+                          child: Text('Medium (Full Screen)')),
+                      DropdownMenuItem(
+                          value: AlarmPreset.strong,
+                          child: Text('Strong (Long Sound)')),
+                      DropdownMenuItem(
+                          value: AlarmPreset.constant,
+                          child: Text('Constant Alert')),
                     ],
                     onChanged: (value) {
                       setState(() => _alarmPreset = value);
-                      if (value != null) SessionRestore.saveDraftValue('habit', widget.existingHabit?.id, 'alarmPreset', value.name);
+                      if (value != null) {
+                        SessionRestore.saveDraftValue(
+                            'habit',
+                            widget.existingHabit?.id,
+                            'alarmPreset',
+                            value.name);
+                      }
                     },
                   ),
                 ),

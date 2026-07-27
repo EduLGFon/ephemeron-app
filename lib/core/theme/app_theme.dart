@@ -4,9 +4,21 @@ import 'theme_palettes.dart';
 class AppTheme {
   const AppTheme._();
 
+  static ThemeData? _cachedTheme;
+  static AppPalette? _cachedPalette;
+  static bool? _cachedReducedMotion;
+
   static ThemeData build(AppPalette palette, {required bool reducedMotion}) {
+    if (_cachedTheme != null &&
+        _cachedPalette == palette &&
+        _cachedReducedMotion == reducedMotion) {
+      return _cachedTheme!;
+    }
+
     final colorScheme = ColorScheme(
-      brightness: palette.background.computeLuminance() > 0.5 ? Brightness.light : Brightness.dark,
+      brightness: palette.background.computeLuminance() > 0.5
+          ? Brightness.light
+          : Brightness.dark,
       primary: palette.primary,
       onPrimary: _onColor(palette.primary),
       secondary: palette.secondary,
@@ -19,7 +31,7 @@ class AppTheme {
 
     final textTheme = _textTheme(palette.text);
 
-    return ThemeData(
+    _cachedTheme = ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: palette.background,
@@ -51,6 +63,10 @@ class AppTheme {
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
     );
+    _cachedPalette = palette;
+    _cachedReducedMotion = reducedMotion;
+
+    return _cachedTheme!;
   }
 
   static Color _onColor(Color color) {
@@ -61,12 +77,28 @@ class AppTheme {
     const display = 'Fraunces';
     const body = 'Inter';
     return TextTheme(
-      displayLarge: TextStyle(fontFamily: display, fontWeight: FontWeight.w600, fontSize: 40, color: onSurface),
-      headlineMedium: TextStyle(fontFamily: display, fontWeight: FontWeight.w600, fontSize: 26, color: onSurface),
-      titleLarge: TextStyle(fontFamily: display, fontWeight: FontWeight.w600, fontSize: 20, color: onSurface),
+      displayLarge: TextStyle(
+          fontFamily: display,
+          fontWeight: FontWeight.w600,
+          fontSize: 40,
+          color: onSurface),
+      headlineMedium: TextStyle(
+          fontFamily: display,
+          fontWeight: FontWeight.w600,
+          fontSize: 26,
+          color: onSurface),
+      titleLarge: TextStyle(
+          fontFamily: display,
+          fontWeight: FontWeight.w600,
+          fontSize: 20,
+          color: onSurface),
       bodyLarge: TextStyle(fontFamily: body, fontSize: 16, color: onSurface),
       bodyMedium: TextStyle(fontFamily: body, fontSize: 14, color: onSurface),
-      labelSmall: TextStyle(fontFamily: body, fontWeight: FontWeight.w500, fontSize: 12, color: onSurface),
+      labelSmall: TextStyle(
+          fontFamily: body,
+          fontWeight: FontWeight.w500,
+          fontSize: 12,
+          color: onSurface),
     );
   }
 }
@@ -82,11 +114,13 @@ class _PremiumPageTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+    final curved =
+        CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
     return FadeTransition(
       opacity: curved,
       child: SlideTransition(
-        position: Tween<Offset>(begin: const Offset(0, 0.05), end: Offset.zero).animate(curved),
+        position: Tween<Offset>(begin: const Offset(0, 0.05), end: Offset.zero)
+            .animate(curved),
         child: child,
       ),
     );

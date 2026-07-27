@@ -3,6 +3,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'shared_preferences_provider.dart';
+
+enum PowerSavingMode { auto, alwaysOn, alwaysOff }
+
 /// Small, frequently-read app settings. Deliberately kept out of the Drift
 /// database — this is the kind of data every screen touches on every
 /// build (e.g. to decide whether to animate), so it lives in memory with
@@ -10,24 +14,28 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AppSettings {
   const AppSettings({
     this.reducedMotion = false,
-    this.powerSavingMode = false,
+    this.powerSavingMode = PowerSavingMode.auto,
     this.osBatterySaverActive = false,
     this.usePillNavigation = true,
     this.calendarStartDay = 7, // Sunday by default (1=Mon..7=Sun)
     this.autoSync = true,
     this.syncIntervalMinutes = 30,
-    this.alarmShortSoundPath = '/usr/share/sounds/ocean/stereo/alarm-clock-elapsed.oga',
-    this.alarmLongSoundPath = '/usr/share/sounds/ocean/stereo/phone-incoming-call.oga',
+    this.alarmShortSoundPath =
+        '/usr/share/sounds/ocean/stereo/alarm-clock-elapsed.oga',
+    this.alarmLongSoundPath =
+        '/usr/share/sounds/ocean/stereo/phone-incoming-call.oga',
     this.alarmBackground = '#005F73', // Petrol default hex color
     this.glassmorphismEnabled = false,
     this.hapticsEnabled = true,
     this.enabledDeviceCalendarIds = const {},
+    this.animationsEnabled = true,
+    this.backgroundSyncEnabled = true,
   });
 
   final bool reducedMotion;
 
   /// Manual user override — independent of what the OS itself reports.
-  final bool powerSavingMode;
+  final PowerSavingMode powerSavingMode;
 
   /// Live-detected from the OS (see AppSettingsNotifier.refreshBatteryState)
   /// — never persisted, since it should reflect the device's *current*
@@ -50,16 +58,26 @@ class AppSettings {
   final bool glassmorphismEnabled;
   final bool hapticsEnabled;
   final Set<String> enabledDeviceCalendarIds;
+  
+  final bool animationsEnabled;
+  final bool backgroundSyncEnabled;
 
   /// Effective "should we skip decorative animation" flag: the user's
   /// explicit toggle, their manual power-saving override, OR the OS
   /// actually reporting battery saver is on. Every animated widget in
   /// the app should check this, not [reducedMotion] alone.
-  bool get shouldReduceMotion => reducedMotion || powerSavingMode || osBatterySaverActive;
+  bool get shouldReduceMotion {
+    if (reducedMotion) return true;
+    switch (powerSavingMode) {
+      case PowerSavingMode.alwaysOn: return true;
+      case PowerSavingMode.alwaysOff: return false;
+      case PowerSavingMode.auto: return osBatterySaverActive;
+    }
+  }
 
   AppSettings copyWith({
     bool? reducedMotion,
-    bool? powerSavingMode,
+    PowerSavingMode? powerSavingMode,
     bool? osBatterySaverActive,
     bool? usePillNavigation,
     int? calendarStartDay,
@@ -71,6 +89,8 @@ class AppSettings {
     bool? glassmorphismEnabled,
     bool? hapticsEnabled,
     Set<String>? enabledDeviceCalendarIds,
+    bool? animationsEnabled,
+    bool? backgroundSyncEnabled,
   }) {
     return AppSettings(
       reducedMotion: reducedMotion ?? this.reducedMotion,
@@ -85,7 +105,10 @@ class AppSettings {
       alarmBackground: alarmBackground ?? this.alarmBackground,
       glassmorphismEnabled: glassmorphismEnabled ?? this.glassmorphismEnabled,
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
-      enabledDeviceCalendarIds: enabledDeviceCalendarIds ?? this.enabledDeviceCalendarIds,
+      enabledDeviceCalendarIds:
+          enabledDeviceCalendarIds ?? this.enabledDeviceCalendarIds,
+      animationsEnabled: animationsEnabled ?? this.animationsEnabled,
+      backgroundSyncEnabled: backgroundSyncEnabled ?? this.backgroundSyncEnabled,
     );
   }
 }
@@ -102,33 +125,42 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
   static const _alarmBackgroundKey = 'settings.alarmBackground';
   static const _glassmorphismEnabledKey = 'settings.glassmorphismEnabled';
   static const _hapticsEnabledKey = 'settings.hapticsEnabled';
-  static const _enabledDeviceCalendarIdsKey = 'settings.enabledDeviceCalendarIds';
+  static const _enabledDeviceCalendarIdsKey =
+      'settings.enabledDeviceCalendarIds';
+  static const _animationsEnabledKey = 'settings.animationsEnabled';
+  static const _backgroundSyncEnabledKey = 'settings.backgroundSyncEnabled';
   final _battery = Battery();
 
   @override
   AppSettings build() {
-    // Kick off async hydration; state starts at defaults until this
-    // resolves, so first frame is never blocked on disk I/O.
-    _hydrate();
     refreshBatteryState();
-    return const AppSettings();
-  }
-
-  Future<void> _hydrate() async {
-    final prefs = await SharedPreferences.getInstance();
-    state = state.copyWith(
-      reducedMotion: prefs.getBool(_reducedMotionKey) ?? false,
-      powerSavingMode: prefs.getBool(_powerSavingKey) ?? false,
-      usePillNavigation: prefs.getBool(_usePillNavigationKey) ?? true,
-      calendarStartDay: prefs.getInt(_calendarStartDayKey) ?? 7,
-      autoSync: prefs.getBool(_autoSyncKey) ?? true,
-      syncIntervalMinutes: prefs.getInt(_syncIntervalMinutesKey) ?? 30,
-      alarmShortSoundPath: prefs.getString(_alarmShortSoundPathKey) ?? '/usr/share/sounds/ocean/stereo/alarm-clock-elapsed.oga',
-      alarmLongSoundPath: prefs.getString(_alarmLongSoundPathKey) ?? '/usr/share/sounds/ocean/stereo/phone-incoming-call.oga',
-      alarmBackground: prefs.getString(_alarmBackgroundKey) ?? '#005F73',
-      glassmorphismEnabled: prefs.getBool(_glassmorphismEnabledKey) ?? false,
-      hapticsEnabled: prefs.getBool(_hapticsEnabledKey) ?? true,
-      enabledDeviceCalendarIds: (prefs.getStringList(_enabledDeviceCalendarIdsKey) ?? const []).toSet(),
+    final sharedPrefs = ref.watch(sharedPreferencesProvider);
+    
+    PowerSavingMode mode = PowerSavingMode.auto;
+    final modeString = sharedPrefs.getString(_powerSavingKey);
+    if (modeString != null) {
+      mode = PowerSavingMode.values.firstWhere((e) => e.name == modeString, orElse: () => PowerSavingMode.auto);
+    }
+    
+    return AppSettings(
+      reducedMotion: sharedPrefs.getBool(_reducedMotionKey) ?? false,
+      powerSavingMode: mode,
+      usePillNavigation: sharedPrefs.getBool(_usePillNavigationKey) ?? true,
+      calendarStartDay: sharedPrefs.getInt(_calendarStartDayKey) ?? 7,
+      autoSync: sharedPrefs.getBool(_autoSyncKey) ?? true,
+      syncIntervalMinutes: sharedPrefs.getInt(_syncIntervalMinutesKey) ?? 30,
+      alarmShortSoundPath: sharedPrefs.getString(_alarmShortSoundPathKey) ??
+          '/usr/share/sounds/ocean/stereo/alarm-clock-elapsed.oga',
+      alarmLongSoundPath: sharedPrefs.getString(_alarmLongSoundPathKey) ??
+          '/usr/share/sounds/ocean/stereo/phone-incoming-call.oga',
+      alarmBackground: sharedPrefs.getString(_alarmBackgroundKey) ?? '#005F73',
+      glassmorphismEnabled: sharedPrefs.getBool(_glassmorphismEnabledKey) ?? false,
+      hapticsEnabled: sharedPrefs.getBool(_hapticsEnabledKey) ?? true,
+      enabledDeviceCalendarIds:
+          (sharedPrefs.getStringList(_enabledDeviceCalendarIdsKey) ?? const [])
+              .toSet(),
+      animationsEnabled: sharedPrefs.getBool(_animationsEnabledKey) ?? true,
+      backgroundSyncEnabled: sharedPrefs.getBool(_backgroundSyncEnabledKey) ?? true,
     );
   }
 
@@ -153,10 +185,10 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     await prefs.setBool(_reducedMotionKey, value);
   }
 
-  Future<void> setPowerSavingMode(bool value) async {
+  Future<void> setPowerSavingMode(PowerSavingMode value) async {
     state = state.copyWith(powerSavingMode: value);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_powerSavingKey, value);
+    await prefs.setString(_powerSavingKey, value.name);
   }
 
   Future<void> setUsePillNavigation(bool value) async {
@@ -217,6 +249,18 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     state = state.copyWith(enabledDeviceCalendarIds: value);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_enabledDeviceCalendarIdsKey, value.toList());
+  }
+  
+  Future<void> setAnimationsEnabled(bool value) async {
+    state = state.copyWith(animationsEnabled: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_animationsEnabledKey, value);
+  }
+
+  Future<void> setBackgroundSyncEnabled(bool value) async {
+    state = state.copyWith(backgroundSyncEnabled: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_backgroundSyncEnabledKey, value);
   }
 }
 

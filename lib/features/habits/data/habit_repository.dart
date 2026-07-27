@@ -34,7 +34,8 @@ class HabitRepository {
   Stream<List<HabitLog>> watchLogs(String habitId) {
     return (_db.select(
       _db.habitLogs,
-    )..where((l) => l.habitId.equals(habitId))).watch();
+    )..where((l) => l.habitId.equals(habitId)))
+        .watch();
   }
 
   // ---------------------------------------------------------------------
@@ -56,9 +57,7 @@ class HabitRepository {
     AlarmPreset? alarmPreset,
   }) async {
     final id = _uuid.v4();
-    await _db
-        .into(_db.habits)
-        .insert(
+    await _db.into(_db.habits).insert(
           HabitsCompanion.insert(
             id: Value(id),
             name: name,
@@ -107,12 +106,10 @@ class HabitRepository {
         goalType: goalType != null ? Value(goalType) : const Value.absent(),
         goalAmount: goalAmount ?? const Value.absent(),
         goalUnit: goalUnit ?? const Value.absent(),
-        logIncrement: logIncrement != null
-            ? Value(logIncrement)
-            : const Value.absent(),
-        goalDuration: goalDuration != null
-            ? Value(goalDuration)
-            : const Value.absent(),
+        logIncrement:
+            logIncrement != null ? Value(logIncrement) : const Value.absent(),
+        goalDuration:
+            goalDuration != null ? Value(goalDuration) : const Value.absent(),
         reminderHour: reminderHour ?? const Value.absent(),
         reminderMinute: reminderMinute ?? const Value.absent(),
         alarmPreset: alarmPreset != null
@@ -137,7 +134,8 @@ class HabitRepository {
     if (habit != null) await _cancelAlarms(habit);
     await (_db.delete(
       _db.habitLogs,
-    )..where((l) => l.habitId.equals(habitId))).go();
+    )..where((l) => l.habitId.equals(habitId)))
+        .go();
     await (_db.delete(_db.habits)..where((h) => h.id.equals(habitId))).go();
   }
 
@@ -154,9 +152,7 @@ class HabitRepository {
     required bool isCompleted,
   }) async {
     final day = _normalizeDay(date ?? DateTime.now());
-    await _db
-        .into(_db.habitLogs)
-        .insert(
+    await _db.into(_db.habitLogs).insert(
           HabitLogsCompanion.insert(
             habitId: habitId,
             date: day,
@@ -177,11 +173,11 @@ class HabitRepository {
 
   Future<void> toggleBinary(String habitId, [DateTime? date]) async {
     final targetDate = _normalizeDay(date ?? DateTime.now());
-    final existing =
-        await (_db.select(_db.habitLogs)
-              ..where((l) => l.habitId.equals(habitId) & l.date.equals(targetDate)))
-            .getSingleOrNull();
-    await logProgress(habitId, date: targetDate, isCompleted: !(existing?.isCompleted ?? false));
+    final existing = await (_db.select(_db.habitLogs)
+          ..where((l) => l.habitId.equals(habitId) & l.date.equals(targetDate)))
+        .getSingleOrNull();
+    await logProgress(habitId,
+        date: targetDate, isCompleted: !(existing?.isCompleted ?? false));
   }
 
   /// Adds the habit's configured `logIncrement` to the running total for [date]
@@ -191,10 +187,9 @@ class HabitRepository {
     final habit = await getHabit(habitId);
     if (habit == null) return;
     final targetDate = _normalizeDay(date ?? DateTime.now());
-    final existing =
-        await (_db.select(_db.habitLogs)
-              ..where((l) => l.habitId.equals(habitId) & l.date.equals(targetDate)))
-            .getSingleOrNull();
+    final existing = await (_db.select(_db.habitLogs)
+          ..where((l) => l.habitId.equals(habitId) & l.date.equals(targetDate)))
+        .getSingleOrNull();
     var newAmount = (existing?.amount ?? 0) + habit.logIncrement;
     if (habit.goalAmount != null && newAmount > habit.goalAmount!) {
       newAmount = habit.goalAmount!;
@@ -222,7 +217,8 @@ class HabitRepository {
   Future<HabitMetrics> computeMetrics(Habit habit, [DateTime? date]) async {
     final logs = await (_db.select(
       _db.habitLogs,
-    )..where((l) => l.habitId.equals(habit.id))).get();
+    )..where((l) => l.habitId.equals(habit.id)))
+        .get();
     final logsByDay = {for (final log in logs) _normalizeDay(log.date): log};
     final frequency = HabitFrequency.decode(habit.frequencyConfig);
     final today = _normalizeDay(date ?? DateTime.now());
@@ -381,7 +377,8 @@ class HabitRepository {
   Future<Habit?> getHabit(String habitId) {
     return (_db.select(
       _db.habits,
-    )..where((h) => h.id.equals(habitId))).getSingleOrNull();
+    )..where((h) => h.id.equals(habitId)))
+        .getSingleOrNull();
   }
 
   Future<void> _cancelAlarms(Habit habit) async {
@@ -473,8 +470,7 @@ class HabitRepository {
     final habits = await watchHabits().first;
     for (final habit in habits) {
       final frequency = HabitFrequency.decode(habit.frequencyConfig);
-      final hasOneShot =
-          frequency.type == HabitFrequencyType.weekly ||
+      final hasOneShot = frequency.type == HabitFrequencyType.weekly ||
           frequency.type == HabitFrequencyType.interval;
       if (hasOneShot && habit.alarmPreset != null) {
         await _syncAlarms(habit.id);

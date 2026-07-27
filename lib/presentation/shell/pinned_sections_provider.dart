@@ -12,18 +12,21 @@ class SectionsOrderNotifier extends Notifier<List<NavSection>> {
     final prefs = ref.watch(sharedPreferencesProvider);
     final saved = prefs.getStringList(_prefsKey);
     final allSections = NavSection.values;
-    
+
     if (saved == null || saved.isEmpty) {
       return [...defaultPinnedSections, ...defaultOverflowSections];
     }
-    
+
     // Parse saved strings back to enum values
-    final parsed = saved.map((name) {
-      return allSections.firstWhere(
-        (e) => e.name == name,
-        orElse: () => allSections.first,
-      );
-    }).toSet().toList();
+    final parsed = saved
+        .map((name) {
+          return allSections.firstWhere(
+            (e) => e.name == name,
+            orElse: () => allSections.first,
+          );
+        })
+        .toSet()
+        .toList();
 
     // If the saved list doesn't match the total length, fallback to default
     if (parsed.length != allSections.length) {
@@ -39,7 +42,8 @@ class SectionsOrderNotifier extends Notifier<List<NavSection>> {
   }
 }
 
-final allSectionsOrderProvider = NotifierProvider<SectionsOrderNotifier, List<NavSection>>(() {
+final allSectionsOrderProvider =
+    NotifierProvider<SectionsOrderNotifier, List<NavSection>>(() {
   return SectionsOrderNotifier();
 });
 

@@ -11,17 +11,17 @@ enum HabitFrequencyType { daily, weekly, interval }
 ///    calendar week boundaries
 class HabitFrequency {
   const HabitFrequency.daily({this.weekdays = const []})
-    : type = HabitFrequencyType.daily,
-      timesPerWeek = null,
-      intervalDays = null;
+      : type = HabitFrequencyType.daily,
+        timesPerWeek = null,
+        intervalDays = null;
   const HabitFrequency.weekly({required this.timesPerWeek})
-    : type = HabitFrequencyType.weekly,
-      weekdays = const [],
-      intervalDays = null;
+      : type = HabitFrequencyType.weekly,
+        weekdays = const [],
+        intervalDays = null;
   const HabitFrequency.interval({required this.intervalDays})
-    : type = HabitFrequencyType.interval,
-      weekdays = const [],
-      timesPerWeek = null;
+      : type = HabitFrequencyType.interval,
+        weekdays = const [],
+        timesPerWeek = null;
 
   final HabitFrequencyType type;
 
@@ -35,11 +35,11 @@ class HabitFrequency {
   final int? intervalDays;
 
   String encode() => jsonEncode({
-    'type': type.name,
-    'weekdays': weekdays,
-    'timesPerWeek': timesPerWeek,
-    'intervalDays': intervalDays,
-  });
+        'type': type.name,
+        'weekdays': weekdays,
+        'timesPerWeek': timesPerWeek,
+        'intervalDays': intervalDays,
+      });
 
   static HabitFrequency decode(String? raw) {
     if (raw == null || raw.isEmpty) return const HabitFrequency.daily();

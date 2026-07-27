@@ -36,8 +36,9 @@ class Tags extends Table {
   TextColumn get name => text()();
   TextColumn get colorHex => text().withDefault(const Constant('#D89B3C'))();
   // Default configs — auto-applied when this tag is selected in the event form
-  TextColumn get defaultAlarmPreset => text().nullable()();  // 'light'|'medium'|'strong'|'constant'
-  TextColumn get defaultColorHex => text().nullable()();     // e.g. '#7986CB'
+  TextColumn get defaultAlarmPreset =>
+      text().nullable()(); // 'light'|'medium'|'strong'|'constant'
+  TextColumn get defaultColorHex => text().nullable()(); // e.g. '#7986CB'
   TextColumn get defaultNoteFolderId => text().nullable()(); // NoteFolder.id
 
   @override
@@ -173,8 +174,8 @@ class HabitLogs extends Table {
   // check-then-insert-or-update dance.
   @override
   List<Set<Column>> get uniqueKeys => [
-    {habitId, date},
-  ];
+        {habitId, date},
+      ];
 
   @override
   Set<Column> get primaryKey => {id};
@@ -215,7 +216,8 @@ class Countdowns extends Table {
 class NoteFolders extends Table {
   TextColumn get id => text().clientDefault(() => tableIdGenerator.v4())();
   TextColumn get name => text()();
-  TextColumn get parentFolderId => text().nullable().references(NoteFolders, #id)();
+  TextColumn get parentFolderId =>
+      text().nullable().references(NoteFolders, #id)();
   DateTimeColumn get createdAt =>
       dateTime().clientDefault(() => DateTime.now())();
 
@@ -251,9 +253,11 @@ class CachedCalendarEvents extends Table {
   TextColumn get colorId => text().nullable()();
   TextColumn get reminderMinutes => text().nullable()(); // JSON list of minutes
   TextColumn get attendees => text().nullable()(); // JSON list of emails
-  BoolColumn get hasVideoConference => boolean().withDefault(const Constant(false))();
+  BoolColumn get hasVideoConference =>
+      boolean().withDefault(const Constant(false))();
   TextColumn get videoConferenceLink => text().nullable()();
-  TextColumn get selfResponseStatus => text().withDefault(const Constant('needsAction'))();
+  TextColumn get selfResponseStatus =>
+      text().withDefault(const Constant('needsAction'))();
   TextColumn get recurrence => text().nullable()(); // JSON list of RRULEs
   TextColumn get recurringEventId => text().nullable()();
   DateTimeColumn get originalStartTime => dateTime().nullable()();
@@ -268,7 +272,8 @@ class CustomSmartLists extends Table {
   TextColumn get name => text()();
   TextColumn get colorHex => text().withDefault(const Constant('#1B4B4A'))();
   IntColumn get minPriority => integer().nullable()();
-  TextColumn get dateFilter => text().nullable()(); // 'today', 'tomorrow', 'thisWeek', 'next7Days'
+  TextColumn get dateFilter =>
+      text().nullable()(); // 'today', 'tomorrow', 'thisWeek', 'next7Days'
   TextColumn get tagId => text().nullable().references(Tags, #id)();
   BoolColumn get isCompletedFilter => boolean().nullable()();
   DateTimeColumn get createdAt =>
@@ -277,4 +282,3 @@ class CustomSmartLists extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
-

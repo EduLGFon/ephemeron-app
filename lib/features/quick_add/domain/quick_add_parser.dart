@@ -48,7 +48,8 @@ class QuickAddParser {
     final priorityMatch = _priorityPattern.firstMatch(remaining);
     if (priorityMatch != null) {
       priority = int.parse(priorityMatch.group(1)!) - 1;
-      remaining = remaining.replaceRange(priorityMatch.start, priorityMatch.end, '');
+      remaining =
+          remaining.replaceRange(priorityMatch.start, priorityMatch.end, '');
     }
 
     final cleanTitle = remaining.replaceAll(RegExp(r'\s+'), ' ').trim();

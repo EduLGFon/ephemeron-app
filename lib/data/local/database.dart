@@ -22,7 +22,8 @@ part 'database.g.dart';
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase([QueryExecutor? connection]) : super(connection ?? _openConnection());
+  AppDatabase([QueryExecutor? connection])
+      : super(connection ?? _openConnection());
 
   /// Bump this and add a MigrationStrategy step whenever a table shape
   /// changes in a later build step (e.g. when Habits gets typed frequency
@@ -64,7 +65,7 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(habits, habits.scheduledAlarmIds);
             await m.database.customStatement(
               'CREATE UNIQUE INDEX IF NOT EXISTS habit_logs_unique_day '
-               'ON habit_logs (habit_id, date)',
+              'ON habit_logs (habit_id, date)',
             );
           }
           if (from < 5) {

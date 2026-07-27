@@ -16,7 +16,8 @@ class NotesRepository {
   }
 
   Stream<List<Note>> watchNotesByEventId(String eventId) {
-    return (_db.select(_db.notes)..where((n) => n.eventId.equals(eventId))).watch();
+    return (_db.select(_db.notes)..where((n) => n.eventId.equals(eventId)))
+        .watch();
   }
 
   Stream<List<NoteFolder>> watchAllFolders() {
@@ -47,7 +48,8 @@ class NotesRepository {
 
   /// Move [noteId] into [targetFolderId] (null = root).
   Future<void> moveNoteToFolder(String noteId, String? targetFolderId) async {
-    await (_db.update(_db.notes)..where((n) => n.id.equals(noteId)))
-        .write(NotesCompanion(folderId: Value(targetFolderId), updatedAt: Value(DateTime.now())));
+    await (_db.update(_db.notes)..where((n) => n.id.equals(noteId))).write(
+        NotesCompanion(
+            folderId: Value(targetFolderId), updatedAt: Value(DateTime.now())));
   }
 }

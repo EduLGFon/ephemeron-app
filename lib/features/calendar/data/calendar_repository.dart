@@ -23,7 +23,8 @@ class CalendarNotConnectedException implements Exception {
 class CalendarPermissionDeniedException implements Exception {
   final String message;
   const CalendarPermissionDeniedException([
-    this.message = 'Permission denied (403): You do not have edit access to this calendar.',
+    this.message =
+        'Permission denied (403): You do not have edit access to this calendar.',
   ]);
 
   @override
@@ -84,17 +85,20 @@ class CalendarRepository {
       final api = await _api();
       final calendarList = await api.calendarList.list();
       final calendars = calendarList.items ?? [];
-      return calendars.map((c) => {
-        'id': (c.primary == true ? 'primary' : c.id) ?? 'primary',
-        'name': c.summary ?? 'Unknown Calendar',
-      }).toList();
+      return calendars
+          .map((c) => {
+                'id': (c.primary == true ? 'primary' : c.id) ?? 'primary',
+                'name': c.summary ?? 'Unknown Calendar',
+              })
+          .toList();
     } catch (e) {
       DevLogger.log('getAvailableCalendars failed: $e');
       return const [];
     }
   }
 
-  Future<void> cacheEvents(List<CalendarEvent> events, {String? calendarId}) async {
+  Future<void> cacheEvents(List<CalendarEvent> events,
+      {String? calendarId}) async {
     if (events.isEmpty) return;
     await _db.batch((batch) {
       for (final e in events) {
@@ -116,7 +120,8 @@ class CalendarRepository {
             hasVideoConference: Value(e.hasVideoConference),
             videoConferenceLink: Value(e.videoConferenceLink),
             selfResponseStatus: Value(e.selfResponseStatus.name),
-            recurrence: Value(e.recurrence != null ? jsonEncode(e.recurrence) : null),
+            recurrence:
+                Value(e.recurrence != null ? jsonEncode(e.recurrence) : null),
             recurringEventId: Value(e.recurringEventId),
             originalStartTime: Value(e.originalStartTime),
           ),
@@ -129,8 +134,8 @@ class CalendarRepository {
   Future<void> _cacheEvents(List<CalendarEvent> events, {String? calendarId}) =>
       cacheEvents(events, calendarId: calendarId);
 
-
-  Future<List<CalendarEvent>> _loadCachedEvents(DateTime rangeStart, DateTime rangeEnd) async {
+  Future<List<CalendarEvent>> _loadCachedEvents(
+      DateTime rangeStart, DateTime rangeEnd) async {
     final rows = await (_db.select(_db.cachedCalendarEvents)
           ..where((e) =>
               e.start.isSmallerOrEqualValue(rangeEnd) &
@@ -167,7 +172,9 @@ class CalendarRepository {
         videoConferenceLink: row.videoConferenceLink,
         selfResponseStatus: RsvpStatus.values.byName(row.selfResponseStatus),
         recurrence: row.recurrence != null
-            ? (jsonDecode(row.recurrence!) as List<dynamic>?)?.map((e) => e.toString()).toList()
+            ? (jsonDecode(row.recurrence!) as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList()
             : null,
         recurringEventId: row.recurringEventId,
         originalStartTime: row.originalStartTime,
@@ -206,61 +213,65 @@ class CalendarRepository {
 
       List<CalendarEvent> allEvents = [];
 
-    if (calendars.isEmpty) {
-      final result = await api.events.list(
-        'primary',
-        timeMin: rangeStart.toUtc(),
-        timeMax: rangeEnd.toUtc(),
-        singleEvents: true,
-        orderBy: 'startTime',
-      );
-      final events = (result.items ?? []).map((e) => CalendarEvent.fromGoogle(e, calendarId: 'primary')).toList();
-      allEvents.addAll(events);
-      await (_db.delete(_db.cachedCalendarEvents)
-            ..where((e) =>
-                e.calendarId.equals('primary') &
-                (e.recurrence.isNotNull() |
-                 (e.start.isSmallerOrEqualValue(rangeEnd) &
-                  e.end.isBiggerOrEqualValue(rangeStart)))))
-          .go();
-      await _cacheEvents(events, calendarId: 'primary');
-    } else {
-      final futures = calendars.map((cal) async {
-        final rawCalId = cal.id;
-        if (rawCalId == null) return <CalendarEvent>[];
-        final calId = cal.primary == true ? 'primary' : rawCalId;
-        try {
-          final result = await api.events.list(
-            rawCalId,
-            timeMin: rangeStart.toUtc(),
-            timeMax: rangeEnd.toUtc(),
-            singleEvents: true,
-            orderBy: 'startTime',
-          );
-          final events = (result.items ?? []).map((e) => CalendarEvent.fromGoogle(e, calendarId: calId)).toList();
-          await _db.transaction(() async {
-            await (_db.delete(_db.cachedCalendarEvents)
-                  ..where((e) =>
-                      e.calendarId.equals(calId) &
-                      (e.recurrence.isNotNull() |
-                       (e.start.isSmallerOrEqualValue(rangeEnd) &
-                        e.end.isBiggerOrEqualValue(rangeStart)))))
-                .go();
-            await _cacheEvents(events, calendarId: calId);
-          });
-          return events;
-        } catch (_) {
-          return <CalendarEvent>[];
-        }
-      });
+      if (calendars.isEmpty) {
+        final result = await api.events.list(
+          'primary',
+          timeMin: rangeStart.toUtc(),
+          timeMax: rangeEnd.toUtc(),
+          singleEvents: true,
+          orderBy: 'startTime',
+        );
+        final events = (result.items ?? [])
+            .map((e) => CalendarEvent.fromGoogle(e, calendarId: 'primary'))
+            .toList();
+        allEvents.addAll(events);
+        await (_db.delete(_db.cachedCalendarEvents)
+              ..where((e) =>
+                  e.calendarId.equals('primary') &
+                  (e.recurrence.isNotNull() |
+                      (e.start.isSmallerOrEqualValue(rangeEnd) &
+                          e.end.isBiggerOrEqualValue(rangeStart)))))
+            .go();
+        await _cacheEvents(events, calendarId: 'primary');
+      } else {
+        final futures = calendars.map((cal) async {
+          final rawCalId = cal.id;
+          if (rawCalId == null) return <CalendarEvent>[];
+          final calId = cal.primary == true ? 'primary' : rawCalId;
+          try {
+            final result = await api.events.list(
+              rawCalId,
+              timeMin: rangeStart.toUtc(),
+              timeMax: rangeEnd.toUtc(),
+              singleEvents: true,
+              orderBy: 'startTime',
+            );
+            final events = (result.items ?? [])
+                .map((e) => CalendarEvent.fromGoogle(e, calendarId: calId))
+                .toList();
+            await _db.transaction(() async {
+              await (_db.delete(_db.cachedCalendarEvents)
+                    ..where((e) =>
+                        e.calendarId.equals(calId) &
+                        (e.recurrence.isNotNull() |
+                            (e.start.isSmallerOrEqualValue(rangeEnd) &
+                                e.end.isBiggerOrEqualValue(rangeStart)))))
+                  .go();
+              await _cacheEvents(events, calendarId: calId);
+            });
+            return events;
+          } catch (_) {
+            return <CalendarEvent>[];
+          }
+        });
 
-      final results = await Future.wait(futures);
-      allEvents.addAll(results.expand((e) => e));
-    }
+        final results = await Future.wait(futures);
+        allEvents.addAll(results.expand((e) => e));
+      }
 
-    allEvents.sort((a, b) => a.start.compareTo(b.start));
-    await _scheduleEventAlarms(allEvents);
-    return allEvents;
+      allEvents.sort((a, b) => a.start.compareTo(b.start));
+      await _scheduleEventAlarms(allEvents);
+      return allEvents;
     } catch (e) {
       DevLogger.log('refreshEventsFromRemote skipped: $e');
       return const [];
@@ -269,10 +280,12 @@ class CalendarRepository {
 
   Never _handleApiError(Object e) {
     if (e is gcal.DetailedApiRequestError && e.status == 403) {
-      throw CalendarPermissionDeniedException('Permission denied (403): ${e.message ?? 'You do not have edit access to this calendar.'}');
+      throw CalendarPermissionDeniedException(
+          'Permission denied (403): ${e.message ?? 'You do not have edit access to this calendar.'}');
     }
     if (e.toString().contains('403') || e.toString().contains('Forbidden')) {
-      throw CalendarPermissionDeniedException('Permission denied (403): ${e.toString()}');
+      throw CalendarPermissionDeniedException(
+          'Permission denied (403): ${e.toString()}');
     }
     throw e;
   }
@@ -301,11 +314,14 @@ class CalendarRepository {
     } catch (e) {
       _handleApiError(e);
     }
-    final result = CalendarEvent.fromGoogle(created, calendarId: event.calendarId);
+    final result =
+        CalendarEvent.fromGoogle(created, calendarId: event.calendarId);
     if (preset != null) {
-      await sharedPrefs.setString('event_alarm_preset_${result.id}', preset.name);
+      await sharedPrefs.setString(
+          'event_alarm_preset_${result.id}', preset.name);
     }
-    final isRecurring = result.recurrence != null && result.recurrence!.isNotEmpty;
+    final isRecurring =
+        result.recurrence != null && result.recurrence!.isNotEmpty;
     if (!isRecurring) {
       await _cacheEvents([result]);
       await _scheduleEventAlarms([result]);
@@ -339,7 +355,8 @@ class CalendarRepository {
 
     final api = await _api();
     if (preset != null) {
-      await sharedPrefs.setString('event_alarm_preset_${event.id}', preset.name);
+      await sharedPrefs.setString(
+          'event_alarm_preset_${event.id}', preset.name);
     }
 
     final localTimeZone = await _getLocalTimeZone();
@@ -352,25 +369,33 @@ class CalendarRepository {
       gcalEvent.location = event.location;
       gcalEvent.colorId = event.colorId;
       gcalEvent.start = event.isAllDay
-          ? gcal.EventDateTime(date: DateTime(event.start.year, event.start.month, event.start.day))
+          ? gcal.EventDateTime(
+              date: DateTime(
+                  event.start.year, event.start.month, event.start.day))
           : gcal.EventDateTime(dateTime: event.start, timeZone: localTimeZone);
       gcalEvent.end = event.isAllDay
-          ? gcal.EventDateTime(date: DateTime(event.end.year, event.end.month, event.end.day))
+          ? gcal.EventDateTime(
+              date: DateTime(event.end.year, event.end.month, event.end.day))
           : gcal.EventDateTime(dateTime: event.end, timeZone: localTimeZone);
       gcalEvent.reminders = event.reminderMinutes.isEmpty
           ? gcal.EventReminders(useDefault: true)
           : gcal.EventReminders(
               useDefault: false,
-              overrides: event.reminderMinutes.map((m) => gcal.EventReminder(method: 'popup', minutes: m)).toList(),
+              overrides: event.reminderMinutes
+                  .map((m) => gcal.EventReminder(method: 'popup', minutes: m))
+                  .toList(),
             );
 
-      if (event.attendees.isNotEmpty || (gcalEvent.attendees != null && gcalEvent.attendees!.isNotEmpty)) {
+      if (event.attendees.isNotEmpty ||
+          (gcalEvent.attendees != null && gcalEvent.attendees!.isNotEmpty)) {
         final existingAttendees = gcalEvent.attendees ?? <gcal.EventAttendee>[];
         final emailsToKeep = event.attendees.toSet();
-        
+
         // Remove attendees that were deleted by the user, but keep the user themselves (self == true)
-        existingAttendees.retainWhere((a) => a.self == true || (a.email != null && emailsToKeep.contains(a.email)));
-        
+        existingAttendees.retainWhere((a) =>
+            a.self == true ||
+            (a.email != null && emailsToKeep.contains(a.email)));
+
         // Add new attendees
         final existingEmails = existingAttendees.map((a) => a.email).toSet();
         for (final email in event.attendees) {
@@ -391,9 +416,11 @@ class CalendarRepository {
     } catch (e) {
       _handleApiError(e);
     }
-    final result = CalendarEvent.fromGoogle(updated, calendarId: event.calendarId);
+    final result =
+        CalendarEvent.fromGoogle(updated, calendarId: event.calendarId);
 
-    final isRecurring = result.recurrence != null && result.recurrence!.isNotEmpty;
+    final isRecurring =
+        result.recurrence != null && result.recurrence!.isNotEmpty;
     await cacheEvents([result]);
     unawaited(_scheduleEventAlarms([result]));
 
@@ -449,7 +476,8 @@ class CalendarRepository {
     } catch (e) {
       _handleApiError(e);
     }
-    final result = CalendarEvent.fromGoogle(updated, calendarId: event.calendarId);
+    final result =
+        CalendarEvent.fromGoogle(updated, calendarId: event.calendarId);
     await _cacheEvents([result]);
 
     if (result.attendees.isNotEmpty) {
@@ -459,7 +487,8 @@ class CalendarRepository {
     }
   }
 
-  Future<void> deleteEvent(String eventId, {String calendarId = 'primary'}) async {
+  Future<void> deleteEvent(String eventId,
+      {String calendarId = 'primary'}) async {
     if (_authRepository.currentAccount == null) {
       throw const CalendarNotConnectedException();
     }
@@ -469,14 +498,16 @@ class CalendarRepository {
       await api.events.delete(calendarId, eventId);
     } on gcal.DetailedApiRequestError catch (e) {
       if (e.status == 403) {
-        DevLogger.log('Delete forbidden (403). Trying to decline the event instead.');
+        DevLogger.log(
+            'Delete forbidden (403). Trying to decline the event instead.');
         try {
           final event = await getEvent(calendarId, eventId);
           if (event != null) {
             await respondToEvent(event, RsvpStatus.declined);
           }
         } catch (declineError) {
-          DevLogger.logError('Failed to decline forbidden event: $declineError');
+          DevLogger.logError(
+              'Failed to decline forbidden event: $declineError');
         }
       } else if (e.status != 404 && e.status != 410) {
         rethrow;
@@ -520,7 +551,10 @@ class CalendarRepository {
       for (final rrule in parentEvent.recurrence!) {
         if (rrule.startsWith('RRULE:')) {
           final parts = rrule.substring(6).split(';');
-          final newParts = parts.where((part) => !part.startsWith('COUNT=') && !part.startsWith('UNTIL=')).toList();
+          final newParts = parts
+              .where((part) =>
+                  !part.startsWith('COUNT=') && !part.startsWith('UNTIL='))
+              .toList();
 
           final formattedUntil = '${untilTime.year.toString().padLeft(4, '0')}'
               '${untilTime.month.toString().padLeft(2, '0')}'
@@ -568,7 +602,8 @@ class CalendarRepository {
     }
 
     final rows = await (_db.select(_db.cachedCalendarEvents)
-          ..where((e) => e.id.equals(eventId) & e.calendarId.equals(calendarId)))
+          ..where(
+              (e) => e.id.equals(eventId) & e.calendarId.equals(calendarId)))
         .get();
     if (rows.isNotEmpty) {
       final row = rows.first;
@@ -600,7 +635,9 @@ class CalendarRepository {
         videoConferenceLink: row.videoConferenceLink,
         selfResponseStatus: RsvpStatus.values.byName(row.selfResponseStatus),
         recurrence: row.recurrence != null
-            ? (jsonDecode(row.recurrence!) as List<dynamic>?)?.map((e) => e.toString()).toList()
+            ? (jsonDecode(row.recurrence!) as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList()
             : null,
         recurringEventId: row.recurringEventId,
         originalStartTime: row.originalStartTime,
@@ -615,10 +652,10 @@ class CalendarRepository {
     for (final event in events) {
       if (event.reminderMinutes.isEmpty) continue;
       if (event.start.isBefore(now)) continue;
-      final offsets = event.reminderMinutes
-          .map(ReminderOffset.fromMinutes)
-          .toList();
-      final presetName = sharedPrefs.getString('event_alarm_preset_${event.id}') ?? 'light';
+      final offsets =
+          event.reminderMinutes.map(ReminderOffset.fromMinutes).toList();
+      final presetName =
+          sharedPrefs.getString('event_alarm_preset_${event.id}') ?? 'light';
       final preset = AlarmPreset.values.byName(presetName);
 
       alarmFutures.add(_alarmScheduler.scheduleAlarmsForOffsets(
@@ -641,26 +678,27 @@ class CalendarRepository {
   // ---------------------------------------------------------------------
 
   Future<void> assignTag(String googleEventId, String tagId) async {
-    await _db
-        .into(_db.eventTags)
-        .insertOnConflictUpdate(
+    await _db.into(_db.eventTags).insertOnConflictUpdate(
           EventTagsCompanion.insert(googleEventId: googleEventId, tagId: tagId),
         );
   }
 
   Future<void> removeTag(String googleEventId, String tagId) async {
-    await (_db.delete(_db.eventTags)..where(
-          (t) => t.googleEventId.equals(googleEventId) & t.tagId.equals(tagId),
-        ))
+    await (_db.delete(_db.eventTags)
+          ..where(
+            (t) =>
+                t.googleEventId.equals(googleEventId) & t.tagId.equals(tagId),
+          ))
         .go();
   }
 
   Stream<List<Tag>> watchTagsForEvent(String googleEventId) {
     final query = _db.select(_db.tags).join([
       innerJoin(_db.eventTags, _db.eventTags.tagId.equalsExp(_db.tags.id)),
-    ])..where(_db.eventTags.googleEventId.equals(googleEventId));
+    ])
+      ..where(_db.eventTags.googleEventId.equals(googleEventId));
     return query.watch().map(
-      (rows) => rows.map((r) => r.readTable(_db.tags)).toList(),
-    );
+          (rows) => rows.map((r) => r.readTable(_db.tags)).toList(),
+        );
   }
 }

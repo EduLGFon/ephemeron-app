@@ -26,8 +26,14 @@ class CountdownStatus {
 
     if (!isYearly) {
       final diff = target.difference(today).inDays;
-      final age = (showAge && today.year - target.year >= 0) ? today.year - target.year : null;
-      return CountdownStatus(isFuture: diff >= 0, days: diff.abs(), effectiveDate: target, age: age);
+      final age = (showAge && today.year - target.year >= 0)
+          ? today.year - target.year
+          : null;
+      return CountdownStatus(
+          isFuture: diff >= 0,
+          days: diff.abs(),
+          effectiveDate: target,
+          age: age);
     }
 
     // Yearly: find this year's occurrence, or next year's if it already
@@ -38,7 +44,8 @@ class CountdownStatus {
     }
     final days = occurrence.difference(today).inDays;
     final age = showAge ? occurrence.year - target.year : null;
-    return CountdownStatus(isFuture: true, days: days, effectiveDate: occurrence, age: age);
+    return CountdownStatus(
+        isFuture: true, days: days, effectiveDate: occurrence, age: age);
   }
 
   static DateTime _normalize(DateTime d) => DateTime(d.year, d.month, d.day);

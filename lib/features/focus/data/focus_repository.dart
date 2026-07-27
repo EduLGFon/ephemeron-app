@@ -34,9 +34,7 @@ class FocusRepository {
     if (duration < minimumStoredDuration) return null;
 
     final id = _uuid.v4();
-    await _db
-        .into(_db.focusSessions)
-        .insert(
+    await _db.into(_db.focusSessions).insert(
           FocusSessionsCompanion.insert(
             id: Value(id),
             mode: mode.name,
@@ -70,7 +68,8 @@ class FocusRepository {
   ) async {
     final habit = await (_db.select(
       _db.habits,
-    )..where((h) => h.id.equals(habitId))).getSingleOrNull();
+    )..where((h) => h.id.equals(habitId)))
+        .getSingleOrNull();
     if (habit == null || habit.goalType != 'amount' || habit.goalUnit == null) {
       return;
     }
@@ -93,13 +92,13 @@ class FocusRepository {
     if (contributedAmount == null) return;
 
     final today = DateTime.now();
-    final existing =
-        await (_db.select(_db.habitLogs)..where(
-              (l) =>
-                  l.habitId.equals(habitId) &
-                  l.date.equals(DateTime(today.year, today.month, today.day)),
-            ))
-            .getSingleOrNull();
+    final existing = await (_db.select(_db.habitLogs)
+          ..where(
+            (l) =>
+                l.habitId.equals(habitId) &
+                l.date.equals(DateTime(today.year, today.month, today.day)),
+          ))
+        .getSingleOrNull();
     final newAmount = (existing?.amount ?? 0) + contributedAmount;
     await _habitRepository.logProgress(
       habitId,
@@ -118,13 +117,13 @@ class FocusRepository {
   // ---------------------------------------------------------------------
 
   Future<Duration> totalFocusedBetween(DateTime start, DateTime end) async {
-    final sessions =
-        await (_db.select(_db.focusSessions)..where(
-              (s) =>
-                  s.startedAt.isBiggerOrEqualValue(start) &
-                  s.startedAt.isSmallerThanValue(end),
-            ))
-            .get();
+    final sessions = await (_db.select(_db.focusSessions)
+          ..where(
+            (s) =>
+                s.startedAt.isBiggerOrEqualValue(start) &
+                s.startedAt.isSmallerThanValue(end),
+          ))
+        .get();
     final totalSeconds = sessions.fold<int>(
       0,
       (sum, s) => sum + s.durationSeconds,
@@ -172,13 +171,13 @@ class FocusRepository {
   Future<Map<DateTime, Duration>> dailyTotalsForMonth(DateTime month) async {
     final start = DateTime(month.year, month.month, 1);
     final end = DateTime(month.year, month.month + 1, 1);
-    final sessions =
-        await (_db.select(_db.focusSessions)..where(
-              (s) =>
-                  s.startedAt.isBiggerOrEqualValue(start) &
-                  s.startedAt.isSmallerThanValue(end),
-            ))
-            .get();
+    final sessions = await (_db.select(_db.focusSessions)
+          ..where(
+            (s) =>
+                s.startedAt.isBiggerOrEqualValue(start) &
+                s.startedAt.isSmallerThanValue(end),
+          ))
+        .get();
 
     final totals = <DateTime, Duration>{};
     for (final session in sessions) {
@@ -187,8 +186,7 @@ class FocusRepository {
         session.startedAt.month,
         session.startedAt.day,
       );
-      totals[day] =
-          (totals[day] ?? Duration.zero) +
+      totals[day] = (totals[day] ?? Duration.zero) +
           Duration(seconds: session.durationSeconds);
     }
     return totals;

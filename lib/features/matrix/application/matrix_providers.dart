@@ -11,18 +11,21 @@ class ShowCompletedMatrixTasksNotifier extends Notifier<bool> {
   void toggle() => state = !state;
 }
 
-final showCompletedMatrixTasksProvider = NotifierProvider<ShowCompletedMatrixTasksNotifier, bool>(() {
+final showCompletedMatrixTasksProvider =
+    NotifierProvider<ShowCompletedMatrixTasksNotifier, bool>(() {
   return ShowCompletedMatrixTasksNotifier();
 });
 
-final pendingMatrixTasksProvider = StreamProvider.family<List<Task>, MatrixQuadrant>((ref, quadrant) async* {
+final pendingMatrixTasksProvider =
+    StreamProvider.family<List<Task>, MatrixQuadrant>((ref, quadrant) async* {
   final repo = ref.watch(taskRepositoryProvider);
   final sortOption = ref.watch(taskSortOptionProvider);
-  yield* repo.watchMatrixTasks(quadrant, isCompleted: false, sortOption: sortOption);
+  yield* repo.watchMatrixTasks(quadrant,
+      isCompleted: false, sortOption: sortOption);
 });
 
-final completedMatrixTasksProvider = StreamProvider.family<List<Task>, MatrixQuadrant>((ref, quadrant) async* {
+final completedMatrixTasksProvider =
+    StreamProvider.family<List<Task>, MatrixQuadrant>((ref, quadrant) async* {
   final repo = ref.watch(taskRepositoryProvider);
   yield* repo.watchMatrixTasks(quadrant, isCompleted: true);
 });
-

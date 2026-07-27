@@ -5,7 +5,6 @@ class FocusTimerState {
     this.isRunning = false,
     this.mode = FocusMode.stopwatch,
     this.pomodoroPhase = PomodoroPhase.work,
-    this.elapsed = Duration.zero,
     this.linkedTaskId,
     this.linkedHabitId,
     this.note = '',
@@ -16,7 +15,6 @@ class FocusTimerState {
   final bool isRunning;
   final FocusMode mode;
   final PomodoroPhase pomodoroPhase;
-  final Duration elapsed;
   final String? linkedTaskId;
   final String? linkedHabitId;
   final String note;
@@ -28,14 +26,14 @@ class FocusTimerState {
   /// reference point that survives this state being rebuilt.
   final DateTime? startedAt;
 
-  Duration get pomodoroTarget =>
-      pomodoroPhase == PomodoroPhase.work ? PomodoroDefaults.workDuration : PomodoroDefaults.breakDuration;
+  Duration get pomodoroTarget => pomodoroPhase == PomodoroPhase.work
+      ? PomodoroDefaults.workDuration
+      : PomodoroDefaults.breakDuration;
 
   FocusTimerState copyWith({
     bool? isRunning,
     FocusMode? mode,
     PomodoroPhase? pomodoroPhase,
-    Duration? elapsed,
     String? Function()? linkedTaskId,
     String? Function()? linkedHabitId,
     String? note,
@@ -46,9 +44,9 @@ class FocusTimerState {
       isRunning: isRunning ?? this.isRunning,
       mode: mode ?? this.mode,
       pomodoroPhase: pomodoroPhase ?? this.pomodoroPhase,
-      elapsed: elapsed ?? this.elapsed,
       linkedTaskId: linkedTaskId != null ? linkedTaskId() : this.linkedTaskId,
-      linkedHabitId: linkedHabitId != null ? linkedHabitId() : this.linkedHabitId,
+      linkedHabitId:
+          linkedHabitId != null ? linkedHabitId() : this.linkedHabitId,
       note: note ?? this.note,
       keepScreenOn: keepScreenOn ?? this.keepScreenOn,
       startedAt: startedAt != null ? startedAt() : this.startedAt,

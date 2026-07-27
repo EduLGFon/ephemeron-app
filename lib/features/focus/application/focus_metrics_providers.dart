@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 
 import 'focus_repository_provider.dart';
 
@@ -8,7 +7,14 @@ import 'focus_repository_provider.dart';
 /// queries, not reactive streams (aggregating a table on every write
 /// would be overkill for something checked this infrequently), so this
 /// is the simple manual invalidation trigger instead.
-final focusMetricsRefreshProvider = StateProvider<int>((ref) => 0);
+class FocusMetricsRefreshNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+  @override
+  set state(int value) => super.state = value;
+}
+
+final focusMetricsRefreshProvider = NotifierProvider<FocusMetricsRefreshNotifier, int>(() => FocusMetricsRefreshNotifier());
 
 final totalFocusedTodayProvider = FutureProvider<Duration>((ref) {
   ref.watch(focusMetricsRefreshProvider);

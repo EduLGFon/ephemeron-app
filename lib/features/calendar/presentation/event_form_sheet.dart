@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:ui';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,7 +19,6 @@ import '../../tags/presentation/tag_autocomplete_field.dart';
 import '../application/calendar_providers.dart';
 import '../domain/calendar_event.dart';
 import '../data/calendar_repository.dart';
-import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
 import '../../../../presentation/widgets/confirmation_dialog.dart';
 import '../../../../presentation/widgets/recurrence_delete_dialog.dart';
 
@@ -38,7 +37,9 @@ Future<void> showEventFormSheet(
     child: SingleChildScrollView(
       child: Material(
         color: Colors.transparent,
-        child: RepaintBoundary(child: EventFormSheet(initialDay: initialDay, existingEvent: existingEvent)),
+        child: RepaintBoundary(
+            child: EventFormSheet(
+                initialDay: initialDay, existingEvent: existingEvent)),
       ),
     ),
   );
@@ -53,7 +54,8 @@ Future<void> showEventFormSheet(
       return KeyboardAvoidPadding(child: sheet);
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
-      final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      final curve =
+          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
       return SlideTransition(
         position: Tween<Offset>(
           begin: const Offset(0.0, 1.0),
@@ -70,7 +72,9 @@ Future<void> showEventFormSheet(
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum RecurrenceType { none, daily, weekly, monthly, yearly }
+
 enum RepeatDuration { forever, specificTimes, until }
+
 enum MonthlyRepeatMode { dayOfMonth, dayOfWeek, selectDates }
 
 class RecurrenceConfig {
@@ -141,7 +145,15 @@ class RecurrenceConfig {
         if (interval > 1) parts.add('INTERVAL=$interval');
         if (monthlyMode == MonthlyRepeatMode.dayOfWeek) {
           final ordinal = ((start.day - 1) ~/ 7) + 1;
-          final weekdayMap = {1: 'MO', 2: 'TU', 3: 'WE', 4: 'TH', 5: 'FR', 6: 'SA', 7: 'SU'};
+          final weekdayMap = {
+            1: 'MO',
+            2: 'TU',
+            3: 'WE',
+            4: 'TH',
+            5: 'FR',
+            6: 'SA',
+            7: 'SU'
+          };
           final weekdayStr = weekdayMap[start.weekday];
           parts.add('BYDAY=$ordinal$weekdayStr');
         } else {
@@ -175,7 +187,8 @@ class RecurrenceConfig {
   static RecurrenceConfig fromRruleList(List<String>? rruleList) {
     if (rruleList == null || rruleList.isEmpty) return const RecurrenceConfig();
 
-    final rruleLine = rruleList.firstWhere((line) => line.startsWith('RRULE:'), orElse: () => '');
+    final rruleLine = rruleList.firstWhere((line) => line.startsWith('RRULE:'),
+        orElse: () => '');
     if (rruleLine.isEmpty) return const RecurrenceConfig();
 
     final rruleContent = rruleLine.substring(6);
@@ -194,9 +207,15 @@ class RecurrenceConfig {
     RecurrenceType type = RecurrenceType.none;
     if (freq == 'DAILY') {
       type = RecurrenceType.daily;
-    } else if (freq == 'WEEKLY') type = RecurrenceType.weekly; // ignore: curly_braces_in_flow_control_structures
-    else if (freq == 'MONTHLY') type = RecurrenceType.monthly; // ignore: curly_braces_in_flow_control_structures
-    else if (freq == 'YEARLY') type = RecurrenceType.yearly; // ignore: curly_braces_in_flow_control_structures
+    } else if (freq == 'WEEKLY')
+      type = RecurrenceType
+          .weekly; // ignore: curly_braces_in_flow_control_structures
+    else if (freq == 'MONTHLY')
+      type = RecurrenceType
+          .monthly; // ignore: curly_braces_in_flow_control_structures
+    else if (freq == 'YEARLY')
+      type = RecurrenceType
+          .yearly; // ignore: curly_braces_in_flow_control_structures
 
     if (type == RecurrenceType.none) return const RecurrenceConfig();
 
@@ -247,7 +266,8 @@ class RecurrenceConfig {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class EventFormSheet extends ConsumerStatefulWidget {
-  const EventFormSheet({this.initialDay, this.existingEvent, this.unifiedHeader, super.key});
+  const EventFormSheet(
+      {this.initialDay, this.existingEvent, this.unifiedHeader, super.key});
 
   final DateTime? initialDay;
   final CalendarEvent? existingEvent;
@@ -258,10 +278,12 @@ class EventFormSheet extends ConsumerStatefulWidget {
 }
 
 class _EventFormSheetState extends ConsumerState<EventFormSheet> {
-  late final _titleController = TextEditingController(text: widget.existingEvent?.title);
+  late final _titleController =
+      TextEditingController(text: widget.existingEvent?.title);
   // Notes controller — holds full text (description + overflow). Initialized below.
   late final _notesController = TextEditingController();
-  late final _locationController = TextEditingController(text: widget.existingEvent?.location);
+  late final _locationController =
+      TextEditingController(text: widget.existingEvent?.location);
   late final _inviteeController = TextEditingController();
   late final FocusNode _notesFocusNode = FocusNode();
   Timer? _notesTypingTimer;
@@ -310,7 +332,8 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
     });
     final event = widget.existingEvent;
     final day = widget.initialDay ?? DateTime.now();
-    _start = (event?.start ?? DateTime(day.year, day.month, day.day, 9)).toLocal();
+    _start =
+        (event?.start ?? DateTime(day.year, day.month, day.day, 9)).toLocal();
     _end = (event?.end ?? _start.add(const Duration(hours: 1))).toLocal();
     _isAllDay = event?.isAllDay ?? false;
     _colorId = event?.colorId;
@@ -331,42 +354,60 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
       final presetName = prefs.getString('event_alarm_preset_${event.id}');
       _alarmPreset = presetName != null
           ? AlarmPreset.values.byName(presetName)
-          : (event.reminderMinutes.isNotEmpty ? AlarmPreset.light : AlarmPreset.light);
+          : (event.reminderMinutes.isNotEmpty
+              ? AlarmPreset.light
+              : AlarmPreset.light);
       _selectedOffsets = (event.reminderMinutes.isNotEmpty
               ? event.reminderMinutes.map(ReminderOffset.fromMinutes)
               : [ReminderOffset.atTime, ReminderOffset.thirtyMinBefore])
           .toSet();
     } else {
       _alarmPreset = AlarmPreset.light;
-      _selectedOffsets = {ReminderOffset.atTime, ReminderOffset.thirtyMinBefore};
+      _selectedOffsets = {
+        ReminderOffset.atTime,
+        ReminderOffset.thirtyMinBefore
+      };
     }
-    SessionRestore.saveOpenMenu('event', entityId: widget.existingEvent?.id, extra: widget.initialDay?.toIso8601String() ?? '');
+    SessionRestore.saveOpenMenu('event',
+        entityId: widget.existingEvent?.id,
+        extra: widget.initialDay?.toIso8601String() ?? '');
     _titleController.addListener(_onTitleChanged);
     _notesController.addListener(_onNotesChanged);
     _restoreDrafts();
   }
 
   void _onTitleChanged() {
-    SessionRestore.saveDraftValue('event', widget.existingEvent?.id, 'title', _titleController.text);
+    SessionRestore.saveDraftValue(
+        'event', widget.existingEvent?.id, 'title', _titleController.text);
   }
 
   void _onNotesChanged() {
-    SessionRestore.saveDraftValue('event', widget.existingEvent?.id, 'notes', _notesController.text);
+    SessionRestore.saveDraftValue(
+        'event', widget.existingEvent?.id, 'notes', _notesController.text);
   }
 
   void _saveDateDrafts() {
-    SessionRestore.saveDraftValue('event', widget.existingEvent?.id, 'start', _start.toIso8601String());
-    SessionRestore.saveDraftValue('event', widget.existingEvent?.id, 'end', _end.toIso8601String());
+    SessionRestore.saveDraftValue(
+        'event', widget.existingEvent?.id, 'start', _start.toIso8601String());
+    SessionRestore.saveDraftValue(
+        'event', widget.existingEvent?.id, 'end', _end.toIso8601String());
   }
 
   void _restoreDrafts() async {
-    final t = await SessionRestore.getDraftValue('event', widget.existingEvent?.id, 'title');
-    final n = await SessionRestore.getDraftValue('event', widget.existingEvent?.id, 'notes');
-    final s = await SessionRestore.getDraftValue('event', widget.existingEvent?.id, 'start');
-    final e = await SessionRestore.getDraftValue('event', widget.existingEvent?.id, 'end');
-    final ad = await SessionRestore.getDraftValue('event', widget.existingEvent?.id, 'isAllDay');
-    final c = await SessionRestore.getDraftValue('event', widget.existingEvent?.id, 'colorId');
-    final vc = await SessionRestore.getDraftValue('event', widget.existingEvent?.id, 'addVideoConference');
+    final t = await SessionRestore.getDraftValue(
+        'event', widget.existingEvent?.id, 'title');
+    final n = await SessionRestore.getDraftValue(
+        'event', widget.existingEvent?.id, 'notes');
+    final s = await SessionRestore.getDraftValue(
+        'event', widget.existingEvent?.id, 'start');
+    final e = await SessionRestore.getDraftValue(
+        'event', widget.existingEvent?.id, 'end');
+    final ad = await SessionRestore.getDraftValue(
+        'event', widget.existingEvent?.id, 'isAllDay');
+    final c = await SessionRestore.getDraftValue(
+        'event', widget.existingEvent?.id, 'colorId');
+    final vc = await SessionRestore.getDraftValue(
+        'event', widget.existingEvent?.id, 'addVideoConference');
     if (mounted) {
       setState(() {
         if (t != null) {
@@ -421,9 +462,13 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
       // Auto-apply tag defaults
       if (tag.defaultColorHex != null && _colorId == null) {
         // Try to match to Google color by hex
-        final match = GoogleEventColor.options.where(
-          (c) => '#${c.hex.toRadixString(16).substring(2).toUpperCase()}' == tag.defaultColorHex!.toUpperCase(),
-        ).firstOrNull;
+        final match = GoogleEventColor.options
+            .where(
+              (c) =>
+                  '#${c.hex.toRadixString(16).substring(2).toUpperCase()}' ==
+                  tag.defaultColorHex!.toUpperCase(),
+            )
+            .firstOrNull;
         if (match != null) _colorId = match.id;
       }
       if (tag.defaultAlarmPreset != null && _alarmPreset == null) {
@@ -444,346 +489,461 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
       decoration: BoxDecoration(
         color: palette.surface.withValues(alpha: 0.88),
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
+        border:
+            Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 40, offset: const Offset(0, 20)),
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 40,
+              offset: const Offset(0, 20)),
         ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
-        child: GlassmorphicWrapper(
-          filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (widget.unifiedHeader != null) widget.unifiedHeader!,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (widget.unifiedHeader != null) widget.unifiedHeader!,
 
-                // ── Title + Color + Delete ────────────────────────────────
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: TagAutocompleteField(
-                        controller: _titleController,
-                        autofocus: !_isEditing,
-                        onChanged: (_) => setState(() {}),
-                        onTagSelected: _onTagSelected,
-                        style: TextStyle(color: palette.text, fontSize: 22, fontWeight: FontWeight.bold),
-                        decoration: InputDecoration(
-                          hintText: 'Event Title',
-                          hintStyle: TextStyle(color: palette.text.withValues(alpha: 0.3), fontSize: 22, fontWeight: FontWeight.bold),
-                          border: InputBorder.none,
-                          enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: palette.text.withValues(alpha: 0.15))),
-                          focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: palette.primary, width: 2)),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 6),
-                        ),
-                        textCapitalization: TextCapitalization.sentences,
+              // ── Title + Color + Delete ────────────────────────────────
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: TagAutocompleteField(
+                      controller: _titleController,
+                      autofocus: !_isEditing,
+                      onChanged: (_) => setState(() {}),
+                      onTagSelected: _onTagSelected,
+                      style: TextStyle(
+                          color: palette.text,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold),
+                      decoration: InputDecoration(
+                        hintText: 'Event Title',
+                        hintStyle: TextStyle(
+                            color: palette.text.withValues(alpha: 0.3),
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold),
+                        border: InputBorder.none,
+                        enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(
+                                color: palette.text.withValues(alpha: 0.15))),
+                        focusedBorder: UnderlineInputBorder(
+                            borderSide:
+                                BorderSide(color: palette.primary, width: 2)),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 6),
                       ),
+                      textCapitalization: TextCapitalization.sentences,
                     ),
-                    const SizedBox(width: 8),
-                    _ColorPickerButton(
-                      selectedColor: _selectedColor,
-                      palette: palette,
-                      onChanged: (id) {
-                        setState(() => _colorId = id);
-                        SessionRestore.saveDraftValue('event', widget.existingEvent?.id, 'colorId', id ?? '');
+                  ),
+                  const SizedBox(width: 8),
+                  _ColorPickerButton(
+                    selectedColor: _selectedColor,
+                    palette: palette,
+                    onChanged: (id) {
+                      setState(() => _colorId = id);
+                      SessionRestore.saveDraftValue('event',
+                          widget.existingEvent?.id, 'colorId', id ?? '');
+                    },
+                  ),
+                  if (_isEditing) ...[
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: Icon(Icons.delete_outline,
+                          color: Colors.redAccent.withValues(alpha: 0.8)),
+                      onPressed: () async {
+                        final event = widget.existingEvent!;
+                        final isRecurringEvent =
+                            event.recurringEventId != null ||
+                                (event.recurrence != null &&
+                                    event.recurrence!.isNotEmpty);
+                        if (isRecurringEvent) {
+                          final choice = await showRecurrenceDeleteDialog(
+                            context: context,
+                            ref: ref,
+                            title: 'Delete Recurring Event?',
+                          );
+                          if (choice != null && mounted) {
+                            if (choice == RecurrenceDeleteType.onlyThis) {
+                              await ref
+                                  .read(calendarRepositoryProvider)
+                                  .deleteEvent(event.id,
+                                      calendarId: event.calendarId);
+                            } else if (choice == RecurrenceDeleteType.all) {
+                              await ref
+                                  .read(calendarRepositoryProvider)
+                                  .deleteEvent(
+                                      event.recurringEventId ?? event.id,
+                                      calendarId: event.calendarId);
+                            } else if (choice ==
+                                RecurrenceDeleteType.thisAndAllAfter) {
+                              await ref
+                                  .read(calendarRepositoryProvider)
+                                  .deleteThisAndFutureEvents(event);
+                            }
+                            ref.invalidate(monthEventsProvider(
+                                DateTime(_start.year, _start.month, 1)));
+                            await SessionRestore.clearDraftValues(
+                                'event', widget.existingEvent?.id);
+                            if (context.mounted) Navigator.pop(context);
+                          }
+                        } else {
+                          final confirmed = await showConfirmationDialog(
+                            context: context,
+                            ref: ref,
+                            title: 'Delete event?',
+                            content:
+                                'Are you sure you want to permanently delete this event?',
+                            confirmLabel: 'Delete',
+                            isDestructive: true,
+                          );
+                          if (confirmed && mounted) {
+                            await ref
+                                .read(calendarRepositoryProvider)
+                                .deleteEvent(
+                                  widget.existingEvent!.id,
+                                  calendarId: widget.existingEvent!.calendarId,
+                                );
+                            ref.invalidate(monthEventsProvider(
+                                DateTime(_start.year, _start.month, 1)));
+                            await SessionRestore.clearDraftValues(
+                                'event', widget.existingEvent?.id);
+                            if (context.mounted) Navigator.pop(context);
+                          }
+                        }
                       },
                     ),
-                    if (_isEditing) ...[
-                      const SizedBox(width: 4),
-                      IconButton(
-                        icon: Icon(Icons.delete_outline, color: Colors.redAccent.withValues(alpha: 0.8)),
-                        onPressed: () async {
-                          final event = widget.existingEvent!;
-                          final isRecurringEvent = event.recurringEventId != null || (event.recurrence != null && event.recurrence!.isNotEmpty);
-                          if (isRecurringEvent) {
-                            final choice = await showRecurrenceDeleteDialog(
-                              context: context,
-                              ref: ref,
-                              title: 'Delete Recurring Event?',
-                            );
-                            if (choice != null && mounted) {
-                              if (choice == RecurrenceDeleteType.onlyThis) {
-                                await ref.read(calendarRepositoryProvider).deleteEvent(event.id, calendarId: event.calendarId);
-                              } else if (choice == RecurrenceDeleteType.all) {
-                                await ref.read(calendarRepositoryProvider).deleteEvent(event.recurringEventId ?? event.id, calendarId: event.calendarId);
-                              } else if (choice == RecurrenceDeleteType.thisAndAllAfter) {
-                                await ref.read(calendarRepositoryProvider).deleteThisAndFutureEvents(event);
-                              }
-                              ref.invalidate(monthEventsProvider(DateTime(_start.year, _start.month, 1)));
-                              await SessionRestore.clearDraftValues('event', widget.existingEvent?.id);
-                              if (context.mounted) Navigator.pop(context);
-                            }
-                          } else {
-                            final confirmed = await showConfirmationDialog(
-                              context: context,
-                              ref: ref,
-                              title: 'Delete event?',
-                              content: 'Are you sure you want to permanently delete this event?',
-                              confirmLabel: 'Delete',
-                              isDestructive: true,
-                            );
-                            if (confirmed && mounted) {
-                              await ref.read(calendarRepositoryProvider).deleteEvent(
-                                widget.existingEvent!.id,
-                                calendarId: widget.existingEvent!.calendarId,
-                              );
-                              ref.invalidate(monthEventsProvider(DateTime(_start.year, _start.month, 1)));
-                              await SessionRestore.clearDraftValues('event', widget.existingEvent?.id);
-                              if (context.mounted) Navigator.pop(context);
-                            }
-                          }
-                        },
+                  ],
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // ── 1. Merged Notes field (description + local note) ──────
+              _buildNotesField(palette),
+
+              const SizedBox(height: 14),
+
+              // ── Assigned tags chips ───────────────────────────────────
+              if (_assignedTags.isNotEmpty) ...[
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    for (final tag in _assignedTags)
+                      Chip(
+                        label: Text('#${tag.name}',
+                            style: const TextStyle(fontSize: 12)),
+                        backgroundColor:
+                            _parseColor(tag.colorHex).withValues(alpha: 0.2),
+                        side: BorderSide.none,
+                        deleteIcon: const Icon(Icons.close, size: 12),
+                        onDeleted: () => setState(() =>
+                            _assignedTags.removeWhere((t) => t.id == tag.id)),
                       ),
-                    ],
                   ],
                 ),
                 const SizedBox(height: 10),
+              ],
 
-                // ── 1. Merged Notes field (description + local note) ──────
-                _buildNotesField(palette),
-
-                const SizedBox(height: 14),
-
-                // ── Assigned tags chips ───────────────────────────────────
-                if (_assignedTags.isNotEmpty) ...[
-                  Wrap(
-                    spacing: 6,
+              // ── Date/Time ─────────────────────────────────────────────
+              _buildListSectionCard(palette, children: [
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  child: Row(
                     children: [
-                      for (final tag in _assignedTags)
-                        Chip(
-                          label: Text('#${tag.name}', style: const TextStyle(fontSize: 12)),
-                          backgroundColor: _parseColor(tag.colorHex).withValues(alpha: 0.2),
-                          side: BorderSide.none,
-                          deleteIcon: const Icon(Icons.close, size: 12),
-                          onDeleted: () => setState(() => _assignedTags.removeWhere((t) => t.id == tag.id)),
-                        ),
+                      Icon(Icons.access_time_outlined,
+                          size: 18, color: palette.text.withValues(alpha: 0.4)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                          child: Text('All day',
+                              style: TextStyle(
+                                  color: palette.text,
+                                  fontWeight: FontWeight.w500))),
+                      Switch(
+                        value: _isAllDay,
+                        activeThumbColor: palette.primary,
+                        onChanged: (v) {
+                          setState(() => _isAllDay = v);
+                          SessionRestore.saveDraftValue(
+                              'event',
+                              widget.existingEvent?.id,
+                              'isAllDay',
+                              v.toString());
+                        },
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                ],
+                ),
+                const Divider(height: 1, thickness: 0.5),
+                _buildDateTimeRow(
+                  palette: palette,
+                  label: 'Starts',
+                  value: _start,
+                  onDateChanged: (d) => setState(() {
+                    _start = DateTime(
+                        d.year, d.month, d.day, _start.hour, _start.minute);
+                    if (_end.isBefore(_start)) {
+                      _end = _start.add(const Duration(hours: 1));
+                    }
+                    _saveDateDrafts();
+                  }),
+                  onTimeChanged: (t) => setState(() {
+                    _start = DateTime(_start.year, _start.month, _start.day,
+                        t.hour, t.minute);
+                    if (_end.isBefore(_start)) {
+                      _end = _start.add(const Duration(hours: 1));
+                    }
+                    _saveDateDrafts();
+                  }),
+                ),
+                const Divider(height: 1, thickness: 0.5),
+                _buildDateTimeRow(
+                  palette: palette,
+                  label: 'Ends',
+                  value: _end,
+                  onDateChanged: (d) => setState(() {
+                    _end = DateTime(
+                        d.year, d.month, d.day, _end.hour, _end.minute);
+                    _saveDateDrafts();
+                  }),
+                  onTimeChanged: (t) => setState(() {
+                    _end = DateTime(
+                        _end.year, _end.month, _end.day, t.hour, t.minute);
+                    _saveDateDrafts();
+                  }),
+                ),
+              ]),
 
-                // ── Date/Time ─────────────────────────────────────────────
-                _buildListSectionCard(palette, children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                    child: Row(
-                      children: [
-                        Icon(Icons.access_time_outlined, size: 18, color: palette.text.withValues(alpha: 0.4)),
-                        const SizedBox(width: 12),
-                        Expanded(child: Text('All day', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500))),
-                        Switch(
-                          value: _isAllDay,
-                          activeThumbColor: palette.primary,
-                          onChanged: (v) {
-                            setState(() => _isAllDay = v);
-                            SessionRestore.saveDraftValue('event', widget.existingEvent?.id, 'isAllDay', v.toString());
-                          },
-                        ),
-                      ],
+              const SizedBox(height: 8),
+
+              // ── Location + Video + Invitees ───────────────────────────
+              _buildListSectionCard(palette, children: [
+                _buildIconRow(
+                  icon: Icons.location_on_outlined,
+                  palette: palette,
+                  child: TextField(
+                    controller: _locationController,
+                    style: TextStyle(color: palette.text),
+                    decoration: InputDecoration(
+                      hintText: 'Location',
+                      hintStyle:
+                          TextStyle(color: palette.text.withValues(alpha: 0.4)),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
                     ),
                   ),
-                  const Divider(height: 1, thickness: 0.5),
-                  _buildDateTimeRow(palette: palette, label: 'Starts', value: _start,
-                    onDateChanged: (d) => setState(() {
-                      _start = DateTime(d.year, d.month, d.day, _start.hour, _start.minute);
-                      if (_end.isBefore(_start)) _end = _start.add(const Duration(hours: 1));
-                      _saveDateDrafts();
-                    }),
-                    onTimeChanged: (t) => setState(() {
-                      _start = DateTime(_start.year, _start.month, _start.day, t.hour, t.minute);
-                      if (_end.isBefore(_start)) _end = _start.add(const Duration(hours: 1));
-                      _saveDateDrafts();
-                    }),
-                  ),
-                  const Divider(height: 1, thickness: 0.5),
-                  _buildDateTimeRow(palette: palette, label: 'Ends', value: _end,
-                    onDateChanged: (d) => setState(() {
-                      _end = DateTime(d.year, d.month, d.day, _end.hour, _end.minute);
-                      _saveDateDrafts();
-                    }),
-                    onTimeChanged: (t) => setState(() {
-                      _end = DateTime(_end.year, _end.month, _end.day, t.hour, t.minute);
-                      _saveDateDrafts();
-                    }),
-                  ),
-                ]),
-
-                const SizedBox(height: 8),
-
-                // ── Location + Video + Invitees ───────────────────────────
-                _buildListSectionCard(palette, children: [
-                  _buildIconRow(
-                    icon: Icons.location_on_outlined,
-                    palette: palette,
-                    child: TextField(
-                      controller: _locationController,
-                      style: TextStyle(color: palette.text),
-                      decoration: InputDecoration(
-                        hintText: 'Location',
-                        hintStyle: TextStyle(color: palette.text.withValues(alpha: 0.4)),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ),
-                  const Divider(height: 1, thickness: 0.5),
-                  // ── 3. Google Meet toggle ─────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                    child: Row(
-                      children: [
-                        Icon(Icons.videocam_outlined, size: 18, color: _addVideoConference ? palette.primary : palette.text.withValues(alpha: 0.4)),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('Google Meet', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
-                              if (_isEditing && widget.existingEvent!.videoConferenceLink != null)
-                                Text(
-                                  widget.existingEvent!.videoConferenceLink!,
-                                  style: TextStyle(color: palette.primary, fontSize: 11),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: _addVideoConference,
-                          activeThumbColor: palette.primary,
-                          onChanged: (v) => setState(() => _addVideoConference = v),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1, thickness: 0.5),
-                  // ── 3. Invitees field ──────────────────────────────────
-                  _buildInviteesSection(palette),
-                ]),
-
-                const SizedBox(height: 8),
-
-                // ── Alarm + Color + Repeat ────────────────────────────────
-                _buildListSectionCard(palette, children: [
-                  _buildIconRow(
-                    icon: Icons.notifications_outlined,
-                    palette: palette,
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<AlarmPreset?>(
-                        dropdownColor: palette.surface,
-                        style: TextStyle(color: palette.text),
-                        value: _alarmPreset,
-                        isExpanded: true,
-                        hint: Text('Don\'t notify', style: TextStyle(color: palette.text.withValues(alpha: 0.5))),
-                        items: const [
-                          DropdownMenuItem(value: null, child: Text('Don\'t notify')),
-                          DropdownMenuItem(value: AlarmPreset.light, child: Text('Light — notification')),
-                          DropdownMenuItem(value: AlarmPreset.medium, child: Text('Medium — full screen')),
-                          DropdownMenuItem(value: AlarmPreset.strong, child: Text('Strong — long sound')),
-                          DropdownMenuItem(value: AlarmPreset.constant, child: Text('Constant alert')),
-                        ],
-                        onChanged: (value) => setState(() {
-                          _alarmPreset = value;
-                          if (value != null && _selectedOffsets.isEmpty) {
-                            _selectedOffsets = {ReminderOffset.atTime, ReminderOffset.thirtyMinBefore};
-                          }
-                        }),
-                      ),
-                    ),
-                  ),
-                  if (_alarmPreset != null) ...[
-                    Padding(
-                      padding: const EdgeInsets.only(left: 40, right: 12, bottom: 10),
-                      child: Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          for (final offset in ReminderOffset.presets)
-                            FilterChip(
-                              label: Text(offset.label, style: TextStyle(fontSize: 12, color: _selectedOffsets.contains(offset) ? palette.background : palette.text)),
-                              selected: _selectedOffsets.contains(offset),
-                              selectedColor: palette.primary,
-                              backgroundColor: palette.surface,
-                              side: BorderSide(color: palette.text.withValues(alpha: 0.15)),
-                              onSelected: (sel) => setState(() {
-                                if (sel) {
-                                  _selectedOffsets.add(offset);
-                                } else {
-                                  _selectedOffsets.remove(offset);
-                                }
-                              }),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  if (widget.existingEvent?.recurringEventId == null) ...[
-                    const Divider(height: 1, thickness: 0.5),
-                    InkWell(
-                      borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
-                      onTap: () => _showRepeatDialog(context, palette),
-                      child: _buildIconRow(
-                        icon: Icons.repeat,
-                        palette: palette,
-                        child: Row(
+                ),
+                const Divider(height: 1, thickness: 0.5),
+                // ── 3. Google Meet toggle ─────────────────────────────
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  child: Row(
+                    children: [
+                      Icon(Icons.videocam_outlined,
+                          size: 18,
+                          color: _addVideoConference
+                              ? palette.primary
+                              : palette.text.withValues(alpha: 0.4)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Expanded(child: Text(_recurrence.label, style: TextStyle(color: _recurrence.type == RecurrenceType.none ? palette.text.withValues(alpha: 0.4) : palette.primary))),
-                            Icon(Icons.chevron_right, size: 16, color: palette.text.withValues(alpha: 0.3)),
+                            Text('Google Meet',
+                                style: TextStyle(
+                                    color: palette.text,
+                                    fontWeight: FontWeight.w500)),
+                            if (_isEditing &&
+                                widget.existingEvent!.videoConferenceLink !=
+                                    null)
+                              Text(
+                                widget.existingEvent!.videoConferenceLink!,
+                                style: TextStyle(
+                                    color: palette.primary, fontSize: 11),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                           ],
                         ),
                       ),
-                    ),
-                  ],
-                ]),
-
-                // ── 4+. RSVP (editing existing events with other attendees only) ───────────────
-                if (_isEditing && _attendees.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  _buildRsvpSection(palette),
-                ],
-
-                const SizedBox(height: 16),
-
-                // ── Save/Cancel ───────────────────────────────────────────
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: palette.text,
-                          side: BorderSide(color: palette.text.withValues(alpha: 0.2)),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
+                      Switch(
+                        value: _addVideoConference,
+                        activeThumbColor: palette.primary,
+                        onChanged: (v) =>
+                            setState(() => _addVideoConference = v),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: palette.primary,
-                          foregroundColor: palette.background,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        onPressed: _isSaving || _titleController.text.trim().isEmpty ? null : _save,
-                        child: _isSaving
-                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                            : Text(_isEditing ? 'Save' : 'Add event', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const Divider(height: 1, thickness: 0.5),
+                // ── 3. Invitees field ──────────────────────────────────
+                _buildInviteesSection(palette),
+              ]),
+
+              const SizedBox(height: 8),
+
+              // ── Alarm + Color + Repeat ────────────────────────────────
+              _buildListSectionCard(palette, children: [
+                _buildIconRow(
+                  icon: Icons.notifications_outlined,
+                  palette: palette,
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<AlarmPreset?>(
+                      dropdownColor: palette.surface,
+                      style: TextStyle(color: palette.text),
+                      value: _alarmPreset,
+                      isExpanded: true,
+                      hint: Text('Don\'t notify',
+                          style: TextStyle(
+                              color: palette.text.withValues(alpha: 0.5))),
+                      items: const [
+                        DropdownMenuItem(
+                            value: null, child: Text('Don\'t notify')),
+                        DropdownMenuItem(
+                            value: AlarmPreset.light,
+                            child: Text('Light — notification')),
+                        DropdownMenuItem(
+                            value: AlarmPreset.medium,
+                            child: Text('Medium — full screen')),
+                        DropdownMenuItem(
+                            value: AlarmPreset.strong,
+                            child: Text('Strong — long sound')),
+                        DropdownMenuItem(
+                            value: AlarmPreset.constant,
+                            child: Text('Constant alert')),
+                      ],
+                      onChanged: (value) => setState(() {
+                        _alarmPreset = value;
+                        if (value != null && _selectedOffsets.isEmpty) {
+                          _selectedOffsets = {
+                            ReminderOffset.atTime,
+                            ReminderOffset.thirtyMinBefore
+                          };
+                        }
+                      }),
+                    ),
+                  ),
+                ),
+                if (_alarmPreset != null) ...[
+                  Padding(
+                    padding:
+                        const EdgeInsets.only(left: 40, right: 12, bottom: 10),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final offset in ReminderOffset.presets)
+                          FilterChip(
+                            label: Text(offset.label,
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: _selectedOffsets.contains(offset)
+                                        ? palette.background
+                                        : palette.text)),
+                            selected: _selectedOffsets.contains(offset),
+                            selectedColor: palette.primary,
+                            backgroundColor: palette.surface,
+                            side: BorderSide(
+                                color: palette.text.withValues(alpha: 0.15)),
+                            onSelected: (sel) => setState(() {
+                              if (sel) {
+                                _selectedOffsets.add(offset);
+                              } else {
+                                _selectedOffsets.remove(offset);
+                              }
+                            }),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (widget.existingEvent?.recurringEventId == null) ...[
+                  const Divider(height: 1, thickness: 0.5),
+                  InkWell(
+                    borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(12),
+                        bottomRight: Radius.circular(12)),
+                    onTap: () => _showRepeatDialog(context, palette),
+                    child: _buildIconRow(
+                      icon: Icons.repeat,
+                      palette: palette,
+                      child: Row(
+                        children: [
+                          Expanded(
+                              child: Text(_recurrence.label,
+                                  style: TextStyle(
+                                      color: _recurrence.type ==
+                                              RecurrenceType.none
+                                          ? palette.text.withValues(alpha: 0.4)
+                                          : palette.primary))),
+                          Icon(Icons.chevron_right,
+                              size: 16,
+                              color: palette.text.withValues(alpha: 0.3)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ]),
+
+              // ── 4+. RSVP (editing existing events with other attendees only) ───────────────
+              if (_isEditing && _attendees.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                _buildRsvpSection(palette),
               ],
-            ),
+
+              const SizedBox(height: 16),
+
+              // ── Save/Cancel ───────────────────────────────────────────
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: palette.text,
+                        side: BorderSide(
+                            color: palette.text.withValues(alpha: 0.2)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: palette.primary,
+                        foregroundColor: palette.background,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                      ),
+                      onPressed:
+                          _isSaving || _titleController.text.trim().isEmpty
+                              ? null
+                              : _save,
+                      child: _isSaving
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : Text(_isEditing ? 'Save' : 'Add event',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -809,20 +969,31 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
             padding: const EdgeInsets.fromLTRB(12, 8, 8, 0),
             child: Row(
               children: [
-                Icon(Icons.notes_outlined, size: 16, color: palette.text.withValues(alpha: 0.4)),
+                Icon(Icons.notes_outlined,
+                    size: 16, color: palette.text.withValues(alpha: 0.4)),
                 const SizedBox(width: 6),
-                Text('Notes', style: TextStyle(color: palette.text.withValues(alpha: 0.5), fontSize: 12)),
+                Text('Notes',
+                    style: TextStyle(
+                        color: palette.text.withValues(alpha: 0.5),
+                        fontSize: 12)),
                 // Overflow indicator
-                if (_notesController.text.length > _kGoogleDescriptionLimit) ...[
+                if (_notesController.text.length >
+                    _kGoogleDescriptionLimit) ...[
                   const SizedBox(width: 6),
                   Tooltip(
-                    message: 'Text over $_kGoogleDescriptionLimit chars is stored locally only (not synced to Google)',
+                    message:
+                        'Text over $_kGoogleDescriptionLimit chars is stored locally only (not synced to Google)',
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.cloud_off_outlined, size: 12, color: palette.text.withValues(alpha: 0.4)),
+                        Icon(Icons.cloud_off_outlined,
+                            size: 12,
+                            color: palette.text.withValues(alpha: 0.4)),
                         const SizedBox(width: 2),
-                        Text('overflow local', style: TextStyle(color: palette.text.withValues(alpha: 0.35), fontSize: 10)),
+                        Text('overflow local',
+                            style: TextStyle(
+                                color: palette.text.withValues(alpha: 0.35),
+                                fontSize: 10)),
                       ],
                     ),
                   ),
@@ -834,7 +1005,8 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                     onTap: () => _openLinkedNote(_linkedNote!),
                     child: Container(
                       margin: const EdgeInsets.only(right: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: palette.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
@@ -842,9 +1014,14 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.open_in_new, size: 11, color: palette.primary),
+                          Icon(Icons.open_in_new,
+                              size: 11, color: palette.primary),
                           const SizedBox(width: 4),
-                          Text('Open note', style: TextStyle(color: palette.primary, fontSize: 11, fontWeight: FontWeight.w600)),
+                          Text('Open note',
+                              style: TextStyle(
+                                  color: palette.primary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600)),
                         ],
                       ),
                     ),
@@ -863,7 +1040,8 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                     });
                   },
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
@@ -887,17 +1065,34 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                     });
                   },
                   child: _notesController.text.trim().isEmpty
-                      ? Text('No notes. Click to add.', style: TextStyle(color: palette.text.withValues(alpha: 0.3), fontStyle: FontStyle.italic, fontSize: 13))
+                      ? Text('No notes. Click to add.',
+                          style: TextStyle(
+                              color: palette.text.withValues(alpha: 0.3),
+                              fontStyle: FontStyle.italic,
+                              fontSize: 13))
                       : MarkdownBody(
                           data: _notesController.text,
                           softLineBreak: true,
                           styleSheet: MarkdownStyleSheet(
                             p: TextStyle(color: palette.text, fontSize: 13),
-                            h1: TextStyle(color: palette.text, fontSize: 18, fontWeight: FontWeight.bold),
-                            h2: TextStyle(color: palette.text, fontSize: 16, fontWeight: FontWeight.bold),
-                            strong: TextStyle(color: palette.text, fontWeight: FontWeight.bold),
-                            em: TextStyle(color: palette.text, fontStyle: FontStyle.italic),
-                            code: TextStyle(color: palette.primary, fontFamily: 'monospace', fontSize: 12),
+                            h1: TextStyle(
+                                color: palette.text,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold),
+                            h2: TextStyle(
+                                color: palette.text,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold),
+                            strong: TextStyle(
+                                color: palette.text,
+                                fontWeight: FontWeight.bold),
+                            em: TextStyle(
+                                color: palette.text,
+                                fontStyle: FontStyle.italic),
+                            code: TextStyle(
+                                color: palette.primary,
+                                fontFamily: 'monospace',
+                                fontSize: 12),
                           ),
                         ),
                 ),
@@ -922,7 +1117,8 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                 },
                 decoration: InputDecoration(
                   hintText: 'Add notes...',
-                  hintStyle: TextStyle(color: palette.text.withValues(alpha: 0.3), fontSize: 13),
+                  hintStyle: TextStyle(
+                      color: palette.text.withValues(alpha: 0.3), fontSize: 13),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
                 ),
@@ -933,7 +1129,8 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: Text(
               '✨ Supports Markdown format. Syncs with Google Calendar (limit: 8,000 chars. Overflow stored locally only).',
-              style: TextStyle(color: palette.text.withValues(alpha: 0.45), fontSize: 10),
+              style: TextStyle(
+                  color: palette.text.withValues(alpha: 0.45), fontSize: 10),
             ),
           ),
         ],
@@ -951,7 +1148,8 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
         children: [
           Row(
             children: [
-              Icon(Icons.people_outline, size: 18, color: palette.text.withValues(alpha: 0.4)),
+              Icon(Icons.people_outline,
+                  size: 18, color: palette.text.withValues(alpha: 0.4)),
               const SizedBox(width: 12),
               Expanded(
                 child: TextField(
@@ -960,7 +1158,9 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     hintText: 'Add guests by email...',
-                    hintStyle: TextStyle(color: palette.text.withValues(alpha: 0.4), fontSize: 13),
+                    hintStyle: TextStyle(
+                        color: palette.text.withValues(alpha: 0.4),
+                        fontSize: 13),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.zero,
                     suffixIcon: IconButton(
@@ -984,12 +1184,18 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                     avatar: CircleAvatar(
                       radius: 10,
                       backgroundColor: palette.primary.withValues(alpha: 0.2),
-                      child: Text(email[0].toUpperCase(), style: TextStyle(fontSize: 10, color: palette.primary, fontWeight: FontWeight.bold)),
+                      child: Text(email[0].toUpperCase(),
+                          style: TextStyle(
+                              fontSize: 10,
+                              color: palette.primary,
+                              fontWeight: FontWeight.bold)),
                     ),
-                    label: Text(email, style: TextStyle(fontSize: 12, color: palette.text)),
+                    label: Text(email,
+                        style: TextStyle(fontSize: 12, color: palette.text)),
                     backgroundColor: palette.text.withValues(alpha: 0.06),
                     side: BorderSide.none,
-                    deleteIcon: Icon(Icons.close, size: 12, color: palette.text.withValues(alpha: 0.5)),
+                    deleteIcon: Icon(Icons.close,
+                        size: 12, color: palette.text.withValues(alpha: 0.5)),
                     onDeleted: () => setState(() => _attendees.remove(email)),
                   ),
               ],
@@ -999,9 +1205,17 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
             Row(
               children: [
                 const SizedBox(width: 30),
-                Icon(Icons.send_outlined, size: 14, color: _sendInvites ? palette.primary : palette.text.withValues(alpha: 0.4)),
+                Icon(Icons.send_outlined,
+                    size: 14,
+                    color: _sendInvites
+                        ? palette.primary
+                        : palette.text.withValues(alpha: 0.4)),
                 const SizedBox(width: 8),
-                Expanded(child: Text('Send invitation emails', style: TextStyle(color: palette.text.withValues(alpha: 0.7), fontSize: 13))),
+                Expanded(
+                    child: Text('Send invitation emails',
+                        style: TextStyle(
+                            color: palette.text.withValues(alpha: 0.7),
+                            fontSize: 13))),
                 Switch(
                   value: _sendInvites,
                   activeThumbColor: palette.primary,
@@ -1045,13 +1259,18 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(
           children: [
-            Icon(Icons.how_to_reg_outlined, size: 18, color: palette.text.withValues(alpha: 0.4)),
+            Icon(Icons.how_to_reg_outlined,
+                size: 18, color: palette.text.withValues(alpha: 0.4)),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Attending?', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500, fontSize: 13)),
+                  Text('Attending?',
+                      style: TextStyle(
+                          color: palette.text,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 13)),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 6,
@@ -1085,31 +1304,55 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
     required ValueChanged<DateTime> onDateChanged,
     required ValueChanged<TimeOfDay> onTimeChanged,
   }) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final weekday = days[(value.weekday - 1).clamp(0, 6)];
     final dateStr = '$weekday, ${months[value.month - 1]} ${value.day}';
-    final timeStr = '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+    final timeStr =
+        '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          SizedBox(width: 44, child: Text(label, style: TextStyle(color: palette.text.withValues(alpha: 0.5), fontSize: 12))),
+          SizedBox(
+              width: 44,
+              child: Text(label,
+                  style: TextStyle(
+                      color: palette.text.withValues(alpha: 0.5),
+                      fontSize: 12))),
           InkWell(
             borderRadius: BorderRadius.circular(8),
             onTap: () async {
               final date = await showDatePicker(
                 context: context,
                 initialDate: value,
-                firstDate: DateTime.now().subtract(const Duration(days: 365 * 2)),
+                firstDate:
+                    DateTime.now().subtract(const Duration(days: 365 * 2)),
                 lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
               );
               if (date != null) onDateChanged(date);
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              child: Text(dateStr, style: TextStyle(color: palette.text, fontWeight: FontWeight.w600, fontSize: 13)),
+              child: Text(dateStr,
+                  style: TextStyle(
+                      color: palette.text,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13)),
             ),
           ),
           if (!_isAllDay) ...[
@@ -1129,7 +1372,11 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                   color: palette.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(timeStr, style: TextStyle(color: palette.primary, fontWeight: FontWeight.w600, fontSize: 13)),
+                child: Text(timeStr,
+                    style: TextStyle(
+                        color: palette.primary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13)),
               ),
             ),
           ],
@@ -1140,34 +1387,44 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
 
   // ── Repeat dialog ─────────────────────────────────────────────────────────
 
-  Future<void> _showRepeatDialog(BuildContext context, AppPalette palette) async {
+  Future<void> _showRepeatDialog(
+      BuildContext context, AppPalette palette) async {
     final result = await showDialog<RecurrenceConfig>(
       context: context,
-      builder: (ctx) => _RepeatDialog(initial: _recurrence, startDate: _start, palette: palette),
+      builder: (ctx) => _RepeatDialog(
+          initial: _recurrence, startDate: _start, palette: palette),
     );
     if (result != null) setState(() => _recurrence = result);
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  Widget _buildListSectionCard(AppPalette palette, {required List<Widget> children}) {
+  Widget _buildListSectionCard(AppPalette palette,
+      {required List<Widget> children}) {
     return Container(
       decoration: BoxDecoration(
         color: palette.text.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: palette.text.withValues(alpha: 0.08)),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+      child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
     );
   }
 
-  Widget _buildIconRow({required IconData icon, required AppPalette palette, required Widget child, Color? iconColor}) {
+  Widget _buildIconRow(
+      {required IconData icon,
+      required AppPalette palette,
+      required Widget child,
+      Color? iconColor}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, size: 18, color: iconColor ?? palette.text.withValues(alpha: 0.4)),
+          Icon(icon,
+              size: 18,
+              color: iconColor ?? palette.text.withValues(alpha: 0.4)),
           const SizedBox(width: 12),
           Expanded(child: child),
         ],
@@ -1208,7 +1465,12 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
             color: palette.surface.withValues(alpha: 0.97),
             borderRadius: BorderRadius.circular(28),
             border: Border.all(color: palette.text.withValues(alpha: 0.12)),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 40, offset: const Offset(0, 20))],
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 40,
+                  offset: const Offset(0, 20))
+            ],
           ),
           child: Material(
             color: Colors.transparent,
@@ -1222,17 +1484,24 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                       Expanded(
                         child: TextField(
                           controller: titleCtrl,
-                          style: TextStyle(color: palette.text, fontWeight: FontWeight.bold, fontSize: 20),
+                          style: TextStyle(
+                              color: palette.text,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20),
                           decoration: InputDecoration(
                             hintText: 'Note title',
-                            hintStyle: TextStyle(color: palette.text.withValues(alpha: 0.4), fontSize: 20, fontWeight: FontWeight.bold),
+                            hintStyle: TextStyle(
+                                color: palette.text.withValues(alpha: 0.4),
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold),
                             border: InputBorder.none,
                             contentPadding: EdgeInsets.zero,
                           ),
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.close, color: palette.text.withValues(alpha: 0.5)),
+                        icon: Icon(Icons.close,
+                            color: palette.text.withValues(alpha: 0.5)),
                         onPressed: () => Navigator.of(ctx).pop(),
                       ),
                     ],
@@ -1243,10 +1512,13 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                       controller: contentCtrl,
                       maxLines: null,
                       expands: true,
-                      style: TextStyle(color: palette.text, fontSize: 14, height: 1.5),
+                      style: TextStyle(
+                          color: palette.text, fontSize: 14, height: 1.5),
                       decoration: InputDecoration(
                         hintText: 'Write your note here...',
-                        hintStyle: TextStyle(color: palette.text.withValues(alpha: 0.35), fontSize: 14),
+                        hintStyle: TextStyle(
+                            color: palette.text.withValues(alpha: 0.35),
+                            fontSize: 14),
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.zero,
                       ),
@@ -1257,7 +1529,8 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           color: palette.primary.withValues(alpha: 0.10),
                           borderRadius: BorderRadius.circular(10),
@@ -1265,11 +1538,15 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.event_outlined, size: 13, color: palette.primary),
+                            Icon(Icons.event_outlined,
+                                size: 13, color: palette.primary),
                             const SizedBox(width: 5),
                             Text(
                               widget.existingEvent?.title ?? 'Linked event',
-                              style: TextStyle(color: palette.primary, fontSize: 12, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                  color: palette.primary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -1279,29 +1556,37 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
                       const Spacer(),
                       TextButton(
                         onPressed: () => Navigator.of(ctx).pop(),
-                        child: Text('Cancel', style: TextStyle(color: palette.text.withValues(alpha: 0.6))),
+                        child: Text('Cancel',
+                            style: TextStyle(
+                                color: palette.text.withValues(alpha: 0.6))),
                       ),
                       const SizedBox(width: 6),
                       FilledButton(
                         style: FilledButton.styleFrom(
                           backgroundColor: palette.primary,
                           foregroundColor: palette.background,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: () async {
-                          await ref.read(notesRepositoryProvider).updateNote(NotesCompanion(
-                            id: Value(note.id),
-                            title: Value(titleCtrl.text.trim().isEmpty ? '(Untitled)' : titleCtrl.text.trim()),
-                            content: Value(contentCtrl.text.trim()),
-                            eventId: Value(note.eventId),
-                            linkedCalendarId: Value(note.linkedCalendarId),
-                            updatedAt: Value(DateTime.now()),
-                          ));
+                          await ref
+                              .read(notesRepositoryProvider)
+                              .updateNote(NotesCompanion(
+                                id: Value(note.id),
+                                title: Value(titleCtrl.text.trim().isEmpty
+                                    ? '(Untitled)'
+                                    : titleCtrl.text.trim()),
+                                content: Value(contentCtrl.text.trim()),
+                                eventId: Value(note.eventId),
+                                linkedCalendarId: Value(note.linkedCalendarId),
+                                updatedAt: Value(DateTime.now()),
+                              ));
                           // Sync the notes controller in the event form too
                           _notesController.text = contentCtrl.text.trim();
                           if (ctx.mounted) Navigator.of(ctx).pop();
                         },
-                        child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: const Text('Save',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -1321,13 +1606,15 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
   // ── Save ──────────────────────────────────────────────────────────────────
 
   Future<void> _save() async {
-    final hasAttendees = _attendees.isNotEmpty || (widget.existingEvent?.attendees.isNotEmpty ?? false);
+    final hasAttendees = _attendees.isNotEmpty ||
+        (widget.existingEvent?.attendees.isNotEmpty ?? false);
     if (hasAttendees) {
       final sendEmails = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Send emails to attendees?'),
-          content: const Text('Would you like to send/re-send email updates or invitations to the other attendees?'),
+          content: const Text(
+              'Would you like to send/re-send email updates or invitations to the other attendees?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -1367,10 +1654,14 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
       end: _end,
       isAllDay: _isAllDay,
       colorId: _colorId,
-      reminderMinutes: _alarmPreset != null ? _selectedOffsets.map((o) => o.beforeDue.inMinutes).toList() : const [],
+      reminderMinutes: _alarmPreset != null
+          ? _selectedOffsets.map((o) => o.beforeDue.inMinutes).toList()
+          : const [],
       attendees: _attendees,
       hasVideoConference: _addVideoConference,
-      recurrence: _recurrence.type == RecurrenceType.none ? null : _recurrence.toRruleList(_start),
+      recurrence: _recurrence.type == RecurrenceType.none
+          ? null
+          : _recurrence.toRruleList(_start),
       recurringEventId: widget.existingEvent?.recurringEventId,
       originalStartTime: widget.existingEvent?.originalStartTime,
     );
@@ -1381,7 +1672,8 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
       }
       String savedId;
       if (_isEditing) {
-        final updated = await repo.updateEvent(event,
+        final updated = await repo.updateEvent(
+          event,
           preset: _alarmPreset,
           sendInvites: _sendInvites,
           addVideoConference: _addVideoConference,
@@ -1390,10 +1682,12 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
 
         // RSVP if changed
         if (_rsvpStatus != widget.existingEvent!.selfResponseStatus) {
-          await repo.respondToEvent(event, _rsvpStatus, sendInvites: _sendInvites);
+          await repo.respondToEvent(event, _rsvpStatus,
+              sendInvites: _sendInvites);
         }
       } else {
-        final created = await repo.createEvent(event,
+        final created = await repo.createEvent(
+          event,
           preset: _alarmPreset,
           sendInvites: _sendInvites,
           addVideoConference: _addVideoConference,
@@ -1402,11 +1696,14 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
       }
 
       // Save/update local note with FULL content (including overflow beyond Google limit)
-      final savedCalendarId = event.calendarId.isEmpty ? 'primary' : event.calendarId;
+      final savedCalendarId =
+          event.calendarId.isEmpty ? 'primary' : event.calendarId;
       if (fullNotes.isNotEmpty && savedId.isNotEmpty) {
         final notesRepo = ref.read(notesRepositoryProvider);
         final existing = await notesRepo.watchNotesByEventId(savedId).first;
-        final eventTitle = _titleController.text.trim().isEmpty ? 'Event note' : _titleController.text.trim();
+        final eventTitle = _titleController.text.trim().isEmpty
+            ? 'Event note'
+            : _titleController.text.trim();
         if (existing.isEmpty) {
           await notesRepo.createNote(NotesCompanion.insert(
             title: eventTitle,
@@ -1431,7 +1728,8 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
         await repo.assignTag(savedId, tag.id);
       }
 
-      ref.invalidate(monthEventsProvider(DateTime(_start.year, _start.month, 1)));
+      ref.invalidate(
+          monthEventsProvider(DateTime(_start.year, _start.month, 1)));
       ref.invalidate(monthEventsProvider(DateTime(_end.year, _end.month, 1)));
       await SessionRestore.clearDraftValues('event', widget.existingEvent?.id);
       if (mounted) Navigator.of(context).pop();
@@ -1441,7 +1739,8 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
         if (e is CalendarNotConnectedException) {
           msg = 'Calendar is not connected. Please log in in Settings.';
         } else if (e is CalendarPermissionDeniedException) {
-          msg = 'Permission denied (403): This calendar is read-only or you don\'t have edit access.';
+          msg =
+              'Permission denied (403): This calendar is read-only or you don\'t have edit access.';
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg)),
@@ -1458,7 +1757,12 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _RsvpChip extends StatelessWidget {
-  const _RsvpChip({required this.label, required this.icon, required this.selected, required this.palette, required this.onTap});
+  const _RsvpChip(
+      {required this.label,
+      required this.icon,
+      required this.selected,
+      required this.palette,
+      required this.onTap});
 
   final String label;
   final IconData icon;
@@ -1474,16 +1778,28 @@ class _RsvpChip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? palette.primary : palette.text.withValues(alpha: 0.06),
+          color:
+              selected ? palette.primary : palette.text.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? palette.primary : palette.text.withValues(alpha: 0.15)),
+          border: Border.all(
+              color: selected
+                  ? palette.primary
+                  : palette.text.withValues(alpha: 0.15)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: selected ? palette.background : palette.text.withValues(alpha: 0.6)),
+            Icon(icon,
+                size: 14,
+                color: selected
+                    ? palette.background
+                    : palette.text.withValues(alpha: 0.6)),
             const SizedBox(width: 5),
-            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? palette.background : palette.text)),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: selected ? palette.background : palette.text)),
           ],
         ),
       ),
@@ -1496,7 +1812,10 @@ class _RsvpChip extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ColorPickerButton extends StatelessWidget {
-  const _ColorPickerButton({required this.selectedColor, required this.palette, required this.onChanged});
+  const _ColorPickerButton(
+      {required this.selectedColor,
+      required this.palette,
+      required this.onChanged});
 
   final GoogleEventColor? selectedColor;
   final AppPalette palette;
@@ -1504,7 +1823,8 @@ class _ColorPickerButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dotColor = selectedColor != null ? Color(selectedColor!.hex) : palette.primary;
+    final dotColor =
+        selectedColor != null ? Color(selectedColor!.hex) : palette.primary;
     return PopupMenuButton<String?>(
       color: palette.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -1513,12 +1833,20 @@ class _ColorPickerButton extends StatelessWidget {
       itemBuilder: (ctx) => [
         PopupMenuItem<String?>(
           value: null,
-          child: _ColorMenuItem(color: palette.primary, label: 'Calendar default', selected: selectedColor == null, palette: palette),
+          child: _ColorMenuItem(
+              color: palette.primary,
+              label: 'Calendar default',
+              selected: selectedColor == null,
+              palette: palette),
         ),
         for (final c in GoogleEventColor.options)
           PopupMenuItem<String?>(
             value: c.id,
-            child: _ColorMenuItem(color: Color(c.hex), label: c.label, selected: selectedColor?.id == c.id, palette: palette),
+            child: _ColorMenuItem(
+                color: Color(c.hex),
+                label: c.label,
+                selected: selectedColor?.id == c.id,
+                palette: palette),
           ),
       ],
       onSelected: onChanged,
@@ -1534,7 +1862,11 @@ class _ColorPickerButton extends StatelessWidget {
           children: [
             CircleAvatar(radius: 6, backgroundColor: dotColor),
             const SizedBox(width: 5),
-            Text(selectedColor?.label ?? 'Color', style: TextStyle(color: dotColor, fontSize: 12, fontWeight: FontWeight.w600)),
+            Text(selectedColor?.label ?? 'Color',
+                style: TextStyle(
+                    color: dotColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600)),
             const SizedBox(width: 3),
             Icon(Icons.expand_more, color: dotColor, size: 14),
           ],
@@ -1545,7 +1877,11 @@ class _ColorPickerButton extends StatelessWidget {
 }
 
 class _ColorMenuItem extends StatelessWidget {
-  const _ColorMenuItem({required this.color, required this.label, required this.selected, required this.palette});
+  const _ColorMenuItem(
+      {required this.color,
+      required this.label,
+      required this.selected,
+      required this.palette});
 
   final Color color;
   final String label;
@@ -1556,7 +1892,12 @@ class _ColorMenuItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        CircleAvatar(radius: 10, backgroundColor: color, child: selected ? const Icon(Icons.check, color: Colors.white, size: 12) : null),
+        CircleAvatar(
+            radius: 10,
+            backgroundColor: color,
+            child: selected
+                ? const Icon(Icons.check, color: Colors.white, size: 12)
+                : null),
         const SizedBox(width: 12),
         Text(label, style: TextStyle(color: palette.text, fontSize: 14)),
       ],
@@ -1569,7 +1910,8 @@ class _ColorMenuItem extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _RepeatDialog extends StatefulWidget {
-  const _RepeatDialog({required this.initial, required this.startDate, required this.palette});
+  const _RepeatDialog(
+      {required this.initial, required this.startDate, required this.palette});
 
   final RecurrenceConfig initial;
   final DateTime startDate;
@@ -1581,7 +1923,8 @@ class _RepeatDialog extends StatefulWidget {
 
 class _RepeatDialogState extends State<_RepeatDialog> {
   late RecurrenceConfig _config;
-  late final _timesController = TextEditingController(text: widget.initial.repeatTimes.toString());
+  late final _timesController =
+      TextEditingController(text: widget.initial.repeatTimes.toString());
 
   @override
   void initState() {
@@ -1598,15 +1941,28 @@ class _RepeatDialogState extends State<_RepeatDialog> {
   String _ordinal(int n) {
     if (n >= 11 && n <= 13) return '${n}th';
     switch (n % 10) {
-      case 1: return '${n}st';
-      case 2: return '${n}nd';
-      case 3: return '${n}rd';
-      default: return '${n}th';
+      case 1:
+        return '${n}st';
+      case 2:
+        return '${n}nd';
+      case 3:
+        return '${n}rd';
+      default:
+        return '${n}th';
     }
   }
 
-  String _weekdayName(int wd) => ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][wd - 1];
-  String _nthWeekdayOfMonth(DateTime d) => '${_ordinal(((d.day - 1) ~/ 7) + 1)} ${_weekdayName(d.weekday)}';
+  String _weekdayName(int wd) => [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday'
+      ][wd - 1];
+  String _nthWeekdayOfMonth(DateTime d) =>
+      '${_ordinal(((d.day - 1) ~/ 7) + 1)} ${_weekdayName(d.weekday)}';
 
   Widget _radioOption(RecurrenceType type, String label, {Widget? extra}) {
     final p = widget.palette;
@@ -1619,7 +1975,12 @@ class _RepeatDialogState extends State<_RepeatDialog> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
-                Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked, color: selected ? p.primary : p.text.withValues(alpha: 0.4), size: 20),
+                Icon(
+                    selected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: selected ? p.primary : p.text.withValues(alpha: 0.4),
+                    size: 20),
                 const SizedBox(width: 14),
                 Text(label, style: TextStyle(color: p.text, fontSize: 15)),
               ],
@@ -1627,8 +1988,14 @@ class _RepeatDialogState extends State<_RepeatDialog> {
           ),
         ),
         if (selected && extra != null)
-          Padding(padding: const EdgeInsets.only(left: 50, right: 16, bottom: 12), child: extra),
-        Divider(height: 1, thickness: 0.5, indent: 50, color: p.text.withValues(alpha: 0.1)),
+          Padding(
+              padding: const EdgeInsets.only(left: 50, right: 16, bottom: 12),
+              child: extra),
+        Divider(
+            height: 1,
+            thickness: 0.5,
+            indent: 50,
+            color: p.text.withValues(alpha: 0.1)),
       ],
     );
   }
@@ -1645,7 +2012,12 @@ class _RepeatDialogState extends State<_RepeatDialog> {
           children: [
             Row(
               children: [
-                Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked, color: selected ? p.primary : p.text.withValues(alpha: 0.4), size: 20),
+                Icon(
+                    selected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: selected ? p.primary : p.text.withValues(alpha: 0.4),
+                    size: 20),
                 const SizedBox(width: 14),
                 Text(label, style: TextStyle(color: p.text, fontSize: 15)),
               ],
@@ -1668,8 +2040,10 @@ class _RepeatDialogState extends State<_RepeatDialog> {
     Widget? monthExtra;
     if (_config.type == RecurrenceType.monthly) {
       monthExtra = Wrap(spacing: 8, children: [
-        _monthModeChip('On the ${_ordinal(d.day)}', MonthlyRepeatMode.dayOfMonth),
-        _monthModeChip('On the ${_nthWeekdayOfMonth(d)}', MonthlyRepeatMode.dayOfWeek),
+        _monthModeChip(
+            'On the ${_ordinal(d.day)}', MonthlyRepeatMode.dayOfMonth),
+        _monthModeChip(
+            'On the ${_nthWeekdayOfMonth(d)}', MonthlyRepeatMode.dayOfWeek),
         _monthModeChip('Select dates', MonthlyRepeatMode.selectDates),
       ]);
     }
@@ -1687,16 +2061,24 @@ class _RepeatDialogState extends State<_RepeatDialog> {
               padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
               child: Row(
                 children: [
-                  IconButton(icon: Icon(Icons.arrow_back, color: p.text), onPressed: () => Navigator.pop(context)),
+                  IconButton(
+                      icon: Icon(Icons.arrow_back, color: p.text),
+                      onPressed: () => Navigator.pop(context)),
                   const SizedBox(width: 4),
-                  Text('Repeat', style: TextStyle(color: p.text, fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text('Repeat',
+                      style: TextStyle(
+                          color: p.text,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
             if (_config.type != RecurrenceType.none)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-                child: Text(_buildSummary(d), style: TextStyle(color: p.text.withValues(alpha: 0.6), fontSize: 13)),
+                child: Text(_buildSummary(d),
+                    style: TextStyle(
+                        color: p.text.withValues(alpha: 0.6), fontSize: 13)),
               ),
             const SizedBox(height: 4),
             Flexible(
@@ -1706,55 +2088,87 @@ class _RepeatDialogState extends State<_RepeatDialog> {
                   children: [
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(color: p.text.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(14)),
+                      decoration: BoxDecoration(
+                          color: p.text.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(14)),
                       child: Column(
                         children: [
                           _radioOption(RecurrenceType.none, 'Don\'t repeat'),
-                          _radioOption(RecurrenceType.daily, 'Every ${_config.type == RecurrenceType.daily ? _config.interval : 1} day'),
-                          _radioOption(RecurrenceType.weekly, 'Every ${_config.type == RecurrenceType.weekly ? _config.interval : 1} week'),
-                          _radioOption(RecurrenceType.monthly, 'Every ${_config.type == RecurrenceType.monthly ? _config.interval : 1} month', extra: monthExtra),
-                          _radioOption(RecurrenceType.yearly, 'Every ${_config.type == RecurrenceType.yearly ? _config.interval : 1} year'),
+                          _radioOption(RecurrenceType.daily,
+                              'Every ${_config.type == RecurrenceType.daily ? _config.interval : 1} day'),
+                          _radioOption(RecurrenceType.weekly,
+                              'Every ${_config.type == RecurrenceType.weekly ? _config.interval : 1} week'),
+                          _radioOption(RecurrenceType.monthly,
+                              'Every ${_config.type == RecurrenceType.monthly ? _config.interval : 1} month',
+                              extra: monthExtra),
+                          _radioOption(RecurrenceType.yearly,
+                              'Every ${_config.type == RecurrenceType.yearly ? _config.interval : 1} year'),
                         ],
                       ),
                     ),
                     if (_config.type != RecurrenceType.none) ...[
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                        child: Text('Duration', style: TextStyle(color: p.text.withValues(alpha: 0.5), fontSize: 13, fontWeight: FontWeight.w600)),
+                        child: Text('Duration',
+                            style: TextStyle(
+                                color: p.text.withValues(alpha: 0.5),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600)),
                       ),
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: BoxDecoration(color: p.text.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(14)),
+                        decoration: BoxDecoration(
+                            color: p.text.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(14)),
                         child: Column(
                           children: [
                             _durationRadio(RepeatDuration.forever, 'Forever'),
-                            Divider(height: 1, thickness: 0.5, indent: 50, color: p.text.withValues(alpha: 0.1)),
+                            Divider(
+                                height: 1,
+                                thickness: 0.5,
+                                indent: 50,
+                                color: p.text.withValues(alpha: 0.1)),
                             _durationRadio(
                               RepeatDuration.specificTimes,
                               'Specific number of times',
-                              extra: _config.duration == RepeatDuration.specificTimes
+                              extra: _config.duration ==
+                                      RepeatDuration.specificTimes
                                   ? SizedBox(
                                       width: 100,
                                       child: TextField(
                                         controller: _timesController,
                                         keyboardType: TextInputType.number,
-                                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.digitsOnly
+                                        ],
                                         style: TextStyle(color: p.text),
                                         decoration: InputDecoration(
                                           hintText: '10',
-                                          suffix: Text(' times', style: TextStyle(color: p.text.withValues(alpha: 0.5))),
+                                          suffix: Text(' times',
+                                              style: TextStyle(
+                                                  color: p.text
+                                                      .withValues(alpha: 0.5))),
                                           isDense: true,
-                                          border: UnderlineInputBorder(borderSide: BorderSide(color: p.primary)),
+                                          border: UnderlineInputBorder(
+                                              borderSide:
+                                                  BorderSide(color: p.primary)),
                                         ),
                                         onChanged: (v) {
                                           final n = int.tryParse(v);
-                                          if (n != null && n > 0) _config = _config.copyWith(repeatTimes: n);
+                                          if (n != null && n > 0) {
+                                            _config = _config.copyWith(
+                                                repeatTimes: n);
+                                          }
                                         },
                                       ),
                                     )
                                   : null,
                             ),
-                            Divider(height: 1, thickness: 0.5, indent: 50, color: p.text.withValues(alpha: 0.1)),
+                            Divider(
+                                height: 1,
+                                thickness: 0.5,
+                                indent: 50,
+                                color: p.text.withValues(alpha: 0.1)),
                             _durationRadio(
                               RepeatDuration.until,
                               'Until',
@@ -1763,20 +2177,34 @@ class _RepeatDialogState extends State<_RepeatDialog> {
                                       onTap: () async {
                                         final date = await showDatePicker(
                                           context: context,
-                                          initialDate: _config.untilDate ?? DateTime.now().add(const Duration(days: 30)),
+                                          initialDate: _config.untilDate ??
+                                              DateTime.now().add(
+                                                  const Duration(days: 30)),
                                           firstDate: DateTime.now(),
-                                          lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+                                          lastDate: DateTime.now().add(
+                                              const Duration(days: 365 * 5)),
                                         );
-                                        if (date != null) setState(() => _config = _config.copyWith(untilDate: date));
+                                        if (date != null) {
+                                          setState(() => _config = _config
+                                              .copyWith(untilDate: date));
+                                        }
                                       },
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                        decoration: BoxDecoration(color: p.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 5),
+                                        decoration: BoxDecoration(
+                                            color: p.primary
+                                                .withValues(alpha: 0.12),
+                                            borderRadius:
+                                                BorderRadius.circular(8)),
                                         child: Text(
                                           _config.untilDate != null
-                                              ? '${_config.untilDate!.year}-${_config.untilDate!.month.toString().padLeft(2,'0')}-${_config.untilDate!.day.toString().padLeft(2,'0')}'
+                                              ? '${_config.untilDate!.year}-${_config.untilDate!.month.toString().padLeft(2, '0')}-${_config.untilDate!.day.toString().padLeft(2, '0')}'
                                               : 'Pick a date',
-                                          style: TextStyle(color: p.primary, fontWeight: FontWeight.w600, fontSize: 13),
+                                          style: TextStyle(
+                                              color: p.primary,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13),
                                         ),
                                       ),
                                     )
@@ -1798,10 +2226,12 @@ class _RepeatDialogState extends State<_RepeatDialog> {
                   backgroundColor: p.primary,
                   foregroundColor: p.background,
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                 ),
                 onPressed: () => Navigator.pop(context, _config),
-                child: const Text('Done', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text('Done',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -1814,23 +2244,36 @@ class _RepeatDialogState extends State<_RepeatDialog> {
     final p = widget.palette;
     final selected = _config.monthlyMode == mode;
     return ActionChip(
-      label: Text(label, style: TextStyle(fontSize: 12, color: selected ? p.background : p.text, fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
+      label: Text(label,
+          style: TextStyle(
+              fontSize: 12,
+              color: selected ? p.background : p.text,
+              fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
       backgroundColor: selected ? p.primary : p.text.withValues(alpha: 0.08),
       side: BorderSide.none,
-      onPressed: () => setState(() => _config = _config.copyWith(monthlyMode: mode)),
+      onPressed: () =>
+          setState(() => _config = _config.copyWith(monthlyMode: mode)),
     );
   }
 
   String _buildSummary(DateTime d) {
     switch (_config.type) {
-      case RecurrenceType.daily: return 'This event will repeat every ${_config.interval} day${_config.interval == 1 ? '' : 's'}.';
-      case RecurrenceType.weekly: return 'This event will repeat every ${_config.interval} week${_config.interval == 1 ? '' : 's'}.';
+      case RecurrenceType.daily:
+        return 'This event will repeat every ${_config.interval} day${_config.interval == 1 ? '' : 's'}.';
+      case RecurrenceType.weekly:
+        return 'This event will repeat every ${_config.interval} week${_config.interval == 1 ? '' : 's'}.';
       case RecurrenceType.monthly:
-        if (_config.monthlyMode == MonthlyRepeatMode.dayOfMonth) return 'This event will repeat on the ${_ordinal(d.day)} of every month.';
-        if (_config.monthlyMode == MonthlyRepeatMode.dayOfWeek) return 'This event will repeat on the ${_nthWeekdayOfMonth(d)} of every month.';
+        if (_config.monthlyMode == MonthlyRepeatMode.dayOfMonth) {
+          return 'This event will repeat on the ${_ordinal(d.day)} of every month.';
+        }
+        if (_config.monthlyMode == MonthlyRepeatMode.dayOfWeek) {
+          return 'This event will repeat on the ${_nthWeekdayOfMonth(d)} of every month.';
+        }
         return 'This event will repeat on selected dates every month.';
-      case RecurrenceType.yearly: return 'This event will repeat every year.';
-      case RecurrenceType.none: return '';
+      case RecurrenceType.yearly:
+        return 'This event will repeat every year.';
+      case RecurrenceType.none:
+        return '';
     }
   }
 }

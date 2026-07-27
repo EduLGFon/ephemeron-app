@@ -122,14 +122,14 @@ class CalendarMonthGridView extends ConsumerWidget {
       final eLocal = e.end.toLocal();
       final eventDay = DateTime(sLocal.year, sLocal.month, sLocal.day);
       final targetDay = DateTime(day.year, day.month, day.day);
-      
+
       if (e.isAllDay) {
         // Multi-day all-day event checks
         final startZero = DateTime(sLocal.year, sLocal.month, sLocal.day);
         final endZero = DateTime(eLocal.year, eLocal.month, eLocal.day);
         return !targetDay.isBefore(startZero) && targetDay.isBefore(endZero);
       }
-      
+
       return eventDay == targetDay;
     }).toList();
 
@@ -147,22 +147,33 @@ class CalendarMonthGridView extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () {
-        ref.read(selectedDayProvider.notifier).setDay(DateTime(day.year, day.month, day.day));
+        ref
+            .read(selectedDayProvider.notifier)
+            .setDay(DateTime(day.year, day.month, day.day));
       },
       onDoubleTap: () {
-        ref.read(selectedDayProvider.notifier).setDay(DateTime(day.year, day.month, day.day));
-        ref.read(calendarViewProvider.notifier).setView(CalendarView.dailyTimeline);
+        ref
+            .read(selectedDayProvider.notifier)
+            .setDay(DateTime(day.year, day.month, day.day));
+        ref
+            .read(calendarViewProvider.notifier)
+            .setView(CalendarView.dailyTimeline);
       },
       child: Container(
         height: height,
         decoration: BoxDecoration(
           border: Border(
-            top: BorderSide(color: palette.text.withValues(alpha: 0.08), width: 0.5),
-            left: BorderSide(color: palette.text.withValues(alpha: 0.08), width: 0.5),
-            right: day.weekday == startDayOfWeek - 1 || (startDayOfWeek == 1 && day.weekday == 7)
-                ? BorderSide(color: palette.text.withValues(alpha: 0.08), width: 0.5)
+            top: BorderSide(
+                color: palette.text.withValues(alpha: 0.08), width: 0.5),
+            left: BorderSide(
+                color: palette.text.withValues(alpha: 0.08), width: 0.5),
+            right: day.weekday == startDayOfWeek - 1 ||
+                    (startDayOfWeek == 1 && day.weekday == 7)
+                ? BorderSide(
+                    color: palette.text.withValues(alpha: 0.08), width: 0.5)
                 : BorderSide.none,
-            bottom: BorderSide(color: palette.text.withValues(alpha: 0.08), width: 0.5),
+            bottom: BorderSide(
+                color: palette.text.withValues(alpha: 0.08), width: 0.5),
           ),
           color: isSelected
               ? palette.primary.withValues(alpha: 0.05)
@@ -199,7 +210,8 @@ class CalendarMonthGridView extends ConsumerWidget {
                               ? palette.text.withValues(alpha: 0.8)
                               : palette.text.withValues(alpha: 0.3),
                           fontSize: 11,
-                          fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                          fontWeight:
+                              isToday ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
               ),
@@ -215,7 +227,8 @@ class CalendarMonthGridView extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     if (showMore && index == displayCount) {
                       return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 2, vertical: 1),
                         child: Text(
                           '+${dayEvents.length - displayCount} more',
                           style: TextStyle(
@@ -226,7 +239,8 @@ class CalendarMonthGridView extends ConsumerWidget {
                         ),
                       );
                     }
-                    return _buildEventItem(context, ref, dayEvents[index], palette);
+                    return _buildEventItem(
+                        context, ref, dayEvents[index], palette);
                   },
                 ),
               ),
@@ -350,7 +364,8 @@ class CalendarMonthGridView extends ConsumerWidget {
     return Color(match.hex);
   }
 
-  void _onEventTapped(BuildContext context, WidgetRef ref, CalendarEvent event) async {
+  void _onEventTapped(
+      BuildContext context, WidgetRef ref, CalendarEvent event) async {
     if (event.id.startsWith('task:')) {
       final taskId = event.id.substring(5);
       final task = await ref.read(taskRepositoryProvider).getTask(taskId);

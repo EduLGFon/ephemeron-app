@@ -13,7 +13,7 @@ class DesktopGoogleAuthRepository extends GoogleAuthRepository {
 
   final _accountController = StreamController<GoogleAuthAccount?>.broadcast();
   final _storage = const SafeSecureStorage();
-  
+
   GoogleAuthAccount? _currentAccount;
   String? _accessToken;
   DateTime? _tokenExpiry;
@@ -34,7 +34,7 @@ class DesktopGoogleAuthRepository extends GoogleAuthRepository {
     final accountEmail = prefs.getString('google.desktop.accountEmail');
     final accountName = prefs.getString('google.desktop.accountName');
     final accountPhoto = prefs.getString('google.desktop.accountPhoto');
-    
+
     _accessToken = await _storage.read(key: 'google.desktop.accessToken');
     final expiryStr = await _storage.read(key: 'google.desktop.tokenExpiry');
     if (expiryStr != null) {
@@ -59,7 +59,8 @@ class DesktopGoogleAuthRepository extends GoogleAuthRepository {
 
   Future<void> _trySilentRefresh() async {
     try {
-      final refreshToken = await _storage.read(key: 'google.desktop.refreshToken');
+      final refreshToken =
+          await _storage.read(key: 'google.desktop.refreshToken');
       if (refreshToken != null) {
         await _refreshAccessToken(refreshToken);
       }
@@ -132,7 +133,7 @@ class DesktopGoogleAuthRepository extends GoogleAuthRepository {
         final queryParams = request.uri.queryParameters;
         if (queryParams['state'] == state) {
           authCode = queryParams['code'];
-          
+
           request.response.headers.contentType = ContentType.html;
           request.response.write('''
             <!DOCTYPE html>
@@ -202,7 +203,8 @@ class DesktopGoogleAuthRepository extends GoogleAuthRepository {
     );
 
     if (response.statusCode != HttpStatus.ok) {
-      throw GoogleAuthException('Failed to exchange authorization code: ${response.body}');
+      throw GoogleAuthException(
+          'Failed to exchange authorization code: ${response.body}');
     }
 
     final tokenData = jsonDecode(response.body) as Map<String, dynamic>;
@@ -220,7 +222,8 @@ class DesktopGoogleAuthRepository extends GoogleAuthRepository {
     );
 
     if (userInfoResponse.statusCode != HttpStatus.ok) {
-      throw GoogleAuthException('Failed to fetch user info: ${userInfoResponse.body}');
+      throw GoogleAuthException(
+          'Failed to fetch user info: ${userInfoResponse.body}');
     }
 
     final userData = jsonDecode(userInfoResponse.body) as Map<String, dynamic>;
@@ -234,12 +237,17 @@ class DesktopGoogleAuthRepository extends GoogleAuthRepository {
     await prefs.setString('google.desktop.accountId', id);
     await prefs.setString('google.desktop.accountEmail', email);
     if (name != null) await prefs.setString('google.desktop.accountName', name);
-    if (picture != null) await prefs.setString('google.desktop.accountPhoto', picture);
+    if (picture != null) {
+      await prefs.setString('google.desktop.accountPhoto', picture);
+    }
 
     await _storage.write(key: 'google.desktop.accessToken', value: accessToken);
-    await _storage.write(key: 'google.desktop.tokenExpiry', value: _tokenExpiry!.toIso8601String());
+    await _storage.write(
+        key: 'google.desktop.tokenExpiry',
+        value: _tokenExpiry!.toIso8601String());
     if (refreshToken != null) {
-      await _storage.write(key: 'google.desktop.refreshToken', value: refreshToken);
+      await _storage.write(
+          key: 'google.desktop.refreshToken', value: refreshToken);
     }
 
     _currentAccount = GoogleAuthAccount(
@@ -254,7 +262,7 @@ class DesktopGoogleAuthRepository extends GoogleAuthRepository {
   @override
   Future<void> signOut() async {
     _ensureInitialized();
-    
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('google.desktop.accountId');
     await prefs.remove('google.desktop.accountEmail');
@@ -281,14 +289,18 @@ class DesktopGoogleAuthRepository extends GoogleAuthRepository {
     final currentExpiry = _tokenExpiry;
     final accessToken = _accessToken;
 
-    if (accessToken != null && currentExpiry != null && currentExpiry.isAfter(DateTime.now().add(const Duration(minutes: 5)))) {
+    if (accessToken != null &&
+        currentExpiry != null &&
+        currentExpiry.isAfter(DateTime.now().add(const Duration(minutes: 5)))) {
       return accessToken;
     }
 
     // Refresh token needed
-    final refreshToken = await _storage.read(key: 'google.desktop.refreshToken');
+    final refreshToken =
+        await _storage.read(key: 'google.desktop.refreshToken');
     if (refreshToken == null) {
-      throw const GoogleAuthException('No refresh token available. Please sign in again.');
+      throw const GoogleAuthException(
+          'No refresh token available. Please sign in again.');
     }
 
     return _refreshAccessToken(refreshToken);
@@ -313,7 +325,8 @@ class DesktopGoogleAuthRepository extends GoogleAuthRepository {
       if (response.body.contains('invalid_grant')) {
         await signOut();
       }
-      throw GoogleAuthException('Session expired or refresh failed: ${response.body}');
+      throw GoogleAuthException(
+          'Session expired or refresh failed: ${response.body}');
     }
 
     final tokenData = jsonDecode(response.body) as Map<String, dynamic>;
@@ -325,10 +338,14 @@ class DesktopGoogleAuthRepository extends GoogleAuthRepository {
     _accessToken = newAccessToken;
     _tokenExpiry = DateTime.now().add(Duration(seconds: expiresIn));
 
-    await _storage.write(key: 'google.desktop.accessToken', value: newAccessToken);
-    await _storage.write(key: 'google.desktop.tokenExpiry', value: _tokenExpiry!.toIso8601String());
+    await _storage.write(
+        key: 'google.desktop.accessToken', value: newAccessToken);
+    await _storage.write(
+        key: 'google.desktop.tokenExpiry',
+        value: _tokenExpiry!.toIso8601String());
     if (newRefreshToken != null) {
-      await _storage.write(key: 'google.desktop.refreshToken', value: newRefreshToken);
+      await _storage.write(
+          key: 'google.desktop.refreshToken', value: newRefreshToken);
     }
 
     return newAccessToken;
@@ -342,13 +359,15 @@ class DesktopGoogleAuthRepository extends GoogleAuthRepository {
     } else if (Platform.isWindows) {
       await Process.start('cmd', ['/c', 'start', '', url]);
     } else {
-      throw const GoogleAuthException('Unsupported platform for desktop authentication.');
+      throw const GoogleAuthException(
+          'Unsupported platform for desktop authentication.');
     }
   }
 
   void _ensureInitialized() {
     if (!_initialized) {
-      throw StateError('DesktopGoogleAuthRepository must be initialized first.');
+      throw StateError(
+          'DesktopGoogleAuthRepository must be initialized first.');
     }
   }
 

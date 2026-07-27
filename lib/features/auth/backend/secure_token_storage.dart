@@ -32,7 +32,7 @@ class SecureTokenStorage {
   }
 
   static Future<({String refreshToken, String userId, String email})?>
-  readSession() async {
+      readSession() async {
     final values = await Future.wait([
       _storage.read(key: _refreshTokenKey),
       _storage.read(key: _userIdKey),

@@ -52,11 +52,15 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen> {
 
   void _autoSnooze() {
     if (_resolved) return;
-    _resolve(() => ref.read(alarmSchedulerProvider).snooze(widget.payload, snoozeFor: Duration(minutes: _snoozeMinutes)));
+    _resolve(() => ref
+        .read(alarmSchedulerProvider)
+        .snooze(widget.payload, snoozeFor: Duration(minutes: _snoozeMinutes)));
   }
 
   void _onSnoozePressed() {
-    _resolve(() => ref.read(alarmSchedulerProvider).snooze(widget.payload, snoozeFor: Duration(minutes: _snoozeMinutes)));
+    _resolve(() => ref
+        .read(alarmSchedulerProvider)
+        .snooze(widget.payload, snoozeFor: Duration(minutes: _snoozeMinutes)));
   }
 
   void _onDonePressed() {
@@ -122,14 +126,16 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.remove_circle_outline, color: Colors.white70, size: 28),
+                      icon: const Icon(Icons.remove_circle_outline,
+                          color: Colors.white70, size: 28),
                       onPressed: _snoozeMinutes > 1
                           ? () {
                               setState(() {
                                 if (_snoozeMinutes <= 5) {
                                   _snoozeMinutes = 1;
                                 } else {
-                                  _snoozeMinutes = (_snoozeMinutes - 5).clamp(1, 60);
+                                  _snoozeMinutes =
+                                      (_snoozeMinutes - 5).clamp(1, 60);
                                 }
                               });
                             }
@@ -137,7 +143,8 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen> {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -154,14 +161,16 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen> {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(Icons.add_circle_outline, color: Colors.white70, size: 28),
+                      icon: const Icon(Icons.add_circle_outline,
+                          color: Colors.white70, size: 28),
                       onPressed: _snoozeMinutes < 60
                           ? () {
                               setState(() {
                                 if (_snoozeMinutes == 1) {
                                   _snoozeMinutes = 5;
                                 } else {
-                                  _snoozeMinutes = (_snoozeMinutes + 5).clamp(1, 60);
+                                  _snoozeMinutes =
+                                      (_snoozeMinutes + 5).clamp(1, 60);
                                 }
                               });
                             }
@@ -179,7 +188,8 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen> {
                           foregroundColor: Colors.white,
                           side: const BorderSide(color: Colors.white54),
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: _onSnoozePressed,
                         child: Text('Snooze ($_snoozeMinutes min)'),
@@ -192,10 +202,12 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen> {
                           backgroundColor: AppColors.amber,
                           foregroundColor: AppColors.textLight,
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: _onDonePressed,
-                        child: const Text('Mark done', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: const Text('Mark done',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -203,7 +215,8 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen> {
                 const SizedBox(height: 24),
                 Text(
                   'Auto-snoozing if left untouched...',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
                 ),
               ],
             ),

@@ -1,52 +1,51 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ephemeron/core/settings/shared_preferences_provider.dart';
 
 class SessionRestore {
   SessionRestore._();
 
-  static Future<void> saveOpenMenu(String menu, {String? entityId, String? extra}) async {
+  static Future<void> saveOpenMenu(String menu,
+      {String? entityId, String? extra}) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('session.openMenu', menu);
-      await prefs.setString('session.openMenuEntityId', entityId ?? '');
-      await prefs.setString('session.openMenuExtra', extra ?? '');
+      await sharedPrefs.setString('session.openMenu', menu);
+      await sharedPrefs.setString('session.openMenuEntityId', entityId ?? '');
+      await sharedPrefs.setString('session.openMenuExtra', extra ?? '');
     } catch (_) {}
   }
 
   static Future<void> clearOpenMenu() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('session.openMenu', 'none');
-      await prefs.setString('session.openMenuEntityId', '');
-      await prefs.setString('session.openMenuExtra', '');
+      await sharedPrefs.setString('session.openMenu', 'none');
+      await sharedPrefs.setString('session.openMenuEntityId', '');
+      await sharedPrefs.setString('session.openMenuExtra', '');
     } catch (_) {}
   }
 
-  static Future<void> saveDraftValue(String formType, String? entityId, String key, String value) async {
+  static Future<void> saveDraftValue(
+      String formType, String? entityId, String key, String value) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
       final id = entityId ?? 'new';
-      await prefs.setString('session.draft.$formType.$id.$key', value);
+      await sharedPrefs.setString('session.draft.$formType.$id.$key', value);
     } catch (_) {}
   }
 
-  static Future<String?> getDraftValue(String formType, String? entityId, String key) async {
+  static Future<String?> getDraftValue(
+      String formType, String? entityId, String key) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
       final id = entityId ?? 'new';
-      return prefs.getString('session.draft.$formType.$id.$key');
+      return sharedPrefs.getString('session.draft.$formType.$id.$key');
     } catch (_) {
       return null;
     }
   }
 
-  static Future<void> clearDraftValues(String formType, String? entityId) async {
+  static Future<void> clearDraftValues(
+      String formType, String? entityId) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
       final id = entityId ?? 'new';
-      final keys = prefs.getKeys();
+      final keys = sharedPrefs.getKeys();
       for (final k in keys) {
         if (k.startsWith('session.draft.$formType.$id.')) {
-          await prefs.remove(k);
+          await sharedPrefs.remove(k);
         }
       }
     } catch (_) {}

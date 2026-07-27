@@ -38,18 +38,26 @@ Future<RecurrenceDeleteType?> showRecurrenceDeleteDialog({
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ListTile(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              title: Text('Delete only this occurrence', style: TextStyle(color: palette.text)),
-              onTap: () => Navigator.of(context).pop(RecurrenceDeleteType.onlyThis),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+              title: Text('Delete only this occurrence',
+                  style: TextStyle(color: palette.text)),
+              onTap: () =>
+                  Navigator.of(context).pop(RecurrenceDeleteType.onlyThis),
             ),
             ListTile(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              title: Text('Delete this and all after', style: TextStyle(color: palette.text)),
-              onTap: () => Navigator.of(context).pop(RecurrenceDeleteType.thisAndAllAfter),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+              title: Text('Delete this and all after',
+                  style: TextStyle(color: palette.text)),
+              onTap: () => Navigator.of(context)
+                  .pop(RecurrenceDeleteType.thisAndAllAfter),
             ),
             ListTile(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              title: Text('Delete all events in series', style: TextStyle(color: palette.text)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+              title: Text('Delete all events in series',
+                  style: TextStyle(color: palette.text)),
               onTap: () => Navigator.of(context).pop(RecurrenceDeleteType.all),
             ),
           ],

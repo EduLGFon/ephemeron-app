@@ -35,31 +35,45 @@ enum RsvpStatus {
   /// Human-readable label shown in the RSVP button row.
   String get label {
     switch (this) {
-      case RsvpStatus.needsAction: return 'Respond';
-      case RsvpStatus.accepted: return 'Yes';
-      case RsvpStatus.acceptedVirtually: return 'Yes, virtually';
-      case RsvpStatus.tentative: return 'Maybe';
-      case RsvpStatus.declined: return 'No';
+      case RsvpStatus.needsAction:
+        return 'Respond';
+      case RsvpStatus.accepted:
+        return 'Yes';
+      case RsvpStatus.acceptedVirtually:
+        return 'Yes, virtually';
+      case RsvpStatus.tentative:
+        return 'Maybe';
+      case RsvpStatus.declined:
+        return 'No';
     }
   }
 
   /// Maps to Google's responseStatus string (virtual maps to accepted on Google).
   String get googleStatus {
     switch (this) {
-      case RsvpStatus.needsAction: return 'needsAction';
-      case RsvpStatus.accepted: return 'accepted';
-      case RsvpStatus.acceptedVirtually: return 'accepted'; // virtual = accepted to Google
-      case RsvpStatus.tentative: return 'tentative';
-      case RsvpStatus.declined: return 'declined';
+      case RsvpStatus.needsAction:
+        return 'needsAction';
+      case RsvpStatus.accepted:
+        return 'accepted';
+      case RsvpStatus.acceptedVirtually:
+        return 'accepted'; // virtual = accepted to Google
+      case RsvpStatus.tentative:
+        return 'tentative';
+      case RsvpStatus.declined:
+        return 'declined';
     }
   }
 
   static RsvpStatus fromGoogle(String? status) {
     switch (status) {
-      case 'accepted': return RsvpStatus.accepted;
-      case 'tentative': return RsvpStatus.tentative;
-      case 'declined': return RsvpStatus.declined;
-      default: return RsvpStatus.needsAction;
+      case 'accepted':
+        return RsvpStatus.accepted;
+      case 'tentative':
+        return RsvpStatus.tentative;
+      case 'declined':
+        return RsvpStatus.declined;
+      default:
+        return RsvpStatus.needsAction;
     }
   }
 }
@@ -164,7 +178,8 @@ class CalendarEvent {
     );
   }
 
-  static CalendarEvent fromGoogle(gcal.Event event, {String calendarId = 'primary'}) {
+  static CalendarEvent fromGoogle(gcal.Event event,
+      {String calendarId = 'primary'}) {
     final startDateTime = event.start?.dateTime;
     final startDate = event.start?.date;
     final endDateTime = event.end?.dateTime;
@@ -179,7 +194,8 @@ class CalendarEvent {
         const [];
 
     // Self attendee for RSVP status
-    final selfAttendee = event.attendees?.where((a) => a.self == true).firstOrNull;
+    final selfAttendee =
+        event.attendees?.where((a) => a.self == true).firstOrNull;
     final selfStatus = RsvpStatus.fromGoogle(selfAttendee?.responseStatus);
 
     // Conference data (Google Meet)
@@ -209,7 +225,8 @@ class CalendarEvent {
       selfResponseStatus: selfStatus,
       recurrence: event.recurrence,
       recurringEventId: event.recurringEventId,
-      originalStartTime: event.originalStartTime?.dateTime ?? event.originalStartTime?.date,
+      originalStartTime:
+          event.originalStartTime?.dateTime ?? event.originalStartTime?.date,
     );
   }
 
@@ -220,7 +237,8 @@ class CalendarEvent {
       location: location,
       colorId: colorId,
       start: isAllDay
-          ? gcal.EventDateTime(date: DateTime(start.year, start.month, start.day))
+          ? gcal.EventDateTime(
+              date: DateTime(start.year, start.month, start.day))
           : gcal.EventDateTime(
               dateTime: start,
               timeZone: localTimeZone,
@@ -242,15 +260,15 @@ class CalendarEvent {
             ),
       attendees: attendees.isEmpty
           ? null
-          : attendees
-              .map((email) => gcal.EventAttendee(email: email))
-              .toList(),
+          : attendees.map((email) => gcal.EventAttendee(email: email)).toList(),
       recurrence: recurrence,
       recurringEventId: recurringEventId,
       originalStartTime: originalStartTime == null
           ? null
           : (isAllDay
-              ? gcal.EventDateTime(date: DateTime(originalStartTime!.year, originalStartTime!.month, originalStartTime!.day))
+              ? gcal.EventDateTime(
+                  date: DateTime(originalStartTime!.year,
+                      originalStartTime!.month, originalStartTime!.day))
               : gcal.EventDateTime(
                   dateTime: originalStartTime,
                   timeZone: localTimeZone,

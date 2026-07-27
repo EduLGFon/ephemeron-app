@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../data/local/database.dart';
 import '../../../data/local/database_provider.dart';
@@ -14,10 +13,17 @@ final habitRepositoryProvider = Provider<HabitRepository>((ref) {
   );
 });
 
-final habitSelectedDateProvider = StateProvider<DateTime>((ref) {
-  final now = DateTime.now();
-  return DateTime(now.year, now.month, now.day);
-});
+class HabitSelectedDateNotifier extends Notifier<DateTime> {
+  @override
+  DateTime build() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+  @override
+  set state(DateTime value) => super.state = value;
+}
+
+final habitSelectedDateProvider = NotifierProvider<HabitSelectedDateNotifier, DateTime>(() => HabitSelectedDateNotifier());
 
 final habitsProvider = StreamProvider<List<Habit>>((ref) {
   return ref.watch(habitRepositoryProvider).watchHabits();
@@ -32,15 +38,17 @@ final habitLogsProvider = StreamProvider.family<List<HabitLog>, String>((
 
 /// Recomputed whenever the habit's logs change — metrics aren't stored,
 /// they're derived, so this just needs to re-run after any log write.
-final habitMetricsProvider = FutureProvider.family<HabitMetrics, Habit>((
+final habitMetricsProvider = FutureProvider.family<HabitMetrics, String>((
   ref,
-  habit,
+  habitId,
 ) async {
   // Watching (not just reading) the logs stream is what makes this
   // provider re-run automatically when logProgress()/toggleBinaryToday()
   // write a new log — without this, the metrics would go stale until
   // something else happened to trigger a rebuild.
-  ref.watch(habitLogsProvider(habit.id));
+  ref.watch(habitLogsProvider(habitId));
+  final habits = await ref.watch(habitsProvider.future);
+  final habit = habits.firstWhere((h) => h.id == habitId);
   final selectedDate = ref.watch(habitSelectedDateProvider);
   return ref.watch(habitRepositoryProvider).computeMetrics(habit, selectedDate);
 });
@@ -57,11 +65,3 @@ final habitAlarmsRefreshProvider = FutureProvider<void>((ref) async {
   await ref.watch(habitRepositoryProvider).refreshOneShotAlarms();
 });
 
-final calendarHabitsProvider = StreamProvider<List<Habit>>((ref) {
-  return ref.watch(habitRepositoryProvider).watchHabits();
-});
-
-final calendarHabitLogsProvider = StreamProvider<List<HabitLog>>((ref) {
-  final db = ref.watch(appDatabaseProvider);
-  return db.select(db.habitLogs).watch();
-});

@@ -1,12 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import '../settings/shared_preferences_provider.dart';
 import '../../features/auth/google/google_auth_provider.dart';
 import '../../features/auth/presentation/auth_screen.dart';
 import '../../presentation/shell/app_shell.dart';
-import '../../presentation/splash/splash_screen.dart';
 import '../../features/calendar/presentation/calendar_screen.dart';
 import '../../features/tasks/presentation/tasks_screen.dart';
 import '../../features/matrix/presentation/matrix_screen.dart';
@@ -35,52 +34,29 @@ class _AuthNotifier extends ChangeNotifier {
   }
 }
 
-Future<String> _lastScreen() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getString('settings.lastScreen') ?? '/calendar';
-}
-
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authNotifier = _AuthNotifier(ref);
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    // Start on /splash — it shows a spinner and waits for auth init.
-    // The redirect below takes over as soon as init resolves, so the
-    // user never sees /auth if they were already signed in.
-    initialLocation: '/splash',
+    initialLocation: sharedPrefs.getString('settings.lastScreen') ?? '/calendar',
     debugLogDiagnostics: false,
     refreshListenable: authNotifier,
-    redirect: (context, state) async {
+    redirect: (context, state) {
       final location = state.matchedLocation;
       final initAsync = ref.read(googleAuthInitProvider);
 
-      // Still initializing — stay on splash.
-      if (initAsync.isLoading) return location == '/splash' ? null : '/splash';
+      if (initAsync.isLoading && location != '/auth') return null;
 
-      // Init done: read the now-settled account state directly from the repo.
-      // This prevents a single-frame redirect to /auth while the StreamProvider
-      // yields its first asynchronous value.
       final repo = ref.read(googleAuthRepositoryProvider);
       final isSignedIn = repo.currentAccount != null;
 
-      // Splash always redirects once init is done.
-      if (location == '/splash') return isSignedIn ? _lastScreen() : '/auth';
-
-      // Auth screen: skip it if already signed in.
-      if (location == '/auth' && isSignedIn) return _lastScreen();
-
-      // Main screens: push back to auth if signed out.
-      if (location != '/auth' && !isSignedIn) return '/auth';
+      if (!isSignedIn && location != '/auth') return '/auth';
+      if (isSignedIn && location == '/auth') return sharedPrefs.getString('settings.lastScreen') ?? '/calendar';
 
       return null;
     },
     routes: [
-      GoRoute(
-        path: '/splash',
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const SplashScreen(),
-      ),
       GoRoute(
         path: '/auth',
         parentNavigatorKey: rootNavigatorKey,

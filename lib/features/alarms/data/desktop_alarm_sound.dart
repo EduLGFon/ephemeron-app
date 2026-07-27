@@ -38,7 +38,8 @@ class DesktopAlarmSound {
           }
         } catch (_) {
           try {
-            _activeSoundProcess = await Process.start('aplay', ['/usr/share/sounds/alsa/Front_Center.wav']);
+            _activeSoundProcess = await Process.start(
+                'aplay', ['/usr/share/sounds/alsa/Front_Center.wav']);
             if (!loop) {
               unawaited(_activeSoundProcess?.exitCode.then((_) {
                 onComplete();

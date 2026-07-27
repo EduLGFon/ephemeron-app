@@ -29,9 +29,14 @@ class SyncService extends Notifier<SyncState> {
 
   @override
   SyncState build() {
+    ref.keepAlive();
     // Listen to settings changes to schedule/re-schedule the timer
     final settings = ref.watch(appSettingsProvider);
-    _setupTimer(settings.autoSync, settings.syncIntervalMinutes);
+    var syncIntervalMinutes = settings.syncIntervalMinutes;
+    if (settings.shouldReduceMotion) {
+      syncIntervalMinutes *= 2;
+    }
+    _setupTimer(settings.autoSync, syncIntervalMinutes);
 
     ref.onDispose(() {
       _syncTimer?.cancel();
@@ -61,9 +66,13 @@ class SyncService extends Notifier<SyncState> {
       final now = DateTime.now();
       final start = DateTime(now.year, now.month - 1, 1);
       final end = DateTime(now.year, now.month + 3, 1);
-      
-      DevLogger.log('Syncing calendar events & tasks from remote in parallel...');
-      ref.read(deviceCalendarRepositoryProvider).clearCache();
+
+      DevLogger.log(
+          'Syncing calendar events & tasks from remote in parallel...');
+      final settings = ref.read(appSettingsProvider);
+      if (settings.enabledDeviceCalendarIds.isNotEmpty) {
+        ref.read(deviceCalendarRepositoryProvider).clearCache();
+      }
       final calendarRepo = ref.read(calendarRepositoryProvider);
       final taskRepo = ref.read(taskRepositoryProvider);
 
@@ -85,8 +94,11 @@ class SyncService extends Notifier<SyncState> {
       );
 
       // Reschedule the auto-sync timer to avoid useless syncs in a short time
-      final settings = ref.read(appSettingsProvider);
-      _setupTimer(settings.autoSync, settings.syncIntervalMinutes);
+      var syncIntervalMinutes = settings.syncIntervalMinutes;
+      if (settings.shouldReduceMotion) {
+        syncIntervalMinutes *= 2;
+      }
+      _setupTimer(settings.autoSync, syncIntervalMinutes);
     } catch (e, stack) {
       DevLogger.logError('Sync failed', e, stack);
       state = state.copyWith(

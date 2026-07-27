@@ -24,7 +24,8 @@ class CalendarHourHeightNotifier extends Notifier<double> {
 }
 
 final calendarHourHeightProvider =
-    NotifierProvider<CalendarHourHeightNotifier, double>(CalendarHourHeightNotifier.new);
+    NotifierProvider<CalendarHourHeightNotifier, double>(
+        CalendarHourHeightNotifier.new);
 
 final calendarRepositoryProvider = Provider<CalendarRepository>((ref) {
   return CalendarRepository(
@@ -34,14 +35,16 @@ final calendarRepositoryProvider = Provider<CalendarRepository>((ref) {
   );
 });
 
-final deviceCalendarRepositoryProvider = Provider<DeviceCalendarRepository>((ref) {
+final deviceCalendarRepositoryProvider =
+    Provider<DeviceCalendarRepository>((ref) {
   return DeviceCalendarRepository();
 });
 
 /// Keyed by the first-of-month, normalized to midnight — always compute
 /// the key this way (see `_normalizeMonth` in CalendarScreen) so equal
 /// months actually hit the same cache entry instead of refetching.
-class CalendarEventOverridesNotifier extends Notifier<Map<String, CalendarEvent>> {
+class CalendarEventOverridesNotifier
+    extends Notifier<Map<String, CalendarEvent>> {
   @override
   Map<String, CalendarEvent> build() => const {};
 
@@ -58,8 +61,8 @@ class CalendarEventOverridesNotifier extends Notifier<Map<String, CalendarEvent>
   }
 }
 
-final calendarEventOverridesProvider =
-    NotifierProvider<CalendarEventOverridesNotifier, Map<String, CalendarEvent>>(
+final calendarEventOverridesProvider = NotifierProvider<
+    CalendarEventOverridesNotifier, Map<String, CalendarEvent>>(
   CalendarEventOverridesNotifier.new,
 );
 
@@ -81,7 +84,8 @@ final monthEventsProvider =
   final overrides = ref.watch(calendarEventOverridesProvider);
   final repo = ref.watch(calendarRepositoryProvider);
   final deviceRepo = ref.watch(deviceCalendarRepositoryProvider);
-  final enabledCalendarIds = ref.watch(appSettingsProvider.select((s) => s.enabledDeviceCalendarIds));
+  final enabledCalendarIds =
+      ref.watch(appSettingsProvider.select((s) => s.enabledDeviceCalendarIds));
   final start = DateTime(month.year, month.month, 1);
   final end = DateTime(month.year, month.month + 1, 1);
 
@@ -111,7 +115,7 @@ final monthEventsProvider =
     if (entry.task.dueDate == null) return false;
     final due = entry.task.dueDate!;
     return due.isAfter(start.subtract(const Duration(days: 1))) &&
-           due.isBefore(end.add(const Duration(days: 1)));
+        due.isBefore(end.add(const Duration(days: 1)));
   }).map((entry) {
     final t = entry.task;
     final start = t.dueDate!;
@@ -132,18 +136,22 @@ final monthEventsProvider =
   }).toList();
 
   // Fetch local habits
-  final habitsList = await ref.watch(calendarHabitsProvider.future);
+  final habitsList = await ref.watch(habitsProvider.future);
 
   // Fetch habit logs
-  final habitLogsList = await ref.watch(calendarHabitLogsProvider.future);
+  final db = ref.watch(appDatabaseProvider);
+  final habitLogsList = await db.select(db.habitLogs).get();
 
   final habitEvents = <CalendarEvent>[];
   for (final habit in habitsList) {
     if (habit.reminderHour != null && habit.reminderMinute != null) {
       final frequency = HabitFrequency.decode(habit.frequencyConfig);
-      final logsForHabit = habitLogsList.where((l) => l.habitId == habit.id).toList();
+      final logsForHabit =
+          habitLogsList.where((l) => l.habitId == habit.id).toList();
 
-      for (var day = start; day.isBefore(end); day = day.add(const Duration(days: 1))) {
+      for (var day = start;
+          day.isBefore(end);
+          day = day.add(const Duration(days: 1))) {
         if (frequency.isDueOn(day, habitStartDate: habit.startDate)) {
           final dayStr = DateTime(day.year, day.month, day.day);
           final isCompleted = logsForHabit.any((l) {
@@ -151,7 +159,8 @@ final monthEventsProvider =
             return logDay == dayStr && l.isCompleted;
           });
 
-          final habitStart = DateTime(day.year, day.month, day.day, habit.reminderHour!, habit.reminderMinute!);
+          final habitStart = DateTime(day.year, day.month, day.day,
+              habit.reminderHour!, habit.reminderMinute!);
           final habitEnd = habitStart.add(const Duration(minutes: 30));
 
           final prefix = isCompleted ? '✓ ' : '☐ ';
@@ -160,7 +169,8 @@ final monthEventsProvider =
             CalendarEvent(
               id: 'habit:${habit.id}:${day.toIso8601String().split('T')[0]}',
               title: '$prefix${habit.name}',
-              description: 'Habit Goal: ${habit.goalType == 'binary' ? 'Binary' : '${habit.goalAmount} ${habit.goalUnit}'}',
+              description:
+                  'Habit Goal: ${habit.goalType == 'binary' ? 'Binary' : '${habit.goalAmount} ${habit.goalUnit}'}',
               start: habitStart,
               end: habitEnd,
               isAllDay: false,
@@ -226,7 +236,9 @@ class SelectedDayNotifier extends Notifier<DateTime> {
     if (state == normalized) return;
     Future.microtask(() {
       state = normalized;
-      ref.read(sharedPreferencesProvider).setString(_prefKey, normalized.toIso8601String());
+      ref
+          .read(sharedPreferencesProvider)
+          .setString(_prefKey, normalized.toIso8601String());
     });
   }
 }
@@ -257,7 +269,9 @@ class FocusedMonthNotifier extends Notifier<DateTime> {
     if (state == normalized) return;
     Future.microtask(() {
       state = normalized;
-      ref.read(sharedPreferencesProvider).setString(_prefKey, normalized.toIso8601String());
+      ref
+          .read(sharedPreferencesProvider)
+          .setString(_prefKey, normalized.toIso8601String());
     });
   }
 }
@@ -299,7 +313,8 @@ class CalendarViewNotifier extends Notifier<CalendarView> {
   }
 }
 
-final calendarViewProvider = NotifierProvider<CalendarViewNotifier, CalendarView>(
+final calendarViewProvider =
+    NotifierProvider<CalendarViewNotifier, CalendarView>(
   () => CalendarViewNotifier(),
 );
 
@@ -335,6 +350,7 @@ final deviceCalendarsProvider = FutureProvider<List<dev_cal.Calendar>>((ref) {
   return ref.watch(deviceCalendarRepositoryProvider).retrieveCalendars();
 });
 
-final googleCalendarsProvider = FutureProvider<List<Map<String, String>>>((ref) {
+final googleCalendarsProvider =
+    FutureProvider<List<Map<String, String>>>((ref) {
   return ref.watch(calendarRepositoryProvider).getAvailableCalendars();
 });

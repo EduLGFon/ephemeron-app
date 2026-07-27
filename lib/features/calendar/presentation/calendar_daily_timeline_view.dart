@@ -28,10 +28,12 @@ class CalendarDailyTimelineView extends ConsumerStatefulWidget {
   static const double timeColumnWidth = 60.0;
 
   @override
-  ConsumerState<CalendarDailyTimelineView> createState() => _CalendarDailyTimelineViewState();
+  ConsumerState<CalendarDailyTimelineView> createState() =>
+      _CalendarDailyTimelineViewState();
 }
 
-class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelineView> {
+class _CalendarDailyTimelineViewState
+    extends ConsumerState<CalendarDailyTimelineView> {
   static const _initialPage = 10000;
   late PageController _pageController;
   late DateTime _anchorDate;
@@ -53,7 +55,8 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
     _pageController = PageController(initialPage: _initialPage);
     final savedOffset = ref.read(calendarScrollOffsetProvider);
     final hourHeight = ref.read(calendarHourHeightProvider);
-    final initialOffset = savedOffset ?? _calculateInitialScrollOffset(widget.selectedDay, hourHeight);
+    final initialOffset = savedOffset ??
+        _calculateInitialScrollOffset(widget.selectedDay, hourHeight);
     _scrollController = ScrollController(
       initialScrollOffset: initialOffset,
     );
@@ -80,7 +83,9 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
       final isScrolling = _pageController.hasClients &&
           _pageController.position.haveDimensions &&
           _pageController.position.isScrollingNotifier.value;
-      if (_pageController.hasClients && !isScrolling && _pageController.page?.round() != targetPage) {
+      if (_pageController.hasClients &&
+          !isScrolling &&
+          _pageController.page?.round() != targetPage) {
         _pageController.jumpToPage(targetPage);
       }
     }
@@ -93,7 +98,8 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
     super.dispose();
   }
 
-  double _calculateInitialScrollOffset(DateTime selectedDay, double hourHeight) {
+  double _calculateInitialScrollOffset(
+      DateTime selectedDay, double hourHeight) {
     final now = DateTime.now();
     final isToday = selectedDay.year == now.year &&
         selectedDay.month == now.month &&
@@ -113,7 +119,8 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
     final clampedMinutes = snappedMinutes.clamp(0, 24 * 60 - 15);
     final hour = clampedMinutes ~/ 60;
     final minute = clampedMinutes % 60;
-    return DateTime(originalStart.year, originalStart.month, originalStart.day, hour, minute);
+    return DateTime(originalStart.year, originalStart.month, originalStart.day,
+        hour, minute);
   }
 
   @override
@@ -125,7 +132,8 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
     final dayEvents = widget.events.map((e) {
       final pending = _pendingMovedEvents[e.id];
       if (pending != null) {
-        if (e.start.isAtSameMomentAs(pending.start) && e.end.isAtSameMomentAs(pending.end)) {
+        if (e.start.isAtSameMomentAs(pending.start) &&
+            e.end.isAtSameMomentAs(pending.end)) {
           _pendingMovedEvents.remove(e.id);
           return e;
         }
@@ -133,7 +141,8 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
       }
       return e;
     }).where((e) {
-      final targetDay = DateTime(widget.selectedDay.year, widget.selectedDay.month, widget.selectedDay.day);
+      final targetDay = DateTime(widget.selectedDay.year,
+          widget.selectedDay.month, widget.selectedDay.day);
       final sLocal = e.start.toLocal();
       final eLocal = e.end.toLocal();
       if (e.isAllDay) {
@@ -202,26 +211,27 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                     icon: Icon(Icons.chevron_left, color: palette.text),
                     onPressed: () {
                       ref.read(selectedDayProvider.notifier).setDay(
-                        widget.selectedDay.subtract(const Duration(days: 1)),
-                      );
+                            widget.selectedDay
+                                .subtract(const Duration(days: 1)),
+                          );
                       ref.read(focusedMonthProvider.notifier).setMonth(DateTime(
-                        widget.selectedDay.year,
-                        widget.selectedDay.month,
-                        1,
-                      ));
+                            widget.selectedDay.year,
+                            widget.selectedDay.month,
+                            1,
+                          ));
                     },
                   ),
                   IconButton(
                     icon: Icon(Icons.chevron_right, color: palette.text),
                     onPressed: () {
                       ref.read(selectedDayProvider.notifier).setDay(
-                        widget.selectedDay.add(const Duration(days: 1)),
-                      );
+                            widget.selectedDay.add(const Duration(days: 1)),
+                          );
                       ref.read(focusedMonthProvider.notifier).setMonth(DateTime(
-                        widget.selectedDay.year,
-                        widget.selectedDay.month,
-                        1,
-                      ));
+                            widget.selectedDay.year,
+                            widget.selectedDay.month,
+                            1,
+                          ));
                     },
                   ),
                 ],
@@ -254,9 +264,11 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                       GestureDetector(
                         onTap: () => _onEventTapped(context, ref, event),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: _getEventColor(event.colorId, palette).withValues(alpha: 0.85),
+                            color: _getEventColor(event.colorId, palette)
+                                .withValues(alpha: 0.85),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -282,22 +294,26 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
         Expanded(
           child: CallbackShortcuts(
             bindings: {
-              const SingleActivator(LogicalKeyboardKey.equal, control: true): () {
+              const SingleActivator(LogicalKeyboardKey.equal, control: true):
+                  () {
                 final current = ref.read(calendarHourHeightProvider);
                 ref.read(calendarHourHeightProvider.notifier).state =
                     (current + 10.0).clamp(40.0, 240.0);
               },
-              const SingleActivator(LogicalKeyboardKey.numpadAdd, control: true): () {
+              const SingleActivator(LogicalKeyboardKey.numpadAdd,
+                  control: true): () {
                 final current = ref.read(calendarHourHeightProvider);
                 ref.read(calendarHourHeightProvider.notifier).state =
                     (current + 10.0).clamp(40.0, 240.0);
               },
-              const SingleActivator(LogicalKeyboardKey.minus, control: true): () {
+              const SingleActivator(LogicalKeyboardKey.minus, control: true):
+                  () {
                 final current = ref.read(calendarHourHeightProvider);
                 ref.read(calendarHourHeightProvider.notifier).state =
                     (current - 10.0).clamp(40.0, 240.0);
               },
-              const SingleActivator(LogicalKeyboardKey.numpadSubtract, control: true): () {
+              const SingleActivator(LogicalKeyboardKey.numpadSubtract,
+                  control: true): () {
                 final current = ref.read(calendarHourHeightProvider);
                 ref.read(calendarHourHeightProvider.notifier).state =
                     (current - 10.0).clamp(40.0, 240.0);
@@ -326,7 +342,8 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                 },
                 onPointerSignal: (pointerSignal) {
                   if (pointerSignal is PointerScrollEvent) {
-                    final isControlPressed = HardwareKeyboard.instance.isControlPressed;
+                    final isControlPressed =
+                        HardwareKeyboard.instance.isControlPressed;
                     if (isControlPressed) {
                       final zoomDelta = -pointerSignal.scrollDelta.dy * 0.1;
                       final current = ref.read(calendarHourHeightProvider);
@@ -353,7 +370,9 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                   },
                   child: SingleChildScrollView(
                     controller: _scrollController,
-                    physics: _isZooming ? const NeverScrollableScrollPhysics() : const BouncingScrollPhysics(),
+                    physics: _isZooming
+                        ? const NeverScrollableScrollPhysics()
+                        : const BouncingScrollPhysics(),
                     child: Stack(
                       children: [
                         // Horizontal grid lines and hour labels
@@ -367,13 +386,16 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                                   children: [
                                     // Hour label
                                     Container(
-                                      width: CalendarDailyTimelineView.timeColumnWidth,
-                                      padding: const EdgeInsets.only(right: 8, top: 4),
+                                      width: CalendarDailyTimelineView
+                                          .timeColumnWidth,
+                                      padding: const EdgeInsets.only(
+                                          right: 8, top: 4),
                                       alignment: Alignment.topRight,
                                       child: Text(
                                         _formatHour(hour),
                                         style: TextStyle(
-                                          color: palette.text.withValues(alpha: 0.4),
+                                          color: palette.text
+                                              .withValues(alpha: 0.4),
                                           fontSize: 11,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -383,7 +405,8 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                                     Expanded(
                                       child: Container(
                                         height: 0.5,
-                                        color: palette.text.withValues(alpha: 0.08),
+                                        color: palette.text
+                                            .withValues(alpha: 0.08),
                                       ),
                                     ),
                                   ],
@@ -399,58 +422,69 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                             physics: (_draggingEventId != null || _isZooming)
                                 ? const NeverScrollableScrollPhysics()
                                 : const BouncingScrollPhysics(),
-                    onPageChanged: (index) {
-                      final dayDiff = index - _initialPage;
-                      final targetDay = _anchorDate.add(Duration(days: dayDiff));
-                      if (targetDay != widget.selectedDay) {
-                        ref.read(selectedDayProvider.notifier).setDay(targetDay);
-                        if (targetDay.month != ref.read(focusedMonthProvider).month ||
-                            targetDay.year != ref.read(focusedMonthProvider).year) {
-                          ref.read(focusedMonthProvider.notifier).setMonth(
-                            DateTime(targetDay.year, targetDay.month, 1),
-                          );
-                        }
-                      }
-                    },
-                    itemBuilder: (context, index) {
-                      final dayDiff = index - _initialPage;
-                      final currentDay = _anchorDate.add(Duration(days: dayDiff));
-                      return _buildDailyDayColumn(context, ref, currentDay, palette);
-                    },
-                  ),
-                ),
-                if (isToday)
-                  Positioned(
-                    top: _getTopOffset(now) - 4, // Center the 8px dot/line vertically
-                    left: CalendarDailyTimelineView.timeColumnWidth - 4,
-                    right: 0,
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Colors.redAccent,
-                            shape: BoxShape.circle,
+                            onPageChanged: (index) {
+                              final dayDiff = index - _initialPage;
+                              final targetDay =
+                                  _anchorDate.add(Duration(days: dayDiff));
+                              if (targetDay != widget.selectedDay) {
+                                ref
+                                    .read(selectedDayProvider.notifier)
+                                    .setDay(targetDay);
+                                if (targetDay.month !=
+                                        ref.read(focusedMonthProvider).month ||
+                                    targetDay.year !=
+                                        ref.read(focusedMonthProvider).year) {
+                                  ref
+                                      .read(focusedMonthProvider.notifier)
+                                      .setMonth(
+                                        DateTime(
+                                            targetDay.year, targetDay.month, 1),
+                                      );
+                                }
+                              }
+                            },
+                            itemBuilder: (context, index) {
+                              final dayDiff = index - _initialPage;
+                              final currentDay =
+                                  _anchorDate.add(Duration(days: dayDiff));
+                              return _buildDailyDayColumn(
+                                  context, ref, currentDay, palette);
+                            },
                           ),
                         ),
-                        Expanded(
-                          child: Container(
-                            height: 2,
-                            color: Colors.redAccent,
+                        if (isToday)
+                          Positioned(
+                            top: _getTopOffset(now) -
+                                4, // Center the 8px dot/line vertically
+                            left: CalendarDailyTimelineView.timeColumnWidth - 4,
+                            right: 0,
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.redAccent,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Container(
+                                    height: 2,
+                                    color: Colors.redAccent,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),
-              ],
+                ),
+              ),
             ),
           ),
         ),
-      ),
-    ),
-  ),
-),
       ],
     );
   }
@@ -464,7 +498,8 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
     final mappedEvents = widget.events.map((e) {
       final pending = _pendingMovedEvents[e.id];
       if (pending != null) {
-        if (e.start.isAtSameMomentAs(pending.start) && e.end.isAtSameMomentAs(pending.end)) {
+        if (e.start.isAtSameMomentAs(pending.start) &&
+            e.end.isAtSameMomentAs(pending.end)) {
           _pendingMovedEvents.remove(e.id);
           return e;
         }
@@ -511,8 +546,11 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
     double width,
     AppPalette palette,
   ) {
-    final startLocal = _draggingEventId == event.id ? _dragCurrentStart! : event.start.toLocal();
-    final endLocal = _draggingEventId == event.id ? _dragCurrentEnd! : event.end.toLocal();
+    final startLocal = _draggingEventId == event.id
+        ? _dragCurrentStart!
+        : event.start.toLocal();
+    final endLocal =
+        _draggingEventId == event.id ? _dragCurrentEnd! : event.end.toLocal();
 
     // Calculate vertical offset and height
     final double top = _getTopOffset(startLocal);
@@ -542,7 +580,8 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
           if (event.id.startsWith('habit:')) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Habits cannot be dragged. Edit the habit to change its reminder time.'),
+                content: Text(
+                    'Habits cannot be dragged. Edit the habit to change its reminder time.'),
               ),
             );
             return;
@@ -563,7 +602,8 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
           if (_draggingEventId == event.id) {
             final duration = event.end.difference(event.start);
             final hourHeight = ref.read(calendarHourHeightProvider);
-            final newTop = (_dragOriginalTop + details.localOffsetFromOrigin.dy).clamp(0.0, 24.0 * hourHeight);
+            final newTop = (_dragOriginalTop + details.localOffsetFromOrigin.dy)
+                .clamp(0.0, 24.0 * hourHeight);
             final newStart = _getDateTimeFromTop(newTop, event.start.toLocal());
             if (_dragCurrentStart != newStart) {
               if (ref.read(appSettingsProvider).hapticsEnabled) {
@@ -607,7 +647,9 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                   start: newStart,
                   end: newEnd,
                 );
-                ref.read(calendarEventOverridesProvider.notifier).updateEvent(updatedTaskEvent);
+                ref
+                    .read(calendarEventOverridesProvider.notifier)
+                    .updateEvent(updatedTaskEvent);
               } else {
                 final updated = originalEvent.copyWith(
                   start: newStart,
@@ -615,17 +657,23 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                 );
 
                 await calendarRepo.cacheEvents([updated]);
-                ref.read(calendarEventOverridesProvider.notifier).updateEvent(updated);
+                ref
+                    .read(calendarEventOverridesProvider.notifier)
+                    .updateEvent(updated);
 
                 final result = await calendarRepo.updateEvent(updated);
-                ref.read(calendarEventOverridesProvider.notifier).updateEvent(result);
+                ref
+                    .read(calendarEventOverridesProvider.notifier)
+                    .updateEvent(result);
               }
             } catch (e) {
               _pendingMovedEvents.remove(oldDraggingId);
               if (mounted) {
                 setState(() {});
                 await calendarRepo.cacheEvents([originalEvent]);
-                ref.read(calendarEventOverridesProvider.notifier).updateEvent(originalEvent);
+                ref
+                    .read(calendarEventOverridesProvider.notifier)
+                    .updateEvent(originalEvent);
                 final msg = e is CalendarPermissionDeniedException
                     ? 'Cannot move event: Calendar is read-only or permission is denied (403).'
                     : 'Failed to update event: $e';
@@ -637,14 +685,17 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
           }
         },
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: paddingHorizontal, vertical: paddingVertical),
+          padding: EdgeInsets.symmetric(
+              horizontal: paddingHorizontal, vertical: paddingVertical),
           decoration: BoxDecoration(
-            color: eventColor.withValues(alpha: _draggingEventId == event.id ? 0.7 : 0.85),
+            color: eventColor.withValues(
+                alpha: _draggingEventId == event.id ? 0.7 : 0.85),
             borderRadius: BorderRadius.circular(height < 50 ? 8 : 12),
             boxShadow: [
               if (height >= 30)
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: _draggingEventId == event.id ? 0.2 : 0.1),
+                  color: Colors.black.withValues(
+                      alpha: _draggingEventId == event.id ? 0.2 : 0.1),
                   blurRadius: _draggingEventId == event.id ? 8 : 4,
                   offset: Offset(0, _draggingEventId == event.id ? 4 : 2),
                 ),
@@ -676,13 +727,17 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                             margin: const EdgeInsets.only(right: 6),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
+                              border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  width: 1.5),
                               color: event.title.startsWith('✓ ')
                                   ? Colors.white.withValues(alpha: 0.2)
                                   : Colors.transparent,
                             ),
                             child: event.title.startsWith('✓ ')
-                                ? Icon(Icons.check, size: height < 50 ? 10 : 12, color: Colors.white)
+                                ? Icon(Icons.check,
+                                    size: height < 50 ? 10 : 12,
+                                    color: Colors.white)
                                 : null,
                           ),
                         ),
@@ -693,7 +748,9 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                             final habitId = parts[1];
                             final dateStr = parts[2];
                             final date = DateTime.parse(dateStr);
-                            await ref.read(habitRepositoryProvider).toggleBinary(habitId, date);
+                            await ref
+                                .read(habitRepositoryProvider)
+                                .toggleBinary(habitId, date);
                           },
                           child: Container(
                             width: height < 50 ? 14 : 18,
@@ -701,25 +758,34 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
                             margin: const EdgeInsets.only(right: 6),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
+                              border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  width: 1.5),
                               color: event.title.startsWith('✓ ')
                                   ? Colors.white.withValues(alpha: 0.2)
                                   : Colors.transparent,
                             ),
                             child: event.title.startsWith('✓ ')
-                                ? Icon(Icons.check, size: height < 50 ? 10 : 12, color: Colors.white)
+                                ? Icon(Icons.check,
+                                    size: height < 50 ? 10 : 12,
+                                    color: Colors.white)
                                 : null,
                           ),
                         ),
                       ],
                       Expanded(
                         child: Text(
-                          (event.id.startsWith('task:') || event.id.startsWith('habit:')) ? event.title.substring(2) : event.title,
+                          (event.id.startsWith('task:') ||
+                                  event.id.startsWith('habit:'))
+                              ? event.title.substring(2)
+                              : event.title,
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: height < 50 ? 11 : 13,
-                            decoration: event.title.startsWith('✓ ') ? TextDecoration.lineThrough : null,
+                            decoration: event.title.startsWith('✓ ')
+                                ? TextDecoration.lineThrough
+                                : null,
                           ),
                           maxLines: height < 50 ? 1 : 2,
                           overflow: TextOverflow.ellipsis,
@@ -801,7 +867,8 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
     return Color(match.hex);
   }
 
-  void _onEventTapped(BuildContext context, WidgetRef ref, CalendarEvent event) async {
+  void _onEventTapped(
+      BuildContext context, WidgetRef ref, CalendarEvent event) async {
     if (event.id.startsWith('task:')) {
       final taskId = event.id.substring(5);
       final task = await ref.read(taskRepositoryProvider).getTask(taskId);
@@ -849,13 +916,14 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
   List<PositionedEvent> _layoutEvents(List<CalendarEvent> dayTimedEvents) {
     if (dayTimedEvents.isEmpty) return [];
 
-    final sorted = List<CalendarEvent>.from(dayTimedEvents)..sort((a, b) {
-      final startCmp = a.start.compareTo(b.start);
-      if (startCmp != 0) return startCmp;
-      final durA = a.end.difference(a.start);
-      final durB = b.end.difference(b.start);
-      return durB.compareTo(durA);
-    });
+    final sorted = List<CalendarEvent>.from(dayTimedEvents)
+      ..sort((a, b) {
+        final startCmp = a.start.compareTo(b.start);
+        if (startCmp != 0) return startCmp;
+        final durA = a.end.difference(a.start);
+        final durB = b.end.difference(b.start);
+        return durB.compareTo(durA);
+      });
 
     final roots = <_EventLayoutNode>[];
 
@@ -890,7 +958,8 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
 
     final positioned = <PositionedEvent>[];
 
-    void layoutLevel(List<_EventLayoutNode> nodes, double availLeft, double availWidth) {
+    void layoutLevel(
+        List<_EventLayoutNode> nodes, double availLeft, double availWidth) {
       if (nodes.isEmpty) return;
 
       final clusters = <List<_EventLayoutNode>>[];
@@ -926,7 +995,10 @@ class _CalendarDailyTimelineViewState extends ConsumerState<CalendarDailyTimelin
           colEndTimes[assignedCol] = node.event.end;
         }
 
-        final maxCols = (nodeCols.values.isEmpty ? 0 : nodeCols.values.reduce((a, b) => a > b ? a : b)) + 1;
+        final maxCols = (nodeCols.values.isEmpty
+                ? 0
+                : nodeCols.values.reduce((a, b) => a > b ? a : b)) +
+            1;
         final colWidth = availWidth / maxCols;
 
         for (final node in cluster) {

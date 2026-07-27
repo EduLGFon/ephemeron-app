@@ -12,7 +12,7 @@ Future<bool> showConfirmationDialog({
   bool isDestructive = false,
 }) async {
   final palette = ref.read(themeEngineProvider);
-  
+
   final result = await showDialog<bool>(
     context: context,
     builder: (context) {
@@ -49,10 +49,11 @@ Future<bool> showConfirmationDialog({
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: isDestructive 
-                  ? Colors.redAccent.withValues(alpha: 0.2) 
+              backgroundColor: isDestructive
+                  ? Colors.redAccent.withValues(alpha: 0.2)
                   : palette.primary.withValues(alpha: 0.2),
-              foregroundColor: isDestructive ? Colors.redAccent : palette.primary,
+              foregroundColor:
+                  isDestructive ? Colors.redAccent : palette.primary,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -64,6 +65,6 @@ Future<bool> showConfirmationDialog({
       );
     },
   );
-  
+
   return result ?? false;
 }

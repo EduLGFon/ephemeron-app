@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' show Value;
@@ -20,7 +20,6 @@ import '../../features/calendar/presentation/event_form_sheet.dart';
 import '../../../core/settings/session_restore.dart';
 import '../../features/notes/application/notes_providers.dart';
 import '../../features/notes/data/notes_repository.dart';
-import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
 import '../widgets/confirmation_dialog.dart';
 
 class NoteFormSheet extends ConsumerStatefulWidget {
@@ -34,8 +33,10 @@ class NoteFormSheet extends ConsumerStatefulWidget {
 }
 
 class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
-  late final _titleController = TextEditingController(text: widget.existingNote?.title);
-  late final _contentController = MarkdownSyntaxHighlighter(text: widget.existingNote?.content);
+  late final _titleController =
+      TextEditingController(text: widget.existingNote?.title);
+  late final _contentController =
+      MarkdownSyntaxHighlighter(text: widget.existingNote?.content);
   final FocusNode _contentFocusNode = FocusNode();
   Timer? _contentTypingTimer;
   bool _isSaving = false;
@@ -52,7 +53,8 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
     _contentFocusNode.onKeyEvent = (node, event) {
       if (event is KeyDownEvent &&
           event.logicalKey == LogicalKeyboardKey.keyV &&
-          (HardwareKeyboard.instance.isControlPressed || HardwareKeyboard.instance.isMetaPressed)) {
+          (HardwareKeyboard.instance.isControlPressed ||
+              HardwareKeyboard.instance.isMetaPressed)) {
         _handleManualImagePaste();
       }
       return KeyEventResult.ignored;
@@ -77,10 +79,12 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
     final currentText = _contentController.text;
     final selection = _contentController.selection;
     if (selection.baseOffset >= 0) {
-      final newText = currentText.replaceRange(selection.start, selection.end, textToInsert);
+      final newText = currentText.replaceRange(
+          selection.start, selection.end, textToInsert);
       _contentController.value = TextEditingValue(
         text: newText,
-        selection: TextSelection.collapsed(offset: selection.start + textToInsert.length),
+        selection: TextSelection.collapsed(
+            offset: selection.start + textToInsert.length),
       );
     } else {
       _contentController.text += textToInsert;
@@ -92,13 +96,14 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
       label: 'Images',
       extensions: <String>['jpg', 'jpeg', 'png', 'gif', 'webp'],
     );
-    final XFile? file = await openFile(acceptedTypeGroups: <XTypeGroup>[typeGroup]);
+    final XFile? file =
+        await openFile(acceptedTypeGroups: <XTypeGroup>[typeGroup]);
     if (file == null) return;
-    
+
     final appDir = await getApplicationDocumentsDirectory();
     final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
     final savedImage = await File(file.path).copy('${appDir.path}/$fileName');
-    
+
     final imageMarkdown = '\n![Image|250](file://${savedImage.path})\n';
     _insertAtCursor(imageMarkdown);
   }
@@ -106,20 +111,25 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
   bool get _isDirty {
     final originalTitle = widget.existingNote?.title ?? '';
     final originalContent = widget.existingNote?.content ?? '';
-    return _titleController.text != originalTitle || _contentController.text != originalContent;
+    return _titleController.text != originalTitle ||
+        _contentController.text != originalContent;
   }
 
   void _onTitleChanged() {
-    SessionRestore.saveDraftValue('note', widget.existingNote?.id, 'title', _titleController.text);
+    SessionRestore.saveDraftValue(
+        'note', widget.existingNote?.id, 'title', _titleController.text);
   }
 
   void _onContentChanged() {
-    SessionRestore.saveDraftValue('note', widget.existingNote?.id, 'content', _contentController.text);
+    SessionRestore.saveDraftValue(
+        'note', widget.existingNote?.id, 'content', _contentController.text);
   }
 
   void _restoreDrafts() async {
-    final t = await SessionRestore.getDraftValue('note', widget.existingNote?.id, 'title');
-    final c = await SessionRestore.getDraftValue('note', widget.existingNote?.id, 'content');
+    final t = await SessionRestore.getDraftValue(
+        'note', widget.existingNote?.id, 'title');
+    final c = await SessionRestore.getDraftValue(
+        'note', widget.existingNote?.id, 'content');
     if (mounted) {
       setState(() {
         if (t != null) {
@@ -156,7 +166,7 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (widget.unifiedHeader != null) widget.unifiedHeader!,
-        
+
         // ── Editable Header Title + Options ──
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -180,8 +190,11 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
                     fontWeight: FontWeight.bold,
                   ),
                   border: InputBorder.none,
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: palette.text.withValues(alpha: 0.15))),
-                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: palette.primary, width: 2)),
+                  enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                          color: palette.text.withValues(alpha: 0.15))),
+                  focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: palette.primary, width: 2)),
                   contentPadding: const EdgeInsets.symmetric(vertical: 4),
                 ),
                 textCapitalization: TextCapitalization.sentences,
@@ -204,14 +217,17 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
                   },
                 ),
                 IconButton(
-                  icon: Icon(Icons.image_outlined, color: palette.text.withValues(alpha: 0.7)),
+                  icon: Icon(Icons.image_outlined,
+                      color: palette.text.withValues(alpha: 0.7)),
                   tooltip: 'Attach Image',
                   onPressed: _attachImage,
                 ),
                 IconButton(
                   icon: Icon(
                     _showReorderArrows ? Icons.swap_vert : Icons.reorder,
-                    color: _showReorderArrows ? palette.primary : palette.text.withValues(alpha: 0.7),
+                    color: _showReorderArrows
+                        ? palette.primary
+                        : palette.text.withValues(alpha: 0.7),
                   ),
                   tooltip: 'Toggle Reorder Arrows',
                   onPressed: () {
@@ -220,26 +236,33 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
                       _contentController.showReorderArrows = _showReorderArrows;
                       // Force text layout rebuild
                       final text = _contentController.text;
-                      _contentController.value = _contentController.value.copyWith(text: text);
+                      _contentController.value =
+                          _contentController.value.copyWith(text: text);
                     });
                   },
                 ),
                 if (existingNote != null)
                   IconButton(
-                    icon: Icon(Icons.delete_outline, color: Colors.redAccent.withValues(alpha: 0.8)),
+                    icon: Icon(Icons.delete_outline,
+                        color: Colors.redAccent.withValues(alpha: 0.8)),
                     onPressed: () async {
                       final confirmed = await showConfirmationDialog(
                         context: context,
                         ref: ref,
                         title: 'Delete note?',
-                        content: 'Are you sure you want to permanently delete this note?',
+                        content:
+                            'Are you sure you want to permanently delete this note?',
                         confirmLabel: 'Delete',
                         isDestructive: true,
                       );
                       if (confirmed && mounted) {
-                        final navigator = Navigator.of(context); // ignore: use_build_context_synchronously
-                        await ref.read(notesRepositoryProvider).deleteNote(existingNote.id);
-                        await SessionRestore.clearDraftValues('note', existingNote.id);
+                        final navigator = Navigator.of(
+                            context); // ignore: use_build_context_synchronously
+                        await ref
+                            .read(notesRepositoryProvider)
+                            .deleteNote(existingNote.id);
+                        await SessionRestore.clearDraftValues(
+                            'note', existingNote.id);
                         navigator.pop();
                       }
                     },
@@ -249,7 +272,7 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
           ],
         ),
         const SizedBox(height: 16),
-        
+
         // ── Note Body Area ──
         Expanded(
           child: TextField(
@@ -265,17 +288,24 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
               }
             },
             contentInsertionConfiguration: ContentInsertionConfiguration(
-              allowedMimeTypes: const ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
+              allowedMimeTypes: const [
+                'image/png',
+                'image/jpeg',
+                'image/gif',
+                'image/webp'
+              ],
               onContentInserted: (KeyboardInsertedContent content) async {
                 if (content.data != null) {
                   final appDir = await getApplicationDocumentsDirectory();
                   String ext = 'png';
                   if (content.mimeType.contains('jpeg')) ext = 'jpg';
                   if (content.mimeType.contains('gif')) ext = 'gif';
-                  final fileName = 'pasted_${DateTime.now().millisecondsSinceEpoch}.$ext';
+                  final fileName =
+                      'pasted_${DateTime.now().millisecondsSinceEpoch}.$ext';
                   final savedImage = File('${appDir.path}/$fileName');
                   await savedImage.writeAsBytes(content.data!);
-                  final imageMarkdown = '\n![Image|250](file://${savedImage.path})\n';
+                  final imageMarkdown =
+                      '\n![Image|250](file://${savedImage.path})\n';
                   _insertAtCursor(imageMarkdown);
                 }
               },
@@ -290,7 +320,7 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
             ),
           ),
         ),
-        
+
         // Event link shortcut
         if (existingNote?.eventId != null)
           Padding(
@@ -304,7 +334,7 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
             ),
           ),
         const SizedBox(height: 8),
-        
+
         // ── Info caption & actions ──
         const Divider(height: 1, thickness: 0.5),
         const SizedBox(height: 8),
@@ -313,7 +343,8 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
           children: [
             Text(
               '✨ Supports Markdown formatting.',
-              style: TextStyle(color: palette.text.withValues(alpha: 0.45), fontSize: 10),
+              style: TextStyle(
+                  color: palette.text.withValues(alpha: 0.45), fontSize: 10),
             ),
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -325,16 +356,23 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
                         context: context,
                         ref: ref,
                         title: 'Discard changes?',
-                        content: 'You have unsaved changes. Are you sure you want to discard them?',
+                        content:
+                            'You have unsaved changes. Are you sure you want to discard them?',
                         confirmLabel: 'Discard',
                         isDestructive: true,
                       );
                       if (!discard) return;
                     }
-                    await SessionRestore.clearDraftValues('note', widget.existingNote?.id);
-                    if (mounted) Navigator.of(context).pop(); // ignore: use_build_context_synchronously
+                    await SessionRestore.clearDraftValues(
+                        'note', widget.existingNote?.id);
+                    if (mounted) {
+                      Navigator.of(context)
+                          .pop(); // ignore: use_build_context_synchronously
+                    }
                   },
-                  child: Text('Cancel', style: TextStyle(color: palette.text.withValues(alpha: 0.6))),
+                  child: Text('Cancel',
+                      style: TextStyle(
+                          color: palette.text.withValues(alpha: 0.6))),
                 ),
                 const SizedBox(width: 8),
                 FilledButton(
@@ -358,7 +396,8 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
                             if (existingNote != null) {
                               await repo.updateNote(NotesCompanion(
                                 id: Value(existingNote.id),
-                                title: Value(title.isEmpty ? '(Untitled)' : title),
+                                title:
+                                    Value(title.isEmpty ? '(Untitled)' : title),
                                 content: Value(content),
                                 folderId: Value(existingNote.folderId),
                                 updatedAt: Value(DateTime.now()),
@@ -370,14 +409,19 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
                                 folderId: Value(folderId),
                               ));
                             }
-                            await SessionRestore.clearDraftValues('note', existingNote?.id);
+                            await SessionRestore.clearDraftValues(
+                                'note', existingNote?.id);
                             navigator.pop();
                           } finally {
                             if (mounted) setState(() => _isSaving = false);
                           }
                         },
                   child: _isSaving
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
                       : const Text('Save'),
                 ),
               ],
@@ -391,19 +435,22 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
       canPop: !_isDirty,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) {
-          await SessionRestore.clearDraftValues('note', widget.existingNote?.id);
+          await SessionRestore.clearDraftValues(
+              'note', widget.existingNote?.id);
           return;
         }
         final discard = await showConfirmationDialog(
           context: context,
           ref: ref,
           title: 'Discard changes?',
-          content: 'You have unsaved changes. Are you sure you want to discard them?',
+          content:
+              'You have unsaved changes. Are you sure you want to discard them?',
           confirmLabel: 'Discard',
           isDestructive: true,
         );
         if (discard) {
-          await SessionRestore.clearDraftValues('note', widget.existingNote?.id);
+          await SessionRestore.clearDraftValues(
+              'note', widget.existingNote?.id);
           if (context.mounted) {
             Navigator.of(context).pop();
           }
@@ -412,16 +459,23 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeInOut,
-        margin: _isFullScreen ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        margin: _isFullScreen
+            ? EdgeInsets.zero
+            : const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         width: _isFullScreen ? MediaQuery.sizeOf(context).width : 500,
         constraints: BoxConstraints(
           minHeight: _isFullScreen ? MediaQuery.sizeOf(context).height : 180,
-          maxHeight: _isFullScreen ? MediaQuery.sizeOf(context).height : MediaQuery.sizeOf(context).height * 0.65,
+          maxHeight: _isFullScreen
+              ? MediaQuery.sizeOf(context).height
+              : MediaQuery.sizeOf(context).height * 0.65,
         ),
         decoration: BoxDecoration(
           color: palette.surface.withValues(alpha: 0.95),
-          borderRadius: _isFullScreen ? BorderRadius.zero : BorderRadius.circular(28),
-          border: _isFullScreen ? null : Border.all(color: palette.text.withValues(alpha: 0.1)),
+          borderRadius:
+              _isFullScreen ? BorderRadius.zero : BorderRadius.circular(28),
+          border: _isFullScreen
+              ? null
+              : Border.all(color: palette.text.withValues(alpha: 0.1)),
           boxShadow: _isFullScreen
               ? null
               : [
@@ -433,22 +487,20 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
                 ],
         ),
         child: ClipRRect(
-          borderRadius: _isFullScreen ? BorderRadius.zero : BorderRadius.circular(28),
-          child: GlassmorphicWrapper(
-            filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-            child: Material(
-              color: Colors.transparent,
-              child: Padding(
-                padding: _isFullScreen
-                    ? EdgeInsets.only(
-                        top: MediaQuery.paddingOf(context).top + 16,
-                        bottom: MediaQuery.paddingOf(context).bottom + 16,
-                        left: 24,
-                        right: 24,
-                      )
-                    : const EdgeInsets.all(24),
-                child: dialogContent,
-              ),
+          borderRadius:
+              _isFullScreen ? BorderRadius.zero : BorderRadius.circular(28),
+          child: Material(
+            color: Colors.transparent,
+            child: Padding(
+              padding: _isFullScreen
+                  ? EdgeInsets.only(
+                      top: MediaQuery.paddingOf(context).top + 16,
+                      bottom: MediaQuery.paddingOf(context).bottom + 16,
+                      left: 24,
+                      right: 24,
+                    )
+                  : const EdgeInsets.all(24),
+              child: dialogContent,
             ),
           ),
         ),
@@ -488,13 +540,16 @@ class _EventShortcutChipState extends State<EventShortcutChip> {
       if (!mounted) return;
       if (event == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Event not found — it may have been deleted or you\'re not signed in.')),
+          const SnackBar(
+              content: Text(
+                  'Event not found — it may have been deleted or you\'re not signed in.')),
         );
         return;
       }
       widget.onDismiss();
       if (!mounted) return;
-      await showEventFormSheet(context, initialDay: event.start, existingEvent: event);
+      await showEventFormSheet(context,
+          initialDay: event.start, existingEvent: event);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -519,18 +574,21 @@ class _EventShortcutChipState extends State<EventShortcutChip> {
               SizedBox(
                 width: 13,
                 height: 13,
-                child: CircularProgressIndicator(strokeWidth: 1.5, color: p.primary),
+                child: CircularProgressIndicator(
+                    strokeWidth: 1.5, color: p.primary),
               )
             else
               Icon(Icons.event_outlined, size: 14, color: p.primary),
             const SizedBox(width: 6),
             Text(
               _loading ? 'Loading event...' : 'Open in Calendar',
-              style: TextStyle(color: p.primary, fontSize: 12, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                  color: p.primary, fontSize: 12, fontWeight: FontWeight.w600),
             ),
             if (!_loading) ...[
               const SizedBox(width: 4),
-              Icon(Icons.open_in_new, size: 11, color: p.primary.withValues(alpha: 0.7)),
+              Icon(Icons.open_in_new,
+                  size: 11, color: p.primary.withValues(alpha: 0.7)),
             ],
           ],
         ),

@@ -2,7 +2,6 @@ import 'package:drift/drift.dart' show Value;
 import '../../features/quick_add/application/quick_add_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../../core/theme/theme_engine_provider.dart';
 import '../../core/theme/theme_palettes.dart';
@@ -10,10 +9,8 @@ import '../../data/local/database.dart';
 import '../../features/notes/application/notes_providers.dart';
 import '../../features/notes/data/notes_repository.dart';
 import 'package:ephemeron/core/widgets/app_loading_indicator.dart';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Notes screen
-// ─────────────────────────────────────────────────────────────────────────────
+import 'widgets/note_card.dart';
+import 'widgets/note_folder_breadcrumbs.dart';
 
 class NotesScreen extends ConsumerStatefulWidget {
   const NotesScreen({super.key});
@@ -23,7 +20,6 @@ class NotesScreen extends ConsumerStatefulWidget {
 }
 
 class _NotesScreenState extends ConsumerState<NotesScreen> {
-  /// ID of the folder currently highlighted as a DragTarget.
   String? _dragHoverId;
   bool _isSearching = false;
   String _searchQuery = '';
@@ -56,13 +52,18 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                 style: TextStyle(color: palette.text, fontSize: 16),
                 decoration: InputDecoration(
                   hintText: 'Search title, content, #tag...',
-                  hintStyle: TextStyle(color: palette.text.withValues(alpha: 0.4)),
+                  hintStyle:
+                      TextStyle(color: palette.text.withValues(alpha: 0.4)),
                   border: InputBorder.none,
                 ),
                 onChanged: (val) => setState(() => _searchQuery = val),
               )
             : foldersAsync.when(
-                data: (allFolders) => _buildBreadcrumbs(currentFolderId, allFolders, palette, ref),
+                data: (allFolders) => NoteFolderBreadcrumbs(
+                  currentId: currentFolderId,
+                  allFolders: allFolders,
+                  palette: palette,
+                ),
                 loading: () => const SizedBox.shrink(),
                 error: (_, __) => const SizedBox.shrink(),
               ),
@@ -76,7 +77,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
               ]
             : [
                 IconButton(
-                  icon: Icon(Icons.create_new_folder_outlined, color: palette.text),
+                  icon: Icon(Icons.create_new_folder_outlined,
+                      color: palette.text),
                   tooltip: 'New Folder',
                   onPressed: () => _showCreateFolderDialog(context, ref),
                 ),
@@ -87,153 +89,143 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                 ),
               ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 100),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 16),
-              // Folders row (with DragTarget support)
-              foldersAsync.when(
-                data: (allFolders) {
-                  final visibleFolders = allFolders
-                      .where((f) => f.parentFolderId == currentFolderId)
-                      .toList();
-                  final allNotes = notesAsync.value ?? const [];
-                  return _buildFoldersList(visibleFolders, allNotes, palette, ref);
-                },
-                loading: () => const SizedBox(height: 110, child: Center(child: AppLoadingIndicator())),
-                error: (err, _) => Center(child: Text('Error loading folders: $err', style: TextStyle(color: palette.text))),
-              ),
-              const SizedBox(height: 12),
-              // Notes grid (Draggable cards)
-              notesAsync.when(
-                data: (allNotes) {
-                  final q = _searchQuery.trim().toLowerCase();
-                  final visibleNotes = allNotes.where((n) {
-                    if (q.isEmpty) {
-                      return n.folderId == currentFolderId;
-                    }
-                    final matchesText = n.title.toLowerCase().contains(q) ||
-                        n.content.toLowerCase().contains(q);
-                    bool matchesFolder = false;
-                    if (foldersAsync.value != null) {
-                      final matchingFolders = foldersAsync.value!
-                          .where((f) => f.name.toLowerCase().contains(q))
-                          .map((f) => f.id)
-                          .toSet();
-                      if (n.folderId != null && matchingFolders.contains(n.folderId)) {
-                        matchesFolder = true;
-                      }
-                    }
-                    final isInsideFolder = currentFolderId == null || n.folderId == currentFolderId;
-                    return (matchesText || matchesFolder) && isInsideFolder;
-                  }).toList();
-                  return _buildNotesSection(visibleNotes, palette, ref);
-                },
-                loading: () => const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())),
-                error: (err, _) => Center(child: Text('Error loading notes: $err', style: TextStyle(color: palette.text))),
-              ),
-            ],
+      body: CustomScrollView(
+        slivers: [
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 16),
           ),
-        ),
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Breadcrumbs
-  // ─────────────────────────────────────────────────────────────────────────
-
-  Widget _buildBreadcrumbs(
-    String? currentId,
-    List<NoteFolder> allFolders,
-    AppPalette palette,
-    WidgetRef ref,
-  ) {
-    final path = <Widget>[];
-    
-    // Notes root folder breadcrumb target
-    path.add(
-      DragTarget<Note>(
-        onWillAcceptWithDetails: (details) => details.data.folderId != null,
-        onAcceptWithDetails: (details) async {
-          final note = details.data;
-          await ref.read(notesRepositoryProvider).moveNoteToFolder(note.id, null);
-        },
-        builder: (context, candidateData, rejectedData) {
-          final isHovered = candidateData.isNotEmpty;
-          return GestureDetector(
-            onTap: () => ref.read(currentFolderIdProvider.notifier).setFolder(null),
-            child: Text(
-              'Notes',
-              style: TextStyle(
-                color: isHovered
-                    ? palette.primary
-                    : (currentId == null ? palette.text : palette.text.withValues(alpha: 0.5)),
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
+          SliverToBoxAdapter(
+            child: foldersAsync.when(
+              data: (allFolders) {
+                final visibleFolders = allFolders
+                    .where((f) => f.parentFolderId == currentFolderId)
+                    .toList();
+                final allNotes = notesAsync.value ?? const [];
+                return _buildFoldersList(
+                    visibleFolders, allNotes, palette, ref);
+              },
+              loading: () => const SizedBox(
+                  height: 110, child: Center(child: AppLoadingIndicator())),
+              error: (err, _) => Center(
+                  child: Text('Error loading folders: $err',
+                      style: TextStyle(color: palette.text))),
             ),
-          );
-        },
-      ),
-    );
-
-    if (currentId != null) {
-      final list = <NoteFolder>[];
-      String? targetId = currentId;
-      while (targetId != null) {
-        final folderList = allFolders.where((f) => f.id == targetId);
-        if (folderList.isEmpty) break;
-        final folder = folderList.first;
-        list.insert(0, folder);
-        targetId = folder.parentFolderId;
-      }
-      for (final folder in list) {
-        path.add(Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Icon(Icons.chevron_right, color: palette.text.withValues(alpha: 0.3), size: 16),
-        ));
-        
-        path.add(
-          DragTarget<Note>(
-            onWillAcceptWithDetails: (details) => details.data.folderId != folder.id,
-            onAcceptWithDetails: (details) async {
-              final note = details.data;
-              await ref.read(notesRepositoryProvider).moveNoteToFolder(note.id, folder.id);
-            },
-            builder: (context, candidateData, rejectedData) {
-              final isHovered = candidateData.isNotEmpty;
-              return GestureDetector(
-                onTap: () => ref.read(currentFolderIdProvider.notifier).setFolder(folder.id),
-                child: Text(
-                  folder.name,
-                  style: TextStyle(
-                    color: isHovered
-                        ? palette.primary
-                        : (folder.id == currentId ? palette.text : palette.text.withValues(alpha: 0.5)),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
+          ),
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 12),
+          ),
+          notesAsync.when(
+            data: (allNotes) {
+              final q = _searchQuery.trim().toLowerCase();
+              final visibleNotes = allNotes.where((n) {
+                if (q.isEmpty) {
+                  return n.folderId == currentFolderId;
+                }
+                final matchesText = n.title.toLowerCase().contains(q) ||
+                    n.content.toLowerCase().contains(q);
+                bool matchesFolder = false;
+                if (foldersAsync.value != null) {
+                  final matchingFolders = foldersAsync.value!
+                      .where((f) => f.name.toLowerCase().contains(q))
+                      .map((f) => f.id)
+                      .toSet();
+                  if (n.folderId != null &&
+                      matchingFolders.contains(n.folderId)) {
+                    matchesFolder = true;
+                  }
+                }
+                final isInsideFolder = currentFolderId == null ||
+                    n.folderId == currentFolderId;
+                return (matchesText || matchesFolder) && isInsideFolder;
+              }).toList();
+              
+              if (visibleNotes.isEmpty) {
+                return SliverToBoxAdapter(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(48.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.notes,
+                              size: 48, color: palette.text.withValues(alpha: 0.1)),
+                          const SizedBox(height: 8),
+                          Text('No notes yet',
+                              style: TextStyle(
+                                  color: palette.text.withValues(alpha: 0.4),
+                                  fontSize: 14)),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                );
+              }
+
+              final grouped = _groupNotesByDate(visibleNotes);
+              final keys = grouped.keys.toList();
+              
+              return SliverList.builder(
+                itemCount: keys.length,
+                itemBuilder: (context, idx) {
+                  final key = keys[idx];
+                  final groupNotes = grouped[key]!;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16, top: 20, bottom: 8),
+                        child: Text(
+                          key,
+                          style: TextStyle(
+                              color: palette.text.withValues(alpha: 0.5),
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 220,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.9,
+                        ),
+                        itemCount: groupNotes.length,
+                        itemBuilder: (context, noteIdx) {
+                          final note = groupNotes[noteIdx];
+                          return RepaintBoundary(
+                            child: DraggableNoteCard(
+                              note: note,
+                              palette: palette,
+                              onTap: () => ref.read(quickAddProvider.notifier).expand(note),
+                              onLongPress: () => _showDeleteNoteDialog(context, ref, note),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  );
+                },
               );
             },
+            loading: () => const SliverToBoxAdapter(
+                child: Center(
+                    child: Padding(
+                        padding: EdgeInsets.all(32),
+                        child: CircularProgressIndicator()))),
+            error: (err, _) => SliverToBoxAdapter(
+                child: Center(
+                    child: Text('Error loading notes: $err',
+                        style: TextStyle(color: palette.text)))),
           ),
-        );
-      }
-    }
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(children: path),
+          const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+        ],
+      ),
     );
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Folders list — each folder is a DragTarget<Note>
-  // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildFoldersList(
     List<NoteFolder> folders,
@@ -277,14 +269,19 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                       : palette.text.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isHovered ? palette.primary : palette.text.withValues(alpha: 0.08),
+                    color: isHovered
+                        ? palette.primary
+                        : palette.text.withValues(alpha: 0.08),
                     width: isHovered ? 2 : 1,
                   ),
                 ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(16),
-                  onTap: () => ref.read(currentFolderIdProvider.notifier).setFolder(folder.id),
-                  onLongPress: () => _showDeleteFolderDialog(context, ref, folder),
+                  onTap: () => ref
+                      .read(currentFolderIdProvider.notifier)
+                      .setFolder(folder.id),
+                  onLongPress: () =>
+                      _showDeleteFolderDialog(context, ref, folder),
                   child: Padding(
                     padding: const EdgeInsets.all(12),
                     child: Column(
@@ -296,7 +293,10 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: (isHovered ? palette.primary : palette.primary).withValues(alpha: 0.15),
+                                color: (isHovered
+                                        ? palette.primary
+                                        : palette.primary)
+                                    .withValues(alpha: 0.15),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
@@ -338,83 +338,6 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Notes grid — each card is Draggable<Note>
-  // ─────────────────────────────────────────────────────────────────────────
-
-  Widget _buildNotesSection(
-    List<Note> notes,
-    AppPalette palette,
-    WidgetRef ref,
-  ) {
-    if (notes.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(48.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.notes, size: 48, color: palette.text.withValues(alpha: 0.1)),
-              const SizedBox(height: 8),
-              Text('No notes yet', style: TextStyle(color: palette.text.withValues(alpha: 0.4), fontSize: 14)),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final grouped = _groupNotesByDate(notes);
-    final keys = grouped.keys.toList();
-
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: keys.length,
-      itemBuilder: (context, idx) {
-        final key = keys[idx];
-        final groupNotes = grouped[key]!;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 16, top: 20, bottom: 8),
-              child: Text(
-                key,
-                style: TextStyle(color: palette.text.withValues(alpha: 0.5), fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-            ),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 220,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.9,
-              ),
-              itemCount: groupNotes.length,
-              itemBuilder: (context, noteIdx) {
-                final note = groupNotes[noteIdx];
-                return _DraggableNoteCard(
-                  note: note,
-                  palette: palette,
-                  onTap: () => ref.read(quickAddProvider.notifier).expand(note),
-                  onLongPress: () => _showDeleteNoteDialog(context, ref, note),
-                );
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Helpers
-  // ─────────────────────────────────────────────────────────────────────────
-
   Map<String, List<Note>> _groupNotesByDate(List<Note> notes) {
     final grouped = <String, List<Note>>{};
     final now = DateTime.now();
@@ -434,15 +357,19 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
   }
 
   String _getMonthName(int month) => switch (month) {
-    1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr',
-    5 => 'May', 6 => 'Jun', 7 => 'Jul', 8 => 'Aug',
-    9 => 'Sep', 10 => 'Oct', 11 => 'Nov', _ => 'Dec',
-  };
-
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Dialogs
-  // ─────────────────────────────────────────────────────────────────────────
+        1 => 'Jan',
+        2 => 'Feb',
+        3 => 'Mar',
+        4 => 'Apr',
+        5 => 'May',
+        6 => 'Jun',
+        7 => 'Jul',
+        8 => 'Aug',
+        9 => 'Sep',
+        10 => 'Oct',
+        11 => 'Nov',
+        _ => 'Dec',
+      };
 
   void _showCreateFolderDialog(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController();
@@ -459,13 +386,15 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
           decoration: InputDecoration(
             hintText: 'Folder name',
             hintStyle: TextStyle(color: palette.text.withValues(alpha: 0.5)),
-            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: palette.primary)),
+            focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: palette.primary)),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel', style: TextStyle(color: palette.text.withValues(alpha: 0.6))),
+            child: Text('Cancel',
+                style: TextStyle(color: palette.text.withValues(alpha: 0.6))),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: palette.primary),
@@ -474,8 +403,9 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
               if (name.isNotEmpty) {
                 final parentId = ref.read(currentFolderIdProvider);
                 await ref.read(notesRepositoryProvider).createFolder(
-                  NoteFoldersCompanion.insert(name: name, parentFolderId: Value(parentId)),
-                );
+                      NoteFoldersCompanion.insert(
+                          name: name, parentFolderId: Value(parentId)),
+                    );
                 if (context.mounted) Navigator.of(context).pop();
               }
             },
@@ -486,7 +416,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
     );
   }
 
-  void _showDeleteFolderDialog(BuildContext context, WidgetRef ref, NoteFolder folder) {
+  void _showDeleteFolderDialog(
+      BuildContext context, WidgetRef ref, NoteFolder folder) {
     final palette = ref.read(themeEngineProvider);
     showDialog(
       context: context,
@@ -500,7 +431,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel', style: TextStyle(color: palette.text.withValues(alpha: 0.6))),
+            child: Text('Cancel',
+                style: TextStyle(color: palette.text.withValues(alpha: 0.6))),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
@@ -508,7 +440,9 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
               await ref.read(notesRepositoryProvider).deleteFolder(folder.id);
               if (context.mounted) Navigator.of(context).pop();
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('Delete',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -529,7 +463,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel', style: TextStyle(color: palette.text.withValues(alpha: 0.6))),
+            child: Text('Cancel',
+                style: TextStyle(color: palette.text.withValues(alpha: 0.6))),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
@@ -537,173 +472,13 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
               await ref.read(notesRepositoryProvider).deleteNote(note.id);
               if (context.mounted) Navigator.of(context).pop();
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 2. Draggable note card with event shortcut chip
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _DraggableNoteCard extends StatelessWidget {
-  const _DraggableNoteCard({
-    required this.note,
-    required this.palette,
-    required this.onTap,
-    required this.onLongPress,
-  });
-
-  final Note note;
-  final AppPalette palette;
-  final VoidCallback onTap;
-  final VoidCallback onLongPress;
-
-  @override
-  Widget build(BuildContext context) {
-    final card = _NoteCardContent(note: note, palette: palette);
-
-    return Draggable<Note>(
-      data: note,
-      // Shown while dragging (ghost copy, slightly transparent)
-      feedback: Material(
-        color: Colors.transparent,
-        child: Opacity(
-          opacity: 0.85,
-          child: SizedBox(
-            width: 160,
-            height: 170,
-            child: card,
-          ),
-        ),
-      ),
-      // The original card dims when dragged
-      childWhenDragging: Opacity(
-        opacity: 0.3,
-        child: card,
-      ),
-      child: GestureDetector(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: card,
-      ),
-    );
-  }
-}
-
-class _NoteCardContent extends StatelessWidget {
-  const _NoteCardContent({required this.note, required this.palette});
-
-  final Note note;
-  final AppPalette palette;
-
-  String _formatDate(DateTime dt) {
-    final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return '${months[dt.month - 1]} ${dt.day}';
-  }
-
-  String _preparePreviewContent(String content) {
-    // flutter_markdown requires checkboxes to be prefixed with a list bullet (e.g. "- [ ]")
-    // This regex converts standalone "[ ]" or "[x]" at the start of lines to "- [ ]" or "- [x]"
-    String processed = content.replaceAllMapped(
-      RegExp(r'^(\s*)\[([ x])\]', multiLine: true),
-      (match) => '${match.group(1)}- [${match.group(2)}]',
-    );
-    
-    // flutter_markdown doesn't support our custom ![alt|height](url) syntax.
-    // Strip the |height part for the list preview.
-    processed = processed.replaceAllMapped(
-      RegExp(r'!\[([^\|\]]*?)\|(\d+)\]\('),
-      (match) => '![${match.group(1)}]('
-    );
-    
-    return processed;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasEventLink = note.eventId != null;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: palette.text.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: hasEventLink
-              ? palette.primary.withValues(alpha: 0.3)
-              : palette.text.withValues(alpha: 0.08),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: IgnorePointer(
-              child: ClipRect(
-                child: SingleChildScrollView(
-                  physics: const NeverScrollableScrollPhysics(),
-                  child: MarkdownBody(
-                    data: _preparePreviewContent(note.content),
-                    softLineBreak: true,
-                    styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                      p: TextStyle(color: palette.text.withValues(alpha: 0.8), fontSize: 11, height: 1.4),
-                      h1: TextStyle(color: palette.text, fontSize: 14, fontWeight: FontWeight.bold),
-                      h2: TextStyle(color: palette.text, fontSize: 12, fontWeight: FontWeight.bold),
-                      h3: TextStyle(color: palette.text, fontSize: 11, fontWeight: FontWeight.bold),
-                      code: TextStyle(color: palette.primary, fontSize: 10),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            note.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: palette.text, fontWeight: FontWeight.bold, fontSize: 14),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _formatDate(note.createdAt),
-                  style: TextStyle(color: palette.text.withValues(alpha: 0.4), fontSize: 11),
-                ),
-              ),
-              // ── 2. Event shortcut chip ────────────────────────────
-              if (hasEventLink)
-                Tooltip(
-                  message: 'Linked to calendar event',
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: palette.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.event_outlined, size: 10, color: palette.primary),
-                        const SizedBox(width: 3),
-                        Text('Event', style: TextStyle(color: palette.primary, fontSize: 10, fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
+            child: const Text('Delete',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
   }
 }
-
 

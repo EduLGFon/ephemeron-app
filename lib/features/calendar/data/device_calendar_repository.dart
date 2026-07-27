@@ -44,8 +44,9 @@ class DeviceCalendarRepository {
     bool forceRefresh = false,
   }) async {
     if (enabledCalendarIds.isEmpty) return const [];
-    
-    final cacheKey = '${rangeStart.millisecondsSinceEpoch}_${rangeEnd.millisecondsSinceEpoch}';
+
+    final cacheKey =
+        '${rangeStart.millisecondsSinceEpoch}_${rangeEnd.millisecondsSinceEpoch}';
     final idsChanged = _cachedEnabledIds == null ||
         _cachedEnabledIds!.length != enabledCalendarIds.length ||
         !_cachedEnabledIds!.containsAll(enabledCalendarIds);

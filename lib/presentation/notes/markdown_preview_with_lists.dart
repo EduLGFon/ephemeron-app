@@ -14,7 +14,8 @@ class MarkdownPreviewWithLists extends StatefulWidget {
   final MarkdownStyleSheet styleSheet;
 
   @override
-  State<MarkdownPreviewWithLists> createState() => _MarkdownPreviewWithListsState();
+  State<MarkdownPreviewWithLists> createState() =>
+      _MarkdownPreviewWithListsState();
 }
 
 class _MarkdownPreviewWithListsState extends State<MarkdownPreviewWithLists> {
@@ -42,7 +43,7 @@ class _MarkdownPreviewWithListsState extends State<MarkdownPreviewWithLists> {
             onReorderItem: (oldIndex, newIndex) {
               final item = block.items.removeAt(oldIndex);
               block.items.insert(newIndex, item);
-              
+
               _rebuildTextAndNotify(blocks);
             },
             itemBuilder: (context, i) {
@@ -53,7 +54,8 @@ class _MarkdownPreviewWithListsState extends State<MarkdownPreviewWithLists> {
                 children: [
                   const Padding(
                     padding: EdgeInsets.only(top: 4.0, right: 8.0, left: 8.0),
-                    child: Icon(Icons.drag_indicator, size: 16, color: Colors.grey),
+                    child: Icon(Icons.drag_indicator,
+                        size: 16, color: Colors.grey),
                   ),
                   Expanded(
                     child: MarkdownBody(
@@ -94,8 +96,9 @@ class _MarkdownPreviewWithListsState extends State<MarkdownPreviewWithLists> {
   List<_Block> _parseBlocks(String text) {
     final lines = text.split(RegExp(r'(?<=\n)')); // Keep newlines
     final blocks = <_Block>[];
-    
-    final listRegex = RegExp(r'^(\s*)(-\s\[\s\]\s|-\s\[x\]\s|-\s|\*\s|\d+\.\s|->\s|=>\s)(.*)$');
+
+    final listRegex = RegExp(
+        r'^(\s*)(-\s\[\s\]\s|-\s\[x\]\s|-\s|\*\s|\d+\.\s|->\s|=>\s)(.*)$');
 
     _TextBlock? currentText;
     _ListBlock? currentList;
@@ -109,7 +112,9 @@ class _MarkdownPreviewWithListsState extends State<MarkdownPreviewWithLists> {
           blocks.add(currentText);
           currentText = null;
         }
-        currentList ??= _ListBlock(startIndex: i, isNumbered: line.trimLeft().contains(RegExp(r'^\d+\.')));
+        currentList ??= _ListBlock(
+            startIndex: i,
+            isNumbered: line.trimLeft().contains(RegExp(r'^\d+\.')));
         currentList.items.add(line);
       } else {
         // If it's an indented line following a list item, it might be part of it.

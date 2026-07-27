@@ -18,14 +18,19 @@ class HabitSection {
   /// of scope for this MVP step).
   final int suggestedHour;
 
-  static const morning = HabitSection('morning', 'Morning', Icons.wb_sunny_outlined, 8);
-  static const afternoon = HabitSection('afternoon', 'Afternoon', Icons.wb_cloudy_outlined, 14);
-  static const night = HabitSection('night', 'Night', Icons.nights_stay_outlined, 20);
-  static const other = HabitSection('other', 'Other', Icons.circle_outlined, 12);
+  static const morning =
+      HabitSection('morning', 'Morning', Icons.wb_sunny_outlined, 8);
+  static const afternoon =
+      HabitSection('afternoon', 'Afternoon', Icons.wb_cloudy_outlined, 14);
+  static const night =
+      HabitSection('night', 'Night', Icons.nights_stay_outlined, 20);
+  static const other =
+      HabitSection('other', 'Other', Icons.circle_outlined, 12);
 
   static const defaults = [morning, afternoon, night, other];
 
   static HabitSection resolve(String id) {
-    return defaults.firstWhere((s) => s.id == id, orElse: () => HabitSection(id, id, Icons.label_outline, 12));
+    return defaults.firstWhere((s) => s.id == id,
+        orElse: () => HabitSection(id, id, Icons.label_outline, 12));
   }
 }

@@ -38,7 +38,8 @@ class AuthScreen extends ConsumerWidget {
             FilledButton(
               onPressed: () async {
                 final prefs = await SharedPreferences.getInstance();
-                final lastScreen = prefs.getString('settings.lastScreen') ?? '/calendar';
+                final lastScreen =
+                    prefs.getString('settings.lastScreen') ?? '/calendar';
                 if (context.mounted) {
                   context.go(lastScreen);
                 }
@@ -77,7 +78,8 @@ class _GoogleCalendarCard extends ConsumerWidget {
               children: [
                 const Icon(Icons.calendar_month_outlined),
                 const SizedBox(width: 8),
-                Text('Google Calendar', style: Theme.of(context).textTheme.titleLarge),
+                Text('Google Calendar',
+                    style: Theme.of(context).textTheme.titleLarge),
               ],
             ),
             const SizedBox(height: 4),
@@ -159,8 +161,10 @@ class _GoogleCalendarCard extends ConsumerWidget {
   Future<void> _showCredentialsDialog(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     const storage = SafeSecureStorage();
-    final customSecret = await storage.read(key: 'google.desktop.customClientSecret') ?? '';
-    final idController = TextEditingController(text: prefs.getString('google.desktop.customClientId') ?? '');
+    final customSecret =
+        await storage.read(key: 'google.desktop.customClientSecret') ?? '';
+    final idController = TextEditingController(
+        text: prefs.getString('google.desktop.customClientId') ?? '');
     final secretController = TextEditingController(text: customSecret);
 
     if (!context.mounted) return;
@@ -205,7 +209,9 @@ class _GoogleCalendarCard extends ConsumerWidget {
               final secret = secretController.text.trim();
               if (id.isNotEmpty && secret.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Client Secret is required when Client ID is provided.')),
+                  const SnackBar(
+                      content: Text(
+                          'Client Secret is required when Client ID is provided.')),
                 );
                 return;
               }
@@ -215,7 +221,8 @@ class _GoogleCalendarCard extends ConsumerWidget {
                 await storage.delete(key: 'google.desktop.customClientSecret');
               } else {
                 await prefs.setString('google.desktop.customClientId', id);
-                await storage.write(key: 'google.desktop.customClientSecret', value: secret);
+                await storage.write(
+                    key: 'google.desktop.customClientSecret', value: secret);
               }
               if (context.mounted) Navigator.pop(context);
             },
@@ -227,7 +234,8 @@ class _GoogleCalendarCard extends ConsumerWidget {
   }
 
   void _showError(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -235,7 +243,8 @@ class _BackendAccountCard extends ConsumerStatefulWidget {
   const _BackendAccountCard();
 
   @override
-  ConsumerState<_BackendAccountCard> createState() => _BackendAccountCardState();
+  ConsumerState<_BackendAccountCard> createState() =>
+      _BackendAccountCardState();
 }
 
 class _BackendAccountCardState extends ConsumerState<_BackendAccountCard> {
@@ -266,7 +275,8 @@ class _BackendAccountCardState extends ConsumerState<_BackendAccountCard> {
               children: [
                 const Icon(Icons.checklist_outlined),
                 const SizedBox(width: 8),
-                Text('Tasks & Habits account', style: Theme.of(context).textTheme.titleLarge),
+                Text('Tasks & Habits account',
+                    style: Theme.of(context).textTheme.titleLarge),
               ],
             ),
             const SizedBox(height: 4),
@@ -277,8 +287,9 @@ class _BackendAccountCardState extends ConsumerState<_BackendAccountCard> {
             ),
             const SizedBox(height: 12),
             sessionAsync.when(
-              data: (session) =>
-                  session == null ? _buildForm(context) : _buildLoggedIn(context, session),
+              data: (session) => session == null
+                  ? _buildForm(context)
+                  : _buildLoggedIn(context, session),
               loading: () => const LinearProgressIndicator(),
               error: (error, _) => Text(
                 'Could not restore session.',

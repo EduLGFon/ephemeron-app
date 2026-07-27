@@ -81,8 +81,6 @@ dependencies:
   # OS battery-saver detection, feeding the app's own power-saving
   # setting (Step 9).
   battery_plus: ^7.1.1
-  flutter_animate: ^4.5.2
-  image_picker: ^1.1.2
   local_notifier: ^0.1.6
 
   google_sign_in_platform_interface: any

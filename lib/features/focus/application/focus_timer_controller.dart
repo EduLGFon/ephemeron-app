@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart'; // added for ValueNotifier
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,24 +26,29 @@ class FocusTimerController extends Notifier<FocusTimerState> {
   // session still records its real start time, not one skewed forward by
   // however long it was paused.
   DateTime? _trueSessionStart;
+  
+  final ValueNotifier<Duration> elapsedNotifier = ValueNotifier(Duration.zero);
 
   @override
   FocusTimerState build() {
     ref.onDispose(() {
       _ticker?.cancel();
+      elapsedNotifier.dispose();
       unawaited(WakelockPlus.disable());
     });
 
     final prefs = ref.watch(sharedPreferencesProvider);
     final savedModeStr = prefs.getString('focus.lastMode');
-    final initialMode = savedModeStr == 'stopwatch' ? FocusMode.stopwatch : FocusMode.pomodoro;
+    final initialMode =
+        savedModeStr == 'stopwatch' ? FocusMode.stopwatch : FocusMode.pomodoro;
 
     return FocusTimerState(mode: initialMode);
   }
 
   void setMode(FocusMode mode) {
     if (state.isRunning) return; // don't allow switching mid-session
-    state = state.copyWith(mode: mode, elapsed: Duration.zero);
+    elapsedNotifier.value = Duration.zero;
+    state = state.copyWith(mode: mode);
     ref.read(sharedPreferencesProvider).setString('focus.lastMode', mode.name);
   }
 
@@ -73,11 +79,11 @@ class FocusTimerController extends Notifier<FocusTimerState> {
     if (state.isRunning) return;
     final now = DateTime.now();
     _trueSessionStart ??= now;
-    _accumulatedBeforePause = state.elapsed;
+    _accumulatedBeforePause = elapsedNotifier.value;
     state = state.copyWith(
       isRunning: true,
       startedAt: () => now,
-      pomodoroPhase: state.elapsed == Duration.zero
+      pomodoroPhase: elapsedNotifier.value == Duration.zero
           ? PomodoroPhase.work
           : state.pomodoroPhase,
     );
@@ -91,14 +97,14 @@ class FocusTimerController extends Notifier<FocusTimerState> {
       title: isPomo ? 'Focus (Pomodoro)' : 'Focus session',
       startedAt: now,
       isCountdown: isPomo,
-      duration: isPomo ? (state.pomodoroTarget - state.elapsed) : null,
+      duration: isPomo ? (state.pomodoroTarget - elapsedNotifier.value) : null,
     );
 
     // Android 16+: also show the promoted-ongoing pill in the status bar.
     // On older versions this is a silent no-op inside MainActivity.
     final pillWhen = isPomo
-        ? now.add(state.pomodoroTarget - state.elapsed).millisecondsSinceEpoch
-        : now.subtract(state.elapsed).millisecondsSinceEpoch;
+        ? now.add(state.pomodoroTarget - elapsedNotifier.value).millisecondsSinceEpoch
+        : now.subtract(elapsedNotifier.value).millisecondsSinceEpoch;
     unawaited(PromotedNotificationChannel.show(
       title: isPomo ? 'Pomodoro' : 'Focus',
       body: isPomo ? 'Time remaining' : 'Session running',
@@ -123,21 +129,21 @@ class FocusTimerController extends Notifier<FocusTimerState> {
           ? PomodoroPhase.breakTime
           : PomodoroPhase.work;
       _accumulatedBeforePause = Duration.zero;
+      elapsedNotifier.value = Duration.zero;
       state = state.copyWith(
         pomodoroPhase: nextPhase,
-        elapsed: Duration.zero,
         startedAt: () => DateTime.now(),
       );
       return;
     }
 
-    state = state.copyWith(elapsed: elapsed);
+    elapsedNotifier.value = elapsed;
   }
 
   void pause() {
     if (!state.isRunning) return;
     _ticker?.cancel();
-    _accumulatedBeforePause = state.elapsed;
+    _accumulatedBeforePause = elapsedNotifier.value;
     state = state.copyWith(isRunning: false);
     unawaited(WakelockPlus.disable());
     unawaited(ref
@@ -159,7 +165,7 @@ class FocusTimerController extends Notifier<FocusTimerState> {
 
     final finalElapsed = state.isRunning
         ? _accumulatedBeforePause + DateTime.now().difference(state.startedAt!)
-        : state.elapsed;
+        : elapsedNotifier.value;
     final sessionStart =
         _trueSessionStart ?? DateTime.now().subtract(finalElapsed);
 
@@ -185,6 +191,7 @@ class FocusTimerController extends Notifier<FocusTimerState> {
 
     _accumulatedBeforePause = Duration.zero;
     _trueSessionStart = null;
+    elapsedNotifier.value = Duration.zero;
     state = FocusTimerState(mode: state.mode);
     return sessionId;
   }
@@ -192,5 +199,9 @@ class FocusTimerController extends Notifier<FocusTimerState> {
 
 final focusTimerControllerProvider =
     NotifierProvider<FocusTimerController, FocusTimerState>(
-      FocusTimerController.new,
-    );
+  FocusTimerController.new,
+);
+
+final focusElapsedProvider = Provider<ValueNotifier<Duration>>((ref) {
+  return ref.watch(focusTimerControllerProvider.notifier).elapsedNotifier;
+});

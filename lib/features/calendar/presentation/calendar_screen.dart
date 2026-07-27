@@ -1,32 +1,23 @@
-import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:device_calendar_plus/device_calendar_plus.dart' as dev_cal;
 
 import '../../../core/settings/app_settings_provider.dart';
 import '../../../core/theme/theme_engine_provider.dart';
-import '../../../core/theme/theme_palettes.dart';
 import '../application/calendar_providers.dart';
-import '../data/calendar_repository.dart';
 import '../domain/calendar_event.dart';
 import 'calendar_daily_timeline_view.dart';
 import 'calendar_month_grid_view.dart';
 import 'calendar_multi_day_timeline_view.dart';
-import '../../quick_add/application/quick_add_provider.dart';
-import '../../tasks/application/task_providers.dart';
-import '../../habits/application/habit_providers.dart';
-import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
-import '../../tasks/domain/task_recurrence.dart';
-import '../../../presentation/widgets/recurrence_delete_dialog.dart';
+import 'calendar_app_bar.dart';
+import 'calendar_day_agenda.dart';
+
 import '../../sync/application/sync_service.dart';
 import '../../auth/google/google_auth_provider.dart';
-import '../../../presentation/widgets/confirmation_dialog.dart';
-import 'package:drift/drift.dart' show Value;
 import 'package:ephemeron/core/widgets/app_loading_indicator.dart';
-import '../../settings/presentation/settings_screen.dart';
 
 class CalendarFormatNotifier extends Notifier<CalendarFormat> {
   @override
@@ -37,7 +28,8 @@ class CalendarFormatNotifier extends Notifier<CalendarFormat> {
   }
 }
 
-final calendarFormatProvider = NotifierProvider<CalendarFormatNotifier, CalendarFormat>(
+final calendarFormatProvider =
+    NotifierProvider<CalendarFormatNotifier, CalendarFormat>(
   () => CalendarFormatNotifier(),
 );
 
@@ -107,11 +99,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     }
 
     // Sync month PageController if changed externally
-    final monthDiff = (focusedMonth.year - _anchorDate.year) * 12 + (focusedMonth.month - _anchorDate.month);
+    final monthDiff = (focusedMonth.year - _anchorDate.year) * 12 +
+        (focusedMonth.month - _anchorDate.month);
     final targetMonthPage = _initialPage + monthDiff;
-    if (_monthPageController.hasClients && _monthPageController.page?.round() != targetMonthPage) {
+    if (_monthPageController.hasClients &&
+        _monthPageController.page?.round() != targetMonthPage) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_monthPageController.hasClients && _monthPageController.page?.round() != targetMonthPage) {
+        if (_monthPageController.hasClients &&
+            _monthPageController.page?.round() != targetMonthPage) {
           _monthPageController.jumpToPage(targetMonthPage);
         }
       });
@@ -120,9 +115,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     // Sync daily PageController if changed externally
     final dayDiff = selectedDay.difference(_anchorDate).inDays;
     final targetDailyPage = _initialPage + dayDiff;
-    if (_dailyPageController.hasClients && _dailyPageController.page?.round() != targetDailyPage) {
+    if (_dailyPageController.hasClients &&
+        _dailyPageController.page?.round() != targetDailyPage) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_dailyPageController.hasClients && _dailyPageController.page?.round() != targetDailyPage) {
+        if (_dailyPageController.hasClients &&
+            _dailyPageController.page?.round() != targetDailyPage) {
           _dailyPageController.jumpToPage(targetDailyPage);
         }
       });
@@ -131,336 +128,316 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): () {
-          ref.read(calendarViewProvider.notifier).setView(CalendarView.monthGrid);
+          ref
+              .read(calendarViewProvider.notifier)
+              .setView(CalendarView.monthGrid);
         },
       },
       child: Focus(
         autofocus: true,
         child: Scaffold(
-      resizeToAvoidBottomInset: false,
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: GestureDetector(
-          onTap: () {
-            ref.read(syncServiceProvider.notifier).sync();
-          },
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Calendar',
-                  style: TextStyle(
-                    color: titleColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                if (syncState.isSyncing) ...[
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: titleColor,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+          resizeToAvoidBottomInset: false,
+          backgroundColor: Colors.transparent,
+          appBar: CalendarAppBar(
+            palette: palette,
+            syncState: syncState,
+            titleColor: titleColor,
           ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          PopupMenuButton<CalendarView>(
-            tooltip: 'Change view',
-            icon: Icon(Icons.view_module, color: palette.primary),
-            onSelected: (view) => ref.read(calendarViewProvider.notifier).setView(view),
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: CalendarView.monthGrid,
-                child: Text('Month Grid View'),
-              ),
-              const PopupMenuItem(
-                value: CalendarView.weekTimeline,
-                child: Text('Week View'),
-              ),
-              const PopupMenuItem(
-                value: CalendarView.fourDaysTimeline,
-                child: Text('4 Days View'),
-              ),
-              const PopupMenuItem(
-                value: CalendarView.threeDaysTimeline,
-                child: Text('3 Days View'),
-              ),
-              const PopupMenuItem(
-                value: CalendarView.dailyTimeline,
-                child: Text('Daily Timeline'),
-              ),
-              const PopupMenuItem(
-                value: CalendarView.compact,
-                child: Text('Compact picker'),
-              ),
-            ],
-          ),
-          IconButton(
-            tooltip: 'Today',
-            icon: Icon(Icons.today_outlined, color: palette.primary),
-            onPressed: () {
-              final now = DateTime.now();
-              ref.read(selectedDayProvider.notifier).setDay(now);
-              ref.read(focusedMonthProvider.notifier).setMonth(DateTime(now.year, now.month, 1));
-            },
-          ),
-          IconButton(
-            tooltip: 'Manage Device Calendars',
-            icon: Icon(Icons.calendar_month_outlined, color: palette.primary),
-            onPressed: () {
-              SettingsScreen.showDeviceCalendarsSheet(context, ref);
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: calendarView == CalendarView.monthGrid
-          ? Column(
-              children: [
-                // Month switcher row for the grid view
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.chevron_left, color: palette.text),
-                        onPressed: () {
-                          ref.read(focusedMonthProvider.notifier).setMonth(DateTime(
-                            focusedMonth.year,
-                            focusedMonth.month - 1,
-                            1,
-                          ));
-                        },
+          body: calendarView == CalendarView.monthGrid
+              ? Column(
+                  children: [
+                    // Month switcher row for the grid view
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.chevron_left, color: palette.text),
+                            onPressed: () {
+                              ref
+                                  .read(focusedMonthProvider.notifier)
+                                  .setMonth(DateTime(
+                                    focusedMonth.year,
+                                    focusedMonth.month - 1,
+                                    1,
+                                  ));
+                            },
+                          ),
+                          Text(
+                            _formatMonthYear(focusedMonth),
+                            style: TextStyle(
+                              color: palette.text,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          IconButton(
+                            icon:
+                                Icon(Icons.chevron_right, color: palette.text),
+                            onPressed: () {
+                              ref
+                                  .read(focusedMonthProvider.notifier)
+                                  .setMonth(DateTime(
+                                    focusedMonth.year,
+                                    focusedMonth.month + 1,
+                                    1,
+                                  ));
+                            },
+                          ),
+                        ],
                       ),
-                      Text(
-                        _formatMonthYear(focusedMonth),
-                        style: TextStyle(
-                          color: palette.text,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                    ),
+                    // Grid view taking full height
+                    Expanded(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: palette.surface
+                              .withValues(alpha: palette.isAmoled ? 1.0 : 0.5),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                              color: palette.text.withValues(alpha: 0.1),
+                              width: 1),
                         ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.chevron_right, color: palette.text),
-                        onPressed: () {
-                          ref.read(focusedMonthProvider.notifier).setMonth(DateTime(
-                            focusedMonth.year,
-                            focusedMonth.month + 1,
-                            1,
-                          ));
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                // Grid view taking full height
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.5),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: GlassmorphicWrapper(
-                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: monthEventsAsync.hasValue
-                            ? CalendarMonthGridView(
-                                focusedMonth: focusedMonth,
-                                selectedDay: selectedDay,
-                                events: monthEventsAsync.value!,
-                                startDayOfWeek: settings.calendarStartDay,
-                              )
-                            : monthEventsAsync.when(
-                                data: (events) => CalendarMonthGridView(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: monthEventsAsync.hasValue
+                              ? CalendarMonthGridView(
                                   focusedMonth: focusedMonth,
                                   selectedDay: selectedDay,
-                                  events: events,
+                                  events: monthEventsAsync.value!,
                                   startDayOfWeek: settings.calendarStartDay,
+                                )
+                              : monthEventsAsync.when(
+                                  data: (events) => CalendarMonthGridView(
+                                    focusedMonth: focusedMonth,
+                                    selectedDay: selectedDay,
+                                    events: events,
+                                    startDayOfWeek: settings.calendarStartDay,
+                                  ),
+                                  loading: () => const Center(
+                                      child: AppLoadingIndicator()),
+                                  error: (err, _) => Center(
+                                      child:
+                                          Text('Error loading events: $err')),
                                 ),
-                                loading: () => const Center(child: AppLoadingIndicator()),
-                                error: (err, _) => Center(child: Text('Error loading events: $err')),
-                              ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ],
-            )
-          : calendarView == CalendarView.weekTimeline ||
-                  calendarView == CalendarView.fourDaysTimeline ||
-                  calendarView == CalendarView.threeDaysTimeline
-              ? Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.5),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
-                    child: GlassmorphicWrapper(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: monthEventsAsync.hasValue
-                          ? CalendarMultiDayTimelineView(
-                              selectedDay: selectedDay,
-                              events: monthEventsAsync.value!,
-                              daysCount: calendarView == CalendarView.weekTimeline
-                                  ? 7
-                                  : calendarView == CalendarView.fourDaysTimeline
-                                      ? 4
-                                      : 3,
-                              startDayOfWeek: settings.calendarStartDay,
-                            )
-                          : monthEventsAsync.when(
-                              data: (events) => CalendarMultiDayTimelineView(
-                                selectedDay: selectedDay,
-                                events: events,
-                                daysCount: calendarView == CalendarView.weekTimeline
-                                    ? 7
-                                    : calendarView == CalendarView.fourDaysTimeline
-                                        ? 4
-                                        : 3,
-                                startDayOfWeek: settings.calendarStartDay,
-                              ),
-                              loading: () => const Center(child: AppLoadingIndicator()),
-                              error: (err, _) => Center(child: Text('Error loading events: $err')),
-                            ),
-                    ),
-                  ),
+                  ],
                 )
-              : calendarView == CalendarView.dailyTimeline
+              : calendarView == CalendarView.weekTimeline ||
+                      calendarView == CalendarView.fourDaysTimeline ||
+                      calendarView == CalendarView.threeDaysTimeline
                   ? Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
-                        color: palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.5),
+                        color: palette.surface
+                            .withValues(alpha: palette.isAmoled ? 1.0 : 0.5),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
+                        border: Border.all(
+                            color: palette.text.withValues(alpha: 0.1),
+                            width: 1),
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(24),
-                        child: GlassmorphicWrapper(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: monthEventsAsync.hasValue
-                              ? CalendarDailyTimelineView(
+                        child: monthEventsAsync.hasValue
+                            ? CalendarMultiDayTimelineView(
+                                selectedDay: selectedDay,
+                                events: monthEventsAsync.value!,
+                                daysCount:
+                                    calendarView == CalendarView.weekTimeline
+                                        ? 7
+                                        : calendarView ==
+                                                CalendarView.fourDaysTimeline
+                                            ? 4
+                                            : 3,
+                                startDayOfWeek: settings.calendarStartDay,
+                              )
+                            : monthEventsAsync.when(
+                                data: (events) => CalendarMultiDayTimelineView(
                                   selectedDay: selectedDay,
-                                  events: monthEventsAsync.value!,
-                                )
-                              : monthEventsAsync.when(
-                                  data: (events) => CalendarDailyTimelineView(
-                                    selectedDay: selectedDay,
-                                    events: events,
-                                  ),
-                                  loading: () => const Center(child: AppLoadingIndicator()),
-                                  error: (err, _) => Center(child: Text('Error loading events: $err')),
+                                  events: events,
+                                  daysCount:
+                                      calendarView == CalendarView.weekTimeline
+                                          ? 7
+                                          : calendarView ==
+                                                  CalendarView.fourDaysTimeline
+                                              ? 4
+                                              : 3,
+                                  startDayOfWeek: settings.calendarStartDay,
                                 ),
-                        ),
+                                loading: () =>
+                                    const Center(child: AppLoadingIndicator()),
+                                error: (err, _) => Center(
+                                    child: Text('Error loading events: $err')),
+                              ),
                       ),
                     )
-                  : Column(
-              children: [
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.5),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
-                    child: GlassmorphicWrapper(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: TableCalendar<CalendarEvent>(
-                          firstDay: DateTime.utc(2015, 1, 1),
-                          lastDay: DateTime.utc(2035, 12, 31),
-                          focusedDay: focusedMonth,
-                          calendarFormat: calendarFormat,
-                          availableCalendarFormats: const {
-                            CalendarFormat.month: 'Month',
-                            CalendarFormat.twoWeeks: '2 Weeks',
-                            CalendarFormat.week: 'Week',
-                          },
-                          startingDayOfWeek: _startingDay(settings.calendarStartDay),
-                          selectedDayPredicate: (day) => isSameDay(day, selectedDay),
-                          eventLoader: (day) => ref.read(dayEventsProvider(day)),
-                          onDaySelected: (selected, focused) {
-                            ref.read(selectedDayProvider.notifier).setDay(DateTime(
-                              selected.year,
-                              selected.month,
-                              selected.day,
-                            ));
-                            final normalizedFocused = DateTime(
-                              focused.year,
-                              focused.month,
-                              1,
-                            );
-                            if (normalizedFocused != focusedMonth) {
-                              ref.read(focusedMonthProvider.notifier).setMonth(normalizedFocused);
-                            }
-                          },
-                          onPageChanged: (focused) {
-                            ref.read(focusedMonthProvider.notifier).setMonth(DateTime(
-                              focused.year,
-                              focused.month,
-                              1,
-                            ));
-                          },
-                          onFormatChanged: (format) {
-                            if (calendarFormat != format) {
-                              ref.read(calendarFormatProvider.notifier).setFormat(format);
-                            }
-                          },
-                          calendarStyle: CalendarStyle(
-                            markerDecoration: BoxDecoration(color: palette.primary, shape: BoxShape.circle),
-                            selectedDecoration: BoxDecoration(color: palette.primary, shape: BoxShape.circle),
-                            todayDecoration: BoxDecoration(color: palette.primary.withValues(alpha: 0.3), shape: BoxShape.circle),
-                            defaultTextStyle: TextStyle(color: palette.text),
-                            weekendTextStyle: TextStyle(color: palette.text.withValues(alpha: 0.6)),
-                            outsideTextStyle: TextStyle(color: palette.text.withValues(alpha: 0.3)),
+                  : calendarView == CalendarView.dailyTimeline
+                      ? Container(
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: palette.surface.withValues(
+                                alpha: palette.isAmoled ? 1.0 : 0.5),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                                color: palette.text.withValues(alpha: 0.1),
+                                width: 1),
                           ),
-                          headerStyle: HeaderStyle(
-                            titleTextStyle: TextStyle(color: palette.text, fontSize: 18, fontWeight: FontWeight.bold),
-                            formatButtonTextStyle: TextStyle(color: palette.background, fontSize: 12),
-                            formatButtonDecoration: BoxDecoration(
-                              color: palette.text,
-                              borderRadius: BorderRadius.circular(12),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(24),
+                            child: monthEventsAsync.hasValue
+                                ? CalendarDailyTimelineView(
+                                    selectedDay: selectedDay,
+                                    events: monthEventsAsync.value!,
+                                  )
+                                : monthEventsAsync.when(
+                                    data: (events) => CalendarDailyTimelineView(
+                                      selectedDay: selectedDay,
+                                      events: events,
+                                    ),
+                                    loading: () => const Center(
+                                        child: AppLoadingIndicator()),
+                                    error: (err, _) => Center(
+                                        child:
+                                            Text('Error loading events: $err')),
+                                  ),
+                          ),
+                        )
+                      : Column(
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: palette.surface.withValues(
+                                    alpha: palette.isAmoled ? 1.0 : 0.5),
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                    color: palette.text.withValues(alpha: 0.1),
+                                    width: 1),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(24),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: TableCalendar<CalendarEvent>(
+                                    firstDay: DateTime.utc(2015, 1, 1),
+                                    lastDay: DateTime.utc(2035, 12, 31),
+                                    focusedDay: focusedMonth,
+                                    calendarFormat: calendarFormat,
+                                    availableCalendarFormats: const {
+                                      CalendarFormat.month: 'Month',
+                                      CalendarFormat.twoWeeks: '2 Weeks',
+                                      CalendarFormat.week: 'Week',
+                                    },
+                                    startingDayOfWeek:
+                                        _startingDay(settings.calendarStartDay),
+                                    selectedDayPredicate: (day) =>
+                                        isSameDay(day, selectedDay),
+                                    eventLoader: (day) =>
+                                        ref.read(dayEventsProvider(day)),
+                                    onDaySelected: (selected, focused) {
+                                      ref
+                                          .read(selectedDayProvider.notifier)
+                                          .setDay(DateTime(
+                                            selected.year,
+                                            selected.month,
+                                            selected.day,
+                                          ));
+                                      final normalizedFocused = DateTime(
+                                        focused.year,
+                                        focused.month,
+                                        1,
+                                      );
+                                      if (normalizedFocused != focusedMonth) {
+                                        ref
+                                            .read(focusedMonthProvider.notifier)
+                                            .setMonth(normalizedFocused);
+                                      }
+                                    },
+                                    onPageChanged: (focused) {
+                                      ref
+                                          .read(focusedMonthProvider.notifier)
+                                          .setMonth(DateTime(
+                                            focused.year,
+                                            focused.month,
+                                            1,
+                                          ));
+                                    },
+                                    onFormatChanged: (format) {
+                                      if (calendarFormat != format) {
+                                        ref
+                                            .read(
+                                                calendarFormatProvider.notifier)
+                                            .setFormat(format);
+                                      }
+                                    },
+                                    calendarStyle: CalendarStyle(
+                                      markerDecoration: BoxDecoration(
+                                          color: palette.primary,
+                                          shape: BoxShape.circle),
+                                      selectedDecoration: BoxDecoration(
+                                          color: palette.primary,
+                                          shape: BoxShape.circle),
+                                      todayDecoration: BoxDecoration(
+                                          color: palette.primary
+                                              .withValues(alpha: 0.3),
+                                          shape: BoxShape.circle),
+                                      defaultTextStyle:
+                                          TextStyle(color: palette.text),
+                                      weekendTextStyle: TextStyle(
+                                          color: palette.text
+                                              .withValues(alpha: 0.6)),
+                                      outsideTextStyle: TextStyle(
+                                          color: palette.text
+                                              .withValues(alpha: 0.3)),
+                                    ),
+                                    headerStyle: HeaderStyle(
+                                      titleTextStyle: TextStyle(
+                                          color: palette.text,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold),
+                                      formatButtonTextStyle: TextStyle(
+                                          color: palette.background,
+                                          fontSize: 12),
+                                      formatButtonDecoration: BoxDecoration(
+                                        color: palette.text,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      leftChevronIcon: Icon(Icons.chevron_left,
+                                          color: palette.text),
+                                      rightChevronIcon: Icon(
+                                          Icons.chevron_right,
+                                          color: palette.text),
+                                    ),
+                                    daysOfWeekStyle: DaysOfWeekStyle(
+                                      weekdayStyle: TextStyle(
+                                          color: palette.text
+                                              .withValues(alpha: 0.7)),
+                                      weekendStyle: TextStyle(
+                                          color: palette.text
+                                              .withValues(alpha: 0.5)),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
-                            leftChevronIcon: Icon(Icons.chevron_left, color: palette.text),
-                            rightChevronIcon: Icon(Icons.chevron_right, color: palette.text),
-                          ),
-                          daysOfWeekStyle: DaysOfWeekStyle(
-                            weekdayStyle: TextStyle(color: palette.text.withValues(alpha: 0.7)),
-                            weekendStyle: TextStyle(color: palette.text.withValues(alpha: 0.5)),
-                          ),
+                            Expanded(
+                              child: CalendarDayAgenda(
+                                day: selectedDay,
+                                monthEventsAsync: monthEventsAsync,
+                                palette: palette,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: _DayAgenda(
-                    day: selectedDay,
-                    monthEventsAsync: monthEventsAsync,
-                    palette: palette,
-                  ),
-                ),
-              ],
-            ),
         ),
       ),
     );
@@ -468,8 +445,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
   String _formatMonthYear(DateTime date) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
     ];
     return '${months[date.month - 1]} ${date.year}';
   }
@@ -487,302 +474,3 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }
 }
 
-class _DayAgenda extends ConsumerWidget {
-  const _DayAgenda({required this.day, required this.monthEventsAsync, required this.palette});
-
-  final DateTime day;
-  final AsyncValue<List<CalendarEvent>> monthEventsAsync;
-  final AppPalette palette;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return monthEventsAsync.when(
-      data: (_) {
-        final events = ref.watch(dayEventsProvider(day));
-        if (events.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.event_busy, size: 64, color: palette.text.withValues(alpha: 0.1)),
-                const SizedBox(height: 16),
-                Text(
-                  'No events for this day',
-                  style: TextStyle(color: palette.text.withValues(alpha: 0.5), fontSize: 16),
-                ),
-              ],
-            ),
-          );
-        }
-        final sorted = [...events]..sort((a, b) => a.start.compareTo(b.start));
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          itemCount: sorted.length,
-          itemBuilder: (context, index) => Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
-            child: _EventTile(event: sorted[index], palette: palette),
-          ),
-        );
-      },
-      loading: () => const Center(child: AppLoadingIndicator()),
-      error: (error, _) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            error is CalendarNotConnectedException
-                ? 'Connect Google Calendar in Settings to see your events.'
-                : 'Could not load events: $error',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: palette.text),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EventTile extends ConsumerWidget {
-  const _EventTile({required this.event, required this.palette});
-
-  final CalendarEvent event;
-  final AppPalette palette;
-
-  Color _getTileColor(String? colorId, AppPalette palette) {
-    if (colorId != null) {
-      if (colorId.startsWith('device:')) {
-        final hex = colorId.substring(7);
-        if (hex.isNotEmpty) {
-          try {
-            final c = hex.replaceAll('#', '');
-            if (c.length == 8) {
-              return Color(int.parse(c, radix: 16));
-            } else if (c.length == 6) {
-              return Color(int.parse('FF$c', radix: 16));
-            }
-          } catch (_) {}
-        }
-        return palette.primary;
-      }
-      if (colorId.startsWith('task:')) {
-        final hex = colorId.substring(5);
-        if (hex.isNotEmpty) {
-          try {
-            final c = hex.replaceAll('#', '');
-            return Color(int.parse('FF$c', radix: 16));
-          } catch (_) {}
-        }
-        return palette.primary;
-      }
-      if (colorId.startsWith('habit:')) {
-        return palette.secondary;
-      }
-      final match = GoogleEventColor.options.firstWhere(
-        (c) => c.id == colorId,
-        orElse: () => GoogleEventColor.options[6],
-      );
-      return Color(match.hex);
-    }
-    return Color(GoogleEventColor.options[6].hex);
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final eventColor = _getTileColor(event.colorId, palette);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: palette.surface.withValues(alpha: palette.isAmoled ? 1.0 : 0.6),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: palette.text.withValues(alpha: 0.05)),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: GlassmorphicWrapper(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Material(
-            color: Colors.transparent,
-            child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            leading: Container(
-              width: 12,
-              height: 40,
-              decoration: BoxDecoration(
-                color: eventColor,
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-            title: Text(event.title, style: TextStyle(color: palette.text, fontWeight: FontWeight.bold)),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Text(
-                  event.isAllDay
-                      ? 'All day'
-                      : '${_formatTime(event.start)} – ${_formatTime(event.end)}'
-                            '${event.location != null ? ' · ${event.location}' : ''}',
-                  style: TextStyle(color: palette.text.withValues(alpha: 0.6)),
-                ),
-                if (event.tags.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 4,
-                    children: event.tags.map((tag) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: eventColor.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(tag, style: TextStyle(color: eventColor, fontSize: 10, fontWeight: FontWeight.bold)),
-                    )).toList(),
-                  ),
-                ],
-              ],
-            ),
-            onTap: () async {
-              if (event.id.startsWith('task:')) {
-                final taskId = event.id.substring(5);
-                final task = await ref.read(taskRepositoryProvider).getTask(taskId);
-                if (task != null && context.mounted) {
-                  ref.read(quickAddProvider.notifier).expand(task);
-                }
-              } else if (event.id.startsWith('habit:')) {
-                final habitId = event.id.split(':')[1];
-                final habit = await ref.read(habitRepositoryProvider).getHabit(habitId);
-                if (habit != null && context.mounted) {
-                  ref.read(quickAddProvider.notifier).expand(habit);
-                }
-              } else if (event.id.startsWith('device:')) {
-                final parts = event.id.split(':');
-                if (parts.length >= 3) {
-                  final eventId = parts.skip(2).join(':');
-                  await dev_cal.DeviceCalendar().showEventModal(eventId);
-                }
-              } else {
-                ref.read(quickAddProvider.notifier).expand(event);
-              }
-            },
-            onLongPress: () => _confirmDelete(context, ref),
-          ),
-        ),
-      ),
-    ),
-  );
-  }
-
-  String _formatTime(DateTime dt) {
-    final localDt = dt.toLocal();
-    return '${localDt.hour.toString().padLeft(2, '0')}:${localDt.minute.toString().padLeft(2, '0')}';
-  }
-
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    final isTask = event.id.startsWith('task:');
-    final isHabit = event.id.startsWith('habit:');
-
-    if (isTask) {
-      final taskId = event.id.substring(5);
-      final task = await ref.read(taskRepositoryProvider).getTask(taskId);
-      if (task != null) {
-        final recurrence = TaskRecurrence.decode(task.recurrenceRule);
-        if (recurrence.isRecurring) {
-          final choice = await showRecurrenceDeleteDialog(
-            context: context, // ignore: use_build_context_synchronously
-            ref: ref,
-            title: 'Delete Recurring Task?',
-          );
-          if (choice == null) return;
-          if (choice == RecurrenceDeleteType.onlyThis) {
-            final nextDue = recurrence.nextOccurrence(task.dueDate!);
-            if (nextDue != null) {
-              await ref.read(taskRepositoryProvider).updateTask(taskId, dueDate: Value(nextDue));
-            }
-          } else {
-            await ref.read(taskRepositoryProvider).softDeleteTask(taskId);
-          }
-        } else {
-          final confirmed = await showConfirmationDialog(
-            context: context, // ignore: use_build_context_synchronously
-            ref: ref,
-            title: 'Delete Task?',
-            content: 'Are you sure you want to delete this task? It will be moved to Trash.',
-            confirmLabel: 'Delete',
-            isDestructive: true,
-          );
-          if (confirmed) {
-            await ref.read(taskRepositoryProvider).softDeleteTask(taskId);
-          }
-        }
-      }
-    } else if (isHabit) {
-      final confirmed = await showConfirmationDialog(
-        context: context,
-        ref: ref,
-        title: 'Delete Habit?',
-        content: 'Are you sure you want to delete this habit?',
-        confirmLabel: 'Delete',
-        isDestructive: true,
-      );
-      if (confirmed) {
-        final habitId = event.id.split(':')[1];
-        await ref.read(habitRepositoryProvider).deleteHabit(habitId);
-      }
-    } else {
-      if (event.id.startsWith('device:')) {
-        final confirmed = await showConfirmationDialog(
-          context: context,
-          ref: ref,
-          title: 'Delete Device Event?',
-          content: 'Are you sure you want to permanently delete this event from your phone\'s calendar?',
-          confirmLabel: 'Delete',
-          isDestructive: true,
-        );
-        if (confirmed) {
-          final parts = event.id.split(':');
-          if (parts.length >= 3) {
-            final eventId = parts.skip(2).join(':');
-            await ref.read(deviceCalendarRepositoryProvider).deleteEvent(event.calendarId, eventId);
-            ref.invalidate(
-              monthEventsProvider(DateTime(event.start.year, event.start.month, 1)),
-            );
-          }
-        }
-        return;
-      }
-      final isRecurringEvent = event.recurringEventId != null || (event.recurrence != null && event.recurrence!.isNotEmpty);
-      if (isRecurringEvent) {
-        final choice = await showRecurrenceDeleteDialog(
-          context: context,
-          ref: ref,
-          title: 'Delete Recurring Event?',
-        );
-        if (choice == null) return;
-
-        if (choice == RecurrenceDeleteType.onlyThis) {
-          await ref.read(calendarRepositoryProvider).deleteEvent(event.id, calendarId: event.calendarId);
-        } else if (choice == RecurrenceDeleteType.all) {
-          await ref.read(calendarRepositoryProvider).deleteEvent(event.recurringEventId ?? event.id, calendarId: event.calendarId);
-        } else if (choice == RecurrenceDeleteType.thisAndAllAfter) {
-          await ref.read(calendarRepositoryProvider).deleteThisAndFutureEvents(event);
-        }
-        ref.invalidate(
-          monthEventsProvider(DateTime(event.start.year, event.start.month, 1)),
-        );
-      } else {
-        final confirmed = await showConfirmationDialog(
-          context: context,
-          ref: ref,
-          title: 'Delete Event?',
-          content: 'Are you sure you want to permanently delete this event?',
-          confirmLabel: 'Delete',
-          isDestructive: true,
-        );
-        if (confirmed) {
-          await ref.read(calendarRepositoryProvider).deleteEvent(event.id, calendarId: event.calendarId);
-          ref.invalidate(
-            monthEventsProvider(DateTime(event.start.year, event.start.month, 1)),
-          );
-        }
-      }
-    }
-  }
-}

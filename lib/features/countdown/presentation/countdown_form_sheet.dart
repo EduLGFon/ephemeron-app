@@ -1,4 +1,4 @@
-import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,7 +7,6 @@ import '../../../data/local/database.dart';
 import '../application/countdown_providers.dart';
 import '../domain/countdown_type.dart';
 import '../../../core/settings/session_restore.dart';
-import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
 import '../../../../presentation/widgets/confirmation_dialog.dart';
 
 import '../../../presentation/widgets/keyboard_avoid_padding.dart';
@@ -23,7 +22,9 @@ Future<void> showCountdownFormSheet(
     child: SingleChildScrollView(
       child: Material(
         color: Colors.transparent,
-        child: RepaintBoundary(child: CountdownFormSheet(type: type, existingCountdown: existingCountdown)),
+        child: RepaintBoundary(
+            child: CountdownFormSheet(
+                type: type, existingCountdown: existingCountdown)),
       ),
     ),
   );
@@ -38,7 +39,8 @@ Future<void> showCountdownFormSheet(
       return KeyboardAvoidPadding(child: sheet);
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
-      final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      final curve =
+          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
       return SlideTransition(
         position: Tween<Offset>(
           begin: const Offset(0.0, 1.0),
@@ -82,20 +84,26 @@ class _CountdownFormSheetState extends ConsumerState<CountdownFormSheet> {
   @override
   void initState() {
     super.initState();
-    SessionRestore.saveOpenMenu('countdown', entityId: widget.existingCountdown?.id, extra: widget.type.name);
+    SessionRestore.saveOpenMenu('countdown',
+        entityId: widget.existingCountdown?.id, extra: widget.type.name);
     _titleController.addListener(_onTitleChanged);
     _restoreDrafts();
   }
 
   void _onTitleChanged() {
-    SessionRestore.saveDraftValue('countdown', widget.existingCountdown?.id, 'title', _titleController.text);
+    SessionRestore.saveDraftValue('countdown', widget.existingCountdown?.id,
+        'title', _titleController.text);
   }
 
   void _restoreDrafts() async {
-    final t = await SessionRestore.getDraftValue('countdown', widget.existingCountdown?.id, 'title');
-    final td = await SessionRestore.getDraftValue('countdown', widget.existingCountdown?.id, 'targetDate');
-    final sa = await SessionRestore.getDraftValue('countdown', widget.existingCountdown?.id, 'showAge');
-    final iy = await SessionRestore.getDraftValue('countdown', widget.existingCountdown?.id, 'isYearly');
+    final t = await SessionRestore.getDraftValue(
+        'countdown', widget.existingCountdown?.id, 'title');
+    final td = await SessionRestore.getDraftValue(
+        'countdown', widget.existingCountdown?.id, 'targetDate');
+    final sa = await SessionRestore.getDraftValue(
+        'countdown', widget.existingCountdown?.id, 'showAge');
+    final iy = await SessionRestore.getDraftValue(
+        'countdown', widget.existingCountdown?.id, 'isYearly');
     if (mounted) {
       setState(() {
         if (t != null) {
@@ -120,14 +128,15 @@ class _CountdownFormSheetState extends ConsumerState<CountdownFormSheet> {
   @override
   Widget build(BuildContext context) {
     final palette = ref.watch(themeEngineProvider);
-    
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       constraints: const BoxConstraints(maxWidth: 580),
       decoration: BoxDecoration(
         color: palette.surface.withValues(alpha: 0.88),
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
+        border:
+            Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.3),
@@ -138,171 +147,216 @@ class _CountdownFormSheetState extends ConsumerState<CountdownFormSheet> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
-        child: GlassmorphicWrapper(
-          filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (widget.unifiedHeader != null) widget.unifiedHeader!,
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (widget.unifiedHeader != null) widget.unifiedHeader!,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _titleController,
+                      autofocus: !_isEditing,
+                      onChanged: (_) => setState(() {}),
+                      style: TextStyle(
+                          color: palette.text,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold),
+                      decoration: InputDecoration(
+                        hintText: 'Countdown Title',
+                        hintStyle: TextStyle(
+                            color: palette.text.withValues(alpha: 0.3),
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold),
+                        border: InputBorder.none,
+                        enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(
+                                color: palette.text.withValues(alpha: 0.15))),
+                        focusedBorder: UnderlineInputBorder(
+                            borderSide:
+                                BorderSide(color: palette.primary, width: 2)),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                      ),
+                      textCapitalization: TextCapitalization.sentences,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(Icons.hourglass_bottom, color: palette.primary),
+                  if (_isEditing) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: Icon(Icons.delete_outline,
+                          color: Colors.redAccent.withValues(alpha: 0.8)),
+                      onPressed: () async {
+                        final confirmed = await showConfirmationDialog(
+                          context: context,
+                          ref: ref,
+                          title: 'Delete countdown?',
+                          content:
+                              'Are you sure you want to permanently delete this countdown?',
+                          confirmLabel: 'Delete',
+                          isDestructive: true,
+                        );
+                        if (confirmed && mounted) {
+                          await ref
+                              .read(countdownRepositoryProvider)
+                              .deleteCountdown(widget.existingCountdown!.id);
+                          await SessionRestore.clearDraftValues(
+                              'countdown', widget.existingCountdown?.id);
+                          if (context.mounted) Navigator.pop(context);
+                        }
+                      },
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 16),
+              const SizedBox(height: 16),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: palette.text.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
                   children: [
                     Expanded(
-                      child: TextField(
-                        controller: _titleController,
-                        autofocus: !_isEditing,
-                        onChanged: (_) => setState(() {}),
-                        style: TextStyle(color: palette.text, fontSize: 22, fontWeight: FontWeight.bold),
-                        decoration: InputDecoration(
-                          hintText: 'Countdown Title',
-                          hintStyle: TextStyle(color: palette.text.withValues(alpha: 0.3), fontSize: 22, fontWeight: FontWeight.bold),
-                          border: InputBorder.none,
-                          enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: palette.text.withValues(alpha: 0.15))),
-                          focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: palette.primary, width: 2)),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 6),
-                        ),
-                        textCapitalization: TextCapitalization.sentences,
+                      child: Text(
+                        '${_targetDate.year}-${_targetDate.month.toString().padLeft(2, '0')}-${_targetDate.day.toString().padLeft(2, '0')}',
+                        style: TextStyle(
+                            color: palette.text, fontWeight: FontWeight.w500),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Icon(Icons.hourglass_bottom, color: palette.primary),
-                    if (_isEditing) ...[
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: Icon(Icons.delete_outline, color: Colors.redAccent.withValues(alpha: 0.8)),
-                        onPressed: () async {
-                          final confirmed = await showConfirmationDialog(
-                            context: context,
-                            ref: ref,
-                            title: 'Delete countdown?',
-                            content: 'Are you sure you want to permanently delete this countdown?',
-                            confirmLabel: 'Delete',
-                            isDestructive: true,
-                          );
-                          if (confirmed && mounted) {
-                            await ref.read(countdownRepositoryProvider).deleteCountdown(widget.existingCountdown!.id);
-                            await SessionRestore.clearDraftValues('countdown', widget.existingCountdown?.id);
-                            if (context.mounted) Navigator.pop(context);
-                          }
-                        },
-                      ),
-                    ],
+                    TextButton(
+                        style: TextButton.styleFrom(
+                            foregroundColor: palette.primary),
+                        onPressed: _pickDate,
+                        child: const Text('Set date',
+                            style: TextStyle(fontWeight: FontWeight.bold))),
                   ],
                 ),
-                const SizedBox(height: 16),
-                const SizedBox(height: 16),
+              ),
+              const SizedBox(height: 16),
+              if (widget.type.supportsAge ||
+                  widget.type == CountdownType.custom)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: palette.text.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Row(
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: Text(
-                          '${_targetDate.year}-${_targetDate.month.toString().padLeft(2, '0')}-${_targetDate.day.toString().padLeft(2, '0')}',
-                          style: TextStyle(color: palette.text, fontWeight: FontWeight.w500),
+                      if (widget.type.supportsAge)
+                        Material(
+                          color: Colors.transparent,
+                          child: SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text('Show age',
+                                style: TextStyle(
+                                    color: palette.text,
+                                    fontWeight: FontWeight.w500)),
+                            subtitle: Text(
+                              _showAge
+                                  ? 'The year above is used to calculate age'
+                                  : 'Year is ignored — only month and day count',
+                              style: TextStyle(
+                                  color: palette.text.withValues(alpha: 0.6),
+                                  fontSize: 12),
+                            ),
+                            activeThumbColor: palette.primary,
+                            value: _showAge,
+                            onChanged: (value) {
+                              setState(() => _showAge = value);
+                              SessionRestore.saveDraftValue(
+                                  'countdown',
+                                  widget.existingCountdown?.id,
+                                  'showAge',
+                                  value.toString());
+                            },
+                          ),
                         ),
-                      ),
-                      TextButton(
-                        style: TextButton.styleFrom(foregroundColor: palette.primary),
-                        onPressed: _pickDate, 
-                        child: const Text('Set date', style: TextStyle(fontWeight: FontWeight.bold))
-                      ),
+                      if (widget.type == CountdownType.custom)
+                        Material(
+                          color: Colors.transparent,
+                          child: SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text('Repeats yearly',
+                                style: TextStyle(
+                                    color: palette.text,
+                                    fontWeight: FontWeight.w500)),
+                            activeThumbColor: palette.primary,
+                            value: _isYearly,
+                            onChanged: (value) {
+                              setState(() => _isYearly = value);
+                              SessionRestore.saveDraftValue(
+                                  'countdown',
+                                  widget.existingCountdown?.id,
+                                  'isYearly',
+                                  value.toString());
+                            },
+                          ),
+                        ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                if (widget.type.supportsAge || widget.type == CountdownType.custom)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: palette.text.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        if (widget.type.supportsAge)
-                          Material(
-                            color: Colors.transparent,
-                            child: SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text('Show age', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
-                              subtitle: Text(
-                                _showAge
-                                    ? 'The year above is used to calculate age'
-                                    : 'Year is ignored — only month and day count',
-                                style: TextStyle(color: palette.text.withValues(alpha: 0.6), fontSize: 12),
-                              ),
-                              activeThumbColor: palette.primary,
-                              value: _showAge,
-                              onChanged: (value) {
-                                setState(() => _showAge = value);
-                                SessionRestore.saveDraftValue('countdown', widget.existingCountdown?.id, 'showAge', value.toString());
-                              },
-                            ),
-                          ),
-                        if (widget.type == CountdownType.custom)
-                          Material(
-                            color: Colors.transparent,
-                            child: SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text('Repeats yearly', style: TextStyle(color: palette.text, fontWeight: FontWeight.w500)),
-                              activeThumbColor: palette.primary,
-                              value: _isYearly,
-                              onChanged: (value) {
-                                setState(() => _isYearly = value);
-                                SessionRestore.saveDraftValue('countdown', widget.existingCountdown?.id, 'isYearly', value.toString());
-                              },
-                            ),
-                          ),
-                      ],
+              const SizedBox(height: 16),
+              Text(
+                'Alerts: 3 days before and on the day',
+                style: TextStyle(
+                    color: palette.text.withValues(alpha: 0.5), fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: palette.text,
+                        side: BorderSide(
+                            color: palette.text.withValues(alpha: 0.2)),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
                     ),
                   ),
-                const SizedBox(height: 16),
-                Text(
-                  'Alerts: 3 days before and on the day',
-                  style: TextStyle(color: palette.text.withValues(alpha: 0.5), fontSize: 12),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: palette.text,
-                          side: BorderSide(color: palette.text.withValues(alpha: 0.2)),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: palette.primary,
+                        foregroundColor: palette.background,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
                       ),
+                      onPressed:
+                          _isSaving || _titleController.text.trim().isEmpty
+                              ? null
+                              : _save,
+                      child: _isSaving
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : Text(_isEditing ? 'Save' : 'Add',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: palette.primary,
-                          foregroundColor: palette.background,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        onPressed: _isSaving || _titleController.text.trim().isEmpty ? null : _save,
-                        child: _isSaving
-                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                            : Text(_isEditing ? 'Save' : 'Add', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -323,7 +377,8 @@ class _CountdownFormSheetState extends ConsumerState<CountdownFormSheet> {
     if (result != null) {
       final date = result.start;
       setState(() => _targetDate = date);
-      SessionRestore.saveDraftValue('countdown', widget.existingCountdown?.id, 'targetDate', date.toIso8601String()); // ignore: unawaited_futures
+      SessionRestore.saveDraftValue('countdown', widget.existingCountdown?.id,
+          'targetDate', date.toIso8601String()); // ignore: unawaited_futures
     }
   }
 
@@ -348,7 +403,8 @@ class _CountdownFormSheetState extends ConsumerState<CountdownFormSheet> {
           showAge: _showAge,
         );
       }
-      await SessionRestore.clearDraftValues('countdown', widget.existingCountdown?.id);
+      await SessionRestore.clearDraftValues(
+          'countdown', widget.existingCountdown?.id);
       if (mounted) Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _isSaving = false);

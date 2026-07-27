@@ -43,10 +43,12 @@ class CalendarMultiDayTimelineView extends ConsumerStatefulWidget {
   static const double timeColumnWidth = 60.0;
 
   @override
-  ConsumerState<CalendarMultiDayTimelineView> createState() => _CalendarMultiDayTimelineViewState();
+  ConsumerState<CalendarMultiDayTimelineView> createState() =>
+      _CalendarMultiDayTimelineViewState();
 }
 
-class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayTimelineView> {
+class _CalendarMultiDayTimelineViewState
+    extends ConsumerState<CalendarMultiDayTimelineView> {
   static const _initialPage = 10000;
   late PageController _pageController;
   late DateTime _anchorDate;
@@ -106,7 +108,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
   @override
   void didUpdateWidget(CalendarMultiDayTimelineView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.daysCount != widget.daysCount || oldWidget.startDayOfWeek != widget.startDayOfWeek) {
+    if (oldWidget.daysCount != widget.daysCount ||
+        oldWidget.startDayOfWeek != widget.startDayOfWeek) {
       final sDay = widget.selectedDay;
       if (widget.daysCount == 7) {
         int diff = sDay.weekday - widget.startDayOfWeek;
@@ -121,14 +124,17 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
         viewportFraction: 1.0 / widget.daysCount,
       );
     } else if (oldWidget.selectedDay != widget.selectedDay) {
-      final visibleDays = _calculateVisibleDays(widget.selectedDay, widget.daysCount, widget.startDayOfWeek);
+      final visibleDays = _calculateVisibleDays(
+          widget.selectedDay, widget.daysCount, widget.startDayOfWeek);
       final firstDay = visibleDays.first;
       final dayDiff = firstDay.difference(_anchorDate).inDays;
       final targetPage = _initialPage + dayDiff;
       final isScrolling = _pageController.hasClients &&
           _pageController.position.haveDimensions &&
           _pageController.position.isScrollingNotifier.value;
-      if (_pageController.hasClients && !isScrolling && _pageController.page?.round() != targetPage) {
+      if (_pageController.hasClients &&
+          !isScrolling &&
+          _pageController.page?.round() != targetPage) {
         _pageController.jumpToPage(targetPage);
       }
     }
@@ -163,7 +169,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
     int startDayOfWeek,
     double hourHeight,
   ) {
-    final visibleDays = _calculateVisibleDays(baseDay, daysCount, startDayOfWeek);
+    final visibleDays =
+        _calculateVisibleDays(baseDay, daysCount, startDayOfWeek);
     final now = DateTime.now();
     final containsToday = visibleDays.any(
       (d) => d.year == now.year && d.month == now.month && d.day == now.day,
@@ -180,7 +187,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
   Widget build(BuildContext context) {
     final palette = ref.watch(themeEngineProvider);
     final hourHeight = ref.watch(calendarHourHeightProvider);
-    final visibleDays = _calculateVisibleDays(widget.selectedDay, widget.daysCount, widget.startDayOfWeek);
+    final visibleDays = _calculateVisibleDays(
+        widget.selectedDay, widget.daysCount, widget.startDayOfWeek);
     final gmtOffset = _getGmtOffsetString(widget.selectedDay);
 
     return Column(
@@ -205,7 +213,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
                   IconButton(
                     icon: Icon(Icons.chevron_left, color: palette.text),
                     onPressed: () {
-                      final prevDay = widget.selectedDay.subtract(const Duration(days: 1));
+                      final prevDay =
+                          widget.selectedDay.subtract(const Duration(days: 1));
                       ref.read(selectedDayProvider.notifier).setDay(prevDay);
                       ref.read(focusedMonthProvider.notifier).setMonth(DateTime(
                             prevDay.year,
@@ -217,7 +226,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
                   IconButton(
                     icon: Icon(Icons.chevron_right, color: palette.text),
                     onPressed: () {
-                      final nextDay = widget.selectedDay.add(const Duration(days: 1));
+                      final nextDay =
+                          widget.selectedDay.add(const Duration(days: 1));
                       ref.read(selectedDayProvider.notifier).setDay(nextDay);
                       ref.read(focusedMonthProvider.notifier).setMonth(DateTime(
                             nextDay.year,
@@ -236,7 +246,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
           padding: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: palette.text.withValues(alpha: 0.08), width: 1),
+              bottom: BorderSide(
+                  color: palette.text.withValues(alpha: 0.08), width: 1),
             ),
           ),
           child: Row(
@@ -309,22 +320,26 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
         Expanded(
           child: CallbackShortcuts(
             bindings: {
-              const SingleActivator(LogicalKeyboardKey.equal, control: true): () {
+              const SingleActivator(LogicalKeyboardKey.equal, control: true):
+                  () {
                 final current = ref.read(calendarHourHeightProvider);
                 ref.read(calendarHourHeightProvider.notifier).state =
                     (current + 10.0).clamp(40.0, 240.0);
               },
-              const SingleActivator(LogicalKeyboardKey.numpadAdd, control: true): () {
+              const SingleActivator(LogicalKeyboardKey.numpadAdd,
+                  control: true): () {
                 final current = ref.read(calendarHourHeightProvider);
                 ref.read(calendarHourHeightProvider.notifier).state =
                     (current + 10.0).clamp(40.0, 240.0);
               },
-              const SingleActivator(LogicalKeyboardKey.minus, control: true): () {
+              const SingleActivator(LogicalKeyboardKey.minus, control: true):
+                  () {
                 final current = ref.read(calendarHourHeightProvider);
                 ref.read(calendarHourHeightProvider.notifier).state =
                     (current - 10.0).clamp(40.0, 240.0);
               },
-              const SingleActivator(LogicalKeyboardKey.numpadSubtract, control: true): () {
+              const SingleActivator(LogicalKeyboardKey.numpadSubtract,
+                  control: true): () {
                 final current = ref.read(calendarHourHeightProvider);
                 ref.read(calendarHourHeightProvider.notifier).state =
                     (current - 10.0).clamp(40.0, 240.0);
@@ -353,7 +368,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
                 },
                 onPointerSignal: (pointerSignal) {
                   if (pointerSignal is PointerScrollEvent) {
-                    final isControlPressed = HardwareKeyboard.instance.isControlPressed;
+                    final isControlPressed =
+                        HardwareKeyboard.instance.isControlPressed;
                     if (isControlPressed) {
                       final zoomDelta = -pointerSignal.scrollDelta.dy * 0.1;
                       final current = ref.read(calendarHourHeightProvider);
@@ -380,7 +396,9 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
                   },
                   child: SingleChildScrollView(
                     controller: _scrollController,
-                    physics: _isZooming ? const NeverScrollableScrollPhysics() : const BouncingScrollPhysics(),
+                    physics: _isZooming
+                        ? const NeverScrollableScrollPhysics()
+                        : const BouncingScrollPhysics(),
                     child: Stack(
                       children: [
                         // Horizontal grid lines and hour labels
@@ -394,13 +412,16 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
                                   children: [
                                     // Hour label
                                     Container(
-                                      width: CalendarMultiDayTimelineView.timeColumnWidth,
-                                      padding: const EdgeInsets.only(right: 8, top: 4),
+                                      width: CalendarMultiDayTimelineView
+                                          .timeColumnWidth,
+                                      padding: const EdgeInsets.only(
+                                          right: 8, top: 4),
                                       alignment: Alignment.topRight,
                                       child: Text(
                                         _formatHour(hour),
                                         style: TextStyle(
-                                          color: palette.text.withValues(alpha: 0.4),
+                                          color: palette.text
+                                              .withValues(alpha: 0.4),
                                           fontSize: 10,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -410,7 +431,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
                                     Expanded(
                                       child: Container(
                                         height: 0.5,
-                                        color: palette.text.withValues(alpha: 0.08),
+                                        color: palette.text
+                                            .withValues(alpha: 0.08),
                                       ),
                                     ),
                                   ],
@@ -423,32 +445,48 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
                           left: CalendarMultiDayTimelineView.timeColumnWidth,
                           child: LayoutBuilder(
                             builder: (context, constraints) {
-                              final dayColumnWidth = constraints.maxWidth / widget.daysCount;
+                              final dayColumnWidth =
+                                  constraints.maxWidth / widget.daysCount;
                               return PageView.builder(
                                 controller: _pageController,
                                 padEnds: false,
-                                physics: (_draggingEventId != null || _isZooming)
-                                    ? const NeverScrollableScrollPhysics()
-                                    : const BouncingScrollPhysics(),
+                                physics:
+                                    (_draggingEventId != null || _isZooming)
+                                        ? const NeverScrollableScrollPhysics()
+                                        : const BouncingScrollPhysics(),
                                 onPageChanged: (index) {
                                   final dayDiff = index - _initialPage;
-                                  final targetDay = _anchorDate.add(Duration(days: dayDiff));
+                                  final targetDay =
+                                      _anchorDate.add(Duration(days: dayDiff));
                                   if (targetDay != widget.selectedDay) {
-                                    ref.read(selectedDayProvider.notifier).setDay(targetDay);
-                                    if (targetDay.month != ref.read(focusedMonthProvider).month ||
-                                        targetDay.year != ref.read(focusedMonthProvider).year) {
-                                      ref.read(focusedMonthProvider.notifier).setMonth(
-                                        DateTime(targetDay.year, targetDay.month, 1),
-                                      );
+                                    ref
+                                        .read(selectedDayProvider.notifier)
+                                        .setDay(targetDay);
+                                    if (targetDay.month !=
+                                            ref
+                                                .read(focusedMonthProvider)
+                                                .month ||
+                                        targetDay.year !=
+                                            ref
+                                                .read(focusedMonthProvider)
+                                                .year) {
+                                      ref
+                                          .read(focusedMonthProvider.notifier)
+                                          .setMonth(
+                                            DateTime(targetDay.year,
+                                                targetDay.month, 1),
+                                          );
                                     }
                                   }
                                 },
                                 itemBuilder: (context, index) {
                                   final dayDiff = index - _initialPage;
-                                  final currentDay = _anchorDate.add(Duration(days: dayDiff));
+                                  final currentDay =
+                                      _anchorDate.add(Duration(days: dayDiff));
                                   return SizedBox(
                                     width: dayColumnWidth,
-                                    child: _buildDayColumn(context, ref, currentDay, dayColumnWidth, palette),
+                                    child: _buildDayColumn(context, ref,
+                                        currentDay, dayColumnWidth, palette),
                                   );
                                 },
                               );
@@ -474,7 +512,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
     final clampedMinutes = snappedMinutes.clamp(0, 24 * 60 - 15);
     final hour = clampedMinutes ~/ 60;
     final minute = clampedMinutes % 60;
-    return DateTime(originalStart.year, originalStart.month, originalStart.day, hour, minute);
+    return DateTime(originalStart.year, originalStart.month, originalStart.day,
+        hour, minute);
   }
 
   List<Widget> _buildAllDayEventsForDay(
@@ -486,7 +525,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
     final mappedEvents = widget.events.map((e) {
       final pending = _pendingMovedEvents[e.id];
       if (pending != null) {
-        if (e.start.isAtSameMomentAs(pending.start) && e.end.isAtSameMomentAs(pending.end)) {
+        if (e.start.isAtSameMomentAs(pending.start) &&
+            e.end.isAtSameMomentAs(pending.end)) {
           _pendingMovedEvents.remove(e.id);
           return e;
         }
@@ -513,7 +553,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
             margin: const EdgeInsets.only(top: 2, left: 2, right: 2),
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2.5),
             decoration: BoxDecoration(
-              color: _getEventColor(event.colorId, palette).withValues(alpha: 0.85),
+              color: _getEventColor(event.colorId, palette)
+                  .withValues(alpha: 0.85),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -535,7 +576,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
     final mappedEvents = widget.events.map((e) {
       final pending = _pendingMovedEvents[e.id];
       if (pending != null) {
-        if (e.start.isAtSameMomentAs(pending.start) && e.end.isAtSameMomentAs(pending.end)) {
+        if (e.start.isAtSameMomentAs(pending.start) &&
+            e.end.isAtSameMomentAs(pending.end)) {
           _pendingMovedEvents.remove(e.id);
           return e;
         }
@@ -550,7 +592,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
 
       // Keep active dragging event mounted in its original day column so its GestureDetector isn't destroyed
       if (_draggingEventId == e.id && _dragOriginalStart != null) {
-        final origDay = DateTime(_dragOriginalStart!.year, _dragOriginalStart!.month, _dragOriginalStart!.day);
+        final origDay = DateTime(_dragOriginalStart!.year,
+            _dragOriginalStart!.month, _dragOriginalStart!.day);
         return origDay == targetDay;
       }
 
@@ -570,7 +613,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
     final timedEvents = _getTimedEventsForDay(day);
     final positionedEvents = _layoutEvents(timedEvents);
     final now = DateTime.now();
-    final isToday = day.year == now.year && day.month == now.month && day.day == now.day;
+    final isToday =
+        day.year == now.year && day.month == now.month && day.day == now.day;
 
     return Container(
       decoration: BoxDecoration(
@@ -658,7 +702,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
           if (event.id.startsWith('habit:')) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Habits cannot be dragged. Edit the habit to change its reminder time.'),
+                content: Text(
+                    'Habits cannot be dragged. Edit the habit to change its reminder time.'),
               ),
             );
             return;
@@ -681,17 +726,22 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
           if (_draggingEventId == event.id && _dragOriginalStart != null) {
             final duration = event.end.difference(event.start);
             final hourHeight = ref.read(calendarHourHeightProvider);
-            final newTop = (_dragOriginalTop + details.localOffsetFromOrigin.dy).clamp(0.0, 24.0 * hourHeight);
+            final newTop = (_dragOriginalTop + details.localOffsetFromOrigin.dy)
+                .clamp(0.0, 24.0 * hourHeight);
             final dx = details.localOffsetFromOrigin.dx;
 
-            final dayColumnWidth = (MediaQuery.sizeOf(context).width - CalendarMultiDayTimelineView.timeColumnWidth) / widget.daysCount;
+            final dayColumnWidth = (MediaQuery.sizeOf(context).width -
+                    CalendarMultiDayTimelineView.timeColumnWidth) /
+                widget.daysCount;
             final dayShift = (dx / dayColumnWidth).round();
-            final targetDay = DateTime(_dragOriginalStart!.year, _dragOriginalStart!.month, _dragOriginalStart!.day + dayShift);
+            final targetDay = DateTime(_dragOriginalStart!.year,
+                _dragOriginalStart!.month, _dragOriginalStart!.day + dayShift);
 
             final newStart = _getDateTimeFromTop(newTop, targetDay);
             final hapticTriggered = _dragCurrentStart != newStart;
 
-            if (hapticTriggered && ref.read(appSettingsProvider).hapticsEnabled) {
+            if (hapticTriggered &&
+                ref.read(appSettingsProvider).hapticsEnabled) {
               HapticFeedback.selectionClick();
             }
 
@@ -737,7 +787,9 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
                   start: newStart,
                   end: newEnd,
                 );
-                ref.read(calendarEventOverridesProvider.notifier).updateEvent(updatedTaskEvent);
+                ref
+                    .read(calendarEventOverridesProvider.notifier)
+                    .updateEvent(updatedTaskEvent);
               } else {
                 final updated = originalEvent.copyWith(
                   start: newStart,
@@ -745,10 +797,14 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
                 );
 
                 await calendarRepo.cacheEvents([updated]);
-                ref.read(calendarEventOverridesProvider.notifier).updateEvent(updated);
+                ref
+                    .read(calendarEventOverridesProvider.notifier)
+                    .updateEvent(updated);
 
                 final result = await calendarRepo.updateEvent(updated);
-                ref.read(calendarEventOverridesProvider.notifier).updateEvent(result);
+                ref
+                    .read(calendarEventOverridesProvider.notifier)
+                    .updateEvent(result);
               }
             } catch (e) {
               _pendingMovedEvents.remove(oldDraggingId);
@@ -761,7 +817,9 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
                   _dragDx = 0.0;
                 });
                 await calendarRepo.cacheEvents([originalEvent]);
-                ref.read(calendarEventOverridesProvider.notifier).updateEvent(originalEvent);
+                ref
+                    .read(calendarEventOverridesProvider.notifier)
+                    .updateEvent(originalEvent);
                 final msg = e is CalendarPermissionDeniedException
                     ? e.message
                     : 'Failed to update event: $e';
@@ -778,12 +836,14 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
             vertical: height < 40 ? 2.0 : 4.0,
           ),
           decoration: BoxDecoration(
-            color: eventColor.withValues(alpha: _draggingEventId == event.id ? 0.7 : 0.85),
+            color: eventColor.withValues(
+                alpha: _draggingEventId == event.id ? 0.7 : 0.85),
             borderRadius: BorderRadius.circular(6),
             boxShadow: [
               if (height >= 30)
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: _draggingEventId == event.id ? 0.2 : 0.1),
+                  color: Colors.black.withValues(
+                      alpha: _draggingEventId == event.id ? 0.2 : 0.1),
                   blurRadius: _draggingEventId == event.id ? 8 : 4,
                   offset: Offset(0, _draggingEventId == event.id ? 4 : 2),
                 ),
@@ -875,7 +935,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
     return Color(match.hex);
   }
 
-  void _onEventTapped(BuildContext context, WidgetRef ref, CalendarEvent event) async {
+  void _onEventTapped(
+      BuildContext context, WidgetRef ref, CalendarEvent event) async {
     if (event.id.startsWith('task:')) {
       final taskId = event.id.substring(5);
       final task = await ref.read(taskRepositoryProvider).getTask(taskId);
@@ -920,16 +981,19 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
     };
   }
 
-  List<DateTime> _calculateVisibleDays(DateTime baseDay, int daysCount, int startDayOfWeek) {
+  List<DateTime> _calculateVisibleDays(
+      DateTime baseDay, int daysCount, int startDayOfWeek) {
     if (daysCount == 7) {
       int diff = baseDay.weekday - startDayOfWeek;
       if (diff < 0) {
         diff += 7;
       }
       final startOfWeek = baseDay.subtract(Duration(days: diff));
-      return List.generate(7, (index) => startOfWeek.add(Duration(days: index)));
+      return List.generate(
+          7, (index) => startOfWeek.add(Duration(days: index)));
     } else {
-      return List.generate(daysCount, (index) => baseDay.add(Duration(days: index)));
+      return List.generate(
+          daysCount, (index) => baseDay.add(Duration(days: index)));
     }
   }
 
@@ -937,8 +1001,18 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
     final first = visibleDays.first;
     final last = visibleDays.last;
     final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
     ];
 
     if (first.year != last.year) {
@@ -957,13 +1031,14 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
   List<PositionedEvent> _layoutEvents(List<CalendarEvent> dayTimedEvents) {
     if (dayTimedEvents.isEmpty) return [];
 
-    final sorted = List<CalendarEvent>.from(dayTimedEvents)..sort((a, b) {
-      final startCmp = a.start.compareTo(b.start);
-      if (startCmp != 0) return startCmp;
-      final durA = a.end.difference(a.start);
-      final durB = b.end.difference(b.start);
-      return durB.compareTo(durA);
-    });
+    final sorted = List<CalendarEvent>.from(dayTimedEvents)
+      ..sort((a, b) {
+        final startCmp = a.start.compareTo(b.start);
+        if (startCmp != 0) return startCmp;
+        final durA = a.end.difference(a.start);
+        final durB = b.end.difference(b.start);
+        return durB.compareTo(durA);
+      });
 
     final roots = <_EventLayoutNode>[];
 
@@ -998,7 +1073,8 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
 
     final positioned = <PositionedEvent>[];
 
-    void layoutLevel(List<_EventLayoutNode> nodes, double availLeft, double availWidth) {
+    void layoutLevel(
+        List<_EventLayoutNode> nodes, double availLeft, double availWidth) {
       if (nodes.isEmpty) return;
 
       final clusters = <List<_EventLayoutNode>>[];
@@ -1034,7 +1110,10 @@ class _CalendarMultiDayTimelineViewState extends ConsumerState<CalendarMultiDayT
           colEndTimes[assignedCol] = node.event.end;
         }
 
-        final maxCols = (nodeCols.values.isEmpty ? 0 : nodeCols.values.reduce((a, b) => a > b ? a : b)) + 1;
+        final maxCols = (nodeCols.values.isEmpty
+                ? 0
+                : nodeCols.values.reduce((a, b) => a > b ? a : b)) +
+            1;
         final colWidth = availWidth / maxCols;
 
         for (final node in cluster) {

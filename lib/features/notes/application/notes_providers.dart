@@ -8,7 +8,8 @@ class CurrentFolderNotifier extends Notifier<String?> {
   void setFolder(String? id) => state = id;
 }
 
-final currentFolderIdProvider = NotifierProvider<CurrentFolderNotifier, String?>(
+final currentFolderIdProvider =
+    NotifierProvider<CurrentFolderNotifier, String?>(
   () => CurrentFolderNotifier(),
 );
 

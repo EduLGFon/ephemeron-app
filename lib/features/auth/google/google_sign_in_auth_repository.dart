@@ -166,7 +166,8 @@ class GoogleSignInAuthRepository extends GoogleAuthRepository {
       _accountController.add(_currentAccount);
       DevLogger.log('Google Sign-In authenticate flow call completed.');
     } on GoogleSignInException catch (e, stack) {
-      DevLogger.logError('Google Sign-In failed (GoogleSignInException)', e, stack);
+      DevLogger.logError(
+          'Google Sign-In failed (GoogleSignInException)', e, stack);
       if (e.code == GoogleSignInExceptionCode.canceled) {
         throw const GoogleAuthCancelledException();
       }
@@ -204,9 +205,11 @@ class GoogleSignInAuthRepository extends GoogleAuthRepository {
       // attemptLightweightAuthentication() which triggers the One Tap UI
       // bottom sheet on Android even for silent requests.
       if (_currentAccount != null) {
-        DevLogger.log('No active SDK session. Requesting token via platform interface for ${_currentAccount!.email}');
+        DevLogger.log(
+            'No active SDK session. Requesting token via platform interface for ${_currentAccount!.email}');
         try {
-          final tokens = await GoogleSignInPlatform.instance.clientAuthorizationTokensForScopes(
+          final tokens = await GoogleSignInPlatform.instance
+              .clientAuthorizationTokensForScopes(
             ClientAuthorizationTokensForScopesParameters(
               request: AuthorizationRequestDetails(
                 scopes: scopes,
@@ -220,19 +223,23 @@ class GoogleSignInAuthRepository extends GoogleAuthRepository {
             return tokens.accessToken;
           }
         } catch (e) {
-          DevLogger.log('Silent token request via platform interface failed: $e');
+          DevLogger.log(
+              'Silent token request via platform interface failed: $e');
         }
 
         if (!promptIfNecessary) {
-          DevLogger.log('No cached token for scopes and promptIfNecessary is false.');
-          throw const GoogleAuthException('Scope authorization token not available silently.');
+          DevLogger.log(
+              'No cached token for scopes and promptIfNecessary is false.');
+          throw const GoogleAuthException(
+              'Scope authorization token not available silently.');
         }
 
         DevLogger.log('Consent screen required. Triggering full signIn...');
         await signIn();
         signedInAccount = _signedInAccount;
         if (signedInAccount == null) {
-          throw const GoogleAuthException('Failed to restore SDK session for authorization prompt.');
+          throw const GoogleAuthException(
+              'Failed to restore SDK session for authorization prompt.');
         }
       } else {
         DevLogger.logError('getAccessToken failed: No account signed in');
@@ -250,8 +257,10 @@ class GoogleSignInAuthRepository extends GoogleAuthRepository {
       }
 
       if (!promptIfNecessary) {
-        DevLogger.log('No cached token for scopes and promptIfNecessary is false.');
-        throw const GoogleAuthException('Scope authorization token not available silently.');
+        DevLogger.log(
+            'No cached token for scopes and promptIfNecessary is false.');
+        throw const GoogleAuthException(
+            'Scope authorization token not available silently.');
       }
 
       DevLogger.log('Consent screen required. Triggering authorizeScopes...');
@@ -260,7 +269,8 @@ class GoogleSignInAuthRepository extends GoogleAuthRepository {
       DevLogger.log('authorizeScopes succeeded.');
       return authorized.accessToken;
     } on GoogleSignInException catch (e, stack) {
-      DevLogger.logError('getAccessToken failed (GoogleSignInException)', e, stack);
+      DevLogger.logError(
+          'getAccessToken failed (GoogleSignInException)', e, stack);
       if (e.code == GoogleSignInExceptionCode.canceled) {
         throw const GoogleAuthCancelledException();
       }

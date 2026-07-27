@@ -38,9 +38,7 @@ class CountdownRepository {
     bool showAge = false,
   }) async {
     final id = _uuid.v4();
-    await _db
-        .into(_db.countdowns)
-        .insert(
+    await _db.into(_db.countdowns).insert(
           CountdownsCompanion.insert(
             id: Value(id),
             title: title,
@@ -53,7 +51,8 @@ class CountdownRepository {
     await _syncAlarms(id);
     return (_db.select(
       _db.countdowns,
-    )..where((c) => c.id.equals(id))).getSingle();
+    )..where((c) => c.id.equals(id)))
+        .getSingle();
   }
 
   Future<void> updateCountdown(
@@ -65,12 +64,12 @@ class CountdownRepository {
   }) async {
     await (_db.update(
       _db.countdowns,
-    )..where((c) => c.id.equals(countdownId))).write(
+    )..where((c) => c.id.equals(countdownId)))
+        .write(
       CountdownsCompanion(
         title: title != null ? Value(title) : const Value.absent(),
-        targetDate: targetDate != null
-            ? Value(targetDate)
-            : const Value.absent(),
+        targetDate:
+            targetDate != null ? Value(targetDate) : const Value.absent(),
         isYearly: isYearly != null ? Value(isYearly) : const Value.absent(),
         showAge: showAge != null ? Value(showAge) : const Value.absent(),
       ),
@@ -81,11 +80,13 @@ class CountdownRepository {
   Future<void> deleteCountdown(String countdownId) async {
     final countdown = await (_db.select(
       _db.countdowns,
-    )..where((c) => c.id.equals(countdownId))).getSingleOrNull();
+    )..where((c) => c.id.equals(countdownId)))
+        .getSingleOrNull();
     if (countdown != null) await _cancelAlarms(countdown);
     await (_db.delete(
       _db.countdowns,
-    )..where((c) => c.id.equals(countdownId))).go();
+    )..where((c) => c.id.equals(countdownId)))
+        .go();
   }
 
   Future<void> _cancelAlarms(Countdown countdown) async {
@@ -104,7 +105,8 @@ class CountdownRepository {
   Future<void> _syncAlarms(String countdownId) async {
     final countdown = await (_db.select(
       _db.countdowns,
-    )..where((c) => c.id.equals(countdownId))).getSingleOrNull();
+    )..where((c) => c.id.equals(countdownId)))
+        .getSingleOrNull();
     if (countdown == null) return;
 
     final existingIds = _decodeIds(countdown.scheduledAlarmIds);
@@ -123,7 +125,8 @@ class CountdownRepository {
 
     await (_db.update(
       _db.countdowns,
-    )..where((c) => c.id.equals(countdownId))).write(
+    )..where((c) => c.id.equals(countdownId)))
+        .write(
       CountdownsCompanion(
         scheduledAlarmIds: Value(newIds.isEmpty ? null : jsonEncode(newIds)),
       ),

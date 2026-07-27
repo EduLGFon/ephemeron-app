@@ -7,7 +7,10 @@ import '../../../data/local/database_provider.dart';
 /// Stream of all tags — consumed by the overlay (ConsumerWidget, so it has
 /// its own ref and is never affected by the parent widget's lifecycle).
 final allTagsProvider = StreamProvider<List<Tag>>((ref) {
-  return ref.watch(appDatabaseProvider).select(ref.watch(appDatabaseProvider).tags).watch();
+  return ref
+      .watch(appDatabaseProvider)
+      .select(ref.watch(appDatabaseProvider).tags)
+      .watch();
 });
 
 /// A TextField that intercepts `#` to show a floating tag-autocomplete overlay.
@@ -77,11 +80,17 @@ class _TagAutocompleteFieldState extends State<TagAutocompleteField> {
     final before = text.substring(0, cursor);
     final hashIndex = before.lastIndexOf('#');
 
-    if (hashIndex == -1) { _hideOverlay(); return; }
+    if (hashIndex == -1) {
+      _hideOverlay();
+      return;
+    }
 
     final afterHash = before.substring(hashIndex + 1);
     // If there's a space after #, we're no longer in a tag token.
-    if (afterHash.contains(' ') || afterHash.contains('\n')) { _hideOverlay(); return; }
+    if (afterHash.contains(' ') || afterHash.contains('\n')) {
+      _hideOverlay();
+      return;
+    }
 
     _showOverlayMenu(afterHash.toLowerCase());
     widget.onChanged?.call(text);
@@ -119,7 +128,8 @@ class _TagAutocompleteFieldState extends State<TagAutocompleteField> {
     final newText = '${before.substring(0, hashIndex)}#${tag.name} $after';
     widget.controller.value = TextEditingValue(
       text: newText,
-      selection: TextSelection.collapsed(offset: hashIndex + tag.name.length + 2),
+      selection:
+          TextSelection.collapsed(offset: hashIndex + tag.name.length + 2),
     );
     widget.onTagSelected?.call(tag);
   }
@@ -218,14 +228,16 @@ class _TagOverlayPortal extends ConsumerWidget {
                 shrinkWrap: true,
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 itemCount: filtered.length,
-                separatorBuilder: (_, __) => Divider(height: 1, color: borderColor),
+                separatorBuilder: (_, __) =>
+                    Divider(height: 1, color: borderColor),
                 itemBuilder: (ctx, i) {
                   final tag = filtered[i];
                   final color = _parseColor(tag.colorHex);
                   return InkWell(
                     onTap: () => onTagSelected(tag),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
                       child: Row(
                         children: [
                           CircleAvatar(radius: 6, backgroundColor: color),
@@ -233,11 +245,16 @@ class _TagOverlayPortal extends ConsumerWidget {
                           Expanded(
                             child: Text(
                               '#${tag.name}',
-                              style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 14),
+                              style: TextStyle(
+                                  color: textColor,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14),
                             ),
                           ),
                           if (tag.defaultAlarmPreset != null)
-                            Icon(Icons.notifications_outlined, size: 12, color: textColor.withValues(alpha: 0.4)),
+                            Icon(Icons.notifications_outlined,
+                                size: 12,
+                                color: textColor.withValues(alpha: 0.4)),
                         ],
                       ),
                     ),

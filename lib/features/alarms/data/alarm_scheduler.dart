@@ -17,7 +17,8 @@ import '../../../data/local/database.dart';
 import '../../tasks/domain/task_recurrence.dart';
 import '../domain/alarm_payload.dart';
 import '../domain/alarm_preset.dart';
-import 'desktop_alarm_sound_stub.dart' if (dart.library.io) 'desktop_alarm_sound.dart';
+import 'desktop_alarm_sound_stub.dart'
+    if (dart.library.io) 'desktop_alarm_sound.dart';
 import '../domain/reminder_offset.dart';
 import '../presentation/alarm_ring_screen.dart';
 
@@ -72,7 +73,8 @@ class AlarmAction {
 class AlarmScheduler {
   /// Immediate (non-scheduled) notifications via [showOngoingNotification]
   /// still work on web — only scheduling/repetition doesn't.
-  bool get supportsScheduledAlarms => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+  bool get supportsScheduledAlarms =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   Timer? _localAlarmTimer;
   final List<LocalAlarm> _localAlarms = [];
@@ -235,7 +237,6 @@ class AlarmScheduler {
       }
       return ids;
     }
-
 
     for (var i = 0; i < offsets.length; i++) {
       final fireAt = dueAt.subtract(offsets[i].beforeDue);
@@ -704,7 +705,8 @@ class AlarmScheduler {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(alarm.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(alarm.title,
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
               if (alarm.body.isNotEmpty) Text(alarm.body),
             ],
           ),
@@ -744,7 +746,8 @@ class AlarmScheduler {
                 preset: alarm.preset,
                 siblingIds: alarm.siblingIds,
               );
-              unawaited(snooze(payload, snoozeFor: Duration(minutes: snoozeMinutes)));
+              unawaited(
+                  snooze(payload, snoozeFor: Duration(minutes: snoozeMinutes)));
               Navigator.of(dialogContext).pop();
             },
             onDone: () {
@@ -770,8 +773,10 @@ class AlarmScheduler {
 
     final prefs = await SharedPreferences.getInstance();
     final soundPath = longSound
-        ? (prefs.getString('settings.alarmLongSoundPath') ?? '/usr/share/sounds/ocean/stereo/phone-incoming-call.oga')
-        : (prefs.getString('settings.alarmShortSoundPath') ?? '/usr/share/sounds/ocean/stereo/alarm-clock-elapsed.oga');
+        ? (prefs.getString('settings.alarmLongSoundPath') ??
+            '/usr/share/sounds/ocean/stereo/phone-incoming-call.oga')
+        : (prefs.getString('settings.alarmShortSoundPath') ??
+            '/usr/share/sounds/ocean/stereo/alarm-clock-elapsed.oga');
 
     _desktopAlarmSound.play(soundPath, loop, () {});
   }
@@ -867,21 +872,22 @@ void notificationTapBackground(NotificationResponse response) async {
               final nextDue = recurrence.nextOccurrence(task.dueDate!);
               final nextId = const Uuid().v4();
               await db.into(db.tasks).insert(
-                TasksCompanion.insert(
-                  id: Value(nextId),
-                  listId: task.listId,
-                  parentTaskId: Value(task.parentTaskId),
-                  title: task.title,
-                  description: Value(task.description),
-                  priority: Value(task.priority),
-                  dueDate: Value(nextDue),
-                  dueHasTime: Value(task.dueHasTime),
-                  recurrenceRule: Value(task.recurrenceRule),
-                  durationMinutes: Value(task.durationMinutes),
-                  alarmPreset: Value(task.alarmPreset),
-                  reminderOffsetsMinutes: Value(task.reminderOffsetsMinutes),
-                ),
-              );
+                    TasksCompanion.insert(
+                      id: Value(nextId),
+                      listId: task.listId,
+                      parentTaskId: Value(task.parentTaskId),
+                      title: task.title,
+                      description: Value(task.description),
+                      priority: Value(task.priority),
+                      dueDate: Value(nextDue),
+                      dueHasTime: Value(task.dueHasTime),
+                      recurrenceRule: Value(task.recurrenceRule),
+                      durationMinutes: Value(task.durationMinutes),
+                      alarmPreset: Value(task.alarmPreset),
+                      reminderOffsetsMinutes:
+                          Value(task.reminderOffsetsMinutes),
+                    ),
+                  );
             }
           }
         }
@@ -895,22 +901,22 @@ void notificationTapBackground(NotificationResponse response) async {
           final now = DateTime.now();
           final today = DateTime(now.year, now.month, now.day);
           await db.into(db.habitLogs).insert(
-            HabitLogsCompanion.insert(
-              habitId: habit.id,
-              date: today,
-              amount: Value(habit.goalAmount ?? 1),
-              isCompleted: const Value(true),
-            ),
-            onConflict: DoUpdate(
-              (old) => HabitLogsCompanion(
-                habitId: Value(habit.id),
-                date: Value(today),
-                amount: Value(habit.goalAmount ?? 1),
-                isCompleted: const Value(true),
-              ),
-              target: [db.habitLogs.habitId, db.habitLogs.date],
-            ),
-          );
+                HabitLogsCompanion.insert(
+                  habitId: habit.id,
+                  date: today,
+                  amount: Value(habit.goalAmount ?? 1),
+                  isCompleted: const Value(true),
+                ),
+                onConflict: DoUpdate(
+                  (old) => HabitLogsCompanion(
+                    habitId: Value(habit.id),
+                    date: Value(today),
+                    amount: Value(habit.goalAmount ?? 1),
+                    isCompleted: const Value(true),
+                  ),
+                  target: [db.habitLogs.habitId, db.habitLogs.date],
+                ),
+              );
         }
 
         await db.close();
@@ -1009,9 +1015,11 @@ class _InAppAlarmDialogState extends State<_InAppAlarmDialog> {
               width: (screenSize.width * 0.85).clamp(280.0, 420.0),
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E292B), // premium deep petrol dark color
+                color:
+                    const Color(0xFF1E292B), // premium deep petrol dark color
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
+                border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1), width: 1.5),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.45),
@@ -1066,7 +1074,8 @@ class _InAppAlarmDialogState extends State<_InAppAlarmDialog> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.remove_circle_outline, color: Colors.white70),
+                        icon: const Icon(Icons.remove_circle_outline,
+                            color: Colors.white70),
                         onPressed: () {
                           setState(() {
                             _snoozeMinutes = (_snoozeMinutes - 1).clamp(1, 60);
@@ -1074,7 +1083,8 @@ class _InAppAlarmDialogState extends State<_InAppAlarmDialog> {
                         },
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.black26,
                           borderRadius: BorderRadius.circular(12),
@@ -1089,7 +1099,8 @@ class _InAppAlarmDialogState extends State<_InAppAlarmDialog> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.add_circle_outline, color: Colors.white70),
+                        icon: const Icon(Icons.add_circle_outline,
+                            color: Colors.white70),
                         onPressed: () {
                           setState(() {
                             _snoozeMinutes = (_snoozeMinutes + 1).clamp(1, 60);
@@ -1127,7 +1138,8 @@ class _InAppAlarmDialogState extends State<_InAppAlarmDialog> {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           onPressed: widget.onDone,
-                          child: const Text('Mark Done', style: TextStyle(fontWeight: FontWeight.bold)),
+                          child: const Text('Mark Done',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],

@@ -51,7 +51,9 @@ class _InlineImageWidgetState extends State<InlineImageWidget> {
             children: [
               ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxWidth: MediaQuery.sizeOf(context).width > 48 ? MediaQuery.sizeOf(context).width - 48 : MediaQuery.sizeOf(context).width,
+                  maxWidth: MediaQuery.sizeOf(context).width > 48
+                      ? MediaQuery.sizeOf(context).width - 48
+                      : MediaQuery.sizeOf(context).width,
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
@@ -63,7 +65,8 @@ class _InlineImageWidgetState extends State<InlineImageWidget> {
                     errorBuilder: (context, error, stackTrace) => Container(
                       height: 50,
                       color: Colors.grey.withValues(alpha: 0.1),
-                      child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                      child: const Center(
+                          child: Icon(Icons.broken_image, color: Colors.grey)),
                     ),
                   ),
                 ),
@@ -90,7 +93,8 @@ class _InlineImageWidgetState extends State<InlineImageWidget> {
                         bottomRight: Radius.circular(12),
                       ),
                     ),
-                    child: const Icon(Icons.drag_handle, color: Colors.white, size: 20),
+                    child: const Icon(Icons.drag_handle,
+                        color: Colors.white, size: 20),
                   ),
                 ),
               ),
@@ -112,11 +116,13 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
     final currentLine = text.substring(lineStart, lineEnd);
     final previousLineStart = text.lastIndexOf('\n', lineStart - 2) + 1;
     final previousLine = text.substring(previousLineStart, lineStart - 1);
-    
-    final newText = text.replaceRange(previousLineStart, lineEnd, '$currentLine\n$previousLine');
+
+    final newText = text.replaceRange(
+        previousLineStart, lineEnd, '$currentLine\n$previousLine');
     value = TextEditingValue(
       text: newText,
-      selection: TextSelection.collapsed(offset: previousLineStart + (selection.baseOffset - lineStart)),
+      selection: TextSelection.collapsed(
+          offset: previousLineStart + (selection.baseOffset - lineStart)),
     );
     return true;
   }
@@ -127,11 +133,16 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
     final nextLineEndIndex = text.indexOf('\n', lineEnd + 1);
     final nextLineEnd = nextLineEndIndex == -1 ? text.length : nextLineEndIndex;
     final nextLine = text.substring(lineEnd + 1, nextLineEnd);
-    
-    final newText = text.replaceRange(lineStart, nextLineEnd, '$nextLine\n$currentLine');
+
+    final newText =
+        text.replaceRange(lineStart, nextLineEnd, '$nextLine\n$currentLine');
     value = TextEditingValue(
       text: newText,
-      selection: TextSelection.collapsed(offset: lineStart + nextLine.length + 1 + (selection.baseOffset - lineStart)),
+      selection: TextSelection.collapsed(
+          offset: lineStart +
+              nextLine.length +
+              1 +
+              (selection.baseOffset - lineStart)),
     );
     return true;
   }
@@ -149,44 +160,59 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
     if (lineStart >= lineEnd) return false;
     final line = text.substring(lineStart, lineEnd);
 
-    final checkboxMatch = RegExp(r'^(\s*)(-\s)?(\[[ x]\])(\s)').firstMatch(line);
+    final checkboxMatch =
+        RegExp(r'^(\s*)(-\s)?(\[[ x]\])(\s)').firstMatch(line);
     if (checkboxMatch != null) {
       final indent = checkboxMatch.group(1)!;
       final dash = checkboxMatch.group(2);
-      
+
       final contentStart = lineStart + indent.length;
       final localOffset = offset - contentStart;
-      
+
       bool isUp = false;
       bool isDown = false;
       bool isCheck = false;
-      
+
       if (showReorderArrows) {
         if (dash != null) {
-          if (localOffset == 0) { isUp = true; }
-          else if (localOffset == 1 || localOffset == 2) { isDown = true; }
-          else if (localOffset >= 3 && localOffset <= 5) { isCheck = true; }
+          if (localOffset == 0) {
+            isUp = true;
+          } else if (localOffset == 1 || localOffset == 2) {
+            isDown = true;
+          } else if (localOffset >= 3 && localOffset <= 5) {
+            isCheck = true;
+          }
         } else {
-          if (localOffset == 0) { isUp = true; }
-          else if (localOffset == 1) { isDown = true; }
-          else if (localOffset >= 2 && localOffset <= 4) { isCheck = true; }
+          if (localOffset == 0) {
+            isUp = true;
+          } else if (localOffset == 1) {
+            isDown = true;
+          } else if (localOffset >= 2 && localOffset <= 4) {
+            isCheck = true;
+          }
         }
       } else {
         if (dash != null) {
-          if (localOffset >= 2 && localOffset <= 4) { isCheck = true; }
+          if (localOffset >= 2 && localOffset <= 4) {
+            isCheck = true;
+          }
         } else {
-          if (localOffset >= 0 && localOffset <= 2) { isCheck = true; }
+          if (localOffset >= 0 && localOffset <= 2) {
+            isCheck = true;
+          }
         }
       }
-      
+
       if (isUp) return _moveLineUp(lineStart, lineEnd);
       if (isDown) return _moveLineDown(lineStart, lineEnd);
       if (isCheck) {
         final isChecked = checkboxMatch.group(3)!.contains('x');
         final newChar = isChecked ? ' ' : 'x';
         final replaceStart = contentStart + (dash?.length ?? 0) + 1;
-        final newText = text.replaceRange(replaceStart, replaceStart + 1, newChar);
-        value = TextEditingValue(text: newText, selection: TextSelection.collapsed(offset: offset));
+        final newText =
+            text.replaceRange(replaceStart, replaceStart + 1, newChar);
+        value = TextEditingValue(
+            text: newText, selection: TextSelection.collapsed(offset: offset));
         return true;
       }
       return false;
@@ -197,25 +223,34 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
       if (listMatch != null) {
         final indent = listMatch.group(1)!;
         final bullet = listMatch.group(2)!;
-        
+
         final contentStart = lineStart + indent.length;
         final localOffset = offset - contentStart;
-        
+
         bool isUp = false;
         bool isDown = false;
-        
+
         if (bullet.trim() == '-' || bullet.trim() == '*') {
-          if (localOffset == 0) { isUp = true; }
-          else if (localOffset == 1 || localOffset == 2) { isDown = true; }
-          
+          if (localOffset == 0) {
+            isUp = true;
+          } else if (localOffset == 1 || localOffset == 2) {
+            isDown = true;
+          }
+
           if (isUp) return _moveLineUp(lineStart, lineEnd);
           if (isDown) return _moveLineDown(lineStart, lineEnd);
         }
       }
     }
-    
+
     return false;
   }
+
+  String? _lastText;
+  int _lastActiveLineStart = -1;
+  int _lastActiveLineEnd = -1;
+  TextSpan? _cachedSpans;
+  Iterable<RegExpMatch>? _cachedMatches;
 
   @override
   TextSpan buildTextSpan({
@@ -223,27 +258,43 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
     TextStyle? style,
     required bool withComposing,
   }) {
+    int activeLineStart = -1;
+    int activeLineEnd = -1;
+    if (selection.isValid && selection.isCollapsed) {
+      final offset = selection.baseOffset;
+      activeLineStart =
+          text.lastIndexOf('\n', offset - 1 == -1 ? 0 : offset - 1) + 1;
+      final end = text.indexOf('\n', offset);
+      activeLineEnd = end == -1 ? text.length : end;
+    } else if (selection.isValid && !selection.isCollapsed) {
+      activeLineStart = text.lastIndexOf(
+              '\n', selection.start - 1 == -1 ? 0 : selection.start - 1) +
+          1;
+      final end = text.indexOf('\n', selection.end);
+      activeLineEnd = end == -1 ? text.length : end;
+    }
+
+    if (text == _lastText &&
+        activeLineStart == _lastActiveLineStart &&
+        activeLineEnd == _lastActiveLineEnd &&
+        _cachedSpans != null) {
+      return _cachedSpans!;
+    }
+
     final List<InlineSpan> spans = [];
     final pattern = RegExp(
       r'(?<bold>\*\*(?<boldContent>.*?)\*\*)|(?<italic>_(?<italicContent>.*?)_|\*(?<italicContent2>.*?)\*)|(?<heading>(?<headingSyntax>#{1,6}\s)(?<headingContent>.*))|(?<checkbox>^\s*(?:-\s)?\[[ x]\]\s)|(?<list>^\s*[-*]\s.*|^\s*\d+\.\s.*)|(?<image>!\[(?<imageAlt>[^\|\]]*?)(?:\|(?<imageHeight>\d+))?\]\((?<imageUrl>[^\)]+)\))|(?<link>\[(?<linkContent>.*?)\]\((?<linkUrl>.*?)\))',
       multiLine: true,
     );
 
-    int activeLineStart = -1;
-    int activeLineEnd = -1;
-    if (selection.isValid && selection.isCollapsed) {
-      final offset = selection.baseOffset;
-      activeLineStart = text.lastIndexOf('\n', offset - 1 == -1 ? 0 : offset - 1) + 1;
-      final end = text.indexOf('\n', offset);
-      activeLineEnd = end == -1 ? text.length : end;
-    } else if (selection.isValid && !selection.isCollapsed) {
-      activeLineStart = text.lastIndexOf('\n', selection.start - 1 == -1 ? 0 : selection.start - 1) + 1;
-      final end = text.indexOf('\n', selection.end);
-      activeLineEnd = end == -1 ? text.length : end;
+    if (text != _lastText) {
+      _cachedMatches = pattern.allMatches(text).toList();
+      _lastText = text;
     }
+    final matches = _cachedMatches ?? [];
 
     int lastMatchEnd = 0;
-    for (final match in pattern.allMatches(text)) {
+    for (final match in matches) {
       if (match.start > lastMatchEnd) {
         spans.add(TextSpan(
           text: text.substring(lastMatchEnd, match.start),
@@ -251,22 +302,28 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
         ));
       }
 
-      final touchesActiveLine = (match.start <= activeLineEnd && match.end >= activeLineStart);
+      final touchesActiveLine =
+          (match.start <= activeLineEnd && match.end >= activeLineStart);
       final hideSyntax = !touchesActiveLine;
-      final hiddenStyle = style?.copyWith(color: Colors.transparent, fontSize: 0.0);
+      final hiddenStyle =
+          style?.copyWith(color: Colors.transparent, fontSize: 0.0);
 
       if (match.namedGroup('bold') != null) {
         final content = match.namedGroup('boldContent')!;
-        final syntaxStyle = hideSyntax ? hiddenStyle : style?.copyWith(color: Colors.grey);
+        final syntaxStyle =
+            hideSyntax ? hiddenStyle : style?.copyWith(color: Colors.grey);
         final contentStyle = style?.copyWith(fontWeight: FontWeight.bold);
 
         spans.add(TextSpan(text: '**', style: syntaxStyle));
         spans.add(TextSpan(text: content, style: contentStyle));
         spans.add(TextSpan(text: '**', style: syntaxStyle));
       } else if (match.namedGroup('italic') != null) {
-        final content = match.namedGroup('italicContent') ?? match.namedGroup('italicContent2')!;
-        final syntaxChar = match.namedGroup('italicContent') != null ? '_' : '*';
-        final syntaxStyle = hideSyntax ? hiddenStyle : style?.copyWith(color: Colors.grey);
+        final content = match.namedGroup('italicContent') ??
+            match.namedGroup('italicContent2')!;
+        final syntaxChar =
+            match.namedGroup('italicContent') != null ? '_' : '*';
+        final syntaxStyle =
+            hideSyntax ? hiddenStyle : style?.copyWith(color: Colors.grey);
         final contentStyle = style?.copyWith(fontStyle: FontStyle.italic);
 
         spans.add(TextSpan(text: syntaxChar, style: syntaxStyle));
@@ -275,22 +332,30 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
       } else if (match.namedGroup('heading') != null) {
         final syntax = match.namedGroup('headingSyntax')!;
         final content = match.namedGroup('headingContent')!;
-        final syntaxStyle = hideSyntax ? hiddenStyle : style?.copyWith(color: Colors.grey, fontSize: (style.fontSize ?? 14) * 1.3);
-        final contentStyle = style?.copyWith(fontWeight: FontWeight.bold, fontSize: (style.fontSize ?? 14) * 1.3);
+        final syntaxStyle = hideSyntax
+            ? hiddenStyle
+            : style?.copyWith(
+                color: Colors.grey, fontSize: (style.fontSize ?? 14) * 1.3);
+        final contentStyle = style?.copyWith(
+            fontWeight: FontWeight.bold,
+            fontSize: (style.fontSize ?? 14) * 1.3);
 
         spans.add(TextSpan(text: syntax, style: syntaxStyle));
         spans.add(TextSpan(text: content, style: contentStyle));
       } else if (match.namedGroup('checkbox') != null) {
         final matchText = text.substring(match.start, match.end);
         final isChecked = matchText.contains('[x]');
-        
-        final innerMatch = RegExp(r'^(\s*)(-\s)?(\[[ x]\])(\s)$').firstMatch(matchText);
+
+        final innerMatch =
+            RegExp(r'^(\s*)(-\s)?(\[[ x]\])(\s)$').firstMatch(matchText);
         if (innerMatch != null) {
           final indent = innerMatch.group(1)!;
           final dash = innerMatch.group(2);
           final suffix = innerMatch.group(4)!;
-          
-          if (indent.isNotEmpty) spans.add(TextSpan(text: indent, style: style));
+
+          if (indent.isNotEmpty) {
+            spans.add(TextSpan(text: indent, style: style));
+          }
 
           WidgetSpan checkboxIcon = WidgetSpan(
             alignment: PlaceholderAlignment.middle,
@@ -307,13 +372,15 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
           if (showReorderArrows) {
             WidgetSpan upArrow = WidgetSpan(
               alignment: PlaceholderAlignment.middle,
-              child: Icon(Icons.arrow_upward, size: 16, color: Colors.grey.withValues(alpha: 0.6)),
+              child: Icon(Icons.arrow_upward,
+                  size: 16, color: Colors.grey.withValues(alpha: 0.6)),
             );
             WidgetSpan downArrow = WidgetSpan(
               alignment: PlaceholderAlignment.middle,
-              child: Icon(Icons.arrow_downward, size: 16, color: Colors.grey.withValues(alpha: 0.6)),
+              child: Icon(Icons.arrow_downward,
+                  size: 16, color: Colors.grey.withValues(alpha: 0.6)),
             );
-            
+
             if (dash != null) {
               spans.add(upArrow);
               spans.add(downArrow);
@@ -333,33 +400,43 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
             spans.add(checkboxIcon);
             spans.add(TextSpan(text: ']', style: hiddenStyle));
           }
-          
-          if (suffix.isNotEmpty) spans.add(TextSpan(text: suffix, style: style));
+
+          if (suffix.isNotEmpty) {
+            spans.add(TextSpan(text: suffix, style: style));
+          }
         }
       } else if (match.namedGroup('list') != null) {
         final matchText = text.substring(match.start, match.end);
-        final innerMatch = RegExp(r'^(\s*)([-*]\s|\d+\.\s)(.*)$').firstMatch(matchText);
+        final innerMatch =
+            RegExp(r'^(\s*)([-*]\s|\d+\.\s)(.*)$').firstMatch(matchText);
         if (innerMatch != null) {
           final indent = innerMatch.group(1)!;
           final bullet = innerMatch.group(2)!;
           final content = innerMatch.group(3)!;
-          
-          if (indent.isNotEmpty) spans.add(TextSpan(text: indent, style: style));
-          
+
+          if (indent.isNotEmpty) {
+            spans.add(TextSpan(text: indent, style: style));
+          }
+
           if (bullet.trim() == '-' || bullet.trim() == '*') {
             if (showReorderArrows) {
               WidgetSpan upArrow = WidgetSpan(
                 alignment: PlaceholderAlignment.middle,
-                child: Icon(Icons.arrow_upward, size: 16, color: Colors.grey.withValues(alpha: 0.6)),
+                child: Icon(Icons.arrow_upward,
+                    size: 16, color: Colors.grey.withValues(alpha: 0.6)),
               );
               WidgetSpan downAndBullet = WidgetSpan(
                 alignment: PlaceholderAlignment.middle,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.arrow_downward, size: 16, color: Colors.grey.withValues(alpha: 0.6)),
+                    Icon(Icons.arrow_downward,
+                        size: 16, color: Colors.grey.withValues(alpha: 0.6)),
                     const SizedBox(width: 4),
-                    Icon(Icons.circle, size: (style?.fontSize ?? 14) * 0.4, color: style?.color?.withValues(alpha: 0.7) ?? Colors.grey),
+                    Icon(Icons.circle,
+                        size: (style?.fontSize ?? 14) * 0.4,
+                        color: style?.color?.withValues(alpha: 0.7) ??
+                            Colors.grey),
                     const SizedBox(width: 4),
                   ],
                 ),
@@ -372,25 +449,36 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
                 alignment: PlaceholderAlignment.middle,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  child: Icon(Icons.circle, size: (style?.fontSize ?? 14) * 0.4, color: style?.color?.withValues(alpha: 0.7) ?? Colors.grey),
+                  child: Icon(Icons.circle,
+                      size: (style?.fontSize ?? 14) * 0.4,
+                      color:
+                          style?.color?.withValues(alpha: 0.7) ?? Colors.grey),
                 ),
               ));
             }
           } else {
-            spans.add(TextSpan(text: bullet, style: style?.copyWith(fontWeight: FontWeight.bold, color: Colors.blueAccent)));
+            spans.add(TextSpan(
+                text: bullet,
+                style: style?.copyWith(
+                    fontWeight: FontWeight.bold, color: Colors.blueAccent)));
           }
-          
+
           spans.add(TextSpan(text: content, style: style));
         }
       } else if (match.namedGroup('image') != null) {
         final imageAlt = match.namedGroup('imageAlt') ?? '';
         final imageHeightStr = match.namedGroup('imageHeight');
         final imageUrl = match.namedGroup('imageUrl')!;
-        final syntaxStyle = hideSyntax ? hiddenStyle : style?.copyWith(color: Colors.grey);
-        
-        final filePath = imageUrl.startsWith('file://') ? imageUrl.replaceFirst('file://', '') : null;
-        double currentHeight = imageHeightStr != null ? double.tryParse(imageHeightStr) ?? 150.0 : 150.0;
-        
+        final syntaxStyle =
+            hideSyntax ? hiddenStyle : style?.copyWith(color: Colors.grey);
+
+        final filePath = imageUrl.startsWith('file://')
+            ? imageUrl.replaceFirst('file://', '')
+            : null;
+        double currentHeight = imageHeightStr != null
+            ? double.tryParse(imageHeightStr) ?? 150.0
+            : 150.0;
+
         if (filePath != null) {
           spans.add(WidgetSpan(
             alignment: PlaceholderAlignment.middle,
@@ -404,24 +492,25 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
                 final start = match.start;
                 final end = match.end;
                 final replacement = '![$imageAlt|$intHeight]($imageUrl)';
-                
+
                 final newText = text.replaceRange(start, end, replacement);
-                
+
                 int cursorOffset = selection.baseOffset;
                 if (cursorOffset > end) {
                   cursorOffset += (replacement.length - (end - start));
                 } else if (cursorOffset > start && cursorOffset <= end) {
                   cursorOffset = start + replacement.length;
                 }
-                
+
                 value = TextEditingValue(
                   text: newText,
-                  selection: TextSelection.collapsed(offset: cursorOffset < 0 ? 0 : cursorOffset),
+                  selection: TextSelection.collapsed(
+                      offset: cursorOffset < 0 ? 0 : cursorOffset),
                 );
               },
             ),
           ));
-          
+
           spans.add(TextSpan(text: '[', style: syntaxStyle));
           spans.add(TextSpan(text: imageAlt, style: syntaxStyle));
           if (imageHeightStr != null) {
@@ -445,8 +534,10 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
       } else if (match.namedGroup('link') != null) {
         final linkContent = match.namedGroup('linkContent')!;
         final linkUrl = match.namedGroup('linkUrl')!;
-        final syntaxStyle = hideSyntax ? hiddenStyle : style?.copyWith(color: Colors.grey);
-        final contentStyle = style?.copyWith(color: Colors.blue, decoration: TextDecoration.underline);
+        final syntaxStyle =
+            hideSyntax ? hiddenStyle : style?.copyWith(color: Colors.grey);
+        final contentStyle = style?.copyWith(
+            color: Colors.blue, decoration: TextDecoration.underline);
 
         spans.add(TextSpan(text: '[', style: syntaxStyle));
         spans.add(TextSpan(text: linkContent, style: contentStyle));
@@ -463,6 +554,9 @@ class MarkdownSyntaxHighlighter extends TextEditingController {
       ));
     }
 
-    return TextSpan(style: style, children: spans);
+    _lastActiveLineStart = activeLineStart;
+    _lastActiveLineEnd = activeLineEnd;
+    _cachedSpans = TextSpan(style: style, children: spans);
+    return _cachedSpans!;
   }
 }

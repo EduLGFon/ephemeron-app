@@ -1,17 +1,13 @@
-import 'dart:ui';
-import '../../quick_add/application/quick_add_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/theme_engine_provider.dart';
-import '../../../core/theme/theme_palettes.dart';
-import '../../../data/local/database.dart';
 import '../../tasks/application/task_providers.dart';
 import '../../tasks/domain/task_sort_option.dart';
-import '../application/matrix_providers.dart';
 import '../domain/matrix_quadrant.dart';
-import 'package:ephemeron/presentation/widgets/glassmorphic_wrapper.dart';
 import 'package:ephemeron/core/widgets/app_loading_indicator.dart';
+
+import 'matrix_quadrant_view.dart';
 
 class MatrixScreen extends ConsumerWidget {
   const MatrixScreen({super.key});
@@ -26,16 +22,17 @@ class MatrixScreen extends ConsumerWidget {
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('Eisenhower Matrix', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Eisenhower Matrix',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          // ── Hamburger Sort/Order Menu ──
           Theme(
             data: Theme.of(context).copyWith(
               popupMenuTheme: PopupMenuThemeData(
                 color: palette.surface.withValues(alpha: 0.95),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
                 textStyle: TextStyle(color: palette.text),
               ),
             ),
@@ -52,12 +49,18 @@ class MatrixScreen extends ConsumerWidget {
                     child: Row(
                       children: [
                         Icon(
-                          opt == sortOption ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                          color: opt == sortOption ? palette.primary : palette.text.withValues(alpha: 0.4),
+                          opt == sortOption
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_unchecked,
+                          color: opt == sortOption
+                              ? palette.primary
+                              : palette.text.withValues(alpha: 0.4),
                           size: 18,
                         ),
                         const SizedBox(width: 10),
-                        Text(opt.label, style: TextStyle(color: palette.text, fontSize: 14)),
+                        Text(opt.label,
+                            style:
+                                TextStyle(color: palette.text, fontSize: 14)),
                       ],
                     ),
                   ),
@@ -76,9 +79,15 @@ class MatrixScreen extends ConsumerWidget {
                   Expanded(
                     child: Row(
                       children: [
-                        Expanded(child: _QuadrantWidget(quadrant: MatrixQuadrant.doFirst, palette: palette)),
+                        Expanded(
+                            child: MatrixQuadrantView(
+                                quadrant: MatrixQuadrant.doFirst,
+                                palette: palette)),
                         const SizedBox(width: 16),
-                        Expanded(child: _QuadrantWidget(quadrant: MatrixQuadrant.schedule, palette: palette)),
+                        Expanded(
+                            child: MatrixQuadrantView(
+                                quadrant: MatrixQuadrant.schedule,
+                                palette: palette)),
                       ],
                     ),
                   ),
@@ -86,9 +95,15 @@ class MatrixScreen extends ConsumerWidget {
                   Expanded(
                     child: Row(
                       children: [
-                        Expanded(child: _QuadrantWidget(quadrant: MatrixQuadrant.delegate, palette: palette)),
+                        Expanded(
+                            child: MatrixQuadrantView(
+                                quadrant: MatrixQuadrant.delegate,
+                                palette: palette)),
                         const SizedBox(width: 16),
-                        Expanded(child: _QuadrantWidget(quadrant: MatrixQuadrant.eliminate, palette: palette)),
+                        Expanded(
+                            child: MatrixQuadrantView(
+                                quadrant: MatrixQuadrant.eliminate,
+                                palette: palette)),
                       ],
                     ),
                   ),
@@ -96,258 +111,5 @@ class MatrixScreen extends ConsumerWidget {
               ),
             ),
     );
-  }
-}
-
-class _QuadrantWidget extends ConsumerStatefulWidget {
-  const _QuadrantWidget({required this.quadrant, required this.palette});
-
-  final MatrixQuadrant quadrant;
-  final AppPalette palette;
-
-  @override
-  ConsumerState<_QuadrantWidget> createState() => _QuadrantWidgetState();
-}
-
-class _QuadrantWidgetState extends ConsumerState<_QuadrantWidget> {
-  @override
-  Widget build(BuildContext context) {
-    final pendingTasksAsync = ref.watch(pendingMatrixTasksProvider(widget.quadrant));
-    final completedTasksAsync = ref.watch(completedMatrixTasksProvider(widget.quadrant));
-    final pendingTasks = pendingTasksAsync.value ?? [];
-    final completedTasks = completedTasksAsync.value ?? [];
-    final color = widget.quadrant.color;
-    final totalCount = pendingTasks.length + completedTasks.length;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: widget.palette.surface.withValues(alpha: widget.palette.isAmoled ? 1.0 : 0.5),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: GlassmorphicWrapper(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        widget.quadrant.label,
-                        style: TextStyle(
-                          color: color,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '$totalCount',
-                        style: TextStyle(color: color, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  widget.quadrant.description,
-                  style: TextStyle(color: widget.palette.text.withValues(alpha: 0.6), fontSize: 12),
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: (pendingTasks.isEmpty && completedTasks.isEmpty)
-                      ? Center(
-                          child: Icon(
-                            Icons.task_alt,
-                            color: color.withValues(alpha: 0.2),
-                            size: 48,
-                          ),
-                        )
-                      : CustomScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          slivers: [
-                            if (pendingTasks.isNotEmpty)
-                              SliverReorderableList(
-                                itemCount: pendingTasks.length,
-                                onReorder: (oldIdx, newIdx) async { // ignore: deprecated_member_use
-                                  if (oldIdx < newIdx) {
-                                    newIdx -= 1;
-                                  }
-                                  final mutableList = List<Task>.from(pendingTasks);
-                                  final item = mutableList.removeAt(oldIdx);
-                                  mutableList.insert(newIdx, item);
-
-                                  ref.read(taskSortOptionProvider.notifier).setSortOption(TaskSortOption.custom);
-                                  
-                                  final ids = mutableList.map((t) => t.id).toList();
-                                  await ref.read(taskRepositoryProvider).updateTaskSortOrders(ids);
-                                },
-                                itemBuilder: (context, index) {
-                                  final task = pendingTasks[index];
-                                  return ReorderableDelayedDragStartListener(
-                                    key: ValueKey(task.id),
-                                    index: index,
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(bottom: 8.0),
-                                      child: _buildTaskRow(context, ref, task),
-                                    ),
-                                  );
-                                },
-                              ),
-                            if (completedTasks.isNotEmpty) ...[
-                              SliverToBoxAdapter(
-                                child: Theme(
-                                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    child: ExpansionTile(
-                                      title: Text(
-                                        'Completed (${completedTasks.length})',
-                                        style: TextStyle(
-                                          color: widget.palette.text.withValues(alpha: 0.5),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      trailing: const SizedBox.shrink(),
-                                      tilePadding: EdgeInsets.zero,
-                                      childrenPadding: EdgeInsets.zero,
-                                      children: [
-                                        for (final task in completedTasks)
-                                          Padding(
-                                            padding: const EdgeInsets.only(bottom: 8.0),
-                                            child: _buildTaskRow(context, ref, task),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTaskRow(BuildContext context, WidgetRef ref, Task task) {
-    final color = widget.quadrant.color;
-    final isLate = !task.isCompleted && task.dueDate != null && task.dueDate!.isBefore(DateTime.now());
-    final titleColor = isLate ? Colors.redAccent : (task.isCompleted ? widget.palette.text.withValues(alpha: 0.5) : widget.palette.text);
-    final dueDateColor = isLate ? Colors.redAccent : widget.palette.text.withValues(alpha: 0.5);
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: () {
-            final repo = ref.read(taskRepositoryProvider);
-            if (task.isCompleted) {
-              repo.uncompleteTask(task.id);
-            } else {
-              repo.completeTask(task.id);
-            }
-          },
-          child: Container(
-            width: 16,
-            height: 16,
-            margin: const EdgeInsets.only(top: 1, right: 8),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: task.isCompleted ? widget.palette.text.withValues(alpha: 0.5) : (isLate ? Colors.redAccent : color.withValues(alpha: 0.8)), 
-                width: 1.5,
-              ),
-              color: task.isCompleted ? widget.palette.text.withValues(alpha: 0.5) : Colors.transparent,
-            ),
-            child: task.isCompleted 
-                ? Icon(Icons.check, size: 10, color: widget.palette.background)
-                : null,
-          ),
-        ),
-        Expanded(
-          child: GestureDetector(
-            onTap: () => ref.read(quickAddProvider.notifier).expand(task),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  task.title,
-                  style: TextStyle(
-                    color: titleColor,
-                    fontSize: 13,
-                    fontWeight: isLate ? FontWeight.bold : FontWeight.normal,
-                    decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (task.dueDate != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2.0),
-                    child: Row(
-                      children: [
-                        Icon(
-                          isLate ? Icons.warning_amber_rounded : Icons.calendar_today,
-                          size: 10,
-                          color: dueDateColor,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _formatDue(task.dueDate!, task.dueHasTime),
-                          style: TextStyle(
-                            color: dueDateColor,
-                            fontSize: 10,
-                            fontWeight: isLate ? FontWeight.bold : FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  String _formatDue(DateTime due, bool hasTime) {
-    final localDue = due.toLocal();
-    final date =
-        '${localDue.year}-${localDue.month.toString().padLeft(2, '0')}-'
-        '${localDue.day.toString().padLeft(2, '0')}';
-    if (!hasTime) return date;
-    return '$date ${localDue.hour.toString().padLeft(2, '0')}:'
-        '${localDue.minute.toString().padLeft(2, '0')}';
   }
 }

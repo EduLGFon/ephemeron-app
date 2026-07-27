@@ -18,7 +18,8 @@ abstract final class AppConfig {
 
   static const String googleDesktopClientId = String.fromEnvironment(
     'GOOGLE_DESKTOP_CLIENT_ID',
-    defaultValue: '927111009905-kgr1uf2find2vqcd3v4g5g4k58kik42n.apps.googleusercontent.com',
+    defaultValue:
+        '927111009905-kgr1uf2find2vqcd3v4g5g4k58kik42n.apps.googleusercontent.com',
   );
 
   /// Desktop OAuth client secret (Google recommends PKCE, but desktop type clients

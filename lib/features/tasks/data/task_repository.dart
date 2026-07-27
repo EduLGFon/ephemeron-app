@@ -32,7 +32,8 @@ class TaskRepository {
   Stream<List<TaskList>> watchLists() {
     return (_db.select(
       _db.lists,
-    )..orderBy([(t) => OrderingTerm.asc(t.sortOrder)])).watch();
+    )..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
+        .watch();
   }
 
   Future<TaskList> createList({
@@ -40,9 +41,7 @@ class TaskRepository {
     String colorHex = '#1B4B4A',
   }) async {
     final id = _uuid.v4();
-    await _db
-        .into(_db.lists)
-        .insert(
+    await _db.into(_db.lists).insert(
           ListsCompanion.insert(
             id: Value(id),
             name: name,
@@ -64,7 +63,8 @@ class TaskRepository {
   Future<void> deleteList(String listId) async {
     final list = await (_db.select(
       _db.lists,
-    )..where((t) => t.id.equals(listId))).getSingleOrNull();
+    )..where((t) => t.id.equals(listId)))
+        .getSingleOrNull();
     if (list == null || list.isInbox) return; // Inbox can't be deleted.
 
     final inbox = await _inboxList();
@@ -77,7 +77,8 @@ class TaskRepository {
   Future<TaskList> _inboxList() {
     return (_db.select(
       _db.lists,
-    )..where((t) => t.isInbox.equals(true))).getSingle();
+    )..where((t) => t.isInbox.equals(true)))
+        .getSingle();
   }
 
   // ---------------------------------------------------------------------
@@ -116,7 +117,8 @@ class TaskRepository {
     TaskSortOption? sortOption,
   }) {
     final now = DateTime.now();
-    final endOfTomorrow = DateTime(now.year, now.month, now.day).add(const Duration(days: 2));
+    final endOfTomorrow =
+        DateTime(now.year, now.month, now.day).add(const Duration(days: 2));
 
     final query = _db.select(_db.tasks)
       ..where((t) =>
@@ -126,7 +128,8 @@ class TaskRepository {
           t.isCompleted.equals(isCompleted));
 
     final isImportant = _db.tasks.priority.isBiggerOrEqualValue(2);
-    final isUrgent = _db.tasks.dueDate.isNotNull() & _db.tasks.dueDate.isSmallerThanValue(endOfTomorrow);
+    final isUrgent = _db.tasks.dueDate.isNotNull() &
+        _db.tasks.dueDate.isSmallerThanValue(endOfTomorrow);
 
     switch (quadrant) {
       case MatrixQuadrant.doFirst:
@@ -149,7 +152,8 @@ class TaskRepository {
     return query.watch();
   }
 
-  void _applySortOption(SimpleSelectStatement<$TasksTable, Task> query, TaskSortOption? sortOption) {
+  void _applySortOption(SimpleSelectStatement<$TasksTable, Task> query,
+      TaskSortOption? sortOption) {
     if (sortOption == null) {
       query.orderBy([
         (t) => OrderingTerm.desc(t.isPinned),
@@ -211,10 +215,11 @@ class TaskRepository {
   }
 
   Stream<List<Task>> watchSubtasks(String parentTaskId) {
-    return (_db.select(_db.tasks)..where(
-          (t) =>
-              t.parentTaskId.equals(parentTaskId) & t.isDeleted.equals(false),
-        ))
+    return (_db.select(_db.tasks)
+          ..where(
+            (t) =>
+                t.parentTaskId.equals(parentTaskId) & t.isDeleted.equals(false),
+          ))
         .watch();
   }
 
@@ -287,9 +292,7 @@ class TaskRepository {
   }) async {
     final id = _uuid.v4();
 
-    await _db
-        .into(_db.tasks)
-        .insert(
+    await _db.into(_db.tasks).insert(
           TasksCompanion.insert(
             id: Value(id),
             listId: listId,
@@ -335,14 +338,12 @@ class TaskRepository {
     await (_db.update(_db.tasks)..where((t) => t.id.equals(taskId))).write(
       TasksCompanion(
         title: title != null ? Value(title) : const Value.absent(),
-        description: description != null
-            ? Value(description)
-            : const Value.absent(),
+        description:
+            description != null ? Value(description) : const Value.absent(),
         priority: priority != null ? Value(priority) : const Value.absent(),
         dueDate: dueDate ?? const Value.absent(),
-        dueHasTime: dueHasTime != null
-            ? Value(dueHasTime)
-            : const Value.absent(),
+        dueHasTime:
+            dueHasTime != null ? Value(dueHasTime) : const Value.absent(),
         recurrenceRule: recurrence != null
             ? Value(recurrence.isRecurring ? recurrence.encode() : null)
             : const Value.absent(),
@@ -474,9 +475,7 @@ class TaskRepository {
     String colorHex = '#D89B3C',
   }) async {
     final id = _uuid.v4();
-    await _db
-        .into(_db.tags)
-        .insert(
+    await _db.into(_db.tags).insert(
           TagsCompanion.insert(
             id: Value(id),
             name: name,
@@ -487,9 +486,7 @@ class TaskRepository {
   }
 
   Future<void> assignTag(String taskId, String tagId) async {
-    await _db
-        .into(_db.taskTags)
-        .insertOnConflictUpdate(
+    await _db.into(_db.taskTags).insertOnConflictUpdate(
           TaskTagsCompanion.insert(taskId: taskId, tagId: tagId),
         );
   }
@@ -497,40 +494,50 @@ class TaskRepository {
   Future<void> removeTag(String taskId, String tagId) async {
     await (_db.delete(
       _db.taskTags,
-    )..where((t) => t.taskId.equals(taskId) & t.tagId.equals(tagId))).go();
+    )..where((t) => t.taskId.equals(taskId) & t.tagId.equals(tagId)))
+        .go();
   }
 
   Stream<List<Tag>> watchTagsForTask(String taskId) {
     final query = _db.select(_db.tags).join([
       innerJoin(_db.taskTags, _db.taskTags.tagId.equalsExp(_db.tags.id)),
-    ])..where(_db.taskTags.taskId.equals(taskId));
+    ])
+      ..where(_db.taskTags.taskId.equals(taskId));
     return query.watch().map(
-      (rows) => rows.map((r) => r.readTable(_db.tags)).toList(),
-    );
+          (rows) => rows.map((r) => r.readTable(_db.tags)).toList(),
+        );
   }
 
-  Future<void> _syncTagsForTask(String taskId, String title, String? description) async {
+  Future<void> _syncTagsForTask(
+      String taskId, String title, String? description) async {
     final text = '$title ${description ?? ''}';
     final matches = RegExp(r'#(\w+)').allMatches(text);
-    final tagNames = matches.map((m) => m.group(1)!.trim().toLowerCase()).toSet();
+    final tagNames =
+        matches.map((m) => m.group(1)!.trim().toLowerCase()).toSet();
 
     final existingTags = await (_db.select(_db.tags).join([
       innerJoin(_db.taskTags, _db.taskTags.tagId.equalsExp(_db.tags.id)),
-    ])..where(_db.taskTags.taskId.equals(taskId))).get();
+    ])
+          ..where(_db.taskTags.taskId.equals(taskId)))
+        .get();
 
-    final existingTagNames = existingTags.map((row) => row.readTable(_db.tags).name.toLowerCase()).toSet();
+    final existingTagNames = existingTags
+        .map((row) => row.readTable(_db.tags).name.toLowerCase())
+        .toSet();
 
     for (final row in existingTags) {
       final tag = row.readTable(_db.tags);
       if (!tagNames.contains(tag.name.toLowerCase())) {
         await (_db.delete(_db.taskTags)
-              ..where((tt) => tt.taskId.equals(taskId) & tt.tagId.equals(tag.id)))
+              ..where(
+                  (tt) => tt.taskId.equals(taskId) & tt.tagId.equals(tag.id)))
             .go();
       }
     }
 
     for (final name in tagNames) {
-      var tag = await (_db.select(_db.tags)..where((t) => t.name.equals(name))).getSingleOrNull();
+      var tag = await (_db.select(_db.tags)..where((t) => t.name.equals(name)))
+          .getSingleOrNull();
       tag ??= await createTag(name: name);
       if (!existingTagNames.contains(name)) {
         await assignTag(taskId, tag.id);
@@ -545,7 +552,8 @@ class TaskRepository {
   Future<Task?> _getTask(String taskId) {
     return (_db.select(
       _db.tasks,
-    )..where((t) => t.id.equals(taskId))).getSingleOrNull();
+    )..where((t) => t.id.equals(taskId)))
+        .getSingleOrNull();
   }
 
   Future<Task?> getTask(String taskId) => _getTask(taskId);
@@ -669,15 +677,18 @@ class TaskRepository {
             isCompletedFilter: Value(isCompletedFilter),
           ),
         );
-    return (_db.select(_db.customSmartLists)..where((t) => t.id.equals(id))).getSingle();
+    return (_db.select(_db.customSmartLists)..where((t) => t.id.equals(id)))
+        .getSingle();
   }
 
   Future<void> deleteCustomSmartList(String id) async {
-    await (_db.delete(_db.customSmartLists)..where((t) => t.id.equals(id))).go();
+    await (_db.delete(_db.customSmartLists)..where((t) => t.id.equals(id)))
+        .go();
   }
 
   Stream<List<Task>> watchTasksForCustomSmartList(CustomSmartList smartList) {
-    SimpleSelectStatement<$TasksTable, Task> selectStatement = _db.select(_db.tasks);
+    SimpleSelectStatement<$TasksTable, Task> selectStatement =
+        _db.select(_db.tasks);
     JoinedSelectStatement selectWithJoin;
 
     if (smartList.tagId != null) {
@@ -694,11 +705,13 @@ class TaskRepository {
     selectWithJoin.where(_db.tasks.isWontDo.equals(false));
 
     if (smartList.isCompletedFilter != null) {
-      selectWithJoin.where(_db.tasks.isCompleted.equals(smartList.isCompletedFilter!));
+      selectWithJoin
+          .where(_db.tasks.isCompleted.equals(smartList.isCompletedFilter!));
     }
 
     if (smartList.minPriority != null) {
-      selectWithJoin.where(_db.tasks.priority.isBiggerOrEqualValue(smartList.minPriority!));
+      selectWithJoin.where(
+          _db.tasks.priority.isBiggerOrEqualValue(smartList.minPriority!));
     }
 
     if (smartList.dateFilter != null) {
@@ -706,11 +719,15 @@ class TaskRepository {
       final startOfToday = DateTime(now.year, now.month, now.day);
       if (smartList.dateFilter == 'today') {
         final startOfTomorrow = startOfToday.add(const Duration(days: 1));
-        selectWithJoin.where(_db.tasks.dueDate.isSmallerThanValue(startOfTomorrow));
+        selectWithJoin
+            .where(_db.tasks.dueDate.isSmallerThanValue(startOfTomorrow));
       } else if (smartList.dateFilter == 'tomorrow') {
         final startOfTomorrow = startOfToday.add(const Duration(days: 1));
-        final startOfDayAfterTomorrow = startOfToday.add(const Duration(days: 2));
-        selectWithJoin.where(_db.tasks.dueDate.isBiggerOrEqualValue(startOfTomorrow) & _db.tasks.dueDate.isSmallerThanValue(startOfDayAfterTomorrow));
+        final startOfDayAfterTomorrow =
+            startOfToday.add(const Duration(days: 2));
+        selectWithJoin.where(
+            _db.tasks.dueDate.isBiggerOrEqualValue(startOfTomorrow) &
+                _db.tasks.dueDate.isSmallerThanValue(startOfDayAfterTomorrow));
       } else if (smartList.dateFilter == 'thisWeek') {
         final weekday = now.weekday;
         final startOfWeek = startOfToday.subtract(Duration(days: weekday - 1));
@@ -718,12 +735,15 @@ class TaskRepository {
         selectWithJoin.where(_db.tasks.dueDate.isSmallerThanValue(endOfWeek));
       } else if (smartList.dateFilter == 'next7Days') {
         final startOfNext7 = startOfToday.add(const Duration(days: 7));
-        selectWithJoin.where(_db.tasks.dueDate.isSmallerThanValue(startOfNext7));
+        selectWithJoin
+            .where(_db.tasks.dueDate.isSmallerThanValue(startOfNext7));
       }
     }
 
     selectWithJoin.orderBy([OrderingTerm.asc(_db.tasks.dueDate)]);
-    return selectWithJoin.watch().map((rows) => rows.map((r) => r.readTable(_db.tasks)).toList());
+    return selectWithJoin
+        .watch()
+        .map((rows) => rows.map((r) => r.readTable(_db.tasks)).toList());
   }
 
   String? _encodeOffsets(List<ReminderOffset> offsets) {
@@ -769,25 +789,27 @@ class TaskRepository {
         final title = remote.title ?? '(No Title)';
         final description = remote.notes;
         final isCompleted = remote.status == 'completed';
-        final dueDate = remote.due != null ? DateTime.tryParse(remote.due!) : null;
+        final dueDate =
+            remote.due != null ? DateTime.tryParse(remote.due!) : null;
 
         if (existing == null) {
           final id = _uuid.v4();
           await _db.into(_db.tasks).insert(
-            TasksCompanion.insert(
-              id: Value(id),
-              googleTaskId: Value(remote.id),
-              listId: inbox.id,
-              title: title,
-              description: Value(description),
-              isCompleted: Value(isCompleted),
-              dueDate: Value(dueDate),
-              createdAt: Value(now),
-              updatedAt: Value(now),
-            ),
-          );
+                TasksCompanion.insert(
+                  id: Value(id),
+                  googleTaskId: Value(remote.id),
+                  listId: inbox.id,
+                  title: title,
+                  description: Value(description),
+                  isCompleted: Value(isCompleted),
+                  dueDate: Value(dueDate),
+                  createdAt: Value(now),
+                  updatedAt: Value(now),
+                ),
+              );
         } else {
-          await (_db.update(_db.tasks)..where((t) => t.id.equals(existing.id))).write(
+          await (_db.update(_db.tasks)..where((t) => t.id.equals(existing.id)))
+              .write(
             TasksCompanion(
               title: Value(title),
               description: Value(description),
@@ -823,7 +845,10 @@ extension TaskCalendarRepositoryExtension on TaskRepository {
     final query = _db.select(_db.tasks).join([
       leftOuterJoin(_db.taskTags, _db.taskTags.taskId.equalsExp(_db.tasks.id)),
       leftOuterJoin(_db.tags, _db.tags.id.equalsExp(_db.taskTags.tagId)),
-    ])..where(_db.tasks.isDeleted.equals(false) & _db.tasks.isWontDo.equals(false) & _db.tasks.dueDate.isNotNull());
+    ])
+      ..where(_db.tasks.isDeleted.equals(false) &
+          _db.tasks.isWontDo.equals(false) &
+          _db.tasks.dueDate.isNotNull());
 
     return query.watch().map((rows) {
       final list = <TaskCalendarEntry>[];
