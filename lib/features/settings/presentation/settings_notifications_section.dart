@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/settings/app_settings_provider.dart';
-import 'settings_screen.dart'; 
+import 'settings_screen.dart';
 
 class SettingsNotificationsSection extends ConsumerWidget {
   const SettingsNotificationsSection({super.key});
@@ -54,8 +54,8 @@ class SettingsNotificationsSection extends ConsumerWidget {
             ],
           ),
           trailing: const Icon(Icons.color_lens, size: 20),
-          onTap: () =>
-              SettingsScreen.editAlarmBackground(context, ref, settings.alarmBackground),
+          onTap: () => SettingsScreen.editAlarmBackground(
+              context, ref, settings.alarmBackground),
         ),
       ],
     );

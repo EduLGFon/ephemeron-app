@@ -76,9 +76,13 @@ class SettingsScreen extends ConsumerWidget {
                 try {
                   final color = parseColor(val);
                   if (type == 'Primary') {
-                    ref.read(themeEngineProvider.notifier).setPrimaryColor(color);
+                    ref
+                        .read(themeEngineProvider.notifier)
+                        .setPrimaryColor(color);
                   } else {
-                    ref.read(themeEngineProvider.notifier).setBackgroundColor(color);
+                    ref
+                        .read(themeEngineProvider.notifier)
+                        .setBackgroundColor(color);
                   }
                 } catch (_) {}
               }
@@ -119,13 +123,15 @@ class SettingsScreen extends ConsumerWidget {
                 ? Center(
                     child: Text(
                       'No logs yet.',
-                      style: TextStyle(color: palette.text.withValues(alpha: 0.5)),
+                      style:
+                          TextStyle(color: palette.text.withValues(alpha: 0.5)),
                     ),
                   )
                 : ListView.builder(
                     itemCount: DevLogger.logs.length,
                     itemBuilder: (context, index) {
-                      final log = DevLogger.logs[DevLogger.logs.length - 1 - index];
+                      final log =
+                          DevLogger.logs[DevLogger.logs.length - 1 - index];
                       final isError = log.error != null;
                       final timeStr =
                           "${log.time.hour.toString().padLeft(2, '0')}:${log.time.minute.toString().padLeft(2, '0')}:${log.time.second.toString().padLeft(2, '0')}";
@@ -144,7 +150,8 @@ class SettingsScreen extends ConsumerWidget {
                             Text(
                               '[$timeStr] ${log.message}',
                               style: TextStyle(
-                                color: isError ? Colors.redAccent : palette.text,
+                                color:
+                                    isError ? Colors.redAccent : palette.text,
                                 fontFamily: 'monospace',
                                 fontSize: 12,
                               ),
@@ -188,7 +195,8 @@ class SettingsScreen extends ConsumerWidget {
                       "${log.time.hour.toString().padLeft(2, '0')}:${log.time.minute.toString().padLeft(2, '0')}:${log.time.second.toString().padLeft(2, '0')}";
                   var msg = '[$timeStr] ${log.message}';
                   if (log.error != null) msg += '\nError: ${log.error}';
-                  if (log.stackTrace != null) msg += '\nStackTrace: ${log.stackTrace}';
+                  if (log.stackTrace != null)
+                    msg += '\nStackTrace: ${log.stackTrace}';
                   return msg;
                 }).join('\n\n');
                 Clipboard.setData(ClipboardData(text: text));
@@ -232,9 +240,13 @@ class SettingsScreen extends ConsumerWidget {
               final path = controller.text.trim();
               if (path.isNotEmpty) {
                 if (type == 'short') {
-                  ref.read(appSettingsProvider.notifier).setAlarmShortSoundPath(path);
+                  ref
+                      .read(appSettingsProvider.notifier)
+                      .setAlarmShortSoundPath(path);
                 } else {
-                  ref.read(appSettingsProvider.notifier).setAlarmLongSoundPath(path);
+                  ref
+                      .read(appSettingsProvider.notifier)
+                      .setAlarmLongSoundPath(path);
                 }
               }
               Navigator.pop(context);
@@ -281,8 +293,13 @@ class SettingsScreen extends ConsumerWidget {
 
   static String dayName(int isoDay) {
     const names = {
-      1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday',
-      5: 'Friday', 6: 'Saturday', 7: 'Sunday',
+      1: 'Monday',
+      2: 'Tuesday',
+      3: 'Wednesday',
+      4: 'Thursday',
+      5: 'Friday',
+      6: 'Saturday',
+      7: 'Sunday',
     };
     return names[isoDay] ?? 'Sunday';
   }
@@ -299,7 +316,8 @@ class SettingsScreen extends ConsumerWidget {
               const Padding(
                 padding: EdgeInsets.all(16),
                 child: Text('First day of the week',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
               for (final day in [7, 1, 6])
                 RadioListTile<int>(
@@ -308,7 +326,9 @@ class SettingsScreen extends ConsumerWidget {
                   groupValue: current,
                   onChanged: (value) {
                     if (value != null) {
-                      ref.read(appSettingsProvider.notifier).setCalendarStartDay(value);
+                      ref
+                          .read(appSettingsProvider.notifier)
+                          .setCalendarStartDay(value);
                       Navigator.pop(sheetContext);
                     }
                   },
@@ -325,6 +345,7 @@ class SettingsScreen extends ConsumerWidget {
     final palette = ref.read(themeEngineProvider);
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       backgroundColor: palette.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -352,7 +373,8 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Text(
                       'Select which calendars from your phone you want to see inside Ephemeron.',
                       style: TextStyle(
@@ -372,7 +394,8 @@ class SettingsScreen extends ConsumerWidget {
                               child: Text(
                                 'No calendars found. Please check calendar permissions in your phone settings.',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(color: palette.text.withValues(alpha: 0.6)),
+                                style: TextStyle(
+                                    color: palette.text.withValues(alpha: 0.6)),
                               ),
                             ),
                           );
@@ -382,21 +405,25 @@ class SettingsScreen extends ConsumerWidget {
                           itemCount: calendars.length,
                           itemBuilder: (context, index) {
                             final cal = calendars[index];
-                            final isEnabled = settings.enabledDeviceCalendarIds.contains(cal.id);
+                            final isEnabled = settings.enabledDeviceCalendarIds
+                                .contains(cal.id);
                             final calColor = cal.color ?? palette.primary;
 
                             return SwitchListTile(
                               title: Row(
                                 children: [
                                   Container(
-                                    width: 14, height: 14,
+                                    width: 14,
+                                    height: 14,
                                     decoration: BoxDecoration(
-                                      color: calColor, shape: BoxShape.circle,
+                                      color: calColor,
+                                      shape: BoxShape.circle,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
-                                    child: Text(cal.name, style: TextStyle(color: palette.text)),
+                                    child: Text(cal.name,
+                                        style: TextStyle(color: palette.text)),
                                   ),
                                 ],
                               ),
@@ -404,32 +431,39 @@ class SettingsScreen extends ConsumerWidget {
                                   ? Text(
                                       cal.accountName!,
                                       style: TextStyle(
-                                        color: palette.text.withValues(alpha: 0.5),
+                                        color:
+                                            palette.text.withValues(alpha: 0.5),
                                         fontSize: 11,
                                       ),
                                     )
                                   : null,
                               value: isEnabled,
                               onChanged: (val) {
-                                final currentSet = Set<String>.from(settings.enabledDeviceCalendarIds);
+                                final currentSet = Set<String>.from(
+                                    settings.enabledDeviceCalendarIds);
                                 if (val) {
                                   currentSet.add(cal.id);
                                 } else {
                                   currentSet.remove(cal.id);
                                 }
-                                ref.read(appSettingsProvider.notifier).setEnabledDeviceCalendarIds(currentSet);
+                                ref
+                                    .read(appSettingsProvider.notifier)
+                                    .setEnabledDeviceCalendarIds(currentSet);
                               },
                             );
                           },
                         );
                       },
                       loading: () => const Center(
-                        child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()),
+                        child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: CircularProgressIndicator()),
                       ),
                       error: (err, _) => Center(
                         child: Padding(
                           padding: const EdgeInsets.all(24),
-                          child: Text('Error loading calendars: $err', style: const TextStyle(color: Colors.redAccent)),
+                          child: Text('Error loading calendars: $err',
+                              style: const TextStyle(color: Colors.redAccent)),
                         ),
                       ),
                     ),

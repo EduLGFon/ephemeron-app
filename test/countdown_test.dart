@@ -27,7 +27,9 @@ class FakeAlarmScheduler extends Fake implements AlarmScheduler {
 
 void main() {
   group('Countdown Age on Conclusion Tests', () {
-    test('computes age correctly for yearly and non-yearly countdowns when showAge is true', () {
+    test(
+        'computes age correctly for yearly and non-yearly countdowns when showAge is true',
+        () {
       final now = DateTime.now();
 
       // Non-yearly countdown concluded in the past (e.g. 5 years ago)
@@ -60,7 +62,8 @@ void main() {
       expect(statusYearly.age! >= 10, isTrue);
     });
 
-    test('saving custom countdown with showAge is preserved in repository', () async {
+    test('saving custom countdown with showAge is preserved in repository',
+        () async {
       final db = AppDatabase(NativeDatabase.memory());
       final repo = CountdownRepository(db, FakeAlarmScheduler());
 
@@ -76,7 +79,9 @@ void main() {
 
       // Verify update preserves/modifies showAge
       await repo.updateCountdown(cd.id, showAge: false);
-      final updated = await (db.select(db.countdowns)..where((c) => c.id.equals(cd.id))).getSingle();
+      final updated = await (db.select(db.countdowns)
+            ..where((c) => c.id.equals(cd.id)))
+          .getSingle();
       expect(updated.showAge, isFalse);
 
       await db.close();

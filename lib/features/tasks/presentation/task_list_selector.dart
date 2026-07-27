@@ -38,8 +38,8 @@ class TaskListSelector extends ConsumerWidget {
       data: Theme.of(context).copyWith(
         popupMenuTheme: PopupMenuThemeData(
           color: palette.surface.withValues(alpha: 0.95),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           textStyle: TextStyle(color: palette.text),
         ),
       ),
@@ -62,8 +62,8 @@ class TaskListSelector extends ConsumerWidget {
                     fontWeight: FontWeight.bold,
                     color: Colors.grey)),
           ),
-          _buildSmartMenuItem('smart:today', 'Today', Icons.today_rounded,
-              palette, currentId),
+          _buildSmartMenuItem(
+              'smart:today', 'Today', Icons.today_rounded, palette, currentId),
           _buildSmartMenuItem('smart:tomorrow', 'Tomorrow',
               Icons.wb_sunny_rounded, palette, currentId),
           _buildSmartMenuItem('smart:next7Days', 'Next 7 Days',
@@ -72,8 +72,8 @@ class TaskListSelector extends ConsumerWidget {
               Icons.check_circle_outline_rounded, palette, currentId),
           _buildSmartMenuItem('smart:trash', 'Trash',
               Icons.delete_outline_rounded, palette, currentId),
-          _buildSmartMenuItem('smart:wontDo', "Won't Do",
-              Icons.block_rounded, palette, currentId),
+          _buildSmartMenuItem('smart:wontDo', "Won't Do", Icons.block_rounded,
+              palette, currentId),
           if (customSmartLists.isNotEmpty) ...[
             const PopupMenuDivider(),
             const PopupMenuItem<String>(
@@ -102,9 +102,8 @@ class TaskListSelector extends ConsumerWidget {
                         item.name,
                         style: TextStyle(
                           color: palette.text,
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
                       if (isSelected) ...[
@@ -134,9 +133,7 @@ class TaskListSelector extends ConsumerWidget {
                 child: Row(
                   children: [
                     Icon(
-                      list.isInbox
-                          ? Icons.inbox_rounded
-                          : Icons.list_rounded,
+                      list.isInbox ? Icons.inbox_rounded : Icons.list_rounded,
                       color: isSelected
                           ? palette.primary
                           : (list.isInbox
@@ -149,9 +146,8 @@ class TaskListSelector extends ConsumerWidget {
                       list.name,
                       style: TextStyle(
                         color: palette.text,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
                     if (isSelected) ...[
@@ -172,8 +168,7 @@ class TaskListSelector extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Text('New list...',
                     style: TextStyle(
-                        color: palette.primary,
-                        fontWeight: FontWeight.bold)),
+                        color: palette.primary, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -186,8 +181,7 @@ class TaskListSelector extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Text('New smart list...',
                     style: TextStyle(
-                        color: palette.primary,
-                        fontWeight: FontWeight.bold)),
+                        color: palette.primary, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -239,8 +233,8 @@ class TaskListSelector extends ConsumerWidget {
     );
   }
 
-  Future<void> _createSmartList(
-      BuildContext context, WidgetRef ref, AppPalette palette, List<Tag> tags) async {
+  Future<void> _createSmartList(BuildContext context, WidgetRef ref,
+      AppPalette palette, List<Tag> tags) async {
     final nameController = TextEditingController();
     String? selectedDateFilter;
     int? selectedMinPriority;
@@ -348,7 +342,8 @@ class TaskListSelector extends ConsumerWidget {
                             value: null, child: Text('Any Tag')),
                         for (final tag in tags)
                           DropdownMenuItem(
-                              value: tag.id, child: const Text('#\${tag.name}')),
+                              value: tag.id,
+                              child: const Text('#\${tag.name}')),
                       ],
                       onChanged: (val) =>
                           setDialogState(() => selectedTagId = val),
@@ -399,7 +394,8 @@ class TaskListSelector extends ConsumerWidget {
     }
   }
 
-  Future<void> _createList(BuildContext context, WidgetRef ref, AppPalette palette) async {
+  Future<void> _createList(
+      BuildContext context, WidgetRef ref, AppPalette palette) async {
     final controller = TextEditingController();
     final name = await showDialog<String>(
       context: context,

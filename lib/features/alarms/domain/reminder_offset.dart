@@ -1,7 +1,10 @@
+import 'package:meta/meta.dart';
+
 /// How long before a due date/time a reminder should fire. Multiple
 /// offsets can be attached to the same task/event/habit — e.g. both
 /// "1h before" and "at the time" — so callers work with a `List<
 /// ReminderOffset>`, not a single value.
+@immutable
 class ReminderOffset {
   const ReminderOffset._(this.beforeDue, this.label);
 

@@ -75,7 +75,8 @@ void main() {
       dueDate: today,
     );
 
-    final tasks = await repository.watchTasksForCustomSmartList(smartList).first;
+    final tasks =
+        await repository.watchTasksForCustomSmartList(smartList).first;
 
     expect(tasks.length, 1);
     expect(tasks.first.id, t1.id);

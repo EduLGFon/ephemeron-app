@@ -19,11 +19,14 @@ class HabitSelectedDateNotifier extends Notifier<DateTime> {
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day);
   }
+
   @override
   set state(DateTime value) => super.state = value;
 }
 
-final habitSelectedDateProvider = NotifierProvider<HabitSelectedDateNotifier, DateTime>(() => HabitSelectedDateNotifier());
+final habitSelectedDateProvider =
+    NotifierProvider<HabitSelectedDateNotifier, DateTime>(
+        () => HabitSelectedDateNotifier());
 
 final habitsProvider = StreamProvider<List<Habit>>((ref) {
   return ref.watch(habitRepositoryProvider).watchHabits();
@@ -64,4 +67,3 @@ final habitAlarmsRefreshProvider = FutureProvider<void>((ref) async {
   await ref.watch(alarmSchedulerInitProvider.future);
   await ref.watch(habitRepositoryProvider).refreshOneShotAlarms();
 });
-

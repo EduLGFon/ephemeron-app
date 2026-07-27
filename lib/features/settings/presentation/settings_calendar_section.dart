@@ -29,7 +29,8 @@ class SettingsCalendarSection extends ConsumerWidget {
           subtitle: Text(SettingsScreen.dayName(settings.calendarStartDay)),
           trailing: const Icon(Icons.chevron_right, size: 20),
           onTap: () {
-            SettingsScreen.showStartDayPicker(context, ref, settings.calendarStartDay);
+            SettingsScreen.showStartDayPicker(
+                context, ref, settings.calendarStartDay);
           },
         ),
         if (!kIsWeb)

@@ -189,4 +189,3 @@ class _DateNavigator extends ConsumerWidget {
     );
   }
 }
-

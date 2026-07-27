@@ -18,16 +18,16 @@ class FocusScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Only watch parts of timerState that don't change every second
-    final timerState = ref.watch(focusTimerControllerProvider.select((state) => 
-        FocusTimerState(
-          mode: state.mode,
-          isRunning: state.isRunning,
-          keepScreenOn: state.keepScreenOn,
-          startedAt: state.startedAt,
-          linkedTaskId: state.linkedTaskId,
-          linkedHabitId: state.linkedHabitId,
-          pomodoroPhase: state.pomodoroPhase,
-        )));
+    final timerState = ref
+        .watch(focusTimerControllerProvider.select((state) => FocusTimerState(
+              mode: state.mode,
+              isRunning: state.isRunning,
+              keepScreenOn: state.keepScreenOn,
+              startedAt: state.startedAt,
+              linkedTaskId: state.linkedTaskId,
+              linkedHabitId: state.linkedHabitId,
+              pomodoroPhase: state.pomodoroPhase,
+            )));
     final controller = ref.read(focusTimerControllerProvider.notifier);
     final palette = ref.watch(themeEngineProvider);
 

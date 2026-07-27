@@ -102,7 +102,7 @@ class CalendarAppBar extends ConsumerWidget implements PreferredSizeWidget {
         ),
         IconButton(
           tooltip: 'Manage Device Calendars',
-          icon: Icon(Icons.calendar_month_outlined, color: palette.primary),
+          icon: Icon(Icons.phone_android, color: palette.primary),
           onPressed: () {
             SettingsScreen.showDeviceCalendarsSheet(context, ref);
           },

@@ -26,7 +26,7 @@ class FocusTimerController extends Notifier<FocusTimerState> {
   // session still records its real start time, not one skewed forward by
   // however long it was paused.
   DateTime? _trueSessionStart;
-  
+
   final ValueNotifier<Duration> elapsedNotifier = ValueNotifier(Duration.zero);
 
   @override
@@ -95,7 +95,7 @@ class FocusTimerController extends Notifier<FocusTimerState> {
     await scheduler.showOngoingNotification(
       id: _ongoingNotificationId,
       title: isPomo ? 'Focus (Pomodoro)' : 'Focus session',
-      startedAt: now,
+      startedAt: isPomo ? now : now.subtract(elapsedNotifier.value),
       isCountdown: isPomo,
       duration: isPomo ? (state.pomodoroTarget - elapsedNotifier.value) : null,
     );
@@ -103,7 +103,9 @@ class FocusTimerController extends Notifier<FocusTimerState> {
     // Android 16+: also show the promoted-ongoing pill in the status bar.
     // On older versions this is a silent no-op inside MainActivity.
     final pillWhen = isPomo
-        ? now.add(state.pomodoroTarget - elapsedNotifier.value).millisecondsSinceEpoch
+        ? now
+            .add(state.pomodoroTarget - elapsedNotifier.value)
+            .millisecondsSinceEpoch
         : now.subtract(elapsedNotifier.value).millisecondsSinceEpoch;
     unawaited(PromotedNotificationChannel.show(
       title: isPomo ? 'Pomodoro' : 'Focus',

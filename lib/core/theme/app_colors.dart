@@ -29,4 +29,18 @@ abstract final class AppColors {
   static const Color priorityMedium = Color(0xFFD89B3C);
   static const Color priorityLow = Color(0xFF3E6E6C);
   static const Color priorityNone = Color(0xFF9A958C);
+
+  // --- Frequently-used opacities (pre-computed consts) ---
+  static const Color blackAlpha20 = Color(0x33000000); // 0.2
+  static const Color blackAlpha25 = Color(0x40000000); // 0.25
+  static const Color blackAlpha30 = Color(0x4D000000); // 0.3
+  static const Color blackAlpha35 = Color(0x59000000); // 0.35
+  static const Color blackAlpha40 = Color(0x66000000); // 0.4
+  static const Color blackAlpha45 = Color(0x73000000); // 0.45
+  static const Color blackAlpha55 = Color(0x8C000000); // 0.55
+  static const Color whiteAlpha10 = Color(0x1AFFFFFF); // 0.1
+  static const Color whiteAlpha20 = Color(0x33FFFFFF); // 0.2
+  static const Color whiteAlpha40 = Color(0x66FFFFFF); // 0.4
+  static const Color whiteAlpha50 = Color(0x80FFFFFF); // 0.5
+  static const Color whiteAlpha80 = Color(0xCCFFFFFF); // 0.8
 }

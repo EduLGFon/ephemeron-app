@@ -5,6 +5,7 @@ import '../../../core/theme/theme_palettes.dart';
 import '../../../data/local/database.dart';
 import '../../tasks/application/task_providers.dart';
 import '../../quick_add/application/quick_add_provider.dart';
+import '../../tasks/presentation/task_form_sheet.dart';
 import '../domain/matrix_quadrant.dart';
 
 class MatrixTaskTile extends ConsumerWidget {
@@ -13,11 +14,13 @@ class MatrixTaskTile extends ConsumerWidget {
     required this.task,
     required this.quadrant,
     required this.palette,
+    required this.onAlarmTap,
   });
 
   final Task task;
   final MatrixQuadrant quadrant;
   final AppPalette palette;
+  final void Function(Task) onAlarmTap;
 
   String _formatDue(DateTime due, bool hasTime) {
     final localDue = due.toLocal();
@@ -81,6 +84,7 @@ class MatrixTaskTile extends ConsumerWidget {
         Expanded(
           child: GestureDetector(
             onTap: () => ref.read(quickAddProvider.notifier).expand(task),
+            onLongPress: () => onAlarmTap(task),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -110,6 +114,14 @@ class MatrixTaskTile extends ConsumerWidget {
                           color: dueDateColor,
                         ),
                         const SizedBox(width: 4),
+                        if (task.alarmPreset != null) ...[
+                          GestureDetector(
+                            onTap: () => onAlarmTap(task),
+                            child: Icon(Icons.alarm,
+                                size: 10, color: dueDateColor),
+                          ),
+                          const SizedBox(width: 4),
+                        ],
                         Text(
                           _formatDue(task.dueDate!, task.dueHasTime),
                           style: TextStyle(

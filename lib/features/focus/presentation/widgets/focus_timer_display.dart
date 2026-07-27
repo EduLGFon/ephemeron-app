@@ -72,8 +72,8 @@ class FocusTimerDisplay extends ConsumerWidget {
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     'of ${_formatDuration(timerState.pomodoroTarget)}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                        color: palette.text.withValues(alpha: 0.6)),
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: palette.text.withValues(alpha: 0.6)),
                   ),
                 ),
             ],

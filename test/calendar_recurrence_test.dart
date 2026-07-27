@@ -62,7 +62,8 @@ void main() {
         interval: 1,
         monthlyMode: MonthlyRepeatMode.dayOfWeek,
       );
-      final rrule = config.toRruleList(DateTime(2026, 7, 13)); // 13th July 2026 is Monday, and 2nd Monday (7 + 6)
+      final rrule = config.toRruleList(DateTime(
+          2026, 7, 13)); // 13th July 2026 is Monday, and 2nd Monday (7 + 6)
       // 13th is the second Monday since 13 = 1 * 7 + 6, so ((13-1) ~/ 7) + 1 = 2nd
       expect(rrule, ['RRULE:FREQ=MONTHLY;BYDAY=2MO']);
     });
@@ -76,27 +77,31 @@ void main() {
     });
 
     test('Parse from RRULE: daily', () {
-      final config = RecurrenceConfig.fromRruleList(['RRULE:FREQ=DAILY;INTERVAL=2']);
+      final config =
+          RecurrenceConfig.fromRruleList(['RRULE:FREQ=DAILY;INTERVAL=2']);
       expect(config.type, RecurrenceType.daily);
       expect(config.interval, 2);
       expect(config.duration, RepeatDuration.forever);
     });
 
     test('Parse from RRULE: monthly day of week', () {
-      final config = RecurrenceConfig.fromRruleList(['RRULE:FREQ=MONTHLY;BYDAY=2MO']);
+      final config =
+          RecurrenceConfig.fromRruleList(['RRULE:FREQ=MONTHLY;BYDAY=2MO']);
       expect(config.type, RecurrenceType.monthly);
       expect(config.monthlyMode, MonthlyRepeatMode.dayOfWeek);
     });
 
     test('Parse from RRULE: with COUNT', () {
-      final config = RecurrenceConfig.fromRruleList(['RRULE:FREQ=DAILY;COUNT=15']);
+      final config =
+          RecurrenceConfig.fromRruleList(['RRULE:FREQ=DAILY;COUNT=15']);
       expect(config.type, RecurrenceType.daily);
       expect(config.duration, RepeatDuration.specificTimes);
       expect(config.repeatTimes, 15);
     });
 
     test('Parse from RRULE: with UNTIL', () {
-      final config = RecurrenceConfig.fromRruleList(['RRULE:FREQ=DAILY;UNTIL=20260813T000000Z']);
+      final config = RecurrenceConfig.fromRruleList(
+          ['RRULE:FREQ=DAILY;UNTIL=20260813T000000Z']);
       expect(config.type, RecurrenceType.daily);
       expect(config.duration, RepeatDuration.until);
       expect(config.untilDate, DateTime(2026, 8, 13));

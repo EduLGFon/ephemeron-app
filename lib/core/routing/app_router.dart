@@ -39,7 +39,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: sharedPrefs.getString('settings.lastScreen') ?? '/calendar',
+    initialLocation:
+        sharedPrefs.getString('settings.lastScreen') ?? '/calendar',
     debugLogDiagnostics: false,
     refreshListenable: authNotifier,
     redirect: (context, state) {
@@ -52,7 +53,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isSignedIn = repo.currentAccount != null;
 
       if (!isSignedIn && location != '/auth') return '/auth';
-      if (isSignedIn && location == '/auth') return sharedPrefs.getString('settings.lastScreen') ?? '/calendar';
+      if (isSignedIn && location == '/auth')
+        return sharedPrefs.getString('settings.lastScreen') ?? '/calendar';
 
       return null;
     },

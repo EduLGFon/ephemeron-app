@@ -13,7 +13,8 @@ import 'package:ephemeron/features/calendar/presentation/calendar_screen.dart';
 late SharedPreferences sharedPrefs;
 
 void main() {
-  testWidgets('CalendarScreen builds and loads without error', (WidgetTester tester) async {
+  testWidgets('CalendarScreen builds and loads without error',
+      (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
     sharedPrefs = await SharedPreferences.getInstance();
 

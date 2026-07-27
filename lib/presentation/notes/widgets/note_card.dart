@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/theme_palettes.dart';
 import '../../../data/local/database.dart';
 
@@ -108,33 +109,36 @@ class _NoteCardContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: IgnorePointer(
-              child: ClipRect(
-                child: SingleChildScrollView(
-                  physics: const NeverScrollableScrollPhysics(),
-                  child: MarkdownBody(
-                    data: _preparePreviewContent(note.content),
-                    softLineBreak: true,
-                    styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
-                        .copyWith(
-                      p: TextStyle(
-                          color: palette.text.withValues(alpha: 0.8),
-                          fontSize: 11,
-                          height: 1.4),
-                      h1: TextStyle(
-                          color: palette.text,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold),
-                      h2: TextStyle(
-                          color: palette.text,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold),
-                      h3: TextStyle(
-                          color: palette.text,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold),
-                      code: TextStyle(color: palette.primary, fontSize: 10),
-                    ),
+            child: ClipRect(
+              child: SingleChildScrollView(
+                physics: const NeverScrollableScrollPhysics(),
+                child: MarkdownBody(
+                  data: _preparePreviewContent(note.content),
+                  softLineBreak: true,
+                  onTapLink: (text, href, title) {
+                    if (href != null) {
+                      launchUrl(Uri.parse(href));
+                    }
+                  },
+                  styleSheet:
+                      MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                    p: TextStyle(
+                        color: palette.text.withValues(alpha: 0.8),
+                        fontSize: 11,
+                        height: 1.4),
+                    h1: TextStyle(
+                        color: palette.text,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold),
+                    h2: TextStyle(
+                        color: palette.text,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold),
+                    h3: TextStyle(
+                        color: palette.text,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold),
+                    code: TextStyle(color: palette.primary, fontSize: 10),
                   ),
                 ),
               ),

@@ -64,7 +64,9 @@ void main() {
 
       // Can update duration
       await repository.updateTask(t1.id, durationMinutes: 45);
-      final t1Updated = await (db.select(db.tasks)..where((t) => t.id.equals(t1.id))).getSingle();
+      final t1Updated = await (db.select(db.tasks)
+            ..where((t) => t.id.equals(t1.id)))
+          .getSingle();
       expect(t1Updated.durationMinutes, 45);
     });
 
@@ -115,13 +117,15 @@ void main() {
       expect(task.isWontDo, true);
 
       await repository.toggleWontDo(task.id);
-      final taskUpdated = await (db.select(db.tasks)..where((t) => t.id.equals(task.id))).getSingle();
+      final taskUpdated = await (db.select(db.tasks)
+            ..where((t) => t.id.equals(task.id)))
+          .getSingle();
       expect(taskUpdated.isWontDo, false);
     });
 
     test('weekly recurrence on custom weekdays calculation', () async {
       final inputDate = DateTime(2026, 7, 6, 10, 0); // Monday, July 6, 2026
-      
+
       // Repeating every Tue (2) and Thu (4)
       final recurrence = const TaskRecurrence(
         type: RecurrenceType.weekly,
@@ -137,7 +141,9 @@ void main() {
       expect(next2, DateTime(2026, 7, 9, 10, 0));
     });
 
-    test('watchTasksForCalendar fetches scheduled active tasks with tag color joins', () async {
+    test(
+        'watchTasksForCalendar fetches scheduled active tasks with tag color joins',
+        () async {
       final inbox = await db.into(db.lists).insertReturning(
             ListsCompanion.insert(
               name: 'Inbox',

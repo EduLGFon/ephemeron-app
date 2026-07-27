@@ -441,7 +441,8 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
                         children: [
                           CreationTargetSwitcher(
                             currentTarget: _target,
-                            onTargetChanged: (val) => setState(() => _target = val),
+                            onTargetChanged: (val) =>
+                                setState(() => _target = val),
                             palette: palette,
                           ),
                           const Spacer(),
@@ -1135,24 +1136,26 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
                 ],
               ),
               const SizedBox(height: 12),
-              ListView.builder(
-                shrinkWrap: true,
-                itemCount: _attendees.length,
-                itemBuilder: (ctx, idx) {
-                  final email = _attendees[idx];
-                  return ListTile(
-                    dense: true,
-                    title: Text(email),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.close, size: 18),
-                      onPressed: () {
-                        setDialogState(() => _attendees.remove(email));
-                        setState(() {});
-                        _markChanged();
-                      },
-                    ),
-                  );
-                },
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _attendees.length,
+                  itemBuilder: (ctx, idx) {
+                    final email = _attendees[idx];
+                    return ListTile(
+                      dense: true,
+                      title: Text(email),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: () {
+                          setDialogState(() => _attendees.remove(email));
+                          setState(() {});
+                          _markChanged();
+                        },
+                      ),
+                    );
+                  },
+                ),
               ),
             ],
           ),

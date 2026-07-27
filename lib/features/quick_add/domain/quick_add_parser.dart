@@ -1,6 +1,9 @@
+import 'package:meta/meta.dart';
+
 /// Result of parsing a quick-add title like "take meds #health ~personal -p4"
 /// into its structured parts. [cleanTitle] has every recognized token
 /// removed, so what's left is what actually becomes the task/event title.
+@immutable
 class QuickAddParseResult {
   const QuickAddParseResult({
     required this.cleanTitle,

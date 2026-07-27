@@ -10,10 +10,15 @@ import '../domain/matrix_quadrant.dart';
 import 'matrix_task_tile.dart';
 
 class MatrixQuadrantView extends ConsumerStatefulWidget {
-  const MatrixQuadrantView({super.key, required this.quadrant, required this.palette});
+  const MatrixQuadrantView(
+      {super.key,
+      required this.quadrant,
+      required this.palette,
+      required this.onAlarmTap});
 
   final MatrixQuadrant quadrant;
   final AppPalette palette;
+  final void Function(Task) onAlarmTap;
 
   @override
   ConsumerState<MatrixQuadrantView> createState() => _MatrixQuadrantViewState();
@@ -71,16 +76,16 @@ class _MatrixQuadrantViewState extends ConsumerState<MatrixQuadrantView> {
                       ),
                     ),
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: color.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '\$totalCount',
-                        style:
-                            TextStyle(color: color, fontWeight: FontWeight.bold),
+                        '$totalCount',
+                        style: TextStyle(
+                            color: color, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
@@ -116,11 +121,11 @@ class _MatrixQuadrantViewState extends ConsumerState<MatrixQuadrantView> {
                                       List<Task>.from(pendingTasks);
                                   final item = mutableList.removeAt(oldIdx);
                                   mutableList.insert(newIdx, item);
-      
+
                                   ref
                                       .read(taskSortOptionProvider.notifier)
                                       .setSortOption(TaskSortOption.custom);
-      
+
                                   final ids =
                                       mutableList.map((t) => t.id).toList();
                                   await ref
@@ -133,12 +138,14 @@ class _MatrixQuadrantViewState extends ConsumerState<MatrixQuadrantView> {
                                     key: ValueKey(task.id),
                                     index: index,
                                     child: Padding(
-                                      padding: const EdgeInsets.only(bottom: 8.0),
+                                      padding:
+                                          const EdgeInsets.only(bottom: 8.0),
                                       child: RepaintBoundary(
                                         child: MatrixTaskTile(
                                           task: task,
                                           quadrant: widget.quadrant,
                                           palette: widget.palette,
+                                          onAlarmTap: widget.onAlarmTap,
                                         ),
                                       ),
                                     ),
@@ -148,13 +155,13 @@ class _MatrixQuadrantViewState extends ConsumerState<MatrixQuadrantView> {
                             if (completedTasks.isNotEmpty) ...[
                               SliverToBoxAdapter(
                                 child: Theme(
-                                  data: Theme.of(context)
-                                      .copyWith(dividerColor: Colors.transparent),
+                                  data: Theme.of(context).copyWith(
+                                      dividerColor: Colors.transparent),
                                   child: Material(
                                     color: Colors.transparent,
                                     child: ExpansionTile(
                                       title: Text(
-                                        'Completed (\${completedTasks.length})',
+                                        'Completed (${completedTasks.length})',
                                         style: TextStyle(
                                           color: widget.palette.text
                                               .withValues(alpha: 0.5),
@@ -175,6 +182,7 @@ class _MatrixQuadrantViewState extends ConsumerState<MatrixQuadrantView> {
                                                 task: task,
                                                 quadrant: widget.quadrant,
                                                 palette: widget.palette,
+                                                onAlarmTap: widget.onAlarmTap,
                                               ),
                                             ),
                                           ),

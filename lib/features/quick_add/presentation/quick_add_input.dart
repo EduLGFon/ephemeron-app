@@ -30,13 +30,10 @@ class QuickAddInput extends StatelessWidget {
           focusNode: titleFocusNode,
           autofocus: false,
           style: TextStyle(
-              color: palette.text,
-              fontSize: 18,
-              fontWeight: FontWeight.w500),
+              color: palette.text, fontSize: 18, fontWeight: FontWeight.w500),
           decoration: InputDecoration(
             hintText: titleHint,
-            hintStyle: TextStyle(
-                color: palette.text.withValues(alpha: 0.5)),
+            hintStyle: TextStyle(color: palette.text.withValues(alpha: 0.5)),
             border: InputBorder.none,
             isDense: true,
             contentPadding: const EdgeInsets.only(bottom: 8),
@@ -49,8 +46,7 @@ class QuickAddInput extends StatelessWidget {
           maxLines: null,
           expands: false,
           inputFormatters: [SmartListFormatter()],
-          contentInsertionConfiguration:
-              ContentInsertionConfiguration(
+          contentInsertionConfiguration: ContentInsertionConfiguration(
             allowedMimeTypes: const [
               'image/png',
               'image/jpeg',
@@ -63,8 +59,7 @@ class QuickAddInput extends StatelessWidget {
           ),
           decoration: InputDecoration(
             hintText: 'Add description...',
-            hintStyle: TextStyle(
-                color: palette.text.withValues(alpha: 0.5)),
+            hintStyle: TextStyle(color: palette.text.withValues(alpha: 0.5)),
             border: InputBorder.none,
             isDense: true,
             contentPadding: EdgeInsets.zero,

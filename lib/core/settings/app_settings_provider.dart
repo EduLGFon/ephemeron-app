@@ -1,3 +1,4 @@
+import 'package:meta/meta.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +12,7 @@ enum PowerSavingMode { auto, alwaysOn, alwaysOff }
 /// database — this is the kind of data every screen touches on every
 /// build (e.g. to decide whether to animate), so it lives in memory with
 /// SharedPreferences as the persistence backstop, not in a SQL query path.
+@immutable
 class AppSettings {
   const AppSettings({
     this.reducedMotion = false,
@@ -58,7 +60,7 @@ class AppSettings {
   final bool glassmorphismEnabled;
   final bool hapticsEnabled;
   final Set<String> enabledDeviceCalendarIds;
-  
+
   final bool animationsEnabled;
   final bool backgroundSyncEnabled;
 
@@ -69,9 +71,12 @@ class AppSettings {
   bool get shouldReduceMotion {
     if (reducedMotion) return true;
     switch (powerSavingMode) {
-      case PowerSavingMode.alwaysOn: return true;
-      case PowerSavingMode.alwaysOff: return false;
-      case PowerSavingMode.auto: return osBatterySaverActive;
+      case PowerSavingMode.alwaysOn:
+        return true;
+      case PowerSavingMode.alwaysOff:
+        return false;
+      case PowerSavingMode.auto:
+        return osBatterySaverActive;
     }
   }
 
@@ -108,7 +113,8 @@ class AppSettings {
       enabledDeviceCalendarIds:
           enabledDeviceCalendarIds ?? this.enabledDeviceCalendarIds,
       animationsEnabled: animationsEnabled ?? this.animationsEnabled,
-      backgroundSyncEnabled: backgroundSyncEnabled ?? this.backgroundSyncEnabled,
+      backgroundSyncEnabled:
+          backgroundSyncEnabled ?? this.backgroundSyncEnabled,
     );
   }
 }
@@ -135,13 +141,14 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
   AppSettings build() {
     refreshBatteryState();
     final sharedPrefs = ref.watch(sharedPreferencesProvider);
-    
+
     PowerSavingMode mode = PowerSavingMode.auto;
     final modeString = sharedPrefs.getString(_powerSavingKey);
     if (modeString != null) {
-      mode = PowerSavingMode.values.firstWhere((e) => e.name == modeString, orElse: () => PowerSavingMode.auto);
+      mode = PowerSavingMode.values.firstWhere((e) => e.name == modeString,
+          orElse: () => PowerSavingMode.auto);
     }
-    
+
     return AppSettings(
       reducedMotion: sharedPrefs.getBool(_reducedMotionKey) ?? false,
       powerSavingMode: mode,
@@ -154,13 +161,15 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
       alarmLongSoundPath: sharedPrefs.getString(_alarmLongSoundPathKey) ??
           '/usr/share/sounds/ocean/stereo/phone-incoming-call.oga',
       alarmBackground: sharedPrefs.getString(_alarmBackgroundKey) ?? '#005F73',
-      glassmorphismEnabled: sharedPrefs.getBool(_glassmorphismEnabledKey) ?? false,
+      glassmorphismEnabled:
+          sharedPrefs.getBool(_glassmorphismEnabledKey) ?? false,
       hapticsEnabled: sharedPrefs.getBool(_hapticsEnabledKey) ?? true,
       enabledDeviceCalendarIds:
           (sharedPrefs.getStringList(_enabledDeviceCalendarIdsKey) ?? const [])
               .toSet(),
       animationsEnabled: sharedPrefs.getBool(_animationsEnabledKey) ?? true,
-      backgroundSyncEnabled: sharedPrefs.getBool(_backgroundSyncEnabledKey) ?? true,
+      backgroundSyncEnabled:
+          sharedPrefs.getBool(_backgroundSyncEnabledKey) ?? true,
     );
   }
 
@@ -250,7 +259,7 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_enabledDeviceCalendarIdsKey, value.toList());
   }
-  
+
   Future<void> setAnimationsEnabled(bool value) async {
     state = state.copyWith(animationsEnabled: value);
     final prefs = await SharedPreferences.getInstance();

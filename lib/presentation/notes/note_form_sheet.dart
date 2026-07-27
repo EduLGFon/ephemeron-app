@@ -1,3 +1,4 @@
+import 'package:ephemeron/core/theme/app_colors.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -479,10 +480,10 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
           boxShadow: _isFullScreen
               ? null
               : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
+                  const BoxShadow(
+                    color: AppColors.blackAlpha30,
                     blurRadius: 40,
-                    offset: const Offset(0, 20),
+                    offset: Offset(0, 20),
                   )
                 ],
         ),

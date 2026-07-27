@@ -1,5 +1,8 @@
+import 'package:meta/meta.dart';
+
 import '../domain/focus_mode.dart';
 
+@immutable
 class FocusTimerState {
   const FocusTimerState({
     this.isRunning = false,

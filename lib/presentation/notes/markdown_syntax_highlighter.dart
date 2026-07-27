@@ -1,3 +1,4 @@
+import 'package:ephemeron/core/theme/app_colors.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 
@@ -86,9 +87,9 @@ class _InlineImageWidgetState extends State<InlineImageWidget> {
                   },
                   child: Container(
                     padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      borderRadius: const BorderRadius.only(
+                    decoration: const BoxDecoration(
+                      color: AppColors.blackAlpha40,
+                      borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(12),
                         bottomRight: Radius.circular(12),
                       ),

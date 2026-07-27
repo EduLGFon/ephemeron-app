@@ -9,6 +9,8 @@ import '../../data/local/database.dart';
 import '../../features/notes/application/notes_providers.dart';
 import '../../features/notes/data/notes_repository.dart';
 import 'package:ephemeron/core/widgets/app_loading_indicator.dart';
+import '../widgets/keyboard_avoid_padding.dart';
+import 'note_form_sheet.dart';
 import 'widgets/note_card.dart';
 import 'widgets/note_folder_breadcrumbs.dart';
 
@@ -134,11 +136,11 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                     matchesFolder = true;
                   }
                 }
-                final isInsideFolder = currentFolderId == null ||
-                    n.folderId == currentFolderId;
+                final isInsideFolder =
+                    currentFolderId == null || n.folderId == currentFolderId;
                 return (matchesText || matchesFolder) && isInsideFolder;
               }).toList();
-              
+
               if (visibleNotes.isEmpty) {
                 return SliverToBoxAdapter(
                   child: Center(
@@ -148,7 +150,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.notes,
-                              size: 48, color: palette.text.withValues(alpha: 0.1)),
+                              size: 48,
+                              color: palette.text.withValues(alpha: 0.1)),
                           const SizedBox(height: 8),
                           Text('No notes yet',
                               style: TextStyle(
@@ -163,7 +166,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
 
               final grouped = _groupNotesByDate(visibleNotes);
               final keys = grouped.keys.toList();
-              
+
               return SliverList.builder(
                 itemCount: keys.length,
                 itemBuilder: (context, idx) {
@@ -174,7 +177,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.only(left: 16, top: 20, bottom: 8),
+                        padding:
+                            const EdgeInsets.only(left: 16, top: 20, bottom: 8),
                         child: Text(
                           key,
                           style: TextStyle(
@@ -187,7 +191,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
                           maxCrossAxisExtent: 220,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
@@ -200,8 +205,11 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                             child: DraggableNoteCard(
                               note: note,
                               palette: palette,
-                              onTap: () => ref.read(quickAddProvider.notifier).expand(note),
-                              onLongPress: () => _showDeleteNoteDialog(context, ref, note),
+                              onTap: () => ref
+                                  .read(quickAddProvider.notifier)
+                                  .expand(note),
+                              onLongPress: () =>
+                                  _showDeleteNoteDialog(context, ref, note),
                             ),
                           );
                         },
@@ -223,6 +231,44 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
           ),
           const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: palette.primary,
+        foregroundColor: palette.background,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        onPressed: () {
+          final sheet = Center(
+            child: SingleChildScrollView(
+              child: Material(
+                color: Colors.transparent,
+                child: const RepaintBoundary(child: NoteFormSheet()),
+              ),
+            ),
+          );
+          showGeneralDialog<void>(
+            context: context,
+            barrierDismissible: true,
+            barrierLabel: 'Dismiss',
+            barrierColor: Colors.black54,
+            transitionDuration: const Duration(milliseconds: 250),
+            pageBuilder: (context, anim1, anim2) {
+              return KeyboardAvoidPadding(child: sheet);
+            },
+            transitionBuilder: (context, anim1, anim2, child) {
+              final curve =
+                  CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic);
+              return SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.0, 1.0),
+                  end: Offset.zero,
+                ).animate(curve),
+                child: child,
+              );
+            },
+          );
+        },
+        child: const Icon(Icons.edit_outlined, size: 24),
       ),
     );
   }
@@ -481,4 +527,3 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
     );
   }
 }
-

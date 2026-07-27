@@ -1,3 +1,4 @@
+import 'package:ephemeron/core/theme/app_colors.dart';
 import 'dart:async';
 import 'dart:convert' show jsonDecode;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1006,7 +1007,7 @@ class _InAppAlarmDialogState extends State<_InAppAlarmDialog> {
             child: GestureDetector(
               onTap: () {}, // non-dismissible
               child: Container(
-                color: Colors.black.withValues(alpha: 0.55),
+                color: AppColors.blackAlpha55,
               ),
             ),
           ),
@@ -1018,13 +1019,12 @@ class _InAppAlarmDialogState extends State<_InAppAlarmDialog> {
                 color:
                     const Color(0xFF1E292B), // premium deep petrol dark color
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1), width: 1.5),
-                boxShadow: [
+                border: Border.all(color: AppColors.whiteAlpha10, width: 1.5),
+                boxShadow: const [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.45),
+                    color: AppColors.blackAlpha45,
                     blurRadius: 25,
-                    offset: const Offset(0, 10),
+                    offset: Offset(0, 10),
                   ),
                 ],
               ),
@@ -1147,8 +1147,8 @@ class _InAppAlarmDialogState extends State<_InAppAlarmDialog> {
                   const SizedBox(height: 16),
                   Text(
                     'Auto-snoozing in $_remainingSeconds seconds...',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.4),
+                    style: const TextStyle(
+                      color: AppColors.whiteAlpha40,
                       fontSize: 11,
                     ),
                   ),

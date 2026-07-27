@@ -1,6 +1,8 @@
 import 'package:googleapis/calendar/v3.dart' as gcal;
+import 'package:meta/meta.dart';
 
 /// The 11 fixed colors Google Calendar events can use.
+@immutable
 class GoogleEventColor {
   const GoogleEventColor(this.id, this.label, this.hex);
 
@@ -78,6 +80,7 @@ enum RsvpStatus {
   }
 }
 
+@immutable
 class CalendarEvent {
   const CalendarEvent({
     required this.id,
@@ -199,7 +202,18 @@ class CalendarEvent {
     final selfStatus = RsvpStatus.fromGoogle(selfAttendee?.responseStatus);
 
     // Conference data (Google Meet)
-    final hangoutLink = event.hangoutLink;
+    String? hangoutLink = event.hangoutLink;
+    if (hangoutLink == null || hangoutLink.isEmpty) {
+      if (event.conferenceData != null &&
+          event.conferenceData!.entryPoints != null) {
+        for (final entry in event.conferenceData!.entryPoints!) {
+          if (entry.entryPointType == 'video') {
+            hangoutLink = entry.uri;
+            break;
+          }
+        }
+      }
+    }
     final hasVideo = hangoutLink != null && hangoutLink.isNotEmpty;
 
     return CalendarEvent(

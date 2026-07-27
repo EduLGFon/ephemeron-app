@@ -12,7 +12,9 @@ class LowBatteryWarningNotifier extends Notifier<bool> {
   set state(bool value) => super.state = value;
 }
 
-final lowBatteryWarningProvider = NotifierProvider<LowBatteryWarningNotifier, bool>(() => LowBatteryWarningNotifier());
+final lowBatteryWarningProvider =
+    NotifierProvider<LowBatteryWarningNotifier, bool>(
+        () => LowBatteryWarningNotifier());
 
 /// Listens to app lifecycle changes and refreshes the battery save mode state
 /// automatically when the app comes back to the foreground.
@@ -37,12 +39,14 @@ class PowerSavingManager extends WidgetsBindingObserver {
   Future<void> _checkBattery() async {
     final notifier = ref.read(appSettingsProvider.notifier);
     await notifier.refreshBatteryState();
-    
+
     try {
       final level = await _battery.batteryLevel;
       final settings = ref.read(appSettingsProvider);
-      
-      if (level < 15 && settings.powerSavingMode == PowerSavingMode.auto && !_lowBatterySuggestionShown) {
+
+      if (level < 15 &&
+          settings.powerSavingMode == PowerSavingMode.auto &&
+          !_lowBatterySuggestionShown) {
         ref.read(lowBatteryWarningProvider.notifier).state = true;
         _lowBatterySuggestionShown = true;
       }

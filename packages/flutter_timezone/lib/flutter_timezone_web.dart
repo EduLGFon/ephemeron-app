@@ -10,7 +10,8 @@ import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 ///
 class FlutterTimezonePlugin {
   static void registerWith(Registrar registrar) {
-    final channel = MethodChannel('flutter_timezone', const StandardMethodCodec(), registrar);
+    final channel = MethodChannel(
+        'flutter_timezone', const StandardMethodCodec(), registrar);
     final instance = FlutterTimezonePlugin();
     channel.setMethodCallHandler(instance.handleMethodCall);
   }
@@ -24,7 +25,8 @@ class FlutterTimezonePlugin {
       default:
         throw PlatformException(
           code: 'Unimplemented',
-          details: "The flutter_native_timezone plugin for web doesn't implement the method '${call.method}'",
+          details:
+              "The flutter_native_timezone plugin for web doesn't implement the method '${call.method}'",
         );
     }
   }

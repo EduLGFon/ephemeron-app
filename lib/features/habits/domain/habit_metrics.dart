@@ -1,6 +1,9 @@
+import 'package:meta/meta.dart';
+
 /// Computed, not stored — derived fresh from HabitLogs whenever
 /// requested. MVP scope per the build-order cut: current streak + a
 /// 7-day strip. The brainstorm's full month heatmap is Phase 2.
+@immutable
 class HabitMetrics {
   const HabitMetrics({
     required this.currentStreak,

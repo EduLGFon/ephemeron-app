@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/theme_engine_provider.dart';
+import '../../tasks/presentation/task_form_sheet.dart';
 import '../../tasks/application/task_providers.dart';
 import '../../tasks/domain/task_sort_option.dart';
 import '../domain/matrix_quadrant.dart';
@@ -81,13 +82,23 @@ class MatrixScreen extends ConsumerWidget {
                       children: [
                         Expanded(
                             child: MatrixQuadrantView(
-                                quadrant: MatrixQuadrant.doFirst,
-                                palette: palette)),
+                          quadrant: MatrixQuadrant.doFirst,
+                          palette: palette,
+                          onAlarmTap: (task) =>
+                              showTaskFormSheet(context,
+                                  listId: task.listId,
+                                  existingTask: task),
+                        )),
                         const SizedBox(width: 16),
                         Expanded(
                             child: MatrixQuadrantView(
-                                quadrant: MatrixQuadrant.schedule,
-                                palette: palette)),
+                          quadrant: MatrixQuadrant.schedule,
+                          palette: palette,
+                          onAlarmTap: (task) =>
+                              showTaskFormSheet(context,
+                                  listId: task.listId,
+                                  existingTask: task),
+                        )),
                       ],
                     ),
                   ),
@@ -97,13 +108,23 @@ class MatrixScreen extends ConsumerWidget {
                       children: [
                         Expanded(
                             child: MatrixQuadrantView(
-                                quadrant: MatrixQuadrant.delegate,
-                                palette: palette)),
+                          quadrant: MatrixQuadrant.delegate,
+                          palette: palette,
+                          onAlarmTap: (task) =>
+                              showTaskFormSheet(context,
+                                  listId: task.listId,
+                                  existingTask: task),
+                        )),
                         const SizedBox(width: 16),
                         Expanded(
                             child: MatrixQuadrantView(
-                                quadrant: MatrixQuadrant.eliminate,
-                                palette: palette)),
+                          quadrant: MatrixQuadrant.eliminate,
+                          palette: palette,
+                          onAlarmTap: (task) =>
+                              showTaskFormSheet(context,
+                                  listId: task.listId,
+                                  existingTask: task),
+                        )),
                       ],
                     ),
                   ),

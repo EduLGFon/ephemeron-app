@@ -14,7 +14,9 @@ class FocusMetricsRefreshNotifier extends Notifier<int> {
   set state(int value) => super.state = value;
 }
 
-final focusMetricsRefreshProvider = NotifierProvider<FocusMetricsRefreshNotifier, int>(() => FocusMetricsRefreshNotifier());
+final focusMetricsRefreshProvider =
+    NotifierProvider<FocusMetricsRefreshNotifier, int>(
+        () => FocusMetricsRefreshNotifier());
 
 final totalFocusedTodayProvider = FutureProvider<Duration>((ref) {
   ref.watch(focusMetricsRefreshProvider);

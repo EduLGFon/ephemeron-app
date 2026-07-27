@@ -1,6 +1,5 @@
 import 'dart:async';
 
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -222,12 +221,13 @@ class _AppShellState extends ConsumerState<AppShell> {
         });
       }
     });
-    
+
     ref.listen<bool>(lowBatteryWarningProvider, (prev, next) {
       if (next && !(prev ?? false)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Battery is low (<15%). Consider manually enabling Power Saving Mode.'),
+            content: Text(
+                'Battery is low (<15%). Consider manually enabling Power Saving Mode.'),
             duration: Duration(seconds: 5),
           ),
         );

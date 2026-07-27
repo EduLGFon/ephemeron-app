@@ -1,8 +1,8 @@
+import 'package:ephemeron/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../domain/countdown_type.dart';
 import 'countdown_form_sheet.dart';
-
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/theme_engine_provider.dart';
@@ -31,11 +31,11 @@ Future<void> showCountdownTemplatePicker(BuildContext context) {
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
                         color: palette.text.withValues(alpha: 0.1), width: 1),
-                    boxShadow: [
+                    boxShadow: const [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.3),
+                        color: AppColors.blackAlpha30,
                         blurRadius: 40,
-                        offset: const Offset(0, 20),
+                        offset: Offset(0, 20),
                       ),
                     ],
                   ),

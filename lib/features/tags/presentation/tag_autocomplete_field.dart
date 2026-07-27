@@ -1,3 +1,4 @@
+import 'package:ephemeron/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -214,11 +215,11 @@ class _TagOverlayPortal extends ConsumerWidget {
               color: bgColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: borderColor),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.25),
+                  color: AppColors.blackAlpha25,
                   blurRadius: 16,
-                  offset: const Offset(0, 8),
+                  offset: Offset(0, 8),
                 ),
               ],
             ),

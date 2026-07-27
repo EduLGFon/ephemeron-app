@@ -7,13 +7,15 @@ import '../../../core/utils/dev_logger.dart';
 import '../../auth/google/google_auth_provider.dart';
 import '../../../data/local/database_provider.dart';
 import 'package:drift/drift.dart';
+import 'package:meta/meta.dart';
 
+@immutable
 class SyncState {
   final bool isSyncing;
   final DateTime? lastSyncedAt;
   final String? error;
 
-  SyncState({this.isSyncing = false, this.lastSyncedAt, this.error});
+  const SyncState({this.isSyncing = false, this.lastSyncedAt, this.error});
 
   SyncState copyWith({bool? isSyncing, DateTime? lastSyncedAt, String? error}) {
     return SyncState(
@@ -42,7 +44,7 @@ class SyncService extends Notifier<SyncState> {
       _syncTimer?.cancel();
     });
 
-    return SyncState();
+    return const SyncState();
   }
 
   void _setupTimer(bool autoSync, int intervalMinutes) {

@@ -1,5 +1,8 @@
+import 'package:meta/meta.dart';
+
 /// Computed, not stored — derived fresh from a Countdown's targetDate/
 /// isYearly/showAge whenever displayed.
+@immutable
 class CountdownStatus {
   const CountdownStatus({
     required this.isFuture,

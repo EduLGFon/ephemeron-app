@@ -1,3 +1,4 @@
+import 'package:ephemeron/core/theme/app_colors.dart';
 import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
@@ -491,11 +492,11 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
         borderRadius: BorderRadius.circular(28),
         border:
             Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
+              color: AppColors.blackAlpha30,
               blurRadius: 40,
-              offset: const Offset(0, 20)),
+              offset: Offset(0, 20)),
         ],
       ),
       child: ClipRRect(
@@ -1465,11 +1466,11 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
             color: palette.surface.withValues(alpha: 0.97),
             borderRadius: BorderRadius.circular(28),
             border: Border.all(color: palette.text.withValues(alpha: 0.12)),
-            boxShadow: [
+            boxShadow: const [
               BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.35),
+                  color: AppColors.blackAlpha35,
                   blurRadius: 40,
-                  offset: const Offset(0, 20))
+                  offset: Offset(0, 20))
             ],
           ),
           child: Material(

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:meta/meta.dart';
 
 enum HabitFrequencyType { daily, weekly, interval }
 
@@ -9,6 +10,7 @@ enum HabitFrequencyType { daily, weekly, interval }
 ///    specific days — any [timesPerWeek] days in a Mon-Sun week satisfy it
 ///  - interval: every N days counted from [startDate], regardless of
 ///    calendar week boundaries
+@immutable
 class HabitFrequency {
   const HabitFrequency.daily({this.weekdays = const []})
       : type = HabitFrequencyType.daily,

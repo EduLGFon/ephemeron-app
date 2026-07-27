@@ -11,10 +11,12 @@ class AppLoadingIndicator extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<AppLoadingIndicator> createState() => _AppLoadingIndicatorState();
+  ConsumerState<AppLoadingIndicator> createState() =>
+      _AppLoadingIndicatorState();
 }
 
-class _AppLoadingIndicatorState extends ConsumerState<AppLoadingIndicator> with SingleTickerProviderStateMixin {
+class _AppLoadingIndicatorState extends ConsumerState<AppLoadingIndicator>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 

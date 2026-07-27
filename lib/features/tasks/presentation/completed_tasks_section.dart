@@ -15,7 +15,8 @@ class CompletedTasksSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (completedTasks.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+    if (completedTasks.isEmpty)
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
 
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -45,7 +46,8 @@ class CompletedTasksSection extends StatelessWidget {
                 for (final task in completedTasks)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8.0),
-                    child: RepaintBoundary(child: TaskTile(task: task, palette: palette)),
+                    child: RepaintBoundary(
+                        child: TaskTile(task: task, palette: palette)),
                   ),
               ],
             ),

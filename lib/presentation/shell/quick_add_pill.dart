@@ -14,9 +14,14 @@ class KeyboardAttachedFabLocation extends FloatingActionButtonLocation {
     final double fabX = (scaffoldGeometry.scaffoldSize.width -
             scaffoldGeometry.floatingActionButtonSize.width) /
         2.0;
-    final double fabY = scaffoldGeometry.scaffoldSize.height -
+    double fabY = scaffoldGeometry.scaffoldSize.height -
         scaffoldGeometry.floatingActionButtonSize.height -
         88.0;
+
+    if (scaffoldGeometry.snackBarSize.height > 0) {
+      fabY -= scaffoldGeometry.snackBarSize.height;
+    }
+
     return Offset(fabX, fabY);
   }
 }

@@ -26,7 +26,8 @@ class SettingsSyncSection extends ConsumerWidget {
       children: [
         SwitchListTile(
           title: const Text('Auto Sync'),
-          subtitle: const Text('Synchronize events and tasks in the background'),
+          subtitle:
+              const Text('Synchronize events and tasks in the background'),
           value: settings.autoSync,
           onChanged: notifier.setAutoSync,
         ),
@@ -50,11 +51,13 @@ class SettingsSyncSection extends ConsumerWidget {
         ListTile(
           title: const Text('Manual Force Sync'),
           subtitle: syncState.lastSyncedAt != null
-              ? Text('Last synced at ${_formatDateTime(syncState.lastSyncedAt!)}')
+              ? Text(
+                  'Last synced at ${_formatDateTime(syncState.lastSyncedAt!)}')
               : const Text('Never synced'),
           trailing: syncState.isSyncing
               ? const SizedBox(
-                  width: 24, height: 24,
+                  width: 24,
+                  height: 24,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : FilledButton.icon(

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:meta/meta.dart';
 
 /// MVP recurrence scope: daily, weekly on specific weekdays, or yearly
 /// (for the common "every year on this date" case). This is
@@ -6,6 +7,7 @@ import 'dart:convert';
 /// line item from the MVP cut, not the full custom-recurrence feature.
 enum RecurrenceType { none, daily, weekly, yearly }
 
+@immutable
 class TaskRecurrence {
   const TaskRecurrence({required this.type, this.weekdays = const []});
 

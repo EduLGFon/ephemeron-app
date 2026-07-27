@@ -8,6 +8,7 @@ enum AppPaletteType {
   custom,
 }
 
+@immutable
 class AppPalette {
   final AppPaletteType type;
   final String name;

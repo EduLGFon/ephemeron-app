@@ -86,9 +86,34 @@ class CalendarEventTile extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(6),
               ),
             ),
-            title: Text(event.title,
-                style: TextStyle(
-                    color: palette.text, fontWeight: FontWeight.bold)),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(event.title,
+                      style: TextStyle(
+                          color: palette.text, fontWeight: FontWeight.bold)),
+                ),
+                if (event.selfResponseStatus == RsvpStatus.accepted ||
+                    event.selfResponseStatus == RsvpStatus.acceptedVirtually)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Icon(Icons.check_circle_outline,
+                        size: 16, color: palette.primary),
+                  )
+                else if (event.selfResponseStatus == RsvpStatus.declined)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 8),
+                    child: Icon(Icons.cancel_outlined,
+                        size: 16, color: Colors.redAccent),
+                  )
+                else if (event.selfResponseStatus == RsvpStatus.tentative)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Icon(Icons.help_outline,
+                        size: 16, color: palette.text.withValues(alpha: 0.5)),
+                  ),
+              ],
+            ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -143,6 +168,8 @@ class CalendarEventTile extends ConsumerWidget {
                 if (parts.length >= 3) {
                   final eventId = parts.skip(2).join(':');
                   await dev_cal.DeviceCalendar().showEventModal(eventId);
+                  ref.invalidate(
+                      monthEventsProvider(ref.read(focusedMonthProvider)));
                 }
               } else {
                 ref.read(quickAddProvider.notifier).expand(event);
@@ -233,8 +260,7 @@ class CalendarEventTile extends ConsumerWidget {
                 .read(deviceCalendarRepositoryProvider)
                 .deleteEvent(event.calendarId, eventId);
             ref.invalidate(
-              monthEventsProvider(
-                  DateTime(event.start.year, event.start.month, 1)),
+              monthEventsProvider(ref.read(focusedMonthProvider)),
             );
           }
         }
@@ -264,7 +290,7 @@ class CalendarEventTile extends ConsumerWidget {
               .deleteThisAndFutureEvents(event);
         }
         ref.invalidate(
-          monthEventsProvider(DateTime(event.start.year, event.start.month, 1)),
+          monthEventsProvider(ref.read(focusedMonthProvider)),
         );
       } else {
         final confirmed = await showConfirmationDialog(
@@ -280,8 +306,7 @@ class CalendarEventTile extends ConsumerWidget {
               .read(calendarRepositoryProvider)
               .deleteEvent(event.id, calendarId: event.calendarId);
           ref.invalidate(
-            monthEventsProvider(
-                DateTime(event.start.year, event.start.month, 1)),
+            monthEventsProvider(ref.read(focusedMonthProvider)),
           );
         }
       }

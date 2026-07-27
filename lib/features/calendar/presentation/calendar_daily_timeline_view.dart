@@ -1,3 +1,4 @@
+import 'package:ephemeron/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
@@ -728,10 +729,9 @@ class _CalendarDailyTimelineViewState
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  width: 1.5),
+                                  color: AppColors.whiteAlpha80, width: 1.5),
                               color: event.title.startsWith('✓ ')
-                                  ? Colors.white.withValues(alpha: 0.2)
+                                  ? AppColors.whiteAlpha20
                                   : Colors.transparent,
                             ),
                             child: event.title.startsWith('✓ ')
@@ -759,10 +759,9 @@ class _CalendarDailyTimelineViewState
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  width: 1.5),
+                                  color: AppColors.whiteAlpha80, width: 1.5),
                               color: event.title.startsWith('✓ ')
-                                  ? Colors.white.withValues(alpha: 0.2)
+                                  ? AppColors.whiteAlpha20
                                   : Colors.transparent,
                             ),
                             child: event.title.startsWith('✓ ')

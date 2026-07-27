@@ -225,7 +225,9 @@ class SelectedListIdNotifier extends Notifier<String?> {
   set state(String? value) => super.state = value;
 }
 
-final selectedListIdProvider = NotifierProvider<SelectedListIdNotifier, String?>(() => SelectedListIdNotifier());
+final selectedListIdProvider =
+    NotifierProvider<SelectedListIdNotifier, String?>(
+        () => SelectedListIdNotifier());
 
 final calendarTasksProvider =
     StreamProvider<List<TaskCalendarEntry>>((ref) async* {

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:meta/meta.dart';
 
 import '../domain/alarm_preset.dart';
 
@@ -6,6 +7,7 @@ import '../domain/alarm_preset.dart';
 /// alarm, self-contained enough to survive being decoded in a background
 /// isolate with no access to Riverpod/Drift (see alarm_scheduler.dart's
 /// notificationTapBackground for why that constraint matters).
+@immutable
 class AlarmPayload {
   const AlarmPayload({
     required this.entityId,

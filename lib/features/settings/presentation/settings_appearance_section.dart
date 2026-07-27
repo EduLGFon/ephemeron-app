@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/settings/app_settings_provider.dart';
 import '../../../core/theme/theme_engine_provider.dart';
 import '../../../presentation/shell/pinned_sections_provider.dart';
-import 'settings_screen.dart'; 
+import 'settings_screen.dart';
 
 class SettingsAppearanceSection extends ConsumerWidget {
   const SettingsAppearanceSection({super.key});
@@ -35,9 +35,8 @@ class SettingsAppearanceSection extends ConsumerWidget {
             'Brown': Colors.brown,
             'Monochromatic': Colors.grey,
           },
-          onColorSelected: (c) => ref
-              .read(themeEngineProvider.notifier)
-              .setPrimaryColor(c),
+          onColorSelected: (c) =>
+              ref.read(themeEngineProvider.notifier).setPrimaryColor(c),
           onCustomSelected: () => SettingsScreen.editThemeColor(
               context, ref, 'Primary', currentPalette.primary),
         ),
@@ -53,9 +52,8 @@ class SettingsAppearanceSection extends ConsumerWidget {
             'White': Colors.white,
             'Off-White': Color(0xFFF7FAFC),
           },
-          onColorSelected: (c) => ref
-              .read(themeEngineProvider.notifier)
-              .setBackgroundColor(c),
+          onColorSelected: (c) =>
+              ref.read(themeEngineProvider.notifier).setBackgroundColor(c),
           onCustomSelected: () => SettingsScreen.editThemeColor(
               context, ref, 'Background', currentPalette.background),
         ),
@@ -128,7 +126,8 @@ class SettingsAppearanceSection extends ConsumerWidget {
             segments: const [
               ButtonSegment(value: PowerSavingMode.auto, label: Text('Auto')),
               ButtonSegment(value: PowerSavingMode.alwaysOn, label: Text('On')),
-              ButtonSegment(value: PowerSavingMode.alwaysOff, label: Text('Off')),
+              ButtonSegment(
+                  value: PowerSavingMode.alwaysOff, label: Text('Off')),
             ],
             selected: {settings.powerSavingMode},
             onSelectionChanged: (Set<PowerSavingMode> newSelection) {
@@ -181,7 +180,8 @@ class _ColorPickerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCustom = !options.values.any((c) => c.toARGB32() == currentColor.toARGB32());
+    final isCustom =
+        !options.values.any((c) => c.toARGB32() == currentColor.toARGB32());
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,21 +203,27 @@ class _ColorPickerRow extends StatelessWidget {
                   child: Tooltip(
                     message: entry.key,
                     child: Container(
-                      width: 40, height: 40,
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
                         color: entry.value,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: currentColor.toARGB32() == entry.value.toARGB32()
-                              ? Theme.of(context).colorScheme.onSurface
-                              : Colors.grey.withValues(alpha: 0.5),
-                          width: currentColor.toARGB32() == entry.value.toARGB32() ? 2 : 1,
+                          color:
+                              currentColor.toARGB32() == entry.value.toARGB32()
+                                  ? Theme.of(context).colorScheme.onSurface
+                                  : Colors.grey.withValues(alpha: 0.5),
+                          width:
+                              currentColor.toARGB32() == entry.value.toARGB32()
+                                  ? 2
+                                  : 1,
                         ),
                       ),
                       child: currentColor.toARGB32() == entry.value.toARGB32()
                           ? Icon(Icons.check,
                               color: entry.value.computeLuminance() > 0.5
-                                  ? Colors.black : Colors.white)
+                                  ? Colors.black
+                                  : Colors.white)
                           : null,
                     ),
                   ),
@@ -228,7 +234,8 @@ class _ColorPickerRow extends StatelessWidget {
                 child: Tooltip(
                   message: 'Custom Hex',
                   child: Container(
-                    width: 40, height: 40,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       color: isCustom ? currentColor : Colors.transparent,
                       shape: BoxShape.circle,
@@ -242,7 +249,8 @@ class _ColorPickerRow extends StatelessWidget {
                     child: isCustom
                         ? Icon(Icons.check,
                             color: currentColor.computeLuminance() > 0.5
-                                ? Colors.black : Colors.white)
+                                ? Colors.black
+                                : Colors.white)
                         : Icon(Icons.palette_outlined,
                             color: Theme.of(context).colorScheme.onSurface),
                   ),
@@ -270,11 +278,13 @@ class NavigationBarCustomizationSheet extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Text('Reorder Sections', style: Theme.of(context).textTheme.titleLarge),
+            child: Text('Reorder Sections',
+                style: Theme.of(context).textTheme.titleLarge),
           ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text('Drag to reorder. The top 5 appear on the bottom bar, the rest in "More".'),
+            child: Text(
+                'Drag to reorder. The top 5 appear on the bottom bar, the rest in "More".'),
           ),
           Expanded(
             child: ReorderableListView.builder(
@@ -285,7 +295,9 @@ class NavigationBarCustomizationSheet extends ConsumerWidget {
                 final newList = List.of(allSections);
                 newList.removeAt(oldIndex);
                 newList.insert(newIndex, item);
-                ref.read(allSectionsOrderProvider.notifier).updateOrder(newList);
+                ref
+                    .read(allSectionsOrderProvider.notifier)
+                    .updateOrder(newList);
               },
               itemBuilder: (context, index) {
                 final section = allSections[index];

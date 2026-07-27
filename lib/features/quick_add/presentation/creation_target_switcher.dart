@@ -69,9 +69,7 @@ class CreationTargetSwitcher extends StatelessWidget {
           Text(
             _getTargetLabel(currentTarget),
             style: TextStyle(
-                color: palette.text,
-                fontSize: 16,
-                fontWeight: FontWeight.w600),
+                color: palette.text, fontSize: 16, fontWeight: FontWeight.w600),
           ),
           const SizedBox(width: 4),
           Icon(Icons.keyboard_arrow_down, color: palette.text, size: 20),

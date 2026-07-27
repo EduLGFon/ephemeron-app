@@ -1,5 +1,5 @@
-
 import 'package:drift/drift.dart' show Value;
+import 'package:ephemeron/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -211,11 +211,11 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
         borderRadius: BorderRadius.circular(28),
         border:
             Border.all(color: palette.text.withValues(alpha: 0.1), width: 1),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: AppColors.blackAlpha30,
             blurRadius: 40,
-            offset: const Offset(0, 20),
+            offset: Offset(0, 20),
           ),
         ],
       ),

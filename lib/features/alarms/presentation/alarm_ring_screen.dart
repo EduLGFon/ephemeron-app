@@ -1,9 +1,9 @@
+import 'package:ephemeron/core/theme/app_colors.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/app_colors.dart';
 import '../../../core/settings/app_settings_provider.dart';
 import '../application/alarm_scheduler_provider.dart';
 import '../domain/alarm_payload.dart';
@@ -146,7 +146,7 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.2),
+                        color: AppColors.blackAlpha20,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -213,10 +213,9 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                Text(
+                const Text(
                   'Auto-snoozing if left untouched...',
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                  style: TextStyle(color: AppColors.whiteAlpha50, fontSize: 12),
                 ),
               ],
             ),

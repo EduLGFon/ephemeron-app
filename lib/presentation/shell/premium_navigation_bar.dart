@@ -1,3 +1,4 @@
+import 'package:ephemeron/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../../core/theme/theme_palettes.dart';
 import 'nav_section.dart';
@@ -33,10 +34,10 @@ class PremiumNavigationBar extends StatelessWidget {
         ),
         boxShadow: isPill
             ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
+                const BoxShadow(
+                  color: AppColors.blackAlpha20,
                   blurRadius: 20,
-                  offset: const Offset(0, 10),
+                  offset: Offset(0, 10),
                 )
               ]
             : null,
