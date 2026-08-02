@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'creation_target_switcher.dart';
 import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' show Value;
@@ -28,6 +29,7 @@ import 'quick_add_target.dart';
 
 import '../../../presentation/widgets/keyboard_avoid_padding.dart';
 import '../../../../presentation/widgets/confirmation_dialog.dart';
+import '../../../presentation/widgets/recurrence_delete_dialog.dart';
 import 'package:go_router/go_router.dart';
 import '../../calendar/presentation/event_form_sheet.dart';
 import '../../calendar/presentation/date_time_config_sheet.dart';
@@ -798,7 +800,10 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
     return IconButton(
       icon: Icon(icon,
           color: iconColor ?? palette.text.withValues(alpha: 0.7), size: 20),
-      onPressed: onPressed,
+      onPressed: () {
+        HapticFeedback.selectionClick();
+        onPressed();
+      },
       style: IconButton.styleFrom(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.all(8),
@@ -806,132 +811,163 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
     );
   }
 
+  bool _isSaving = false;
+
   Future<void> _saveEntity() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+    unawaited(HapticFeedback.mediumImpact());
     final desc = _descController.text.trim();
+    final isEditing = widget.entity != null;
 
-    if (_target == QuickAddTarget.task) {
-      final taskDueDate = _dueDate != null && _dueTime != null
-          ? DateTime(_dueDate!.year, _dueDate!.month, _dueDate!.day,
-              _dueTime!.hour, _dueTime!.minute)
-          : _dueDate;
-      final effectivePriority = _isStarred ? 3 : _priority;
+    try {
+      if (_target == QuickAddTarget.task) {
+        final taskDueDate = _dueDate != null && _dueTime != null
+            ? DateTime(_dueDate!.year, _dueDate!.month, _dueDate!.day,
+                _dueTime!.hour, _dueTime!.minute)
+            : _dueDate;
+        final effectivePriority = _isStarred ? 3 : _priority;
 
-      if (widget.entity != null && widget.entity is Task) {
-        final task = widget.entity as Task;
-        await ref.read(taskRepositoryProvider).updateTask(
-              task.id,
-              title: title,
-              description: desc,
-              priority: effectivePriority,
-              dueDate: taskDueDate != null
-                  ? Value(taskDueDate)
-                  : const Value.absent(),
-            );
-      } else {
-        await ref.read(taskRepositoryProvider).createTask(
-              listId: _selectedListId ?? 'inbox',
-              title: title,
-              description: desc,
-              priority: effectivePriority,
-              dueDate: taskDueDate,
-            );
-      }
-    } else if (_target == QuickAddTarget.event) {
-      if (widget.entity != null && widget.entity is CalendarEvent) {
-        final ev = widget.entity as CalendarEvent;
-        await ref.read(calendarRepositoryProvider).updateEvent(
-              ev.copyWith(
+        if (isEditing && widget.entity is Task) {
+          final task = widget.entity as Task;
+          await ref.read(taskRepositoryProvider).updateTask(
+                task.id,
                 title: title,
                 description: desc,
-                start: _startTime,
-                end: _endTime,
-                location: _location,
-                attendees: _attendees,
-                recurrence: _recurrence.toRruleList(_startTime),
-                reminderMinutes:
-                    _selectedOffsets.map((o) => o.beforeDue.inMinutes).toList(),
-              ),
-            );
-      } else {
-        await ref.read(calendarRepositoryProvider).createEvent(
-              CalendarEvent(
-                id: '',
-                calendarId: _calendarId,
+                priority: effectivePriority,
+                dueDate: taskDueDate != null
+                    ? Value(taskDueDate)
+                    : const Value.absent(),
+              );
+        } else {
+          await ref.read(taskRepositoryProvider).createTask(
+                listId: _selectedListId ?? 'inbox',
                 title: title,
                 description: desc,
-                start: _startTime,
-                end: _endTime,
-                isAllDay: _isAllDay,
-                location: _location,
-                attendees: _attendees,
-                recurrence: _recurrence.toRruleList(_startTime),
-                reminderMinutes:
-                    _selectedOffsets.map((o) => o.beforeDue.inMinutes).toList(),
-              ),
-            );
+                priority: effectivePriority,
+                dueDate: taskDueDate,
+              );
+        }
+      } else if (_target == QuickAddTarget.event) {
+        if (isEditing && widget.entity is CalendarEvent) {
+          final ev = widget.entity as CalendarEvent;
+          await ref.read(calendarRepositoryProvider).updateEvent(
+                ev.copyWith(
+                  title: title,
+                  description: desc,
+                  start: _startTime,
+                  end: _endTime,
+                  location: _location,
+                  attendees: _attendees,
+                  recurrence: _recurrence.toRruleList(_startTime),
+                  reminderMinutes: _selectedOffsets
+                      .map((o) => o.beforeDue.inMinutes)
+                      .toList(),
+                ),
+              );
+        } else {
+          await ref.read(calendarRepositoryProvider).createEvent(
+                CalendarEvent(
+                  id: '',
+                  calendarId: _calendarId,
+                  title: title,
+                  description: desc,
+                  start: _startTime,
+                  end: _endTime,
+                  isAllDay: _isAllDay,
+                  location: _location,
+                  attendees: _attendees,
+                  recurrence: _recurrence.toRruleList(_startTime),
+                  reminderMinutes: _selectedOffsets
+                      .map((o) => o.beforeDue.inMinutes)
+                      .toList(),
+                ),
+              );
+        }
+      } else if (_target == QuickAddTarget.habit) {
+        final freq = switch (_habitFrequency) {
+          'weekly' => const HabitFrequency.weekly(timesPerWeek: 1),
+          'monthly' => const HabitFrequency.interval(intervalDays: 30),
+          _ => const HabitFrequency.daily(),
+        };
+        if (isEditing && widget.entity is Habit) {
+          final h = widget.entity as Habit;
+          await ref.read(habitRepositoryProvider).updateHabit(
+                h.id,
+                name: title,
+                frequency: freq,
+              );
+        } else {
+          await ref.read(habitRepositoryProvider).createHabit(
+                name: title,
+                section: _habitSection,
+                frequency: freq,
+                goalType: _habitGoalAmount > 1 ? 'amount' : 'binary',
+                goalAmount: _habitGoalAmount.toDouble(),
+              );
+        }
+      } else if (_target == QuickAddTarget.countdown) {
+        final targetDate =
+            _targetDate ?? DateTime.now().add(const Duration(days: 1));
+        if (isEditing && widget.entity is Countdown) {
+          final c = widget.entity as Countdown;
+          await ref.read(countdownRepositoryProvider).updateCountdown(
+                c.id,
+                title: title,
+                targetDate: targetDate,
+              );
+        } else {
+          await ref.read(countdownRepositoryProvider).createCountdown(
+                title: title,
+                type: CountdownType.custom,
+                targetDate: targetDate,
+              );
+        }
+      } else if (_target == QuickAddTarget.note) {
+        if (isEditing && widget.entity is Note) {
+          final n = widget.entity as Note;
+          await ref.read(notesRepositoryProvider).updateNote(NotesCompanion(
+                id: Value(n.id),
+                title: Value(title),
+                content: Value(desc),
+                folderId: Value(n.folderId),
+                updatedAt: Value(DateTime.now()),
+              ));
+        } else {
+          await ref
+              .read(notesRepositoryProvider)
+              .createNote(NotesCompanion.insert(
+                title: title,
+                content: desc,
+                folderId: const Value(null),
+                createdAt: Value(DateTime.now()),
+                updatedAt: Value(DateTime.now()),
+              ));
+        }
       }
-    } else if (_target == QuickAddTarget.habit) {
-      final freq = switch (_habitFrequency) {
-        'weekly' => const HabitFrequency.weekly(timesPerWeek: 1),
-        'monthly' => const HabitFrequency.interval(intervalDays: 30),
-        _ => const HabitFrequency.daily(),
-      };
-      if (widget.entity != null && widget.entity is Habit) {
-        final h = widget.entity as Habit;
-        await ref.read(habitRepositoryProvider).updateHabit(
-              h.id,
-              name: title,
-              frequency: freq,
-            );
-      } else {
-        await ref.read(habitRepositoryProvider).createHabit(
-              name: title,
-              section: _habitSection,
-              frequency: freq,
-              goalType: _habitGoalAmount > 1 ? 'amount' : 'binary',
-              goalAmount: _habitGoalAmount.toDouble(),
-            );
+
+      if (mounted) {
+        final label = _getTargetLabel(_target);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isEditing ? '$label saved' : '$label created'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
-    } else if (_target == QuickAddTarget.countdown) {
-      final targetDate =
-          _targetDate ?? DateTime.now().add(const Duration(days: 1));
-      if (widget.entity != null && widget.entity is Countdown) {
-        final c = widget.entity as Countdown;
-        await ref.read(countdownRepositoryProvider).updateCountdown(
-              c.id,
-              title: title,
-              targetDate: targetDate,
-            );
-      } else {
-        await ref.read(countdownRepositoryProvider).createCountdown(
-              title: title,
-              type: CountdownType.custom,
-              targetDate: targetDate,
-            );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save: $e'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
-    } else if (_target == QuickAddTarget.note) {
-      if (widget.entity != null && widget.entity is Note) {
-        final n = widget.entity as Note;
-        await ref.read(notesRepositoryProvider).updateNote(NotesCompanion(
-              id: Value(n.id),
-              title: Value(title),
-              content: Value(desc),
-              folderId: Value(n.folderId),
-              updatedAt: Value(DateTime.now()),
-            ));
-      } else {
-        await ref
-            .read(notesRepositoryProvider)
-            .createNote(NotesCompanion.insert(
-              title: title,
-              content: desc,
-              folderId: const Value('default'),
-              createdAt: Value(DateTime.now()),
-              updatedAt: Value(DateTime.now()),
-            ));
-      }
+      setState(() => _isSaving = false);
+      return;
     }
 
     if (widget.onClose != null) {
@@ -983,32 +1019,74 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
   Future<void> _deleteEntity() async {
     if (widget.entity == null) return;
     final entity = widget.entity!;
+    unawaited(HapticFeedback.mediumImpact());
 
-    final confirmed = await showConfirmationDialog(
-      context: context,
-      ref: ref,
-      title: 'Delete?',
-      content:
-          'Are you sure you want to delete this item? This action cannot be undone.',
-      confirmLabel: 'Delete',
-      isDestructive: true,
-    );
-    if (!confirmed) return;
+    if (entity is CalendarEvent &&
+        (entity.recurringEventId != null ||
+            (entity.recurrence != null && entity.recurrence!.isNotEmpty))) {
+      // Recurring event — ask which scope to delete
+      final deleteType = await showRecurrenceDeleteDialog(
+        context: context,
+        ref: ref,
+        title: 'Delete Recurring Event?',
+      );
+      if (deleteType == null || !mounted) return;
 
-    if (entity is Task) {
-      await ref.read(taskRepositoryProvider).softDeleteTask(entity.id);
-    } else if (entity is CalendarEvent) {
-      await ref
-          .read(calendarRepositoryProvider)
-          .deleteThisAndFutureEvents(entity);
-    } else if (entity is Habit) {
-      await ref.read(habitRepositoryProvider).deleteHabit(entity.id);
-    } else if (entity is Countdown) {
-      await ref.read(countdownRepositoryProvider).deleteCountdown(entity.id);
-    } else if (entity is Note) {
-      await ref.read(notesRepositoryProvider).deleteNote(entity.id);
+      final repo = ref.read(calendarRepositoryProvider);
+      switch (deleteType) {
+        case RecurrenceDeleteType.onlyThis:
+          await repo.deleteEvent(entity.id, calendarId: entity.calendarId);
+          break;
+        case RecurrenceDeleteType.thisAndAllAfter:
+          await repo.deleteThisAndFutureEvents(entity);
+          break;
+        case RecurrenceDeleteType.all:
+          await repo.deleteEvent(
+            entity.recurringEventId ?? entity.id,
+            calendarId: entity.calendarId,
+          );
+          break;
+      }
+    } else {
+      // Non-recurring or non-event entity — standard confirmation
+      final confirmed = await showConfirmationDialog(
+        context: context,
+        ref: ref,
+        title: 'Delete?',
+        content:
+            'Are you sure you want to delete this item? This action cannot be undone.',
+        confirmLabel: 'Delete',
+        isDestructive: true,
+      );
+      if (!confirmed) return;
+
+      if (entity is Task) {
+        await ref.read(taskRepositoryProvider).softDeleteTask(entity.id);
+      } else if (entity is CalendarEvent) {
+        await ref
+            .read(calendarRepositoryProvider)
+            .deleteEvent(entity.id, calendarId: entity.calendarId);
+      } else if (entity is Habit) {
+        await ref.read(habitRepositoryProvider).deleteHabit(entity.id);
+      } else if (entity is Countdown) {
+        await ref
+            .read(countdownRepositoryProvider)
+            .deleteCountdown(entity.id);
+      } else if (entity is Note) {
+        await ref.read(notesRepositoryProvider).deleteNote(entity.id);
+      }
     }
-    if (mounted) Navigator.of(context).pop();
+
+    if (mounted) {
+      final label = _getTargetLabel(_target);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$label deleted'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      Navigator.of(context).pop();
+    }
   }
 
   Future<void> _pickDate(BuildContext context, DateTime? initial,
@@ -1398,7 +1476,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
             NotesCompanion.insert(
               title: title,
               content: desc,
-              folderId: const Value('default'),
+              folderId: const Value(null),
               createdAt: Value(DateTime.now()),
               updatedAt: Value(DateTime.now()),
             ),
@@ -1418,6 +1496,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
                 _isStarred ? Colors.amber : palette.text.withValues(alpha: 0.6),
           ),
           onPressed: () {
+            HapticFeedback.selectionClick();
             setState(() => _isStarred = !_isStarred);
             _markChanged();
           },
@@ -1425,30 +1504,54 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
       case QuickAddTarget.task:
         return _buildPrioritySelector(palette);
       case QuickAddTarget.event:
-        return GestureDetector(
-          onTap: () {
-            setState(() => _isBusy = !_isBusy);
-            _markChanged();
-          },
-          child: _buildIconWrapper(
-            palette,
-            Center(
-              child: Text(
-                _isBusy ? 'Busy' : 'Free',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: _isBusy ? Colors.redAccent : Colors.green,
+        final hasConference = widget.entity is CalendarEvent &&
+            (widget.entity as CalendarEvent).hasVideoConference;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (hasConference)
+              Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: _buildIconWrapper(
+                  palette,
+                  Center(
+                    child: Icon(
+                      Icons.videocam,
+                      size: 18,
+                      color: palette.primary,
+                    ),
+                  ),
+                ),
+              ),
+            GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _isBusy = !_isBusy);
+                _markChanged();
+              },
+              child: _buildIconWrapper(
+                palette,
+                Center(
+                  child: Text(
+                    _isBusy ? 'Busy' : 'Free',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: _isBusy ? Colors.redAccent : Colors.green,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         );
       case QuickAddTarget.habit:
         return IconButton(
           icon: Icon(Icons.center_focus_strong_outlined,
               color: palette.text.withValues(alpha: 0.6)),
-          onPressed: () {},
+          onPressed: () {
+            HapticFeedback.selectionClick();
+          },
         );
     }
   }
@@ -1608,6 +1711,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
                   context, _dueTime, (t) => setState(() => _dueTime = t));
             }
           },
+          iconColor: _dueDate != null ? palette.primary : null,
         ),
         const SizedBox(width: 8),
         _buildTagSelector(palette),
@@ -1615,7 +1719,8 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
         _buildListSelector(palette),
         const SizedBox(width: 8),
         _buildIconButton(Icons.account_tree_outlined, palette,
-            onPressed: () => _showSubtasksDialog(context)),
+            onPressed: () => _showSubtasksDialog(context),
+            iconColor: _subtasks.isNotEmpty ? palette.primary : null),
         const SizedBox(width: 8),
         _buildIconButton(Icons.attach_file, palette, onPressed: _attachImage),
         const SizedBox(width: 8),
@@ -1626,6 +1731,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
             setState(() => _isStarred = !_isStarred);
             _markChanged();
           },
+          iconColor: _isStarred ? Colors.amber : null,
         ),
       ];
     } else if (_target == QuickAddTarget.event) {
@@ -1639,7 +1745,10 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
         _buildIconButton(
           Icons.access_time_rounded,
           palette,
-          onPressed: () => _pickEventDateAndTime(palette),
+          onPressed: () {
+            HapticFeedback.selectionClick();
+            _pickEventDateAndTime(palette);
+          },
           iconColor: (_startTime.day != DateTime.now().day ||
                   _selectedOffsets.isNotEmpty ||
                   _recurrence.type != RecurrenceType.none)
@@ -1654,7 +1763,10 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
                   : palette.text.withValues(alpha: 0.7),
               size: 20),
           color: palette.surface,
-          onSelected: (cal) => setState(() => _calendarId = cal),
+          onSelected: (cal) {
+            HapticFeedback.selectionClick();
+            setState(() => _calendarId = cal);
+          },
           itemBuilder: (ctx) => googleCalendars
               .map((c) => PopupMenuItem(
                   value: c['id'],
@@ -1663,33 +1775,108 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
               .toList(),
         ),
         const SizedBox(width: 8),
-        _buildIconButton(
-          Icons.group_add_outlined,
-          palette,
-          onPressed: () => _showAttendeesDialog(context),
-          iconColor: _attendees.isNotEmpty ? palette.primary : null,
-        ),
-        const SizedBox(width: 8),
-        PopupMenuButton<String>(
-          icon: Icon(Icons.event_available_outlined,
-              color: palette.text.withValues(alpha: 0.7), size: 20),
-          color: palette.surface,
-          onSelected: (status) => setState(() => _attendingStatus = status),
-          itemBuilder: (ctx) => [
-            PopupMenuItem(
-                value: 'accepted',
-                child: Text('Yes', style: TextStyle(color: palette.text))),
-            PopupMenuItem(
-                value: 'tentative',
-                child: Text('Maybe', style: TextStyle(color: palette.text))),
-            PopupMenuItem(
-                value: 'declined',
-                child: Text('No', style: TextStyle(color: palette.text))),
+        Stack(
+          alignment: Alignment.topRight,
+          children: [
+            _buildIconButton(
+              Icons.group_add_outlined,
+              palette,
+              onPressed: () {
+                HapticFeedback.selectionClick();
+                _showAttendeesDialog(context);
+              },
+              iconColor: _attendees.isNotEmpty ? palette.primary : null,
+            ),
+            if (_attendees.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: palette.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '${_attendees.length}',
+                  style: TextStyle(
+                    color: palette.background,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
           ],
         ),
         const SizedBox(width: 8),
-        _buildIconButton(Icons.location_on_outlined, palette,
-            onPressed: () => _showLocationDialog(context)),
+        PopupMenuButton<String>(
+          icon: Icon(
+            Icons.event_available_outlined,
+            color: _attendingStatus != 'accepted'
+                ? (_attendingStatus == 'declined'
+                    ? Colors.redAccent
+                    : Colors.amber)
+                : palette.text.withValues(alpha: 0.7),
+            size: 20,
+          ),
+          color: palette.surface,
+          onSelected: (status) {
+            HapticFeedback.selectionClick();
+            setState(() => _attendingStatus = status);
+          },
+          itemBuilder: (ctx) => [
+            PopupMenuItem(
+              value: 'accepted',
+              child: Row(children: [
+                const Icon(Icons.check_circle,
+                    color: Colors.green, size: 18),
+                const SizedBox(width: 8),
+                Text('Yes',
+                    style: TextStyle(
+                        color: palette.text,
+                        fontWeight: _attendingStatus == 'accepted'
+                            ? FontWeight.bold
+                            : FontWeight.normal)),
+              ]),
+            ),
+            PopupMenuItem(
+              value: 'tentative',
+              child: Row(children: [
+                const Icon(Icons.help_outline,
+                    color: Colors.amber, size: 18),
+                const SizedBox(width: 8),
+                Text('Maybe',
+                    style: TextStyle(
+                        color: palette.text,
+                        fontWeight: _attendingStatus == 'tentative'
+                            ? FontWeight.bold
+                            : FontWeight.normal)),
+              ]),
+            ),
+            PopupMenuItem(
+              value: 'declined',
+              child: Row(children: [
+                const Icon(Icons.cancel_outlined,
+                    color: Colors.redAccent, size: 18),
+                const SizedBox(width: 8),
+                Text('No',
+                    style: TextStyle(
+                        color: palette.text,
+                        fontWeight: _attendingStatus == 'declined'
+                            ? FontWeight.bold
+                            : FontWeight.normal)),
+              ]),
+            ),
+          ],
+        ),
+        const SizedBox(width: 8),
+        _buildIconButton(
+          Icons.location_on_outlined,
+          palette,
+          onPressed: () {
+            HapticFeedback.selectionClick();
+            _showLocationDialog(context);
+          },
+          iconColor:
+              _location?.isNotEmpty == true ? palette.primary : null,
+        ),
       ];
     } else if (_target == QuickAddTarget.countdown) {
       children = [
@@ -1698,6 +1885,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
           palette,
           onPressed: () => _pickDate(
               context, _targetDate, (d) => setState(() => _targetDate = d)),
+          iconColor: _targetDate != null ? palette.primary : null,
         ),
         const SizedBox(width: 8),
         _buildIconButton(
@@ -1707,6 +1895,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
             setState(() => _showAge = !_showAge);
             _markChanged();
           },
+          iconColor: _showAge ? palette.primary : null,
         ),
         const SizedBox(width: 8),
         _buildTagSelector(palette),
@@ -1717,32 +1906,63 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
       children = [
         PopupMenuButton<String>(
           icon: Icon(Icons.repeat,
-              color: palette.text.withValues(alpha: 0.7), size: 20),
+              color: _habitFrequency != 'daily'
+                  ? palette.primary
+                  : palette.text.withValues(alpha: 0.7),
+              size: 20),
           color: palette.surface,
-          onSelected: (freq) => setState(() => _habitFrequency = freq),
+          onSelected: (freq) {
+            HapticFeedback.selectionClick();
+            setState(() => _habitFrequency = freq);
+          },
           itemBuilder: (ctx) => [
             PopupMenuItem(
                 value: 'daily',
-                child: Text('Daily', style: TextStyle(color: palette.text))),
+                child: Text('Daily',
+                    style: TextStyle(
+                        color: palette.text,
+                        fontWeight: _habitFrequency == 'daily'
+                            ? FontWeight.bold
+                            : FontWeight.normal))),
             PopupMenuItem(
                 value: 'weekly',
-                child: Text('Weekly', style: TextStyle(color: palette.text))),
+                child: Text('Weekly',
+                    style: TextStyle(
+                        color: palette.text,
+                        fontWeight: _habitFrequency == 'weekly'
+                            ? FontWeight.bold
+                            : FontWeight.normal))),
             PopupMenuItem(
                 value: 'monthly',
-                child: Text('Monthly', style: TextStyle(color: palette.text))),
+                child: Text('Monthly',
+                    style: TextStyle(
+                        color: palette.text,
+                        fontWeight: _habitFrequency == 'monthly'
+                            ? FontWeight.bold
+                            : FontWeight.normal))),
           ],
         ),
         const SizedBox(width: 8),
         PopupMenuButton<int>(
           icon: Icon(Icons.flag_outlined,
-              color: palette.text.withValues(alpha: 0.7), size: 20),
+              color: _habitGoalAmount > 1
+                  ? palette.primary
+                  : palette.text.withValues(alpha: 0.7),
+              size: 20),
           color: palette.surface,
-          onSelected: (amt) => setState(() => _habitGoalAmount = amt),
+          onSelected: (amt) {
+            HapticFeedback.selectionClick();
+            setState(() => _habitGoalAmount = amt);
+          },
           itemBuilder: (ctx) => [1, 2, 3, 5, 10]
               .map((amt) => PopupMenuItem(
                   value: amt,
                   child: Text('$amt times',
-                      style: TextStyle(color: palette.text))))
+                      style: TextStyle(
+                          color: palette.text,
+                          fontWeight: _habitGoalAmount == amt
+                              ? FontWeight.bold
+                              : FontWeight.normal))))
               .toList(),
         ),
         const SizedBox(width: 8),
@@ -1751,6 +1971,7 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
           palette,
           onPressed: () => _pickDate(context, _habitStartDate,
               (d) => setState(() => _habitStartDate = d)),
+          iconColor: _habitStartDate != null ? palette.primary : null,
         ),
         const SizedBox(width: 8),
         _buildIconButton(Icons.check_circle_outline, palette, onPressed: () {}),
@@ -1766,20 +1987,57 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
   }
 
   Widget _buildSendButton(AppPalette palette) {
-    return Container(
-      width: 40,
+    final isEditing = widget.entity != null;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: _isSaving ? 40 : (isEditing ? 80 : 40),
       height: 40,
       decoration: BoxDecoration(
-        color: palette.primary,
-        shape: BoxShape.circle,
+        color: _isSaving
+            ? palette.primary.withValues(alpha: 0.5)
+            : palette.primary,
+        borderRadius:
+            isEditing ? BorderRadius.circular(20) : BorderRadius.circular(20),
       ),
-      child: IconButton(
-        icon: Icon(Icons.send, color: palette.background, size: 20),
-        onPressed: () {
-          _saveEntity();
-        },
-        padding: EdgeInsets.zero,
-      ),
+      child: _isSaving
+          ? Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: palette.background,
+                ),
+              ),
+            )
+          : Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: _saveEntity,
+                child: Center(
+                  child: isEditing
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check,
+                                color: palette.background, size: 18),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Save',
+                              style: TextStyle(
+                                color: palette.background,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Icon(Icons.send,
+                          color: palette.background, size: 20),
+                ),
+              ),
+            ),
     );
   }
 }

@@ -38,7 +38,7 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
-  static const _sectionsWithQuickAdd = {0, 1, 2, 3, 4, 6}; // Removed 5 (Focus)
+  static const _sectionsWithQuickAdd = {0, 1, 2, 3, 4}; // Calendar, Tasks, Matrix, Habits, Countdown
 
   @override
   void initState() {

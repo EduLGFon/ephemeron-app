@@ -15,10 +15,13 @@
    - **Google OAuth**: Manages Google Calendar (v3) and Google Tasks (v1) data direct from client.
    - **Backend Auth**: Custom backend connection reserved exclusively for app-specific custom data (e.g. habits, focus logs).
 3. **Offline-First Storage**: Local relational storage powered by **Drift** (SQLite). SQLite runs natively on Android/Linux/Windows/macOS/iOS, and via WebAssembly (WASM) / OPFS on Web.
-4. **Battery & Resource Efficiency**:
-   - `PowerSavingManager` monitors device power-saving mode (`battery_plus`) to automatically disable non-essential animations and blur effects.
+4. **Battery, Performance & Resource Efficiency**:
+   - `PowerSavingManager` features a 3-mode system (Auto/Always On/Always Off). In Auto mode, it monitors the system battery level, triggering a low-power state at <15% to disable non-essential animations, background sync, and visual effects.
+   - **Boot Performance**: Synchronous settings hydration from SharedPreferences and parallel bootstrapping via `Future.wait` (`appBootstrapperProvider`) eliminate splash screens, achieving <1s time-to-interactive.
+   - **Rendering Optimization**: Extensive use of `RepaintBoundary` for UI isolation, memoized `TextSpan` trees for Markdown syntax highlighting, and cached `ThemeData` to minimize rebuilds.
+   - **High-Frequency State**: Rapidly updating state (e.g. Focus Timer ticks) uses `ValueNotifier<Duration>` instead of full Riverpod state to prevent widget tree churn.
    - Bundled local fonts (`Fraunces` and `Inter` in `assets/fonts/`) eliminate runtime network fetches.
-   - Sync operations use a lightweight periodic Dart timer while the app is open (configured via user settings).
+   - Sync operations are battery-aware, halving their interval during power-saving mode.
    - Task/Habit/Countdown alarms & reminders use OS-native exact alarm APIs (`flutter_local_notifications`), executing independently of background polling even when the app is closed.
 5. **Cross-Platform Priority**:
    - **Android**: Primary priority (exact alarms via `USE_EXACT_ALARM`, foreground service, native notification channel).
@@ -60,9 +63,8 @@ lib/
 └── presentation/                # Shell layout & global UI screens
     ├── matrix/                  # Matrix presentation components
     ├── notes/                   # Markdown previewer & syntax highlighters
-    ├── shell/                   # Stateful bottom nav & customizable section switcher
-    ├── splash/                  # Startup splash & auth initialization loader
-    └── widgets/                 # Shared modal dialogs & glassmorphic wrappers
+    ├── shell/                   # Stateful bottom nav, customizable section switcher, and Quick Add FAB
+    └── widgets/                 # Shared modal dialogs and highly decomposed reusable UI components
 
 packages/                        # In-repo platform override packages
 ├── device_calendar_plus_android # Local Android implementation override
@@ -163,10 +165,10 @@ Drift manages the SQLite database (`AppDatabase` in `lib/data/local/database.dar
 ## 5. Navigation & State Management Architecture
 
 ### Routing System (`lib/core/routing/app_router.dart`)
-Built with `GoRouter` using `StatefulShellRoute.indexedStack`. Keeps per-tab navigation states preserved in memory across tab switches.
+Built with `GoRouter` using `StatefulShellRoute`. Heavy screens have been aggressively decomposed into lightweight, lazy-loaded component widgets (e.g., `CustomScrollView` with slivers for complex layouts) to minimize memory footprint when switching tabs.
 
 ```
-/splash -> /auth (if signed out) -> /calendar (default landing)
+/auth (if signed out) -> /calendar (default landing)
                                  ├── /tasks
                                  ├── /matrix
                                  ├── /habits
@@ -183,7 +185,7 @@ Built with `GoRouter` using `StatefulShellRoute.indexedStack`. Keeps per-tab nav
 ### Theme Engine & Design System (`lib/core/theme`)
 - **Dynamic Palettes**: Supports 4 built-in palettes (`Obsidian Glass`, `Aurora`, `Minimalist Silk`, `Pure AMOLED`) via `ThemeEngineProvider`.
 - **Custom Typography**: Bundles `Fraunces` (serif accent) and `Inter` (sans-serif UI) locally.
-- **Power Saving Integration**: When `PowerSavingManager` detects system battery saver mode, mesh gradients and non-essential UI animations are automatically disabled.
+- **Power Saving Integration**: When `PowerSavingManager` detects system battery saver mode or battery drops below 15% (in Auto mode), animations, mesh gradients, and background sync are automatically disabled.
 
 ---
 
