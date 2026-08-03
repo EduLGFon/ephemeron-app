@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' show Value;
 import '../../features/quick_add/application/quick_add_provider.dart';
+import '../../features/quick_add/presentation/unified_creation_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,8 +10,7 @@ import '../../data/local/database.dart';
 import '../../features/notes/application/notes_providers.dart';
 import '../../features/notes/data/notes_repository.dart';
 import 'package:ephemeron/core/widgets/app_loading_indicator.dart';
-import '../widgets/keyboard_avoid_padding.dart';
-import 'note_form_sheet.dart';
+import '../../presentation/shell/nav_section.dart';
 import 'widgets/note_card.dart';
 import 'widgets/note_folder_breadcrumbs.dart';
 
@@ -238,35 +238,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         onPressed: () {
-          final sheet = Center(
-            child: SingleChildScrollView(
-              child: Material(
-                color: Colors.transparent,
-                child: const RepaintBoundary(child: NoteFormSheet()),
-              ),
-            ),
-          );
-          showGeneralDialog<void>(
-            context: context,
-            barrierDismissible: true,
-            barrierLabel: 'Dismiss',
-            barrierColor: Colors.black54,
-            transitionDuration: const Duration(milliseconds: 250),
-            pageBuilder: (context, anim1, anim2) {
-              return KeyboardAvoidPadding(child: sheet);
-            },
-            transitionBuilder: (context, anim1, anim2, child) {
-              final curve =
-                  CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic);
-              return SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0.0, 1.0),
-                  end: Offset.zero,
-                ).animate(curve),
-                child: child,
-              );
-            },
-          );
+          showUnifiedCreationSheet(context,
+              currentSection: NavSection.notes);
         },
         child: const Icon(Icons.edit_outlined, size: 24),
       ),

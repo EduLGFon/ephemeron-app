@@ -1169,26 +1169,57 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
 
   Future<void> _showAttendeesDialog(BuildContext context) async {
     final controller = TextEditingController();
+    final palette = ref.read(themeEngineProvider);
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Attendees'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: controller,
-                      decoration:
-                          const InputDecoration(hintText: 'Email address'),
-                      keyboardType: TextInputType.emailAddress,
-                      onSubmitted: (val) {
-                        if (val.trim().isNotEmpty && val.contains('@')) {
+          backgroundColor: palette.surface,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: palette.text.withValues(alpha: 0.1)),
+          ),
+          title: Text('Manage People',
+              style: TextStyle(
+                  color: palette.text, fontWeight: FontWeight.bold)),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: controller,
+                        style: TextStyle(color: palette.text),
+                        decoration: InputDecoration(
+                          hintText: 'Email address',
+                          hintStyle: TextStyle(
+                              color: palette.text.withValues(alpha: 0.5)),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        onSubmitted: (val) {
+                          if (val.trim().isNotEmpty && val.contains('@')) {
+                            setDialogState(() {
+                              _attendees.add(val.trim());
+                              controller.clear();
+                            });
+                            setState(() {});
+                            _markChanged();
+                          }
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.person_add,
+                          color: palette.primary),
+                      onPressed: () {
+                        if (controller.text.trim().isNotEmpty &&
+                            controller.text.contains('@')) {
                           setDialogState(() {
-                            _attendees.add(val.trim());
+                            _attendees.add(controller.text.trim());
                             controller.clear();
                           });
                           setState(() {});
@@ -1196,50 +1227,57 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
                         }
                       },
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: () {
-                      if (controller.text.trim().isNotEmpty &&
-                          controller.text.contains('@')) {
-                        setDialogState(() {
-                          _attendees.add(controller.text.trim());
-                          controller.clear();
-                        });
-                        setState(() {});
-                        _markChanged();
-                      }
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _attendees.length,
-                  itemBuilder: (ctx, idx) {
-                    final email = _attendees[idx];
-                    return ListTile(
-                      dense: true,
-                      title: Text(email),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.close, size: 18),
-                        onPressed: () {
-                          setDialogState(() => _attendees.remove(email));
-                          setState(() {});
-                          _markChanged();
-                        },
-                      ),
-                    );
-                  },
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                if (_attendees.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      'No attendees added yet',
+                      style: TextStyle(
+                          color: palette.text.withValues(alpha: 0.4),
+                          fontSize: 13),
+                    ),
+                  )
+                else
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _attendees.length,
+                      itemBuilder: (ctx, idx) {
+                        final email = _attendees[idx];
+                        return ListTile(
+                          dense: true,
+                          leading: Icon(Icons.person_outline,
+                              size: 20,
+                              color: palette.text.withValues(alpha: 0.6)),
+                          title: Text(email,
+                              style: TextStyle(color: palette.text)),
+                          trailing: IconButton(
+                            icon: Icon(Icons.close,
+                                size: 18,
+                                color: palette.text.withValues(alpha: 0.5)),
+                            onPressed: () {
+                              setDialogState(
+                                  () => _attendees.remove(email));
+                              setState(() {});
+                              _markChanged();
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx), child: const Text('Done')),
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('Done',
+                    style: TextStyle(color: palette.primary))),
           ],
         ),
       ),
@@ -1808,18 +1846,25 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
         const SizedBox(width: 8),
         PopupMenuButton<String>(
           icon: Icon(
-            Icons.event_available_outlined,
-            color: _attendingStatus != 'accepted'
-                ? (_attendingStatus == 'declined'
+            _attendingStatus == 'accepted'
+                ? Icons.event_available
+                : (_attendingStatus == 'declined'
+                    ? Icons.event_busy
+                    : Icons.event_note_outlined),
+            color: _attendingStatus == 'accepted'
+                ? Colors.green
+                : (_attendingStatus == 'declined'
                     ? Colors.redAccent
-                    : Colors.amber)
-                : palette.text.withValues(alpha: 0.7),
+                    : (_attendingStatus == 'tentative'
+                        ? Colors.amber
+                        : palette.text.withValues(alpha: 0.7))),
             size: 20,
           ),
           color: palette.surface,
           onSelected: (status) {
             HapticFeedback.selectionClick();
             setState(() => _attendingStatus = status);
+            _markChanged();
           },
           itemBuilder: (ctx) => [
             PopupMenuItem(
@@ -1828,12 +1873,16 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
                 const Icon(Icons.check_circle,
                     color: Colors.green, size: 18),
                 const SizedBox(width: 8),
-                Text('Yes',
-                    style: TextStyle(
-                        color: palette.text,
-                        fontWeight: _attendingStatus == 'accepted'
-                            ? FontWeight.bold
-                            : FontWeight.normal)),
+                Expanded(
+                  child: Text('Yes',
+                      style: TextStyle(
+                          color: palette.text,
+                          fontWeight: _attendingStatus == 'accepted'
+                              ? FontWeight.bold
+                              : FontWeight.normal)),
+                ),
+                if (_attendingStatus == 'accepted')
+                  Icon(Icons.check, color: palette.primary, size: 18),
               ]),
             ),
             PopupMenuItem(
@@ -1842,12 +1891,16 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
                 const Icon(Icons.help_outline,
                     color: Colors.amber, size: 18),
                 const SizedBox(width: 8),
-                Text('Maybe',
-                    style: TextStyle(
-                        color: palette.text,
-                        fontWeight: _attendingStatus == 'tentative'
-                            ? FontWeight.bold
-                            : FontWeight.normal)),
+                Expanded(
+                  child: Text('Maybe',
+                      style: TextStyle(
+                          color: palette.text,
+                          fontWeight: _attendingStatus == 'tentative'
+                              ? FontWeight.bold
+                              : FontWeight.normal)),
+                ),
+                if (_attendingStatus == 'tentative')
+                  Icon(Icons.check, color: palette.primary, size: 18),
               ]),
             ),
             PopupMenuItem(
@@ -1856,12 +1909,16 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
                 const Icon(Icons.cancel_outlined,
                     color: Colors.redAccent, size: 18),
                 const SizedBox(width: 8),
-                Text('No',
-                    style: TextStyle(
-                        color: palette.text,
-                        fontWeight: _attendingStatus == 'declined'
-                            ? FontWeight.bold
-                            : FontWeight.normal)),
+                Expanded(
+                  child: Text('No',
+                      style: TextStyle(
+                          color: palette.text,
+                          fontWeight: _attendingStatus == 'declined'
+                              ? FontWeight.bold
+                              : FontWeight.normal)),
+                ),
+                if (_attendingStatus == 'declined')
+                  Icon(Icons.check, color: palette.primary, size: 18),
               ]),
             ),
           ],
