@@ -334,21 +334,6 @@ class _UnifiedCreationSheetState extends ConsumerState<UnifiedCreationSheet> {
     }
   }
 
-  IconData _getTargetIcon(QuickAddTarget t) {
-    switch (t) {
-      case QuickAddTarget.event:
-        return Icons.calendar_today_outlined;
-      case QuickAddTarget.task:
-        return Icons.check_circle_outline;
-      case QuickAddTarget.habit:
-        return Icons.loop;
-      case QuickAddTarget.countdown:
-        return Icons.timer_outlined;
-      case QuickAddTarget.note:
-        return Icons.sticky_note_2_outlined;
-    }
-  }
-
   String get _titleHint {
     switch (_target) {
       case QuickAddTarget.event:

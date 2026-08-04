@@ -195,8 +195,9 @@ class SettingsScreen extends ConsumerWidget {
                       "${log.time.hour.toString().padLeft(2, '0')}:${log.time.minute.toString().padLeft(2, '0')}:${log.time.second.toString().padLeft(2, '0')}";
                   var msg = '[$timeStr] ${log.message}';
                   if (log.error != null) msg += '\nError: ${log.error}';
-                  if (log.stackTrace != null)
+                  if (log.stackTrace != null) {
                     msg += '\nStackTrace: ${log.stackTrace}';
+                  }
                   return msg;
                 }).join('\n\n');
                 Clipboard.setData(ClipboardData(text: text));

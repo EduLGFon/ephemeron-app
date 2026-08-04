@@ -26,7 +26,7 @@ class TaskListSelector extends ConsumerWidget {
   Color _parseColor(String hex) {
     try {
       final c = hex.replaceAll('#', '');
-      return Color(int.parse('FF\$c', radix: 16));
+      return Color(int.parse('FF$c', radix: 16));
     } catch (_) {
       return const Color(0xFF1B4B4A);
     }
@@ -390,7 +390,7 @@ class TaskListSelector extends ConsumerWidget {
                 tagId: selectedTagId,
               );
       ref.read(selectedListIdProvider.notifier).state =
-          'custom_smart:\${smartList.id}';
+          'custom_smart:${smartList.id}';
     }
   }
 

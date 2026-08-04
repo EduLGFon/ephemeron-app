@@ -53,8 +53,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isSignedIn = repo.currentAccount != null;
 
       if (!isSignedIn && location != '/auth') return '/auth';
-      if (isSignedIn && location == '/auth')
+      if (isSignedIn && location == '/auth') {
         return sharedPrefs.getString('settings.lastScreen') ?? '/calendar';
+      }
 
       return null;
     },

@@ -80,6 +80,7 @@ class AlarmScheduler {
   Timer? _localAlarmTimer;
   final List<LocalAlarm> _localAlarms = [];
   final _desktopAlarmSound = DesktopAlarmSound();
+  bool _permissionsRequested = false;
 
   AlarmScheduler() : _plugin = FlutterLocalNotificationsPlugin();
 
@@ -154,15 +155,27 @@ class AlarmScheduler {
     tz_data.initializeTimeZones();
     try {
       final localTimezone = await FlutterTimezone.getLocalTimezone();
-      // NOTE: flutter_timezone's return shape has moved between a plain
-      // IANA String and a TimezoneInfo object across versions. Written
-      // as explicit if/else against a declared String, not a ternary —
-      // a ternary here previously inferred as Object instead of String
-      // (a real bug caught via a real build), rejected by
-      // tz.getLocation's String parameter.
       final String identifier = localTimezone.identifier;
       tz.setLocalLocation(tz.getLocation(identifier));
     } catch (e) {
+      // Some OEM ROMs return non-standard timezone names. Try common
+      // aliases before falling back to UTC.
+      try {
+        final localTimezone = await FlutterTimezone.getLocalTimezone();
+        final String raw = localTimezone.identifier;
+        // Try stripping the prefix (e.g. "GMT-03:00" -> offset-based lookup)
+        final gmtMatch = RegExp(r'GMT([+-])(\d{1,2})(?::(\d{2}))?').firstMatch(raw);
+        if (gmtMatch != null) {
+          final sign = gmtMatch.group(1) == '+' ? '' : '-';
+          final hours = gmtMatch.group(2)!;
+          // Use Etc/GMT±N (note: Etc/GMT signs are inverted per POSIX)
+          final etcSign = sign == '-' ? '+' : '-';
+          final etcName = 'Etc/GMT$etcSign$hours';
+          tz.setLocalLocation(tz.getLocation(etcName));
+          debugPrint('AlarmScheduler: mapped non-standard "$raw" to "$etcName"');
+          return;
+        }
+      } catch (_) {}
       debugPrint(
         'AlarmScheduler: could not resolve local timezone ($e), '
         'defaulting to UTC — alarms will fire at the wrong wall-clock '
@@ -173,13 +186,9 @@ class AlarmScheduler {
 
   /// Requests the runtime permissions alarms need. Deliberately not
   /// called automatically from [initialize] — surfacing a permission
-  /// dialog before the user has any context why is bad UX. Call this
-  /// from onboarding or the first time the user actually sets an alarm.
+  /// dialog before the user has any context why is bad UX. Called
+  /// lazily on the first actual schedule attempt via [_ensurePermissions].
   Future<void> requestPermissions() async {
-    // kIsWeb must be checked first — defaultTargetPlatform is safe though
-    // at runtime on web rather than just returning false, so evaluating
-    // it there would crash instead of gracefully no-op'ing. Caught during
-    // the Step 9 cross-platform pass.
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     final android = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
@@ -187,10 +196,59 @@ class AlarmScheduler {
 
     await android.requestNotificationsPermission();
     await android.requestExactAlarmsPermission();
-    // Note: requestFullScreenIntentPermission() is intentionally NOT called
-    // here. It opens the "Display over other apps" settings page and must
-    // only be triggered when the user is actually setting a medium/strong
-    // alarm (see requestFullScreenPermission() below).
+  }
+
+  /// Lazily requests permissions on the first schedule call. Guarded by
+  /// [_permissionsRequested] so subsequent calls are free.
+  Future<void> _ensurePermissions() async {
+    if (_permissionsRequested) return;
+    _permissionsRequested = true;
+    await requestPermissions();
+  }
+
+  /// Wraps [_plugin.zonedSchedule] with a try/catch. If exact alarm
+  /// scheduling throws (e.g. permission revoked on Android 14+), falls
+  /// back to inexact scheduling which doesn't require the permission.
+  Future<void> _safeZonedSchedule({
+    required int id,
+    required String title,
+    required String body,
+    required tz.TZDateTime scheduledDate,
+    required NotificationDetails notificationDetails,
+    required String payload,
+    DateTimeComponents? matchDateTimeComponents,
+  }) async {
+    try {
+      await _plugin.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: scheduledDate,
+        notificationDetails: notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        payload: payload,
+        matchDateTimeComponents: matchDateTimeComponents,
+      );
+    } catch (e) {
+      debugPrint(
+        'AlarmScheduler: exact alarm failed ($e), '
+        'falling back to inexact scheduling.',
+      );
+      try {
+        await _plugin.zonedSchedule(
+          id: id,
+          title: title,
+          body: body,
+          scheduledDate: scheduledDate,
+          notificationDetails: notificationDetails,
+          androidScheduleMode: AndroidScheduleMode.inexact,
+          payload: payload,
+          matchDateTimeComponents: matchDateTimeComponents,
+        );
+      } catch (e2) {
+        debugPrint('AlarmScheduler: inexact fallback also failed: $e2');
+      }
+    }
   }
 
   /// Requests full-screen intent permission — only needed for
@@ -239,6 +297,8 @@ class AlarmScheduler {
       return ids;
     }
 
+    await _ensurePermissions();
+
     for (var i = 0; i < offsets.length; i++) {
       final fireAt = dueAt.subtract(offsets[i].beforeDue);
       if (fireAt.isBefore(DateTime.now())) continue;
@@ -252,13 +312,12 @@ class AlarmScheduler {
         siblingIds: siblingIds,
       );
 
-      await _plugin.zonedSchedule(
+      await _safeZonedSchedule(
         id: ids[i],
         title: title,
         body: body,
         scheduledDate: tz.TZDateTime.from(fireAt, tz.local),
         notificationDetails: _detailsForPreset(preset),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         payload: payload.encode(),
       );
     }
@@ -304,13 +363,14 @@ class AlarmScheduler {
       return id;
     }
 
-    await _plugin.zonedSchedule(
+    await _ensurePermissions();
+
+    await _safeZonedSchedule(
       id: id,
       title: title,
       body: body,
       scheduledDate: scheduled,
       notificationDetails: _detailsForPreset(preset),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: weekday != null
           ? DateTimeComponents.dayOfWeekAndTime
           : DateTimeComponents.time,
@@ -359,13 +419,15 @@ class AlarmScheduler {
       ));
       return id;
     }
-    await _plugin.zonedSchedule(
+
+    await _ensurePermissions();
+
+    await _safeZonedSchedule(
       id: id,
       title: title,
       body: body,
       scheduledDate: scheduled,
       notificationDetails: _detailsForPreset(preset),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       payload: AlarmPayload(
         entityId: entityId,
         title: title,
@@ -626,13 +688,12 @@ class AlarmScheduler {
         siblingIds: payload.siblingIds,
       ));
     } else {
-      await _plugin.zonedSchedule(
+      await _safeZonedSchedule(
         id: id,
         title: payload.title,
         body: payload.body,
         scheduledDate: tz.TZDateTime.from(fireAt, tz.local),
         notificationDetails: _detailsForPreset(payload.preset),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         payload: payload.encode(),
       );
     }
