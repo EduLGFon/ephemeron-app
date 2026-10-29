@@ -83,13 +83,14 @@ Checklist:
 Acceptance: notes usable offline with folders, search, preview. Status: done. Verified: `flutter test` 54 passed, `flutter analyze` clean.
 New deps (pinned exact): markdown 7.3.1 (parser only, custom renderer), image 4.3.0 (reserved for attachment compression). Size check deferred (no Android SDK).
 
-## Phase 8 - Habits, countdowns, focus (in progress)
+## Phase 8 - Habits, countdowns, focus (done)
 Checklist:
 - [x] Habit streak engine (domain, skip-neutral) + date keys + countdown date math
 - [x] Habit (outbox rows)/countdown/focus repositories (3 tests)
 - [x] Habit/countdown/focus providers + UI screens (all tabs wired)
 - [x] Focus timer from stored startedAt/targetEndUtc + AlarmScheduler end alarm (no polling; per-second tick only while running view visible)
-- [ ] Backend auth REST client + changeset sync for habits/focus with fake-server tests; re-verify Google data never touches it
-Acceptance: timers survive app kill, streaks correct. Status: habits + countdowns + focus UI done, verified `flutter test` 67 passed, `flutter analyze` clean.
+- [x] Backend auth REST client + changeset sync for habits/focus with fake-server tests; Google isolation re-verified (backend code imports no Google code, touches only habit/focus tables)
+- [x] Backend account UI (AuthScreen section, settings entry, sync triggers, remote-data deletion)
+Acceptance: timers survive app kill, streaks correct. Status: Phase 8 done, verified `flutter test` 81 passed, `flutter analyze` clean.
 Notes: dialog TextEditingControllers are intentionally not disposed (disposal races the pop transition). Widget tests mock the ephemeron/alarms channel.
 Notes: bestStreak bridges skipped days without extending the run (matches currentStreak). Focus/countdown repos enqueue no outbox rows yet; backend sync step must add them. Focus weekly streaks ignore skipped; `finishSession` abandoned param unused.
