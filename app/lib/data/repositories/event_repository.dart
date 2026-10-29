@@ -85,6 +85,26 @@ class EventRepository {
         .get();
   }
 
+  /// Global-search hits over live events, newest first.
+  Future<List<Event>> searchEvents(String query, {int limit = 20}) async {
+    final q = query.trim();
+    if (q.isEmpty) return [];
+    final stripped = q.replaceAll('%', '').replaceAll('_', '').trim();
+    if (stripped.isEmpty) return [];
+    final like = '%$stripped%';
+    return (dbSelect()
+          ..where(
+            (e) =>
+                e.deletedAt.isNull() &
+                (e.title.like(like) |
+                    e.location.like(like) |
+                    e.notes.like(like)),
+          )
+          ..orderBy([(e) => OrderingTerm.desc(e.updatedAt)])
+          ..limit(limit))
+        .get();
+  }
+
   /// Deletes one occurrence, following ones, or the whole series.
   Future<void> deleteOccurrence(
     String masterId,

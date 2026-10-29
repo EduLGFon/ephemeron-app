@@ -99,6 +99,20 @@ class HabitRepository {
     return q.watch();
   }
 
+  /// Global-search hits over live habits.
+  Future<List<Habit>> searchHabits(String query, {int limit = 20}) async {
+    final q = query.trim();
+    if (q.isEmpty) return [];
+    final stripped = q.replaceAll('%', '').replaceAll('_', '').trim();
+    if (stripped.isEmpty) return [];
+    final like = '%$stripped%';
+    return (_db.select(_db.habits)
+          ..where((h) => h.deletedAt.isNull() & h.name.like(like))
+          ..orderBy([(h) => OrderingTerm.asc(h.name)])
+          ..limit(limit))
+        .get();
+  }
+
   Future<void> archiveHabit(String id, bool archived) async {
     await (_db.update(_db.habits)..where((h) => h.id.equals(id))).write(
       HabitsCompanion(

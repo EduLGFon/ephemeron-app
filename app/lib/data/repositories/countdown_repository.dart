@@ -46,6 +46,23 @@ class CountdownRepository {
     return q.watch();
   }
 
+  /// Global-search hits over live countdowns.
+  Future<List<Countdown>> searchCountdowns(
+    String query, {
+    int limit = 20,
+  }) async {
+    final q = query.trim();
+    if (q.isEmpty) return [];
+    final stripped = q.replaceAll('%', '').replaceAll('_', '').trim();
+    if (stripped.isEmpty) return [];
+    final like = '%$stripped%';
+    return (_db.select(_db.countdowns)
+          ..where((c) => c.deletedAt.isNull() & c.title.like(like))
+          ..orderBy([(c) => OrderingTerm.asc(c.targetDate)])
+          ..limit(limit))
+        .get();
+  }
+
   Future<void> updateCountdown(
     String id, {
     String? title,

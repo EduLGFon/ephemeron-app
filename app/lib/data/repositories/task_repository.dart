@@ -145,6 +145,38 @@ class TaskRepository {
         .watch();
   }
 
+  String _like(String query) =>
+      '%${query.replaceAll('%', '').replaceAll('_', '')}%';
+
+  bool _blank(String query) =>
+      query.replaceAll('%', '').replaceAll('_', '').trim().isEmpty;
+
+  /// Global-search hits: open and completed tasks, newest first.
+  Future<List<Task>> searchTasks(String query, {int limit = 20}) async {
+    final q = query.trim();
+    if (q.isEmpty || _blank(q)) return [];
+    final like = _like(q);
+    return (_db.select(_db.tasks)
+          ..where(
+            (t) =>
+                t.deletedAt.isNull() &
+                (t.title.like(like) | t.notes.like(like)),
+          )
+          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])
+          ..limit(limit))
+        .get();
+  }
+
+  Future<List<Tag>> searchTags(String query, {int limit = 20}) async {
+    final q = query.trim();
+    if (q.isEmpty || _blank(q)) return [];
+    return (_db.select(_db.tags)
+          ..where((t) => t.name.like(_like(q)))
+          ..orderBy([(t) => OrderingTerm.asc(t.name)])
+          ..limit(limit))
+        .get();
+  }
+
   Stream<List<Task>> watchCompleted({String? listId, int limit = 200}) {
     final q = _db.select(_db.tasks)
       ..where(

@@ -288,7 +288,9 @@ class NoteRepository {
   Future<List<NoteSearchHit>> searchNotes(String query) async {
     final q = query.trim();
     if (q.isEmpty) return [];
-    final like = '%${q.replaceAll('%', '').replaceAll('_', '')}%';
+    final stripped = q.replaceAll('%', '').replaceAll('_', '').trim();
+    if (stripped.isEmpty) return [];
+    final like = '%$stripped%';
     final rows =
         await (_db.select(_db.notes)
               ..where(

@@ -178,6 +178,14 @@ class _MoreSheet extends StatelessWidget {
               onTap: () => onSelected(idx),
             ),
           ListTile(
+            leading: const Icon(Icons.search),
+            title: const Text('Search'),
+            onTap: () {
+              Navigator.of(context).pop();
+              context.push('/search');
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.settings_outlined),
             title: const Text('Settings'),
             onTap: () {
