@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/event_repository.dart';
+import '../../notes/application/notes_providers.dart';
+import '../../notes/presentation/note_editor_screen.dart';
 import '../application/calendar_providers.dart';
 import 'event_editor_sheet.dart';
 import 'scope_sheet.dart';
@@ -59,6 +61,7 @@ class _Details extends ConsumerWidget {
                   leading: const Icon(Icons.notes_outlined),
                   title: Text(e.notes!),
                 ),
+              _LinkedNotes(eventId: e.id),
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -82,83 +85,139 @@ class _Details extends ConsumerWidget {
                   ],
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final noteRepo = ref.read(noteRepositoryProvider);
+                    final id = await noteRepo.createNote(
+                      title: 'Notes for ${e.title}',
+                      linkedEventId: e.id,
+                    );
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => NoteEditorScreen(noteId: id),
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.note_add_outlined),
+                  label: const Text('Add note'),
+                ),
+              ),
             ],
           ),
         );
       },
     );
   }
+}
 
-  String _when(Event e) {
-    if (e.isAllDay) return e.startDate ?? '';
-    final s = e.startUtc == null
-        ? '?'
-        : DateTime.fromMillisecondsSinceEpoch(
-            e.startUtc!,
-            isUtc: true,
-          ).toLocal().toString().substring(0, 16);
-    final en = e.endUtc == null
-        ? ''
-        : ' - ${DateTime.fromMillisecondsSinceEpoch(e.endUtc!, isUtc: true).toLocal().toString().substring(11, 16)}';
-    return '$s$en';
+class _LinkedNotes extends ConsumerWidget {
+  const _LinkedNotes({required this.eventId});
+
+  final String eventId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return FutureBuilder<List<Note>>(
+      future: ref.read(noteRepositoryProvider).notesForEvent(eventId),
+      builder: (ctx, snap) {
+        final notes = snap.data ?? const <Note>[];
+        if (notes.isEmpty) return const SizedBox.shrink();
+        return Column(
+          children: [
+            for (final n in notes)
+              ListTile(
+                leading: const Icon(Icons.sticky_note_2_outlined),
+                title: Text(n.title.isEmpty ? '(untitled)' : n.title),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => NoteEditorScreen(noteId: n.id),
+                    ),
+                  );
+                },
+              ),
+          ],
+        );
+      },
+    );
   }
+}
 
-  Future<void> _delete(BuildContext context, WidgetRef ref, Event e) async {
-    final repo = ref.read(eventRepositoryProvider);
-    final recurring =
-        e.rrule != null && e.rrule!.isNotEmpty && e.recurringMasterId == null;
-    EditScope scope = EditScope.all;
-    DateTime orig = DateTime.now().toUtc();
-    if (recurring) {
-      if (!context.mounted) return;
-      final s = await showScopeSheet(context);
-      if (s == null) return;
-      scope = s;
-      orig = DateTime.fromMillisecondsSinceEpoch(e.startUtc ?? 0, isUtc: true);
-      if (!context.mounted) return;
-      if (scope == EditScope.single || scope == EditScope.following) {
-        await repo.deleteOccurrence(e.id, orig, scope: scope);
-        if (context.mounted) {
-          Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Event deleted'),
-              duration: Duration(seconds: 6),
-            ),
-          );
-        }
-        return;
-      }
-    }
+String _when(Event e) {
+  if (e.isAllDay) return e.startDate ?? '';
+  final s = e.startUtc == null
+      ? '?'
+      : DateTime.fromMillisecondsSinceEpoch(
+          e.startUtc!,
+          isUtc: true,
+        ).toLocal().toString().substring(0, 16);
+  final en = e.endUtc == null
+      ? ''
+      : ' - ${DateTime.fromMillisecondsSinceEpoch(e.endUtc!, isUtc: true).toLocal().toString().substring(11, 16)}';
+  return '$s$en';
+}
+
+Future<void> _delete(BuildContext context, WidgetRef ref, Event e) async {
+  final repo = ref.read(eventRepositoryProvider);
+  final recurring =
+      e.rrule != null && e.rrule!.isNotEmpty && e.recurringMasterId == null;
+  EditScope scope = EditScope.all;
+  DateTime orig = DateTime.now().toUtc();
+  if (recurring) {
     if (!context.mounted) return;
-    final confirm =
-        await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Delete event?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Delete'),
-              ),
-            ],
+    final s = await showScopeSheet(context);
+    if (s == null) return;
+    scope = s;
+    orig = DateTime.fromMillisecondsSinceEpoch(e.startUtc ?? 0, isUtc: true);
+    if (!context.mounted) return;
+    if (scope == EditScope.single || scope == EditScope.following) {
+      await repo.deleteOccurrence(e.id, orig, scope: scope);
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Event deleted'),
+            duration: Duration(seconds: 6),
           ),
-        ) ??
-        false;
-    if (!confirm || !context.mounted) return;
-    await repo.deleteEvent(e.id);
-    if (context.mounted) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Event deleted'),
-          duration: Duration(seconds: 6),
-        ),
-      );
+        );
+      }
+      return;
     }
+  }
+  if (!context.mounted) return;
+  final confirm =
+      await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Delete event?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+  if (!confirm || !context.mounted) return;
+  await repo.deleteEvent(e.id);
+  if (context.mounted) {
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Event deleted'),
+        duration: Duration(seconds: 6),
+      ),
+    );
   }
 }

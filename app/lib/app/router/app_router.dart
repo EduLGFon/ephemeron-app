@@ -8,6 +8,7 @@ import '../../features/tasks/presentation/matrix_screen.dart';
 import '../../features/tasks/presentation/tasks_screen.dart';
 import '../../features/alarms/presentation/alarm_settings_screen.dart';
 import '../../features/alarms/presentation/ring_screen.dart';
+import '../../features/notes/presentation/notes_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -42,7 +43,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          for (var i = 3; i < 7; i++)
+          for (var i = 3; i < 6; i++)
             StatefulShellBranch(
               routes: [
                 GoRoute(
@@ -51,6 +52,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ),
               ],
             ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/tab6',
+                builder: (context, state) => const NotesScreen(),
+              ),
+            ],
+          ),
         ],
       ),
       GoRoute(path: '/ring', builder: (context, state) => const RingScreen()),

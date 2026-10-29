@@ -9,13 +9,17 @@ final noteRepositoryProvider = Provider<NoteRepository>((ref) {
   return NoteRepository(ref.watch(appDatabaseProvider));
 });
 
-final foldersProvider =
-    StreamProvider.family<List<Folder>, String?>((ref, parentId) {
+final foldersProvider = StreamProvider.family<List<Folder>, String?>((
+  ref,
+  parentId,
+) {
   return ref.watch(noteRepositoryProvider).watchChildFolders(parentId);
 });
 
-final folderNotesProvider =
-    StreamProvider.family<List<Note>, String?>((ref, folderId) {
+final folderNotesProvider = StreamProvider.family<List<Note>, String?>((
+  ref,
+  folderId,
+) {
   return ref.watch(noteRepositoryProvider).watchNotesInFolder(folderId);
 });
 
@@ -24,8 +28,9 @@ final noteTrashProvider = StreamProvider<List<Note>>((ref) {
 });
 
 /// Null means the top level (unfiled notes).
-final selectedFolderProvider =
-    NotifierProvider<SelectedFolder, String?>(SelectedFolder.new);
+final selectedFolderProvider = NotifierProvider<SelectedFolder, String?>(
+  SelectedFolder.new,
+);
 
 class SelectedFolder extends Notifier<String?> {
   @override

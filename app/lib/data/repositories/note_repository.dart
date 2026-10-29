@@ -23,6 +23,31 @@ class NoteRepository {
 
   // Folders.
 
+  Stream<List<Folder>> watchFolders(String? parentId) {
+    final q = _db.select(_db.folders)..where((t) => t.deletedAt.isNull());
+    if (parentId == null) {
+      q.where((t) => t.parentId.isNull());
+    } else {
+      q.where((t) => t.parentId.equals(parentId));
+    }
+    q.orderBy([(t) => OrderingTerm.asc(t.sortOrder)]);
+    return q.watch();
+  }
+
+  Stream<List<Folder>> watchChildFolders(String? parentId) =>
+      watchFolders(parentId);
+
+  Future<List<Folder>> childFolders(String? parentId) async {
+    final q = _db.select(_db.folders)..where((t) => t.deletedAt.isNull());
+    if (parentId == null) {
+      q.where((t) => t.parentId.isNull());
+    } else {
+      q.where((t) => t.parentId.equals(parentId));
+    }
+    q.orderBy([(t) => OrderingTerm.asc(t.sortOrder)]);
+    return q.get();
+  }
+
   Future<String> createFolder(String name, {String? parentId}) async {
     final id = newId();
     final now = _now();
@@ -94,17 +119,6 @@ class NoteRepository {
       );
       await (_db.delete(_db.folders)..where((t) => t.id.equals(folderId))).go();
     });
-  }
-
-  Stream<List<Folder>> watchFolders(String? parentId) {
-    final q = _db.select(_db.folders)..where((t) => t.deletedAt.isNull());
-    if (parentId == null) {
-      q.where((t) => t.parentId.isNull());
-    } else {
-      q.where((t) => t.parentId.equals(parentId));
-    }
-    q.orderBy([(t) => OrderingTerm.asc(t.sortOrder)]);
-    return q.watch();
   }
 
   // Notes.
@@ -260,6 +274,13 @@ class NoteRepository {
       body: fullText,
       linkedEventId: eventId,
     );
+  }
+
+  Stream<List<Note>> watchTrash() {
+    return (_db.select(_db.notes)
+          ..where((t) => t.deletedAt.isNotNull())
+          ..orderBy([(t) => OrderingTerm.desc(t.deletedAt)]))
+        .watch();
   }
 
   // Search via FTS5 with highlighted snippets.

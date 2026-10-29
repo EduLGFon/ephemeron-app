@@ -37,8 +37,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
             icon: const Icon(Icons.delete_outline),
             tooltip: 'Trash',
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                  builder: (_) => const _TrashScreen()),
+              MaterialPageRoute<void>(builder: (_) => const _TrashScreen()),
             ),
           ),
         ],
@@ -51,19 +50,17 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
           ),
           Expanded(
             child: foldersAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => _ErrorState(
-                  message: 'Could not load folders.',
-                  onRetry: () =>
-                      ref.invalidate(foldersProvider(_folderId))),
+                message: 'Could not load folders.',
+                onRetry: () => ref.invalidate(foldersProvider(_folderId)),
+              ),
               data: (folders) => notesAsync.when(
-                loading: () => const Center(
-                    child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => _ErrorState(
-                    message: 'Could not load notes.',
-                    onRetry: () =>
-                        ref.invalidate(folderNotesProvider(_folderId))),
+                  message: 'Could not load notes.',
+                  onRetry: () => ref.invalidate(folderNotesProvider(_folderId)),
+                ),
                 data: (notes) {
                   if (folders.isEmpty && notes.isEmpty) {
                     return _EmptyState(onAdd: () => _newNote());
@@ -72,8 +69,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                     children: [
                       for (final f in folders)
                         ListTile(
-                          leading:
-                              const Icon(Icons.folder_outlined),
+                          leading: const Icon(Icons.folder_outlined),
                           title: Text(f.name),
                           trailing: PopupMenuButton<String>(
                             onSelected: (v) {
@@ -85,12 +81,12 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                             },
                             itemBuilder: (_) => const [
                               PopupMenuItem(
-                                  value: 'delete',
-                                  child: Text('Delete folder')),
+                                value: 'delete',
+                                child: Text('Delete folder'),
+                              ),
                             ],
                           ),
-                          onTap: () =>
-                              setState(() => _folderId = f.id),
+                          onTap: () => setState(() => _folderId = f.id),
                         ),
                       for (final n in notes)
                         Dismissible(
@@ -100,21 +96,20 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                             color: Colors.red,
                             alignment: Alignment.centerRight,
                             padding: const EdgeInsets.only(right: 16),
-                            child: const Icon(Icons.delete,
-                                color: Colors.white),
+                            child: const Icon(
+                              Icons.delete,
+                              color: Colors.white,
+                            ),
                           ),
                           confirmDismiss: (_) async {
                             await ref
                                 .read(noteRepositoryProvider)
                                 .trashNote(n.id);
                             if (context.mounted) {
-                              ScaffoldMessenger.of(context)
-                                  .showSnackBar(
+                              ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(
-                                      'Trashed "${n.title}"'),
-                                  duration:
-                                      const Duration(seconds: 6),
+                                  content: Text('Trashed "${n.title}"'),
+                                  duration: const Duration(seconds: 6),
                                   action: SnackBarAction(
                                     label: 'Undo',
                                     onPressed: () => ref
@@ -130,9 +125,9 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                             leading: n.pinned
                                 ? const Icon(Icons.push_pin, size: 18)
                                 : null,
-                            title: Text(n.title.isEmpty
-                                ? '(untitled)'
-                                : n.title),
+                            title: Text(
+                              n.title.isEmpty ? '(untitled)' : n.title,
+                            ),
                             subtitle: _subtitle(n),
                             onTap: () => _openNote(n),
                           ),
@@ -167,14 +162,12 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
   Widget? _subtitle(Note n) {
     final body = (n.body ?? '').trim();
     if (body.isEmpty && n.linkedEventId == null) return null;
-    final first =
-        body.split('\n').firstWhere((l) => l.trim().isNotEmpty,
-            orElse: () => '');
-    final text =
-        n.linkedEventId != null ? '[event] $first' : first;
+    final first = body
+        .split('\n')
+        .firstWhere((l) => l.trim().isNotEmpty, orElse: () => '');
+    final text = n.linkedEventId != null ? '[event] $first' : first;
     if (text.isEmpty) return null;
-    return Text(text,
-        maxLines: 1, overflow: TextOverflow.ellipsis);
+    return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis);
   }
 
   Future<void> _newNote() async {
@@ -191,8 +184,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
 
   void _openById(String id) {
     Navigator.of(context).push(
-      MaterialPageRoute<void>(
-          builder: (_) => NoteEditorScreen(noteId: id)),
+      MaterialPageRoute<void>(builder: (_) => NoteEditorScreen(noteId: id)),
     );
   }
 
@@ -203,18 +195,19 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('New folder'),
         content: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration:
-                const InputDecoration(hintText: 'Name')),
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Name'),
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () =>
-                  Navigator.of(ctx).pop(controller.text.trim()),
-              child: const Text('Create')),
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            child: const Text('Create'),
+          ),
         ],
       ),
     );
@@ -233,29 +226,30 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
         return AlertDialog(
           title: const Text('Search notes'),
           content: TextField(
-              controller: ctl,
-              autofocus: true,
-              onSubmitted: (v) => Navigator.of(ctx).pop(v)),
+            controller: ctl,
+            autofocus: true,
+            onSubmitted: (v) => Navigator.of(ctx).pop(v),
+          ),
           actions: [
             FilledButton(
-                onPressed: () =>
-                    Navigator.of(ctx).pop(ctl.text),
-                child: const Text('Search')),
+              onPressed: () => Navigator.of(ctx).pop(ctl.text),
+              child: const Text('Search'),
+            ),
           ],
         );
       },
     );
-    if (query == null || query.trim().isEmpty || !mounted) return;
-    setState(() => _query = query);
-    final hits =
-        await ref.read(noteRepositoryProvider).searchNotes(query);
+    if (query == null || query.trim().isEmpty) return;
     if (!mounted) return;
-    Navigator.of(context).push(
+    setState(() => _query = query);
+    final hits = await ref.read(noteRepositoryProvider).searchNotes(query);
+    if (!context.mounted) return;
+    final navigator = Navigator.of(context);
+    navigator.push(
       MaterialPageRoute<void>(
-          builder: (_) => _SearchResults(
-              query: query,
-              hits: hits,
-              onOpen: _openById)),
+        builder: (_) =>
+            _SearchResults(query: query, hits: hits, onOpen: _openById),
+      ),
     );
   }
 }
@@ -269,8 +263,7 @@ class _Breadcrumbs extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (folderId == null) {
-      return const ListTile(
-          title: Text('All folders'), enabled: false);
+      return const ListTile(title: Text('All folders'), enabled: false);
     }
     return FutureBuilder(
       future: ref.read(noteRepositoryProvider).breadcrumbs(folderId!),
@@ -281,13 +274,15 @@ class _Breadcrumbs extends ConsumerWidget {
           child: Row(
             children: [
               TextButton(
-                  onPressed: () => onNavigate(null),
-                  child: const Text('All')),
+                onPressed: () => onNavigate(null),
+                child: const Text('All'),
+              ),
               for (final f in crumbs) ...[
                 const Text('/'),
                 TextButton(
-                    onPressed: () => onNavigate(f.id),
-                    child: Text(f.name)),
+                  onPressed: () => onNavigate(f.id),
+                  child: Text(f.name),
+                ),
               ],
             ],
           ),
@@ -298,8 +293,11 @@ class _Breadcrumbs extends ConsumerWidget {
 }
 
 class _SearchResults extends StatelessWidget {
-  const _SearchResults(
-      {required this.query, required this.hits, required this.onOpen});
+  const _SearchResults({
+    required this.query,
+    required this.hits,
+    required this.onOpen,
+  });
 
   final String query;
   final List<dynamic> hits;
@@ -316,9 +314,11 @@ class _SearchResults extends StatelessWidget {
                 for (final h in hits)
                   ListTile(
                     title: Text((h.note as Note).title),
-                    subtitle: Text((h.snippet as String)
-                        .replaceAll('<b>', '')
-                        .replaceAll('</b>', '')),
+                    subtitle: Text(
+                      (h.snippet as String)
+                          .replaceAll('<b>', '')
+                          .replaceAll('</b>', ''),
+                    ),
                     onTap: () => onOpen((h.note as Note).id),
                   ),
               ],
@@ -336,8 +336,7 @@ class _TrashScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Trash')),
       body: trashAsync.when(
-        loading: () =>
-            const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => const Center(child: Text('Could not load.')),
         data: (notes) {
           if (notes.isEmpty) {
@@ -350,9 +349,8 @@ class _TrashScreen extends ConsumerWidget {
                   title: Text(n.title),
                   trailing: IconButton(
                     icon: const Icon(Icons.restore),
-                    onPressed: () => ref
-                        .read(noteRepositoryProvider)
-                        .restoreNote(n.id),
+                    onPressed: () =>
+                        ref.read(noteRepositoryProvider).restoreNote(n.id),
                   ),
                 ),
             ],

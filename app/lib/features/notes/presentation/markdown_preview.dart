@@ -1,263 +1,208 @@
-// Lightweight Markdown renderer: parses with package:markdown and builds
-// TextSpans directly (no webview, no heavy widget tree). Preview is parsed
-// once per body version and cached; long notes render in block chunks so
-// the first paint stays fast. Tappable checklist items toggle the source
-// via [onToggleTask].
+// Lightweight Markdown renderer to widgets. Parses with the GitHub
+// flavored set, builds each block once, renders blocks lazily in a
+// ListView. Tappable task-list items call [onToggleTask] with the Nth
+// task line index in the source.
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:markdown/markdown.dart' as md;
 
-class MarkdownPreview extends StatefulWidget {
-  const MarkdownPreview({
-    super.key,
-    required this.body,
-    this.onToggleTask,
-    this.maxBlocks,
-  });
+class MarkdownPreview extends StatelessWidget {
+  const MarkdownPreview({super.key, required this.body, this.onToggleTask});
 
   final String body;
-  final void Function(int lineIndex, bool checked)? onToggleTask;
-  final int? maxBlocks;
+  final ValueChanged<int>? onToggleTask;
 
   @override
-  State<MarkdownPreview> createState() => _MarkdownPreviewState();
-}
-
-class _MarkdownPreviewState extends State<MarkdownPreview> {
-  late String _parsedFor;
-  late List<md.Node> _nodes;
-
-  @override
-  void initState() {
-    super.initState();
-    _parsedFor = widget.body;
-    _nodes = _parse(widget.body);
-  }
-
-  static List<md.Node> _parse(String body) {
+  Widget build(BuildContext context) {
     final doc = md.Document(
-      blockSyntaxes: md.BlockSyntax.list,
-      inlineSyntaxes: md.InlineSyntax.list,
+      blockSyntaxes: md.ExtensionSet.gitHubFlavored.blockSyntaxes,
+      inlineSyntaxes: md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
     );
-    return doc.parse(body);
-  }
-
-  @override
-  void didUpdateWidget(MarkdownPreview old) {
-    super.didUpdateWidget(old);
-    if (old.body != widget.body) {
-      _parsedFor = widget.body;
-      _nodes = _parse(widget.body);
+    final nodes = doc.parseLines(body.split('\n'));
+    final blocks = _Blocks(context, onToggleTask: onToggleTask);
+    for (final n in nodes) {
+      n.accept(blocks);
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final nodes = widget.maxBlocks == null
-        ? _nodes
-        : _nodes.take(widget.maxBlocks!).toList();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (var i = 0; i < nodes.length; i++)
-          _Block(
-            node: nodes[i],
-            theme: theme,
-            onToggleTask: widget.onToggleTask,
-          ),
-        if (widget.maxBlocks != null && _nodes.length > widget.maxBlocks!)
-          Text(
-            '+ ${_nodes.length - widget.maxBlocks!} more blocks',
-            style: theme.textTheme.bodySmall,
-          ),
-      ],
+    if (blocks.widgets.isEmpty) {
+      return const Text('Nothing to preview');
+    }
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: blocks.widgets,
     );
   }
 }
 
-class _Block extends StatelessWidget {
-  const _Block(
-      {required this.node, required this.theme, this.onToggleTask});
+class _Blocks implements md.NodeVisitor {
+  _Blocks(this.context, {this.onToggleTask});
 
-  final md.Node node;
-  final ThemeData theme;
-  final void Function(int lineIndex, bool checked)? onToggleTask;
+  final BuildContext context;
+  final ValueChanged<int>? onToggleTask;
+  final widgets = <Widget>[];
+  int listDepth = 0;
+  int taskIndex = 0;
+
+  TextStyle get _base =>
+      Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
 
   @override
-  Widget build(BuildContext context) {
-    final n = node;
-    if (n is md.Element) {
-      switch (n.tag) {
-        case 'h1':
-        case 'h2':
-        case 'h3':
-          final level = int.parse(n.tag.substring(1));
-          final size = [0.0, 22.0, 19.0, 17.0][level.clamp(1, 3)];
-          return Padding(
-            padding: const EdgeInsets.only(top: 12, bottom: 4),
-            child: Text.rich(
-              _spans(n.children, theme.textTheme.bodyLarge!.copyWith(
-                fontSize: size,
-                fontWeight: FontWeight.bold,
-              )),
+  bool visitElementBefore(md.Element element) {
+    final tag = element.tag;
+    if (tag.startsWith('h')) {
+      final level = int.tryParse(tag.substring(1)) ?? 1;
+      widgets.add(
+        Padding(
+          padding: EdgeInsets.only(top: level == 1 ? 16 : 12, bottom: 4),
+          child: Text(
+            element.textContent,
+            style: _base.copyWith(
+              fontSize: 22 - level * 2.0,
+              fontWeight: FontWeight.bold,
             ),
-          );
-        case 'p':
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text.rich(_spans(
-                n.children, theme.textTheme.bodyMedium!)),
-          );
-        case 'ul':
-        case 'ol':
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (var i = 0; i < (n.children?.length ?? 0); i++)
-                  _listItem(n.children![i] as md.Element,
-                      ordered: n.tag == 'ol', index: i),
-              ],
-            ),
-          );
-        case 'blockquote':
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              border: Border(
-                  left: BorderSide(
-                      color: theme.colorScheme.primary, width: 3)),
-            ),
-            child: Text.rich(_spans(
-                n.children, theme.textTheme.bodyMedium!)),
-          );
-        case 'pre':
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(8),
-            color: theme.colorScheme.surfaceContainerHighest,
-            child: SelectableText(
-              n.textContent,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(fontFamily: 'monospace'),
-            ),
-          );
-        case 'hr':
-          return const Divider();
-      }
-    }
-    return const SizedBox.shrink();
-  }
-
-  Widget _listItem(md.Element li,
-      {required bool ordered, required int index}) {
-    final text = li.textContent;
-    final task = RegExp(r'^\s*\[( |x|X)\]\s').firstMatch(text);
-    if (task != null) {
-      final checked = task.group(1)!.toLowerCase() == 'x';
-      final rest = text.substring(task.end);
-      return InkWell(
-        onTap: onToggleTask == null
-            ? null
-            : () => onToggleTask!(li.hashCode, !checked),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                checked
-                    ? Icons.check_box
-                    : Icons.check_box_outline_blank,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  rest,
-                  style: TextStyle(
-                    decoration:
-                        checked ? TextDecoration.lineThrough : null,
-                  ),
-                ),
-              ),
-            ],
           ),
         ),
       );
+      return false;
     }
-    final bullet = ordered ? '${index + 1}. ' : '- ';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Text.rich(TextSpan(
-        text: bullet,
-        children: [
-          _spans(li.children, const TextStyle(fontSize: 14)),
-        ],
-      )),
-    );
-  }
-
-  TextSpan _spans(List<md.Node>? children, TextStyle base) {
-    return TextSpan(
-      style: base,
-      children: [
-        for (final c in children ?? const <md.Node>[])
-          _span(c, base),
-      ],
-    );
-  }
-
-  TextSpan _span(md.Node n, TextStyle base) {
-    if (n is md.Text) return TextSpan(text: n.text, style: base);
-    if (n is md.Element) {
-      switch (n.tag) {
-        case 'strong':
-        case 'b':
-          return TextSpan(
-            style: base.copyWith(fontWeight: FontWeight.bold),
-            children: [
-              for (final c in n.children ?? const <md.Node>[])
-                _span(c, base),
-            ],
-          );
-        case 'em':
-        case 'i':
-          return TextSpan(
-            style:
-                base.copyWith(fontStyle: FontStyle.fontStyle),
-            children: [
-              for (final c in n.children ?? const <md.Node>[])
-                _span(c, base),
-            ],
-          );
-        case 'code':
-          return TextSpan(
-            text: n.textContent,
-            style: base.copyWith(fontFamily: 'monospace'),
-          );
-        case 'a':
-          return TextSpan(
-            text: n.textContent,
-            style: base.copyWith(
-              color: Colors.blue,
-              decoration: TextDecoration.underline,
-            ),
-            recognizer: TapGestureRecognizer()
-              ..onTap = () {},
-          );
-      }
-      return TextSpan(
-        children: [
-          for (final c in n.children ?? const <md.Node>[])
-            _span(c, base),
-        ],
-        style: base,
+    if (tag == 'p') {
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: RichText(text: _spans(element, _base)),
+        ),
       );
+      return false;
     }
-    return const TextSpan();
+    if (tag == 'ul' || tag == 'ol') {
+      listDepth++;
+      return true;
+    }
+    if (tag == 'li') {
+      final text = element.textContent.trim();
+      final taskMatch = RegExp(r'^\[([ xX])\] (.*)').firstMatch(text);
+      if (taskMatch != null) {
+        final idx = taskIndex++;
+        final checked = taskMatch.group(1)!.toLowerCase() == 'x';
+        widgets.add(
+          CheckboxListTile(
+            value: checked,
+            onChanged: onToggleTask == null ? null : (_) => onToggleTask!(idx),
+            title: Text(taskMatch.group(2)!),
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+          ),
+        );
+      } else {
+        widgets.add(
+          Padding(
+            padding: EdgeInsets.only(left: listDepth * 16.0, bottom: 2),
+            child: Text('- $text', style: _base),
+          ),
+        );
+      }
+      return false;
+    }
+    if (tag == 'pre') {
+      widgets.add(
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(8),
+          margin: const EdgeInsets.only(bottom: 8),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: Text(
+            element.textContent,
+            style: _base.copyWith(fontFamily: 'monospace', fontSize: 13),
+          ),
+        ),
+      );
+      return false;
+    }
+    if (tag == 'blockquote') {
+      widgets.add(
+        Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(left: 12),
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                color: Theme.of(context).colorScheme.primary,
+                width: 3,
+              ),
+            ),
+          ),
+          child: Text(element.textContent, style: _base),
+        ),
+      );
+      return false;
+    }
+    return true;
   }
+
+  @override
+  void visitText(md.Text text) {}
+
+  @override
+  void visitElementAfter(md.Element element) {
+    if (element.tag == 'ul' || element.tag == 'ol') listDepth--;
+  }
+
+  TextSpan _spans(md.Element element, TextStyle base) {
+    final spans = <InlineSpan>[];
+    for (final child in element.children ?? const <md.Node>[]) {
+      if (child is md.Text) {
+        spans.add(TextSpan(text: child.text, style: base));
+      } else if (child is md.Element) {
+        final inner = _spans(child, base).children ?? [];
+        final style = switch (child.tag) {
+          'strong' || 'b' => base.copyWith(fontWeight: FontWeight.bold),
+          'em' || 'i' => base.copyWith(fontStyle: FontStyle.italic),
+          'code' => base.copyWith(
+            fontFamily: 'monospace',
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest,
+          ),
+          'a' => base.copyWith(
+            color: Theme.of(context).colorScheme.primary,
+            decoration: TextDecoration.underline,
+          ),
+          'del' => base.copyWith(decoration: TextDecoration.lineThrough),
+          _ => base,
+        };
+        if (inner.isEmpty) {
+          spans.add(TextSpan(text: child.textContent, style: style));
+        } else {
+          for (final s in inner) {
+            if (s is TextSpan) {
+              spans.add(
+                TextSpan(text: s.text, style: (s.style ?? base).merge(style)),
+              );
+            } else {
+              spans.add(s);
+            }
+          }
+        }
+        if (child.tag == 'a' && child.attributes['href'] != null) {
+          final url = child.attributes['href']!;
+          spans.add(
+            TextSpan(
+              text: ' ($url)',
+              style: base.copyWith(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.outline,
+              ),
+              recognizer: TapGestureRecognizer()..onTap = () {},
+            ),
+          );
+        }
+      }
+    }
+    return TextSpan(children: spans, style: base);
+  }
+}
+
+/// Word and character counts for the editor status line.
+({int words, int chars}) countWords(String text) {
+  final words = text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+  return (words: words, chars: text.length);
 }
