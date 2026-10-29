@@ -30,20 +30,19 @@ dependencies:
 
   flutter_local_notifications: ^22.1.0
   timezone: ^0.11.1
-  flutter_timezone: ^5.1.0
+
 
   googleapis: ^16.0.0
   table_calendar: ^3.1.2
 
-  wakelock_plus: ^1.2.8
-  device_calendar_plus: ^0.7.1
+
   battery_plus: ^7.1.1
   local_notifier: ^0.1.6
 
   google_sign_in_platform_interface: any
   google_sign_in_web: any
   flutter_native_splash: ^2.4.8
-  pasteboard: ^0.5.0
+
   file_selector: ^1.1.0
   flutter_markdown_plus: ^1.0.12
   intl: ^0.20.3
@@ -75,12 +74,4 @@ flutter:
         - asset: assets/fonts/Inter-SemiBold.ttf
           weight: 600
 
-dependency_overrides:
-  flutter_timezone:
-    path: packages/flutter_timezone
-  wakelock_plus:
-    path: packages/wakelock_plus
-  device_calendar_plus_android:
-    path: packages/device_calendar_plus_android
-  pasteboard:
-    path: packages/pasteboard
+# dependency_overrides removed
