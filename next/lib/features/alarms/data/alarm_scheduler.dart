@@ -14,4 +14,25 @@ class AlarmScheduler {
   }
 
   Future<void> cancelByIds(List<int> ids) async {}
+
+  Future<int> scheduleRecurring({
+    required String entityId,
+    required String title,
+    required String body,
+    required int hour,
+    required int minute,
+    int? weekday,
+    required AlarmPreset preset,
+  }) async =>
+      0;
+
+  Future<int> scheduleOneShotAt({
+    required String entityId,
+    required String title,
+    required String body,
+    required int hour,
+    required int minute,
+    required AlarmPreset preset,
+  }) async =>
+      0;
 }
