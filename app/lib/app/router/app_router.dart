@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../shell/app_shell.dart';
 import '../shell/section_placeholder.dart';
+import '../../features/calendar/presentation/calendar_screen.dart';
 import '../../features/tasks/presentation/matrix_screen.dart';
 import '../../features/tasks/presentation/tasks_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
@@ -19,7 +20,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/tab0',
-                builder: (context, state) => const SectionPlaceholder(index: 0),
+                builder: (context, state) => const CalendarScreen(),
               ),
             ],
           ),

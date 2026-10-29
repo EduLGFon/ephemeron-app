@@ -22,13 +22,16 @@ final calendarsProvider = StreamProvider<List<Calendar>>((ref) {
   return ref.watch(eventRepositoryProvider).watchCalendars();
 });
 
-final calendarStateProvider =
-    NotifierProvider<CalendarState, CalendarWindow>(CalendarState.new);
+final calendarStateProvider = NotifierProvider<CalendarState, CalendarWindow>(
+  CalendarState.new,
+);
 
 final windowOccurrencesProvider =
-    StreamProvider.family<List<OccurrenceCacheData>, CalendarWindow>(
-        (ref, window) {
-  return ref
-      .watch(occurrenceRepositoryProvider)
-      .watchWindow(window.fromUtc, window.toUtc);
-});
+    StreamProvider.family<List<OccurrenceCacheData>, CalendarWindow>((
+      ref,
+      window,
+    ) {
+      return ref
+          .watch(occurrenceRepositoryProvider)
+          .watchWindow(window.fromUtc, window.toUtc);
+    });

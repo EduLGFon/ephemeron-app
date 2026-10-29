@@ -69,6 +69,5 @@ class SettingsRepository {
 
   static const _kDefaultDur = 'calendar.defaultDurationMin';
   int get defaultDurationMin => _prefs.getInt(_kDefaultDur) ?? 60;
-  Future<void> setDefaultDurationMin(int v) =>
-      _prefs.setInt(_kDefaultDur, v);
+  Future<void> setDefaultDurationMin(int v) => _prefs.setInt(_kDefaultDur, v);
 }

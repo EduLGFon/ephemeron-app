@@ -46,7 +46,8 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
             SizedBox(
               width: 48,
               child: CustomPaint(
-                  painter: _HoursPainter(hourHeight: hourHeight)),
+                painter: _HoursPainter(hourHeight: hourHeight),
+              ),
             ),
             Expanded(
               child: LayoutBuilder(
@@ -56,8 +57,8 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
                     onTapUp: (d) => _tapEmpty(d.localPosition, colW),
                     onVerticalDragStart: (d) =>
                         _dragStart(d.localPosition, occs, colW),
-                    onVerticalDragUpdate: (d) => setState(
-                        () => _dragDy += d.delta.dy),
+                    onVerticalDragUpdate: (d) =>
+                        setState(() => _dragDy += d.delta.dy),
                     onVerticalDragEnd: (_) => _dragEnd(occs, colW),
                     child: CustomPaint(
                       size: Size(cons.maxWidth, 24 * hourHeight),
@@ -69,8 +70,7 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
                         now: DateTime.now(),
                         dragId: _dragId,
                         dragDy: _dragDy,
-                        primary:
-                            Theme.of(context).colorScheme.primary,
+                        primary: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   );
@@ -86,12 +86,10 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
   void _tapEmpty(Offset pos, double colW) {
     final dayIdx = (pos.dx / colW).floor().clamp(0, widget.dayCount - 1);
     final hour = (pos.dy / hourHeight).floor().clamp(0, 23);
-    showEventEditor(context,
-        initialDay: _dayStart(dayIdx), initialHour: hour);
+    showEventEditor(context, initialDay: _dayStart(dayIdx), initialHour: hour);
   }
 
-  void _dragStart(
-      Offset pos, List<OccurrenceCacheData> occs, double colW) {
+  void _dragStart(Offset pos, List<OccurrenceCacheData> occs, double colW) {
     final dayIdx = (pos.dx / colW).floor().clamp(0, widget.dayCount - 1);
     final day = _dayStart(dayIdx);
     final tappedMin = (pos.dy / hourHeight * 60).round();
@@ -111,8 +109,7 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
     }
   }
 
-  Future<void> _dragEnd(
-      List<OccurrenceCacheData> occs, double colW) async {
+  Future<void> _dragEnd(List<OccurrenceCacheData> occs, double colW) async {
     final id = _dragId;
     if (id == null) return;
     setState(() => _dragId = null);
@@ -120,8 +117,7 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
     final snapped = (snapMin / 15).round() * 15;
     if (snapped == 0) return;
     final repo = ref.read(eventRepositoryProvider);
-    final master = await (repo.dbSelect()
-          ..where((e) => e.id.equals(id)))
+    final master = await (repo.dbSelect()..where((e) => e.id.equals(id)))
         .getSingleOrNull();
     if (master == null || !mounted) return;
     if (master.rrule != null && master.rrule!.isNotEmpty) {
@@ -129,35 +125,41 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
       if (scope == null || !mounted) return;
       final orig = master.startUtc == null
           ? DateTime.now().toUtc()
-          : DateTime.fromMillisecondsSinceEpoch(master.startUtc!,
-              isUtc: true);
-      await repo.editOccurrence(id, orig,
-          scope: scope,
-          startUtc: orig.add(Duration(minutes: snapped)),
-          endUtc: DateTime.fromMillisecondsSinceEpoch(
-                  master.endUtc ?? orig.millisecondsSinceEpoch,
-                  isUtc: true)
-              .add(Duration(minutes: snapped)));
+          : DateTime.fromMillisecondsSinceEpoch(master.startUtc!, isUtc: true);
+      await repo.editOccurrence(
+        id,
+        orig,
+        scope: scope,
+        startUtc: orig.add(Duration(minutes: snapped)),
+        endUtc: DateTime.fromMillisecondsSinceEpoch(
+          master.endUtc ?? orig.millisecondsSinceEpoch,
+          isUtc: true,
+        ).add(Duration(minutes: snapped)),
+      );
     } else {
       await repo.editOccurrence(
-          id,
-          master.startUtc == null
-              ? DateTime.now().toUtc()
-              : DateTime.fromMillisecondsSinceEpoch(master.startUtc!,
-                  isUtc: true),
-          scope: EditScope.all,
-          startUtc: DateTime.fromMillisecondsSinceEpoch(master.startUtc!,
-                  isUtc: true)
-              .add(Duration(minutes: snapped)),
-          endUtc: DateTime.fromMillisecondsSinceEpoch(
-                  master.endUtc ?? master.startUtc!,
-                  isUtc: true)
-              .add(Duration(minutes: snapped)));
+        id,
+        master.startUtc == null
+            ? DateTime.now().toUtc()
+            : DateTime.fromMillisecondsSinceEpoch(
+                master.startUtc!,
+                isUtc: true,
+              ),
+        scope: EditScope.all,
+        startUtc: DateTime.fromMillisecondsSinceEpoch(
+          master.startUtc!,
+          isUtc: true,
+        ).add(Duration(minutes: snapped)),
+        endUtc: DateTime.fromMillisecondsSinceEpoch(
+          master.endUtc ?? master.startUtc!,
+          isUtc: true,
+        ).add(Duration(minutes: snapped)),
+      );
     }
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Event moved')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Event moved')));
     }
   }
 }
@@ -171,8 +173,9 @@ class _HoursPainter extends CustomPainter {
     final tp = TextPainter(textDirection: TextDirection.ltr);
     for (var h = 0; h < 24; h++) {
       tp.text = TextSpan(
-          text: '${h.toString().padLeft(2, '0')}:00',
-          style: const TextStyle(fontSize: 10, color: Colors.grey));
+        text: '${h.toString().padLeft(2, '0')}:00',
+        style: const TextStyle(fontSize: 10, color: Colors.grey),
+      );
       tp.layout();
       tp.paint(canvas, Offset(4, h * hourHeight - 6));
     }
@@ -208,21 +211,32 @@ class _TimelinePainter extends CustomPainter {
     final colW = size.width / dayCount;
     final grid = Paint()..color = primary.withValues(alpha: 0.12);
     for (var h = 0; h <= 24; h++) {
-      canvas.drawLine(Offset(0, h * hourHeight),
-          Offset(size.width, h * hourHeight), grid);
+      canvas.drawLine(
+        Offset(0, h * hourHeight),
+        Offset(size.width, h * hourHeight),
+        grid,
+      );
     }
     for (var i = 0; i <= dayCount; i++) {
-      canvas.drawLine(Offset(i * colW, 0),
-          Offset(i * colW, 24 * hourHeight), grid);
+      canvas.drawLine(
+        Offset(i * colW, 0),
+        Offset(i * colW, 24 * hourHeight),
+        grid,
+      );
     }
     for (var i = 0; i < dayCount; i++) {
-      final day =
-          DateTime(anchor.year, anchor.month, anchor.day)
-              .add(Duration(days: i));
+      final day = DateTime(
+        anchor.year,
+        anchor.month,
+        anchor.day,
+      ).add(Duration(days: i));
       if (_isToday(day)) {
         final y = (now.hour * 60 + now.minute) / 60 * hourHeight;
-        canvas.drawLine(Offset(i * colW, y),
-            Offset((i + 1) * colW, y), Paint()..color = Colors.red);
+        canvas.drawLine(
+          Offset(i * colW, y),
+          Offset((i + 1) * colW, y),
+          Paint()..color = Colors.red,
+        );
       }
     }
     final block = Paint()..color = primary.withValues(alpha: 0.85);
@@ -230,9 +244,11 @@ class _TimelinePainter extends CustomPainter {
       final s = DateTime.fromMillisecondsSinceEpoch(o.startUtc);
       final e = DateTime.fromMillisecondsSinceEpoch(o.endUtc);
       for (var i = 0; i < dayCount; i++) {
-        final day =
-            DateTime(anchor.year, anchor.month, anchor.day)
-                .add(Duration(days: i));
+        final day = DateTime(
+          anchor.year,
+          anchor.month,
+          anchor.day,
+        ).add(Duration(days: i));
         if (o.dayKey != dateKey(day)) continue;
         var y0 = (s.hour * 60 + s.minute) / 60 * hourHeight;
         var y1 = (e.hour * 60 + e.minute) / 60 * hourHeight;
@@ -243,9 +259,9 @@ class _TimelinePainter extends CustomPainter {
         }
         canvas.drawRRect(
           RRect.fromRectAndRadius(
-              Rect.fromLTWH(
-                  i * colW + 2, y0, colW - 4, y1 - y0),
-              const Radius.circular(4)),
+            Rect.fromLTWH(i * colW + 2, y0, colW - 4, y1 - y0),
+            const Radius.circular(4),
+          ),
           block,
         );
       }

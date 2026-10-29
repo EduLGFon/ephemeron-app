@@ -1,11 +1,7 @@
 // Visible calendar window: anchor date, view kind, day count.
 // Changing it triggers a cache rebuild (see CalendarScreen).
 class CalendarWindow {
-  CalendarWindow({
-    required this.anchor,
-    required this.view,
-    this.dayCount = 1,
-  });
+  CalendarWindow({required this.anchor, required this.view, this.dayCount = 1});
 
   final DateTime anchor;
   final CalendarViewKind view;
@@ -34,8 +30,9 @@ class CalendarWindow {
       case CalendarViewKind.month:
         final first = DateTime.utc(anchor.year, anchor.month, 1);
         final lead = (first.weekday - DateTime.monday + 7) % 7;
-        return first.subtract(Duration(days: lead)).add(
-            const Duration(days: 42));
+        return first
+            .subtract(Duration(days: lead))
+            .add(const Duration(days: 42));
       case CalendarViewKind.multiDay:
       case CalendarViewKind.day:
         return a.add(Duration(days: dayCount));
@@ -51,19 +48,23 @@ enum CalendarViewKind { month, multiDay, day, agenda, year }
 
 class CalendarState extends Notifier<CalendarWindow> {
   @override
-  CalendarWindow build() => CalendarWindow(
-        anchor: DateTime.now(),
-        view: CalendarViewKind.month,
-      );
+  CalendarWindow build() =>
+      CalendarWindow(anchor: DateTime.now(), view: CalendarViewKind.month);
 
   void setView(CalendarViewKind view, {int dayCount = 1}) {
     state = CalendarWindow(
-        anchor: state.anchor, view: view, dayCount: dayCount);
+      anchor: state.anchor,
+      view: view,
+      dayCount: dayCount,
+    );
   }
 
   void goTo(DateTime anchor) {
     state = CalendarWindow(
-        anchor: anchor, view: state.view, dayCount: state.dayCount);
+      anchor: anchor,
+      view: state.view,
+      dayCount: state.dayCount,
+    );
   }
 
   void shift(int days) {
@@ -76,8 +77,9 @@ class CalendarState extends Notifier<CalendarWindow> {
 
   void goToday() {
     state = CalendarWindow(
-        anchor: DateTime.now(),
-        view: state.view,
-        dayCount: state.dayCount);
+      anchor: DateTime.now(),
+      view: state.view,
+      dayCount: state.dayCount,
+    );
   }
 }

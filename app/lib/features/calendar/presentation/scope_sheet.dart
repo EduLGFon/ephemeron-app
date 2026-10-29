@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 
 import '../../../data/repositories/event_repository.dart';
 
-Future<EditScope?> showScopeSheet(BuildContext context,
-    {bool allowSingle = true}) {
+Future<EditScope?> showScopeSheet(
+  BuildContext context, {
+  bool allowSingle = true,
+}) {
   return showModalBottomSheet<EditScope>(
     context: context,
     builder: (ctx) => SafeArea(

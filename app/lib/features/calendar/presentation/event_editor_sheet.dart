@@ -9,13 +9,20 @@ import '../../settings/application/settings_providers.dart';
 import '../application/calendar_providers.dart';
 import 'scope_sheet.dart';
 
-Future<void> showEventEditor(BuildContext context,
-    {Event? event, DateTime? initialDay, int? initialHour}) {
+Future<void> showEventEditor(
+  BuildContext context, {
+  Event? event,
+  DateTime? initialDay,
+  int? initialHour,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     builder: (_) => _EventEditor(
-        event: event, initialDay: initialDay, initialHour: initialHour),
+      event: event,
+      initialDay: initialDay,
+      initialHour: initialHour,
+    ),
   );
 }
 
@@ -59,13 +66,16 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     _calendarId = e?.calendarId;
     _allDay = e?.isAllDay ?? false;
     if (e?.startUtc != null) {
-      _start =
-          DateTime.fromMillisecondsSinceEpoch(e!.startUtc!, isUtc: true)
-              .toLocal();
+      _start = DateTime.fromMillisecondsSinceEpoch(
+        e!.startUtc!,
+        isUtc: true,
+      ).toLocal();
       _end = e.endUtc == null
           ? _start.add(const Duration(hours: 1))
-          : DateTime.fromMillisecondsSinceEpoch(e.endUtc!, isUtc: true)
-              .toLocal();
+          : DateTime.fromMillisecondsSinceEpoch(
+              e.endUtc!,
+              isUtc: true,
+            ).toLocal();
     } else {
       final day = widget.initialDay ?? DateTime.now();
       final hour = widget.initialHour ?? 9;
@@ -93,8 +103,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     if (d == null) return;
     setState(() {
       if (isStart) {
-        _start = DateTime(
-            d.year, d.month, d.day, _start.hour, _start.minute);
+        _start = DateTime(d.year, d.month, d.day, _start.hour, _start.minute);
         if (_end.isBefore(_start)) {
           _end = _start.add(const Duration(hours: 1));
         }
@@ -103,8 +112,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
         if (_end.isBefore(_start)) {
           _end = _start.add(const Duration(hours: 1));
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('End was before start; adjusted.')),
+            const SnackBar(content: Text('End was before start; adjusted.')),
           );
         }
       }
@@ -118,11 +126,15 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
       if (isStart) {
         final dur = _end.difference(_start);
         _start = DateTime(
-            _start.year, _start.month, _start.day, t.hour, t.minute);
+          _start.year,
+          _start.month,
+          _start.day,
+          t.hour,
+          t.minute,
+        );
         _end = _start.add(dur);
       } else {
-        _end = DateTime(
-            _end.year, _end.month, _end.day, t.hour, t.minute);
+        _end = DateTime(_end.year, _end.month, _end.day, t.hour, t.minute);
       }
     });
   }
@@ -148,45 +160,54 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
           location: _location.text.trim().isEmpty
               ? null
               : _location.text.trim(),
-          notes:
-              _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+          notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         );
       } else {
-        await repo.editOccurrence(existing.id,
-            existing.startUtc == null
-                ? DateTime.now().toUtc()
-                : DateTime.fromMillisecondsSinceEpoch(existing.startUtc!,
-                    isUtc: true),
-            scope: EditScope.all,
-            title: title,
-            startUtc: _allDay ? null : _start.toUtc(),
-            endUtc: _allDay ? null : _end.toUtc(),
-            location: _location.text.trim().isEmpty
-                ? null
-                : _location.text.trim());
+        await repo.editOccurrence(
+          existing.id,
+          existing.startUtc == null
+              ? DateTime.now().toUtc()
+              : DateTime.fromMillisecondsSinceEpoch(
+                  existing.startUtc!,
+                  isUtc: true,
+                ),
+          scope: EditScope.all,
+          title: title,
+          startUtc: _allDay ? null : _start.toUtc(),
+          endUtc: _allDay ? null : _end.toUtc(),
+          location: _location.text.trim().isEmpty
+              ? null
+              : _location.text.trim(),
+        );
       }
       if (mounted) Navigator.of(context).pop();
       return;
     }
-    final scope = await showScopeSheet(context,
-        allowSingle: _rrule == existing.rrule);
+    final scope = await showScopeSheet(
+      context,
+      allowSingle: _rrule == existing.rrule,
+    );
     if (scope == null || !mounted) return;
     if (scope == EditScope.all &&
         (_start.toUtc().millisecondsSinceEpoch != existing.startUtc ||
             _end.toUtc().millisecondsSinceEpoch != existing.endUtc)) {
-      final keep = await showDialog<bool>(
+      final keep =
+          await showDialog<bool>(
             context: context,
             builder: (ctx) => AlertDialog(
               title: const Text('Keep per-event changes?'),
               content: const Text(
-                  'Some occurrences were changed individually.'),
+                'Some occurrences were changed individually.',
+              ),
               actions: [
                 TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(true),
-                    child: const Text('Keep')),
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: const Text('Keep'),
+                ),
                 FilledButton(
-                    onPressed: () => Navigator.of(ctx).pop(false),
-                    child: const Text('Reset')),
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const Text('Reset'),
+                ),
               ],
             ),
           ) ??
@@ -194,8 +215,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
       if (!mounted) return;
       await repo.editOccurrence(
         existing.id,
-        DateTime.fromMillisecondsSinceEpoch(existing.startUtc!,
-            isUtc: true),
+        DateTime.fromMillisecondsSinceEpoch(existing.startUtc!, isUtc: true),
         scope: EditScope.all,
         title: title,
         startUtc: _allDay ? null : _start.toUtc(),
@@ -208,8 +228,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     }
     await repo.editOccurrence(
       existing.id,
-      DateTime.fromMillisecondsSinceEpoch(existing.startUtc!,
-          isUtc: true),
+      DateTime.fromMillisecondsSinceEpoch(existing.startUtc!, isUtc: true),
       scope: scope,
       title: title,
       startUtc: _allDay ? null : _start.toUtc(),
@@ -239,7 +258,9 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                 controller: _title,
                 autofocus: widget.event == null,
                 decoration: const InputDecoration(
-                    labelText: 'Title', border: OutlineInputBorder()),
+                  labelText: 'Title',
+                  border: OutlineInputBorder(),
+                ),
                 onSubmitted: (_) => _save(),
               ),
               const SizedBox(height: 8),
@@ -247,12 +268,12 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                 data: (cals) => DropdownButtonFormField<String?>(
                   initialValue: _calendarId,
                   decoration: const InputDecoration(
-                      labelText: 'Calendar',
-                      border: OutlineInputBorder()),
+                    labelText: 'Calendar',
+                    border: OutlineInputBorder(),
+                  ),
                   items: [
                     for (final c in cals)
-                      DropdownMenuItem(
-                          value: c.id, child: Text(c.name)),
+                      DropdownMenuItem(value: c.id, child: Text(c.name)),
                   ],
                   onChanged: (v) => setState(() => _calendarId = v),
                 ),
@@ -308,40 +329,40 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                     ? _rrule
                     : '__custom__',
                 decoration: const InputDecoration(
-                    labelText: 'Repeat', border: OutlineInputBorder()),
+                  labelText: 'Repeat',
+                  border: OutlineInputBorder(),
+                ),
                 items: [
                   for (final e in _repeatPresets.entries)
-                    DropdownMenuItem(
-                        value: e.value, child: Text(e.key)),
+                    DropdownMenuItem(value: e.value, child: Text(e.key)),
                   const DropdownMenuItem(
-                      value: '__custom__',
-                      child: Text('Custom RRULE')),
+                    value: '__custom__',
+                    child: Text('Custom RRULE'),
+                  ),
                 ],
                 onChanged: (v) async {
                   if (v == '__custom__') {
-                    final ctl =
-                        TextEditingController(text: _rrule ?? '');
+                    final ctl = TextEditingController(text: _rrule ?? '');
                     final custom = await showDialog<String>(
                       context: context,
                       builder: (ctx) => AlertDialog(
                         title: const Text('Custom RRULE'),
-                        content:
-                            TextField(controller: ctl, autofocus: true),
+                        content: TextField(controller: ctl, autofocus: true),
                         actions: [
                           TextButton(
-                              onPressed: () =>
-                                  Navigator.of(ctx).pop(),
-                              child: const Text('Cancel')),
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            child: const Text('Cancel'),
+                          ),
                           FilledButton(
-                              onPressed: () => Navigator.of(ctx)
-                                  .pop(ctl.text.trim()),
-                              child: const Text('OK')),
+                            onPressed: () =>
+                                Navigator.of(ctx).pop(ctl.text.trim()),
+                            child: const Text('OK'),
+                          ),
                         ],
                       ),
                     );
                     if (custom != null) {
-                      setState(() =>
-                          _rrule = custom.isEmpty ? null : custom);
+                      setState(() => _rrule = custom.isEmpty ? null : custom);
                     }
                   } else {
                     setState(() => _rrule = v);
@@ -352,21 +373,23 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
               TextField(
                 controller: _location,
                 decoration: const InputDecoration(
-                    labelText: 'Location',
-                    border: OutlineInputBorder()),
+                  labelText: 'Location',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: _notes,
                 decoration: const InputDecoration(
-                    labelText: 'Notes', border: OutlineInputBorder()),
+                  labelText: 'Notes',
+                  border: OutlineInputBorder(),
+                ),
                 maxLines: 3,
               ),
               const SizedBox(height: 12),
               FilledButton(
                 onPressed: _save,
-                child:
-                    Text(widget.event == null ? 'Create' : 'Save'),
+                child: Text(widget.event == null ? 'Create' : 'Save'),
               ),
             ],
           ),
@@ -384,6 +407,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
 
 Future<TimeOfDay?> awaitTime(BuildContext context, DateTime d) {
   return showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(hour: d.hour, minute: d.minute));
+    context: context,
+    initialTime: TimeOfDay(hour: d.hour, minute: d.minute),
+  );
 }

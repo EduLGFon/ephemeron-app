@@ -21,7 +21,8 @@ class AgendaView extends ConsumerWidget {
           children: [
             const Text('Could not load agenda.'),
             OutlinedButton(
-              onPressed: () => ref.invalidate(windowOccurrencesProvider(window)),
+              onPressed: () =>
+                  ref.invalidate(windowOccurrencesProvider(window)),
               child: const Text('Retry'),
             ),
           ],
@@ -52,7 +53,8 @@ class AgendaView extends ConsumerWidget {
                     return ListTile(
                       title: Text(t),
                       trailing: Text(
-                          '${s.hour.toString().padLeft(2, '0')}:${s.minute.toString().padLeft(2, '0')}'),
+                        '${s.hour.toString().padLeft(2, '0')}:${s.minute.toString().padLeft(2, '0')}',
+                      ),
                     );
                   },
                 ),
@@ -65,8 +67,7 @@ class AgendaView extends ConsumerWidget {
 
   Future<Event?> _event(WidgetRef ref, String id) {
     final repo = ref.read(eventRepositoryProvider);
-    return (repo.dbSelect()..where((e) => e.id.equals(id)))
-        .getSingleOrNull();
+    return (repo.dbSelect()..where((e) => e.id.equals(id))).getSingleOrNull();
   }
 }
 

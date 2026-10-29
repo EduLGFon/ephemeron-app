@@ -20,20 +20,20 @@ class YearView extends ConsumerWidget {
     return GridView.builder(
       padding: const EdgeInsets.all(12),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3, childAspectRatio: 1.4),
+        crossAxisCount: 3,
+        childAspectRatio: 1.4,
+      ),
       itemCount: 12,
       itemBuilder: (ctx, m) {
         final ym =
             '${window.anchor.year}-${(m + 1).toString().padLeft(2, '0')}';
         final c = counts[ym] ?? 0;
         return Card(
-          color: Theme.of(context)
-              .colorScheme
-              .primary
-              .withValues(alpha: 0.1 + 0.5 * c / max),
+          color: Theme.of(
+            context,
+          ).colorScheme.primary.withValues(alpha: 0.1 + 0.5 * c / max),
           child: Center(
-            child: Text('${_name(m + 1)}\n$c',
-                textAlign: TextAlign.center),
+            child: Text('${_name(m + 1)}\n$c', textAlign: TextAlign.center),
           ),
         );
       },
@@ -41,18 +41,18 @@ class YearView extends ConsumerWidget {
   }
 
   String _name(int m) => const [
-        '',
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec'
-      ][m];
+    '',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ][m];
 }

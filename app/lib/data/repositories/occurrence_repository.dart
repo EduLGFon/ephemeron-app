@@ -80,13 +80,19 @@ class OccurrenceRepository {
   }
 
   Stream<List<OccurrenceCacheData>> watchWindow(
-      DateTime fromUtc, DateTime toUtc) {
+    DateTime fromUtc,
+    DateTime toUtc,
+  ) {
     return (_db.select(_db.occurrenceCache)
-          ..where((c) =>
-              c.startUtc.isSmallerOrEqualValue(
-                  toUtc.toUtc().millisecondsSinceEpoch) &
-              c.endUtc.isBiggerOrEqualValue(
-                  fromUtc.toUtc().millisecondsSinceEpoch))
+          ..where(
+            (c) =>
+                c.startUtc.isSmallerOrEqualValue(
+                  toUtc.toUtc().millisecondsSinceEpoch,
+                ) &
+                c.endUtc.isBiggerOrEqualValue(
+                  fromUtc.toUtc().millisecondsSinceEpoch,
+                ),
+          )
           ..orderBy([(c) => OrderingTerm.asc(c.startUtc)]))
         .watch();
   }

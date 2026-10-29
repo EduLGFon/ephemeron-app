@@ -30,7 +30,8 @@ class MonthView extends ConsumerWidget {
         Expanded(
           child: GridView.builder(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7),
+              crossAxisCount: 7,
+            ),
             itemCount: 42,
             itemBuilder: (ctx, i) {
               final day = start.add(Duration(days: i));
@@ -48,13 +49,14 @@ class MonthView extends ConsumerWidget {
                       selected: _isSameDay(day, window.anchor),
                       count: counts[key] ?? 0,
                       primary: Theme.of(context).colorScheme.primary,
-                      onSurface:
-                          Theme.of(context).colorScheme.onSurface,
+                      onSurface: Theme.of(context).colorScheme.onSurface,
                     ),
                     child: Center(
-                      child: Text('${day.day}',
-                          semanticsLabel:
-                              '${_monthName(day.month)} ${day.day}, ${counts[key] ?? 0} events'),
+                      child: Text(
+                        '${day.day}',
+                        semanticsLabel:
+                            '${_monthName(day.month)} ${day.day}, ${counts[key] ?? 0} events',
+                      ),
                     ),
                   ),
                 ),
@@ -75,20 +77,20 @@ class MonthView extends ConsumerWidget {
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   String _monthName(int m) => const [
-        '',
-        'January',
-        'February',
-        'March',
-        'April',
-        'May',
-        'June',
-        'July',
-        'August',
-        'September',
-        'October',
-        'November',
-        'December'
-      ][m];
+    '',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ][m];
 }
 
 class _WeekdayHeader extends StatelessWidget {
@@ -99,10 +101,10 @@ class _WeekdayHeader extends StatelessWidget {
       children: [
         for (final n in names)
           Expanded(
-              child: Center(
-                  child: Text(n,
-                      style:
-                          Theme.of(context).textTheme.labelSmall))),
+            child: Center(
+              child: Text(n, style: Theme.of(context).textTheme.labelSmall),
+            ),
+          ),
       ],
     );
   }
@@ -129,8 +131,7 @@ class _DayPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (selected) {
       canvas.drawRRect(
-        RRect.fromRectAndRadius(
-            Offset.zero & size, const Radius.circular(8)),
+        RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(8)),
         Paint()..color = primary.withValues(alpha: 0.15),
       );
     }
@@ -144,8 +145,7 @@ class _DayPainter extends CustomPainter {
     final dots = count > 3 ? 3 : count;
     for (var i = 0; i < dots; i++) {
       canvas.drawCircle(
-        Offset(size.width / 2 + (i - (dots - 1) / 2) * 8,
-            size.height - 8),
+        Offset(size.width / 2 + (i - (dots - 1) / 2) * 8, size.height - 8),
         2.5,
         Paint()..color = inMonth ? primary : onSurface.withValues(alpha: 0.3),
       );
