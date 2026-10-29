@@ -59,6 +59,34 @@ class SettingsScreen extends ConsumerWidget {
                 },
               ),
             ),
+            ListTile(
+              title: const Text('Custom primary hex'),
+              trailing: SizedBox(
+                width: 120,
+                child: TextField(
+                  decoration: const InputDecoration(hintText: '#RRGGBB'),
+                  onSubmitted: (v) {
+                    if (v.trim().isNotEmpty) {
+                      repo.setPrimaryColorHex(v.trim());
+                    }
+                  },
+                ),
+              ),
+            ),
+            ListTile(
+              title: const Text('Custom background hex'),
+              trailing: SizedBox(
+                width: 120,
+                child: TextField(
+                  decoration: const InputDecoration(hintText: '#RRGGBB'),
+                  onSubmitted: (v) {
+                    if (v.trim().isNotEmpty) {
+                      repo.setBackgroundColorHex(v.trim());
+                    }
+                  },
+                ),
+              ),
+            ),
             const _SectionHeader('Power and accessibility'),
             ListTile(
               title: const Text('Power saving mode'),
