@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/settings/application/settings_providers.dart';
+import '../../features/settings/presentation/onboarding_screen.dart';
 import 'app_sections.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -39,6 +40,11 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     final orderAsync = ref.watch(settingsRepositoryProvider);
+    final onboarded = orderAsync.maybeWhen(
+      data: (r) => r.onboarded,
+      orElse: () => true,
+    );
+    if (!onboarded) return const OnboardingScreen();
     final order = orderAsync.maybeWhen(
       data: (r) => r.navOrder,
       orElse: () => List<int>.generate(7, (i) => i),

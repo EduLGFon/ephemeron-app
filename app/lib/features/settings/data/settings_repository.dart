@@ -13,6 +13,7 @@ class SettingsRepository {
   static const _kPower = 'settings.powerSaving';
   static const _kReduceAnim = 'settings.reduceAnimations';
   static const _kHaptics = 'settings.haptics';
+  static const _kOnboarded = 'settings.onboarded';
 
   String? get primaryColorHex => _prefs.getString(_kPrimary);
   Future<void> setPrimaryColorHex(String v) => _prefs.setString(_kPrimary, v);
@@ -49,6 +50,9 @@ class SettingsRepository {
 
   bool get haptics => _prefs.getBool(_kHaptics) ?? true;
   Future<void> setHaptics(bool v) => _prefs.setBool(_kHaptics, v);
+
+  bool get onboarded => _prefs.getBool(_kOnboarded) ?? false;
+  Future<void> setOnboarded() => _prefs.setBool(_kOnboarded, true);
 
   static const _kLastTab = 'session.lastTab';
   int get lastTabIndex => _prefs.getInt(_kLastTab) ?? 0;
