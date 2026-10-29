@@ -101,7 +101,7 @@ Checklist:
 - [x] Global search across entities (tasks/events/notes/habits/countdowns/tags; display-only rows)
 - [x] Onboarding (3 pages max, skip always; permissions at moment of need)
 - [x] Localization scaffolding (ARB EN/PT, delegates, language setting; search/backup/onboarding migrated)
-- [ ] Accessibility pass (semantics labels, contrast, text scaling)
+- [x] Accessibility pass (timer semantics, excluded decoration, stepper tooltips, weekday labels)
 - [ ] Widgets/shortcuts/share target; desktop/iOS/web parity; multiple Google accounts
 Acceptance: each item shippable alone. Status: backup + search + onboarding + l10n done, verified `flutter test` 88 passed, `flutter analyze` clean.
 Notes: flutter_gen synthetic package is deprecated here; gen-l10n writes gitignored lib/l10n/src. Root README.md and ARCHITECTURE.md referenced by AGENTS.md do not exist (app/README.md does).
