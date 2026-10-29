@@ -55,6 +55,20 @@ Checklist:
 - [ ] Sound on native MediaPlayer alarm stream, vibration pattern, flashlight blink (uses notification defaults for now)
 Acceptance: alarm matrix NOT yet run (no devices/SDK). Status: code done, device verification pending. Verified: `flutter test` 42 passed, `flutter analyze` clean.
 
+## Phase 6 - Google sync (done, soak test pending)
+Checklist:
+- [x] Thin hand-written REST client (events.list/insert/patch/delete, calendarList, tasks, tasklists), etag/If-Match, 410/401/403/429 typed errors, Retry-After
+- [x] Mappers: Google <-> Drift, local-only fields preserved (alarmPreset, colorId, task dueTime/priority/rrule)
+- [x] Single-flight sync engine: outbox push ordered per entity, backoff+jitter, 410 full resync (keeps dirty), etag 412 refetch-and-reapply, failed-changes list with Retry/Discard
+- [x] Fake-server suite (7 tests): token round-trip, 410, push/etag, 412, 429, offline, partial failure, idempotent resume
+- [x] Google auth (sign_in v7, incremental Calendar then Tasks scopes), consent-first screen, works-without-account, keystore token storage
+- [x] Sync status chip (Synced/Syncing/Offline/Error), sync triggers
+- [ ] 3-day real-account soak test - env limit, needs user account
+- [ ] Periodic background sync (needs workmanager dep; manual + pull triggers only)
+- [ ] Google data never touches backend: enforced by architecture (no backend client exists yet); re-verify in Phase 8
+Acceptance: fake-server suite green. Status: done. Verified: `flutter test` 49 passed, `flutter analyze` clean.
+New deps (pinned exact): http 1.6.0 (thin REST client, avoids heavy googleapis), google_sign_in 7.2.0 (OAuth), flutter_secure_storage 11.2.0 (keystore). Size check deferred (no Android SDK here).
+
 ## Phase 7 - Notes (done)
 Checklist:
 - [x] Folders: nested, breadcrumbs, move (cycle-safe), delete reparents children
@@ -68,15 +82,3 @@ Checklist:
 - [ ] Image compression to WebP (uses original bytes; image pkg added for Phase 9)
 Acceptance: notes usable offline with folders, search, preview. Status: done. Verified: `flutter test` 54 passed, `flutter analyze` clean.
 New deps (pinned exact): markdown 7.3.1 (parser only, custom renderer), image 4.3.0 (reserved for attachment compression). Size check deferred (no Android SDK).
-Checklist:
-- [x] Thin hand-written REST client (events.list/insert/patch/delete, calendarList, tasks, tasklists), etag/If-Match, 410/401/403/429 typed errors, Retry-After
-- [x] Mappers: Google <-> Drift, local-only fields preserved (alarmPreset, colorId, task dueTime/priority/rrule)
-- [x] Single-flight sync engine: outbox push ordered per entity, backoff+jitter, 410 full resync (keeps dirty), etag 412 refetch-and-reapply, failed-changes list with Retry/Discard
-- [x] Fake-server suite (7 tests): token round-trip, 410, push/etag, 412, 429, offline, partial failure, idempotent resume
-- [x] Google auth (sign_in v7, incremental Calendar then Tasks scopes), consent-first screen, works-without-account, keystore token storage
-- [x] Sync status chip (Synced/Syncing/Offline/Error), sync triggers
-- [ ] 3-day real-account soak test - env limit, needs user account
-- [ ] Periodic background sync (needs workmanager dep; manual + pull triggers only)
-- [ ] Google data never touches backend: enforced by architecture (no backend client exists yet); re-verify in Phase 8
-Acceptance: fake-server suite green. Status: done. Verified: `flutter test` 49 passed, `flutter analyze` clean.
-New deps (pinned exact): http 1.6.0 (thin REST client, avoids heavy googleapis), google_sign_in 7.2.0 (OAuth), flutter_secure_storage 11.2.0 (keystore). Size check deferred (no Android SDK here).
