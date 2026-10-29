@@ -102,6 +102,16 @@ Checklist:
 - [x] Onboarding (3 pages max, skip always; permissions at moment of need)
 - [x] Localization scaffolding (ARB EN/PT, delegates, language setting; search/backup/onboarding migrated)
 - [x] Accessibility pass (timer semantics, excluded decoration, stepper tooltips, weekday labels)
-- [ ] Widgets/shortcuts/share target; desktop/iOS/web parity; multiple Google accounts
-Acceptance: each item shippable alone. Status: backup + search + onboarding + l10n done, verified `flutter test` 88 passed, `flutter analyze` clean.
+- [ ] Widgets/shortcuts/share target; desktop/iOS/web parity; multiple Google accounts (need SDK/devices; deferred)
+Acceptance: each item shippable alone. Status: backup + search + onboarding + l10n + a11y done, verified `flutter test` 88 passed, `flutter analyze` clean.
 Notes: flutter_gen synthetic package is deprecated here; gen-l10n writes gitignored lib/l10n/src. Root README.md and ARCHITECTURE.md referenced by AGENTS.md do not exist (app/README.md does).
+
+## Phase 10 - Release hardening (in progress)
+Checklist:
+- [x] Code-level security review (docs/SECURITY_REVIEW.md)
+- [x] INTERNET permission on release builds (was debug/profile-only)
+- [x] Privacy policy draft EN/PT (docs/PRIVACY.md, needs lawyer sign-off)
+- [ ] 24 h battery benchmark (needs device + SDK)
+- [ ] Size audit: APK/AAB per ABI, web payload (needs SDK)
+- [ ] Store assets, staged rollout (owner)
+Acceptance: release gates pass. Status: code items done; device/store items are owner checks.

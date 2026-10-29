@@ -22,4 +22,10 @@
 5. Widgets/shortcuts/share target; desktop/iOS/web parity; multiple Google accounts.
 
 ## Phase 10 (release hardening)
-- Size audit, security review, store assets, privacy policy, staged rollout.
+- Security review: code-level done (docs/SECURITY_REVIEW.md); Play
+  declaration, backup rules, release-build verification are owner checks.
+- Privacy policy: draft done (docs/PRIVACY.md EN/PT); needs lawyer sign-off.
+- Size audit: blocked, no Android SDK (`flutter build apk --split-per-abi`,
+  `--analyze-size`, web payload).
+- Battery: 24 h benchmark blocked, no device.
+- Store assets, staged rollout: owner.
