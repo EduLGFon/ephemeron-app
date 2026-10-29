@@ -117,6 +117,71 @@ class HabitRepository {
     startDate: h.startDate,
   );
 
+  Stream<List<HabitLog>> watchLogs(String habitId) {
+    final q = _db.select(_db.habitLogs)
+      ..where((l) => l.habitId.equals(habitId))
+      ..orderBy([(l) => OrderingTerm.asc(l.dayKey)]);
+    return q.watch();
+  }
+
+  Future<void> updateHabit(
+    String id, {
+    String? name,
+    String? Function()? sectionId,
+    String? frequency,
+    int? weekdaysMask,
+    int? Function()? weeklyTarget,
+    int? Function()? intervalDays,
+    String? Function()? goalType,
+    double? Function()? goalAmount,
+    String? Function()? unit,
+    double? Function()? increment,
+    int? Function()? goalDurationDays,
+    String? startDate,
+    String? Function()? reminderTime,
+    String? Function()? alarmPreset,
+  }) async {
+    await (_db.update(_db.habits)..where((h) => h.id.equals(id))).write(
+      HabitsCompanion(
+        name: name == null ? const Value.absent() : Value(name),
+        sectionId: sectionId == null
+            ? const Value.absent()
+            : Value(sectionId()),
+        frequency: frequency == null ? const Value.absent() : Value(frequency),
+        weekdaysMask: weekdaysMask == null
+            ? const Value.absent()
+            : Value(weekdaysMask),
+        weeklyTarget: weeklyTarget == null
+            ? const Value.absent()
+            : Value(weeklyTarget()),
+        intervalDays: intervalDays == null
+            ? const Value.absent()
+            : Value(intervalDays()),
+        goalType: goalType == null ? const Value.absent() : Value(goalType()),
+        goalAmount: goalAmount == null
+            ? const Value.absent()
+            : Value(goalAmount()),
+        unit: unit == null ? const Value.absent() : Value(unit()),
+        increment: increment == null
+            ? const Value.absent()
+            : Value(increment()),
+        goalDurationDays: goalDurationDays == null
+            ? const Value.absent()
+            : Value(goalDurationDays()),
+        startDate: startDate == null ? const Value.absent() : Value(startDate),
+        reminderTime: reminderTime == null
+            ? const Value.absent()
+            : Value(reminderTime()),
+        alarmPreset: alarmPreset == null
+            ? const Value.absent()
+            : Value(alarmPreset()),
+        updatedAt: Value(_now()),
+        dirty: const Value(true),
+      ),
+    );
+    await _enqueue('habit', id, 'update');
+  }
+
   Future<HabitLog?> logFor(String habitId, String dayKey) {
     return (_db.select(_db.habitLogs)
           ..where((l) => l.habitId.equals(habitId) & l.dayKey.equals(dayKey)))

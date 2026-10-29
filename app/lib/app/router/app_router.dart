@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../shell/app_shell.dart';
 import '../shell/section_placeholder.dart';
 import '../../features/calendar/presentation/calendar_screen.dart';
+import '../../features/habits/presentation/habits_screen.dart';
 import '../../features/tasks/presentation/matrix_screen.dart';
 import '../../features/tasks/presentation/tasks_screen.dart';
 import '../../features/alarms/presentation/alarm_settings_screen.dart';
@@ -43,7 +44,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          for (var i = 3; i < 6; i++)
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/tab3',
+                builder: (context, state) => const HabitsScreen(),
+              ),
+            ],
+          ),
+          for (var i = 4; i < 6; i++)
             StatefulShellBranch(
               routes: [
                 GoRoute(
