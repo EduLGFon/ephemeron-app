@@ -48,7 +48,7 @@ class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
           .where((l) => l.name.toLowerCase() == p.list!.toLowerCase())
           .map((l) => l.id)
           .firstOrNull;
-      if (listId == null) listId = await repo.createList(p.list!);
+      listId ??= await repo.createList(p.list!);
     }
     await repo.createTask(
       title: p.title,

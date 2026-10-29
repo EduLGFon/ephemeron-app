@@ -47,4 +47,13 @@ final subtasksProvider = StreamProvider.family<List<Task>, String>((
 });
 
 /// Null means all lists.
-final selectedTaskListProvider = StateProvider<String?>((ref) => null);
+final selectedTaskListProvider = NotifierProvider<SelectedTaskList, String?>(
+  SelectedTaskList.new,
+);
+
+class SelectedTaskList extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void select(String? id) => state = id;
+}

@@ -135,7 +135,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
               const SizedBox(height: 8),
               listsAsync.maybeWhen(
                 data: (lists) => DropdownButtonFormField<String?>(
-                  value: _listId,
+                  initialValue: _listId,
                   decoration: const InputDecoration(
                     labelText: 'List',
                     border: OutlineInputBorder(),

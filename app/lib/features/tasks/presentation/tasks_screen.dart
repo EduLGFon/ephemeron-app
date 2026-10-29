@@ -46,18 +46,18 @@ class TasksScreen extends ConsumerWidget {
                   ChoiceChip(
                     label: const Text('All'),
                     selected: listId == null,
-                    onSelected: (_) =>
-                        ref.read(selectedTaskListProvider.notifier).state =
-                            null,
+                    onSelected: (_) => ref
+                        .read(selectedTaskListProvider.notifier)
+                        .select(null),
                   ),
                   const SizedBox(width: 8),
                   for (final l in lists) ...[
                     ChoiceChip(
                       label: Text(l.name),
                       selected: listId == l.id,
-                      onSelected: (_) =>
-                          ref.read(selectedTaskListProvider.notifier).state =
-                              l.id,
+                      onSelected: (_) => ref
+                          .read(selectedTaskListProvider.notifier)
+                          .select(l.id),
                     ),
                     const SizedBox(width: 8),
                   ],
