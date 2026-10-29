@@ -76,6 +76,7 @@ class CountdownsScreen extends ConsumerWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'countdownsFab',
         onPressed: () => showCountdownEditor(context),
         child: const Icon(Icons.add),
       ),

@@ -61,6 +61,7 @@ class HabitsScreen extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'habitsFab',
         onPressed: () => showHabitEditor(context),
         child: const Icon(Icons.add),
       ),

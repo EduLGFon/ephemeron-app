@@ -120,6 +120,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         CalendarViewKind.year => const YearView(),
       },
       floatingActionButton: FloatingActionButton(
+        heroTag: 'calendarFab',
         onPressed: () =>
             showEventEditor(context, initialDay: window.anchor, initialHour: 9),
         child: const Icon(Icons.add),

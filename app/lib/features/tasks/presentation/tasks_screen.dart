@@ -112,6 +112,7 @@ class TasksScreen extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'tasksFab',
         onPressed: () => showQuickAdd(context),
         child: const Icon(Icons.add),
       ),
