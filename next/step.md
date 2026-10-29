@@ -1,21 +1,14 @@
 # Rewrite Progress
 
 ## Current Step
-Project builds for web and tests pass; unused native plugin deps removed.
+Full app implementation ported; web build and tests pass.
 
 ## Completed
-- Project scaffold in `next/`
-- Database schema & generated code
-- Alarm domain (AlarmPreset, ReminderOffset, AlarmScheduler stub)
-- Task repository + recurrence + smart lists + calendar entries
-- Countdown repository + status/type
-- Calendar recurrence config
-- Minimal app entry, CalendarScreen, providers
-- All existing tests passing
+- Full feature set ported (calendar, tasks, habits, focus, notes, matrix, countdown, sync, tags, quick-add, alarms, auth, settings)
+- Drift schema and generated code
+- All tests passing (20/20)
+- Web build successful
 
 ## Next Steps
-1. Implement core theme/settings/bootstrap/routing/shell.
-2. Implement feature UI screens (calendar, tasks, habits, focus, notes, matrix, countdown).
-3. Implement sync, tags, quick_add.
-4. Add remaining feature data layers (habits, focus, notes) with tests.
-5. Run full analyze and tests; commit incremental changes.
+- Android build verification (native plugin issues may need attention)
+- Continue incremental refinements per AGENTS.md
