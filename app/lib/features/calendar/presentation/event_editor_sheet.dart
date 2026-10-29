@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/event_repository.dart';
 import '../../settings/application/settings_providers.dart';
+import '../../notes/application/notes_providers.dart';
 import '../application/calendar_providers.dart';
 import 'scope_sheet.dart';
 
@@ -143,12 +144,16 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     final title = _title.text.trim();
     if (title.isEmpty || _calendarId == null) return;
     final repo = ref.read(eventRepositoryProvider);
+    final noteRepo = ref.read(noteRepositoryProvider);
     final settings = await ref.read(settingsRepositoryProvider.future);
     _calendarId ??= settings.defaultCalendarId;
     final existing = widget.event;
     if (existing == null || existing.rrule == null) {
       if (existing == null) {
-        await repo.createEvent(
+        final fullNotes = _notes.text.trim().isEmpty
+            ? null
+            : _notes.text.trim();
+        final eventId = await repo.createEvent(
           calendarId: _calendarId!,
           title: title,
           startUtc: _allDay ? null : _start.toUtc(),
@@ -160,8 +165,14 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
           location: _location.text.trim().isEmpty
               ? null
               : _location.text.trim(),
-          notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+          notes: fullNotes != null && fullNotes.length > 8000
+              ? '${fullNotes.substring(0, 8000)}\n(continued in Ephemeron)'
+              : fullNotes,
         );
+        if (fullNotes != null && fullNotes.length > 8000) {
+          final noteId = await noteRepo.ensureOverflowNote(eventId, fullNotes);
+          await repo.setNotesOverflow(eventId, noteId);
+        }
       } else {
         await repo.editOccurrence(
           existing.id,

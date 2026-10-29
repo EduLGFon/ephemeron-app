@@ -55,7 +55,19 @@ Checklist:
 - [ ] Sound on native MediaPlayer alarm stream, vibration pattern, flashlight blink (uses notification defaults for now)
 Acceptance: alarm matrix NOT yet run (no devices/SDK). Status: code done, device verification pending. Verified: `flutter test` 42 passed, `flutter analyze` clean.
 
-## Phase 6 - Google sync (done, soak test pending)
+## Phase 7 - Notes (done)
+Checklist:
+- [x] Folders: nested, breadcrumbs, move (cycle-safe), delete reparents children
+- [x] Notes CRUD, pin, duplicate, trash/restore with undo, trash screen
+- [x] Markdown editor: toolbar, edit/preview toggle, tappable checklists, word/char count, autosave 800 ms
+- [x] Custom lightweight preview renderer (gitHub flavored, lazy ListView, cached per version)
+- [x] FTS5 search with highlighted snippets
+- [x] Attachments: content-addressed store + orphan cleanup (picker UI deferred, no file_picker offline)
+- [x] Event-linked notes: add from event details, list in details, overflow notes for >8000 chars
+- [ ] Backlinks UI, note templates, biometric lock, ZIP export, .md import (deferred to Phase 9)
+- [ ] Image compression to WebP (uses original bytes; image pkg added for Phase 9)
+Acceptance: notes usable offline with folders, search, preview. Status: done. Verified: `flutter test` 54 passed, `flutter analyze` clean.
+New deps (pinned exact): markdown 7.3.1 (parser only, custom renderer), image 4.3.0 (reserved for attachment compression). Size check deferred (no Android SDK).
 Checklist:
 - [x] Thin hand-written REST client (events.list/insert/patch/delete, calendarList, tasks, tasklists), etag/If-Match, 410/401/403/429 typed errors, Retry-After
 - [x] Mappers: Google <-> Drift, local-only fields preserved (alarmPreset, colorId, task dueTime/priority/rrule)

@@ -382,6 +382,16 @@ class EventRepository {
     return id;
   }
 
+  Future<void> setNotesOverflow(String eventId, String? noteId) async {
+    await (_db.update(_db.events)..where((e) => e.id.equals(eventId))).write(
+      EventsCompanion(
+        notesOverflowNoteId: Value(noteId),
+        updatedAt: Value(_now()),
+        dirty: const Value(true),
+      ),
+    );
+  }
+
   Future<void> setCalendarEnabled(String id, bool enabled) async {
     await (_db.update(_db.calendars)..where((c) => c.id.equals(id))).write(
       CalendarsCompanion(enabled: Value(enabled), updatedAt: Value(_now())),
