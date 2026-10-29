@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:ephemeron/l10n/src/app_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/router/app_router.dart';
@@ -34,6 +36,7 @@ class EphemeronApp extends ConsumerWidget {
     );
 
     final router = ref.watch(appRouterProvider);
+    final localeCode = repo?.localeCode ?? 'system';
 
     return MaterialApp.router(
       title: 'Ephemeron',
@@ -43,6 +46,14 @@ class EphemeronApp extends ConsumerWidget {
         background: background,
         brightness: brightness,
       ),
+      locale: localeCode == 'system' ? null : Locale(localeCode),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: router,
     );
   }

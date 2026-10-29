@@ -14,6 +14,7 @@ class SettingsRepository {
   static const _kReduceAnim = 'settings.reduceAnimations';
   static const _kHaptics = 'settings.haptics';
   static const _kOnboarded = 'settings.onboarded';
+  static const _kLocale = 'settings.locale';
 
   String? get primaryColorHex => _prefs.getString(_kPrimary);
   Future<void> setPrimaryColorHex(String v) => _prefs.setString(_kPrimary, v);
@@ -53,6 +54,10 @@ class SettingsRepository {
 
   bool get onboarded => _prefs.getBool(_kOnboarded) ?? false;
   Future<void> setOnboarded() => _prefs.setBool(_kOnboarded, true);
+
+  /// 'system', 'en' or 'pt'.
+  String get localeCode => _prefs.getString(_kLocale) ?? 'system';
+  Future<void> setLocaleCode(String v) => _prefs.setString(_kLocale, v);
 
   static const _kLastTab = 'session.lastTab';
   int get lastTabIndex => _prefs.getInt(_kLastTab) ?? 0;

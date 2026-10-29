@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:ephemeron/l10n/src/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -24,6 +25,33 @@ class SettingsScreen extends ConsumerWidget {
         data: (repo) => ListView(
           children: [
             const _SectionHeader('Appearance'),
+            ListTile(
+              title: Text(AppLocalizations.of(context).languageTitle),
+              trailing: DropdownButton<String>(
+                value: repo.localeCode,
+                items: [
+                  DropdownMenuItem(
+                    value: 'system',
+                    child: Text(AppLocalizations.of(context).languageSystem),
+                  ),
+                  DropdownMenuItem(
+                    value: 'en',
+                    child: Text(AppLocalizations.of(context).languageEnglish),
+                  ),
+                  DropdownMenuItem(
+                    value: 'pt',
+                    child: Text(
+                      AppLocalizations.of(context).languagePortuguese,
+                    ),
+                  ),
+                ],
+                onChanged: (v) async {
+                  if (v == null) return;
+                  await repo.setLocaleCode(v);
+                  ref.invalidate(settingsRepositoryProvider);
+                },
+              ),
+            ),
             ListTile(
               title: const Text('Primary color'),
               subtitle: Wrap(
@@ -134,7 +162,7 @@ class SettingsScreen extends ConsumerWidget {
                 MaterialPageRoute<void>(builder: (_) => const AuthScreen()),
               ),
             ),
-            const _SectionHeader('Backup'),
+            _SectionHeader(AppLocalizations.of(context).backupTitle),
             const _BackupSection(),
           ],
         ),
@@ -271,14 +299,12 @@ class _BackupSectionState extends ConsumerState<_BackupSection> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: FilledButton(
             onPressed: _busy ? null : _export,
-            child: const Text('Export backup now'),
+            child: Text(AppLocalizations.of(context).backupExport),
           ),
         ),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: Text(
-            'Backups stay on this device. Attachment files are not included, only their index.',
-          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Text(AppLocalizations.of(context).backupNote),
         ),
         for (final f in _files)
           ListTile(
@@ -287,7 +313,7 @@ class _BackupSectionState extends ConsumerState<_BackupSection> {
               onPressed: _busy
                   ? null
                   : () => _confirmRestore(context, File(f.path)),
-              child: const Text('Restore'),
+              child: Text(AppLocalizations.of(context).backupRestore),
             ),
           ),
       ],
@@ -309,14 +335,22 @@ class _BackupSectionState extends ConsumerState<_BackupSection> {
       await _refreshFiles();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Backup saved: ${file.path.split('/').last}')),
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(
+                context,
+              ).backupExported(file.path.split('/').last),
+            ),
+          ),
         );
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Export failed.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).backupExportFailed),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -327,18 +361,16 @@ class _BackupSectionState extends ConsumerState<_BackupSection> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Restore backup?'),
-        content: const Text(
-          'This replaces all current on-device data with the backup. Export first if you need the current state.',
-        ),
+        title: Text(AppLocalizations.of(context).backupRestoreTitle),
+        content: Text(AppLocalizations.of(context).backupRestoreBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context).backupCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Restore'),
+            child: Text(AppLocalizations.of(context).backupRestore),
           ),
         ],
       ),
@@ -350,9 +382,7 @@ class _BackupSectionState extends ConsumerState<_BackupSection> {
       await service.restoreJson(service.decode(await file.readAsString()));
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Backup restored. Restart affected views.'),
-          ),
+          SnackBar(content: Text(AppLocalizations.of(context).backupRestored)),
         );
       }
     } on BackupFormatException catch (e) {

@@ -1,6 +1,7 @@
 // First-run onboarding: 3 pages max, skip always available.
 // Permissions are explained at the moment of need, not all upfront.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/l10n/src/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/settings_providers.dart';
@@ -40,24 +41,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             child: PageView(
               controller: _pages,
               onPageChanged: (i) => setState(() => _index = i),
-              children: const [
+              children: [
                 _Page(
                   icon: Icons.calendar_month_outlined,
-                  title: 'Your time, offline first',
-                  body:
-                      'Calendar, tasks, habits, countdowns, focus, notes and lists in one fast app. Everything works without any account.',
+                  title: AppLocalizations.of(context).onboardingP1Title,
+                  body: AppLocalizations.of(context).onboardingP1Body,
                 ),
                 _Page(
                   icon: Icons.alarm_outlined,
-                  title: 'Alarms that ring',
-                  body:
-                      'When you create your first reminder, the app asks for notification and exact-alarm permission so it can ring on time, even in power saving. You can send a test alarm from Settings any time.',
+                  title: AppLocalizations.of(context).onboardingP2Title,
+                  body: AppLocalizations.of(context).onboardingP2Body,
                 ),
                 _Page(
                   icon: Icons.sync_outlined,
-                  title: 'Sync is optional',
-                  body:
-                      'Connect Google to sync calendar and tasks, or create an email account to sync habits and focus between devices. Google data never touches our server. Skip to stay fully local.',
+                  title: AppLocalizations.of(context).onboardingP3Title,
+                  body: AppLocalizations.of(context).onboardingP3Body,
                 ),
               ],
             ),
@@ -92,7 +90,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   _finish();
                 }
               },
-              child: Text(_index < 2 ? 'Next' : 'Get started'),
+              child: Text(
+                _index < 2
+                    ? AppLocalizations.of(context).onboardingNext
+                    : AppLocalizations.of(context).onboardingDone,
+              ),
             ),
           ),
         ],
