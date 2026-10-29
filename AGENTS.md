@@ -105,6 +105,7 @@ Quick commands:
 - When requirements are ambiguous, infer from established project conventions
   when possible, then apply the combined ambiguity rule from section 1.
 - Never claim that work was performed or verified unless it actually was.
+- Always record unfinished, blocked, or deferred work in `docs/TODO.md` (or `TODO.md` at repo root if no `docs/` folder). Update it in the same change.
 - Report relevant limitations, failed checks, and unresolved issues honestly.
 
 ## 4. Conversation Rules
