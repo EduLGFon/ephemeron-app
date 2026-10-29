@@ -16,6 +16,10 @@ class AppConfig {
   static const String calendarApiBase =
       'https://www.googleapis.com/calendar/v3';
   static const String tasksApiBase = 'https://www.googleapis.com/tasks/v1';
+  static const String backendBaseUrl = String.fromEnvironment(
+    'BACKEND_BASE_URL',
+    defaultValue: '',
+  );
   static const int syncIntervalMin = 30;
   static const int syncDebounceSec = 5;
 }
