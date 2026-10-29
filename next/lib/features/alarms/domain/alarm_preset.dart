@@ -1,0 +1,1 @@
+enum AlarmPreset { light, medium, strong, constant }
