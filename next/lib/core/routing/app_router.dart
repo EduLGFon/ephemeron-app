@@ -49,14 +49,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       if (initAsync.isLoading && location != '/auth') return null;
 
-      final repo = ref.read(googleAuthRepositoryProvider);
-      final isSignedIn = repo.currentAccount != null;
-
-      if (!isSignedIn && location != '/auth') return '/auth';
-      if (isSignedIn && location == '/auth') {
-        return sharedPrefs.getString('settings.lastScreen') ?? '/calendar';
-      }
-
+      // Allow skipping sign-in so the "Continue" button on the auth screen works.
       return null;
     },
     routes: [

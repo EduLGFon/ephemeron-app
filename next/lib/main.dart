@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import 'core/routing/app_router.dart';
 import 'core/settings/app_settings_provider.dart';
@@ -14,8 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/bootstrap/app_bootstrapper.dart';
 
 void main() async {
-  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+  WidgetsFlutterBinding.ensureInitialized();
   sharedPrefs = await SharedPreferences.getInstance();
   runApp(const ProviderScope(child: EphemeronApp()));
 }
@@ -32,9 +30,6 @@ class _EphemeronAppState extends ConsumerState<EphemeronApp> {
   void initState() {
     super.initState();
     ref.read(appBootstrapperProvider);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      FlutterNativeSplash.remove();
-    });
   }
 
   @override
