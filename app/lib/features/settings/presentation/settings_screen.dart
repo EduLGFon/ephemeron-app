@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../auth/presentation/auth_screen.dart';
 import '../application/settings_providers.dart';
+import '../data/backup_service.dart';
 import '../data/settings_repository.dart';
 import '../../../core/theme/theme_tokens.dart';
 
@@ -130,6 +134,8 @@ class SettingsScreen extends ConsumerWidget {
                 MaterialPageRoute<void>(builder: (_) => const AuthScreen()),
               ),
             ),
+            const _SectionHeader('Backup'),
+            const _BackupSection(),
           ],
         ),
       ),
@@ -193,6 +199,7 @@ class SettingsScreen extends ConsumerWidget {
 
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader(this.text);
+
   final String text;
   @override
   Widget build(BuildContext context) => Padding(
@@ -214,5 +221,148 @@ class AppSectionLabel {
       'Notes',
     ];
     return names[idx];
+  }
+}
+
+class _BackupSection extends ConsumerStatefulWidget {
+  const _BackupSection();
+
+  @override
+  ConsumerState<_BackupSection> createState() => _BackupSectionState();
+}
+
+class _BackupSectionState extends ConsumerState<_BackupSection> {
+  List<FileSystemEntity> _files = [];
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshFiles();
+  }
+
+  Future<Directory> _backupDir() async {
+    final docs = await getApplicationDocumentsDirectory();
+    final dir = Directory('${docs.path}/backups');
+    if (!await dir.exists()) await dir.create(recursive: true);
+    return dir;
+  }
+
+  Future<void> _refreshFiles() async {
+    try {
+      final dir = await _backupDir();
+      final files = await dir
+          .list()
+          .where((e) => e.path.endsWith('.json'))
+          .toList();
+      files.sort((a, b) => b.path.compareTo(a.path));
+      if (mounted) setState(() => _files = files);
+    } catch (_) {
+      // Storage unavailable: section stays empty.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: FilledButton(
+            onPressed: _busy ? null : _export,
+            child: const Text('Export backup now'),
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Text(
+            'Backups stay on this device. Attachment files are not included, only their index.',
+          ),
+        ),
+        for (final f in _files)
+          ListTile(
+            title: Text(f.path.split('/').last),
+            trailing: TextButton(
+              onPressed: _busy
+                  ? null
+                  : () => _confirmRestore(context, File(f.path)),
+              child: const Text('Restore'),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _export() async {
+    setState(() => _busy = true);
+    try {
+      final service = ref.read(backupServiceProvider);
+      final raw = service.encode(await service.exportJson());
+      final dir = await _backupDir();
+      final stamp = DateTime.now().toUtc().toIso8601String().replaceAll(
+        RegExp(r'[:.]'),
+        '-',
+      );
+      final file = File('${dir.path}/ephemeron-backup-$stamp.json');
+      await file.writeAsString(raw);
+      await _refreshFiles();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Backup saved: ${file.path.split('/').last}')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Export failed.')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _confirmRestore(BuildContext context, File file) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Restore backup?'),
+        content: const Text(
+          'This replaces all current on-device data with the backup. Export first if you need the current state.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Restore'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    setState(() => _busy = true);
+    try {
+      final service = ref.read(backupServiceProvider);
+      await service.restoreJson(service.decode(await file.readAsString()));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Backup restored. Restart affected views.'),
+          ),
+        );
+      }
+    } on BackupFormatException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 }
