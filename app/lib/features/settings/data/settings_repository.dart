@@ -1,0 +1,56 @@
+import 'package:shared_preferences/shared_preferences.dart';
+
+enum PowerSavingMode { auto, on, off }
+
+class SettingsRepository {
+  SettingsRepository(this._prefs);
+  final SharedPreferences _prefs;
+
+  static const _kPrimary = 'settings.primaryColor';
+  static const _kBackground = 'settings.backgroundColor';
+  static const _kBrightness = 'settings.brightness';
+  static const _kNavOrder = 'settings.navOrder';
+  static const _kPower = 'settings.powerSaving';
+  static const _kReduceAnim = 'settings.reduceAnimations';
+  static const _kHaptics = 'settings.haptics';
+
+  String? get primaryColorHex => _prefs.getString(_kPrimary);
+  Future<void> setPrimaryColorHex(String v) => _prefs.setString(_kPrimary, v);
+
+  String? get backgroundColorHex => _prefs.getString(_kBackground);
+  Future<void> setBackgroundColorHex(String v) =>
+      _prefs.setString(_kBackground, v);
+
+  String get brightness => _prefs.getString(_kBrightness) ?? 'light';
+  Future<void> setBrightness(String v) => _prefs.setString(_kBrightness, v);
+
+  List<int> get navOrder {
+    final raw = _prefs.getStringList(_kNavOrder);
+    if (raw == null) return List<int>.generate(7, (i) => i);
+    return raw.map(int.parse).toList();
+  }
+
+  Future<void> setNavOrder(List<int> order) =>
+      _prefs.setStringList(_kNavOrder, order.map((e) => e.toString()).toList());
+
+  PowerSavingMode get powerSavingMode {
+    final v = _prefs.getString(_kPower) ?? 'auto';
+    return PowerSavingMode.values.firstWhere(
+      (e) => e.name == v,
+      orElse: () => PowerSavingMode.auto,
+    );
+  }
+
+  Future<void> setPowerSavingMode(PowerSavingMode m) =>
+      _prefs.setString(_kPower, m.name);
+
+  bool get reduceAnimations => _prefs.getBool(_kReduceAnim) ?? false;
+  Future<void> setReduceAnimations(bool v) => _prefs.setBool(_kReduceAnim, v);
+
+  bool get haptics => _prefs.getBool(_kHaptics) ?? true;
+  Future<void> setHaptics(bool v) => _prefs.setBool(_kHaptics, v);
+
+  static const _kLastTab = 'session.lastTab';
+  int get lastTabIndex => _prefs.getInt(_kLastTab) ?? 0;
+  Future<void> setLastTabIndex(int v) => _prefs.setInt(_kLastTab, v);
+}
