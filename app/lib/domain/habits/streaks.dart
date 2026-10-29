@@ -84,9 +84,11 @@ int bestStreak(
       continue;
     }
     final key = habitDateKey(cur);
-    if (isDone(key) || isSkipped(key)) {
+    if (isDone(key)) {
       run++;
       if (run > best) best = run;
+    } else if (isSkipped(key)) {
+      // Skipped days bridge the run without extending it.
     } else {
       run = 0;
     }
