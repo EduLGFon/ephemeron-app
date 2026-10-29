@@ -5,3 +5,5 @@
 - Web wasm build not tested (`--wasm`).
 - Migration tests from previous schema versions: none yet (only v1 exists).
 - Logger not yet wired into a visible developer log screen (storage only).
+- Phase 3 incomplete: task/list/tag repositories, UI, undo, trash, smart lists.
+- Phases 4-10 not started.
