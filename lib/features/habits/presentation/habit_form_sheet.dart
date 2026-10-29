@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:drift/drift.dart' show Value;
 import 'package:ephemeron/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
@@ -669,22 +670,22 @@ class _HabitFormSheetState extends ConsumerState<HabitFormSheet> {
                     _reminderMinute = time.minute;
                     _alarmPreset ??= AlarmPreset.light;
                   });
-                  SessionRestore.saveDraftValue(
+                  unawaited(SessionRestore.saveDraftValue(
                       'habit',
                       widget.existingHabit?.id,
                       'reminderHour',
-                      time.hour.toString()); // ignore: unawaited_futures
-                  SessionRestore.saveDraftValue(
+                      time.hour.toString()));
+                  unawaited(SessionRestore.saveDraftValue(
                       'habit',
                       widget.existingHabit?.id,
                       'reminderMinute',
-                      time.minute.toString()); // ignore: unawaited_futures
-                  SessionRestore.saveDraftValue(
+                      time.minute.toString()));
+                  unawaited(SessionRestore.saveDraftValue(
                       'habit',
                       widget.existingHabit?.id,
                       'alarmPreset',
                       (_alarmPreset ?? AlarmPreset.light)
-                          .name); // ignore: unawaited_futures
+                          .name));
                 },
                 child: Text(
                   _reminderHour == null

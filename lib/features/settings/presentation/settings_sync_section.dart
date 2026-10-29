@@ -66,7 +66,7 @@ class SettingsSyncSection extends ConsumerWidget {
                     final current = ref.read(syncServiceProvider);
                     if (current.error != null && context.mounted) {
                       final palette = ref.read(themeEngineProvider);
-                      showDialog(
+                      await showDialog(
                         context: context,
                         builder: (ctx) => AlertDialog(
                           backgroundColor: palette.surface,

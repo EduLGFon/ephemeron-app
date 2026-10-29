@@ -366,9 +366,8 @@ class _NoteFormSheetState extends ConsumerState<NoteFormSheet> {
                     }
                     await SessionRestore.clearDraftValues(
                         'note', widget.existingNote?.id);
-                    if (mounted) {
-                      Navigator.of(context)
-                          .pop(); // ignore: use_build_context_synchronously
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
                     }
                   },
                   child: Text('Cancel',

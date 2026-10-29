@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:ephemeron/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -377,8 +378,8 @@ class _CountdownFormSheetState extends ConsumerState<CountdownFormSheet> {
     if (result != null) {
       final date = result.start;
       setState(() => _targetDate = date);
-      SessionRestore.saveDraftValue('countdown', widget.existingCountdown?.id,
-          'targetDate', date.toIso8601String()); // ignore: unawaited_futures
+      unawaited(SessionRestore.saveDraftValue('countdown', widget.existingCountdown?.id,
+          'targetDate', date.toIso8601String()));
     }
   }
 

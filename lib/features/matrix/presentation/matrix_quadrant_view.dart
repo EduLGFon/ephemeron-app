@@ -113,6 +113,7 @@ class _MatrixQuadrantViewState extends ConsumerState<MatrixQuadrantView> {
                             if (pendingTasks.isNotEmpty)
                               SliverReorderableList(
                                 itemCount: pendingTasks.length,
+                                // ignore: deprecated_member_use
                                 onReorder: (oldIdx, newIdx) async {
                                   if (oldIdx < newIdx) {
                                     newIdx -= 1;

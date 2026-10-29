@@ -324,7 +324,9 @@ class SettingsScreen extends ConsumerWidget {
                 RadioListTile<int>(
                   title: Text(dayName(day)),
                   value: day,
+                  // ignore: deprecated_member_use
                   groupValue: current,
+                  // ignore: deprecated_member_use
                   onChanged: (value) {
                     if (value != null) {
                       ref

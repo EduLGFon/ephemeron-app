@@ -13,3 +13,5 @@ analyzer:
   exclude:
     - '**/*.g.dart'
     - 'packages/**'
+    - build/**
+    - linux/**

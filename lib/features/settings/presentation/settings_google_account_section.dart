@@ -93,7 +93,9 @@ class GoogleAccountTile extends ConsumerWidget {
           ],
           promptIfNecessary: true,
         );
-      } on Exception {}
+      } on Exception {
+        // Silently ignore authorization prompt errors if cancelled
+      }
       unawaited(ref.read(syncServiceProvider.notifier).sync());
     } on GoogleAuthException catch (e) {
       if (context.mounted) {

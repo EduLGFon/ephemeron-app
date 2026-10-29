@@ -208,15 +208,13 @@ class RecurrenceConfig {
     RecurrenceType type = RecurrenceType.none;
     if (freq == 'DAILY') {
       type = RecurrenceType.daily;
-    } else if (freq == 'WEEKLY')
-      type = RecurrenceType
-          .weekly; // ignore: curly_braces_in_flow_control_structures
-    else if (freq == 'MONTHLY')
-      type = RecurrenceType
-          .monthly; // ignore: curly_braces_in_flow_control_structures
-    else if (freq == 'YEARLY')
-      type = RecurrenceType
-          .yearly; // ignore: curly_braces_in_flow_control_structures
+    } else if (freq == 'WEEKLY') {
+      type = RecurrenceType.weekly;
+    } else if (freq == 'MONTHLY') {
+      type = RecurrenceType.monthly;
+    } else if (freq == 'YEARLY') {
+      type = RecurrenceType.yearly;
+    }
 
     if (type == RecurrenceType.none) return const RecurrenceConfig();
 

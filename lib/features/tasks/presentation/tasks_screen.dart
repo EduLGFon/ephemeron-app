@@ -255,6 +255,7 @@ class _TaskListView extends ConsumerWidget {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                     sliver: SliverReorderableList(
                       itemCount: pendingTasks.length,
+                      // ignore: deprecated_member_use
                       onReorder: (oldIdx, newIdx) async {
                         if (oldIdx < newIdx) {
                           newIdx -= 1;

@@ -1136,15 +1136,15 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
             type: tempRecurrenceType, weekdays: tempRecurrenceWeekdays);
       });
 
-      SessionRestore.saveDraftValue('task', widget.existingTask?.id, 'dueDate',
-          tempDate.toIso8601String()); // ignore: unawaited_futures
-      SessionRestore.saveDraftValue('task', widget.existingTask?.id,
-          'dueHasTime', tempHasTime.toString()); // ignore: unawaited_futures
-      SessionRestore.saveDraftValue(
+      unawaited(SessionRestore.saveDraftValue('task', widget.existingTask?.id, 'dueDate',
+          tempDate.toIso8601String()));
+      unawaited(SessionRestore.saveDraftValue('task', widget.existingTask?.id,
+          'dueHasTime', tempHasTime.toString()));
+      unawaited(SessionRestore.saveDraftValue(
           'task',
           widget.existingTask?.id,
           'alarmPreset',
-          (tempPreset ?? AlarmPreset.light).name); // ignore: unawaited_futures
+          (tempPreset ?? AlarmPreset.light).name));
     }
   }
 
