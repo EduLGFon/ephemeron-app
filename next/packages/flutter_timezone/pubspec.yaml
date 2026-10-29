@@ -28,20 +28,4 @@ dev_dependencies:
 
 
 # The following section is specific to Flutter.
-flutter:
-  plugin:
-    platforms:
-      android:
-        package: net.wolverinebeach.flutter_timezone
-        pluginClass: FlutterTimezonePlugin
-      ios:
-        pluginClass: FlutterTimezonePlugin
-      linux:
-        pluginClass: FlutterTimezonePlugin
-      macos:
-        pluginClass: FlutterTimezonePlugin
-      windows:
-        pluginClass: FlutterTimezonePluginCApi
-      web:
-        pluginClass: FlutterTimezonePlugin
-        fileName: flutter_timezone_web.dart
+# flutter plugin declaration removed for web build
