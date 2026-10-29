@@ -1,9 +1,12 @@
 // Sync providers: engine, status, manual triggers.
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/db/db_provider.dart';
+import '../../../data/remote/backend_sync_api.dart';
 import '../../../data/remote/google_api_client.dart';
 import '../../auth/application/auth_providers.dart';
+import '../data/backend_sync_engine.dart';
 import '../data/sync_engine.dart';
 
 final googleApiClientProvider = Provider<GoogleApiClient>((ref) {
@@ -49,3 +52,39 @@ class SyncStatusNotifier extends Notifier<SyncStatus> {
 final failedChangesProvider = StreamProvider((ref) {
   return ref.watch(syncEngineProvider).watchFailed();
 });
+
+/// No backend URL configured (dev default): engine reports offline.
+final backendSyncEngineProvider = Provider<BackendSyncEngine>((ref) {
+  return BackendSyncEngine(
+    ref.watch(appDatabaseProvider),
+    ref.watch(backendAuthProvider),
+    apiFactory: (_) {
+      if (AppConfig.backendBaseUrl.isEmpty) return null;
+      return HttpBackendSyncApi(
+        accessToken: ref.read(backendAuthProvider).accessToken,
+      );
+    },
+  );
+});
+
+final backendSyncStatusProvider =
+    NotifierProvider<BackendSyncStatusNotifier, SyncStatus>(
+      BackendSyncStatusNotifier.new,
+    );
+
+class BackendSyncStatusNotifier extends Notifier<SyncStatus> {
+  @override
+  SyncStatus build() => SyncStatus.synced;
+
+  Future<void> syncNow() async {
+    state = SyncStatus.syncing;
+    final auth = ref.read(backendAuthProvider);
+    if (!auth.isSignedIn) {
+      state = SyncStatus.offline;
+      return;
+    }
+    final engine = ref.read(backendSyncEngineProvider);
+    await engine.syncNow();
+    state = engine.status;
+  }
+}

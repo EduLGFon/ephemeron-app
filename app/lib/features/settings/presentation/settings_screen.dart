@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../auth/presentation/auth_screen.dart';
 import '../application/settings_providers.dart';
 import '../data/settings_repository.dart';
 import '../../../core/theme/theme_tokens.dart';
@@ -121,6 +122,13 @@ class SettingsScreen extends ConsumerWidget {
               title: const Text('Reorder sections'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _reorder(context, ref, repo),
+            ),
+            ListTile(
+              title: const Text('Account and sync'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const AuthScreen()),
+              ),
             ),
           ],
         ),
