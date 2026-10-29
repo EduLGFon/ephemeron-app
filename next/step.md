@@ -1,7 +1,7 @@
 # Rewrite Progress
 
 ## Current Step
-Core scaffold + data layer MVP: project created, Drift schema, Task/Countdown repositories, alarm domain, recurrence, tests passing.
+Expanded data layer: habits, focus, notes, quick-add parser, minimal UI shell; all tests passing.
 
 ## Completed
 - Project scaffold in `next/`
