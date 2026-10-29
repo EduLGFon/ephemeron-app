@@ -37,13 +37,13 @@ enum MatrixQuadrant {
   Color get color {
     switch (this) {
       case MatrixQuadrant.doFirst:
-        return AppColors.priorityHigh;
+        return AppColors.priorityHigh; // e.g. Red/Orange
       case MatrixQuadrant.schedule:
-        return AppColors.priorityMedium;
+        return AppColors.priorityMedium; // e.g. Blue
       case MatrixQuadrant.delegate:
-        return AppColors.priorityLow;
+        return AppColors.priorityLow; // e.g. Yellow
       case MatrixQuadrant.eliminate:
-        return AppColors.priorityNone;
+        return AppColors.priorityNone; // e.g. Grey
     }
   }
 }

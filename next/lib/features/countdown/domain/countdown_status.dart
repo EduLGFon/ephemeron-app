@@ -1,5 +1,7 @@
 import 'package:meta/meta.dart';
 
+/// Computed, not stored — derived fresh from a Countdown's targetDate/
+/// isYearly/showAge whenever displayed.
 @immutable
 class CountdownStatus {
   const CountdownStatus({
@@ -9,6 +11,9 @@ class CountdownStatus {
     this.age,
   });
 
+  /// true = "x days left" (effectiveDate is upcoming), false = "x days
+  /// since" (effectiveDate — the original targetDate for non-yearly
+  /// countdowns — is in the past, with no future occurrence to count to).
   final bool isFuture;
   final int days;
   final DateTime effectiveDate;
@@ -28,9 +33,14 @@ class CountdownStatus {
           ? today.year - target.year
           : null;
       return CountdownStatus(
-          isFuture: diff >= 0, days: diff.abs(), effectiveDate: target, age: age);
+          isFuture: diff >= 0,
+          days: diff.abs(),
+          effectiveDate: target,
+          age: age);
     }
 
+    // Yearly: find this year's occurrence, or next year's if it already
+    // passed — a countdown to a recurring date is never "in the past".
     var occurrence = DateTime(today.year, target.month, target.day);
     if (occurrence.isBefore(today)) {
       occurrence = DateTime(today.year + 1, target.month, target.day);

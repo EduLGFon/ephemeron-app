@@ -1,5 +1,9 @@
 import 'package:meta/meta.dart';
 
+/// How long before a due date/time a reminder should fire. Multiple
+/// offsets can be attached to the same task/event/habit — e.g. both
+/// "1h before" and "at the time" — so callers work with a `List<
+/// ReminderOffset>`, not a single value.
 @immutable
 class ReminderOffset {
   const ReminderOffset._(this.beforeDue, this.label);
@@ -34,12 +38,19 @@ class ReminderOffset {
     twoHoursBefore,
   ];
 
+  /// Stable index used to build deterministic notification IDs (see
+  /// alarm_scheduler.dart) — a custom offset always sorts after every
+  /// preset regardless of its actual duration, so IDs stay stable even
+  /// if presets are reordered above.
   int get presetIndex {
     final index =
         presets.indexWhere((p) => p.beforeDue == beforeDue && p.label == label);
     return index == -1 ? presets.length : index;
   }
 
+  /// Reconstructs a [ReminderOffset] from a stored minutes value —
+  /// matches back to the original preset by duration when possible, so
+  /// round-tripping through storage doesn't turn presets into customs.
   factory ReminderOffset.fromMinutes(int minutes) {
     final duration = Duration(minutes: minutes);
     for (final preset in presets) {

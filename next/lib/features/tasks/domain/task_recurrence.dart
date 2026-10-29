@@ -1,6 +1,10 @@
 import 'dart:convert';
 import 'package:meta/meta.dart';
 
+/// MVP recurrence scope: daily, weekly on specific weekdays, or yearly
+/// (for the common "every year on this date" case). This is
+/// deliberately simpler than a full RRULE — matches the "basic repeat"
+/// line item from the MVP cut, not the full custom-recurrence feature.
 enum RecurrenceType { none, daily, weekly, yearly }
 
 @immutable
@@ -10,6 +14,11 @@ class TaskRecurrence {
   static const none = TaskRecurrence(type: RecurrenceType.none);
 
   final RecurrenceType type;
+
+  /// ISO-8601 weekday numbers (1 = Monday ... 7 = Sunday). Only
+  /// meaningful when [type] is [RecurrenceType.weekly]; an empty list
+  /// there means "every 7 days from the original due date" rather than
+  /// specific days.
   final List<int> weekdays;
 
   bool get isRecurring => type != RecurrenceType.none;
@@ -20,7 +29,7 @@ class TaskRecurrence {
       });
 
   static TaskRecurrence decode(String? raw) {
-    if (raw == null || raw.isEmpty) return TaskRecurrence.none;
+    if (raw == null || raw.isEmpty) return none;
     try {
       final map = jsonDecode(raw) as Map<String, dynamic>;
       return TaskRecurrence(
@@ -30,10 +39,12 @@ class TaskRecurrence {
             .toList(),
       );
     } catch (_) {
-      return TaskRecurrence.none;
+      return none;
     }
   }
 
+  /// The next due date after [currentDue], or null if not recurring.
+  /// Preserves time-of-day from [currentDue] in every case.
   DateTime? nextOccurrence(DateTime currentDue) {
     switch (type) {
       case RecurrenceType.none:
@@ -57,6 +68,8 @@ class TaskRecurrence {
           final candidate = currentDue.add(Duration(days: offset));
           if (sorted.contains(candidate.weekday)) return candidate;
         }
+        // Unreachable in practice (every weekday list of length >=1
+        // matches within 7 days), but keeps the function total.
         return currentDue.add(const Duration(days: 7));
     }
   }
