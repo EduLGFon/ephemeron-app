@@ -6,6 +6,13 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/config/safe_storage.dart';
 
+class GoogleAuthException implements Exception {
+  GoogleAuthException(this.message);
+  final String message;
+  @override
+  String toString() => 'GoogleAuthException: $message';
+}
+
 class GoogleAuth {
   GoogleAuth({SafeSecureStorage? storage})
     : _storage = storage ?? SafeSecureStorage();
@@ -20,6 +27,13 @@ class GoogleAuth {
 
   Future<void> _ensureInit() async {
     if (_initialized) return;
+    // The web plugin asserts a non-null client ID at sign-in time. Fail
+    // early with a message the UI can show instead of crashing.
+    if (kIsWeb && AppConfig.webGoogleClientId.isEmpty) {
+      throw GoogleAuthException(
+        'Google sign-in is not configured for this web build.',
+      );
+    }
     await GoogleSignIn.instance.initialize(
       clientId: defaultTargetPlatform == TargetPlatform.android
           ? (AppConfig.androidGoogleClientId.isEmpty

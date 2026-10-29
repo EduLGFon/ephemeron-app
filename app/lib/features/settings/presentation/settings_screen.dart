@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ephemeron/l10n/src/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -292,6 +293,14 @@ class _BackupSectionState extends ConsumerState<_BackupSection> {
 
   @override
   Widget build(BuildContext context) {
+    // path_provider has no documents directory on web; export/import
+    // files are a native-only feature for now.
+    if (kIsWeb) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+        child: Text('File backups are not available on web yet.'),
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

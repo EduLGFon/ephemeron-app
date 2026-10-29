@@ -8,9 +8,21 @@ import '../../../data/remote/backend_api_client.dart';
 import '../../sync/application/sync_providers.dart';
 import '../../sync/data/sync_engine.dart';
 import '../application/auth_providers.dart';
+import '../data/google_auth.dart';
 
 class AuthScreen extends ConsumerWidget {
   const AuthScreen({super.key});
+
+  Future<void> _googleSignIn(BuildContext context, WidgetRef ref) async {
+    try {
+      await ref.read(googleAccountProvider.notifier).signIn();
+    } on GoogleAuthException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -26,8 +38,7 @@ class AuthScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           if (email == null) ...[
             FilledButton(
-              onPressed: () =>
-                  ref.read(googleAccountProvider.notifier).signIn(),
+              onPressed: () => _googleSignIn(context, ref),
               child: const Text('Sign in with Google'),
             ),
             const SizedBox(height: 8),
