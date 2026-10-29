@@ -1,7 +1,7 @@
 # Rewrite Progress
 
 ## Current Step
-Expanded data layer: habits, focus, notes, quick-add parser, minimal UI shell; all tests passing.
+Project builds for web and tests pass; unused native plugin deps removed.
 
 ## Completed
 - Project scaffold in `next/`
