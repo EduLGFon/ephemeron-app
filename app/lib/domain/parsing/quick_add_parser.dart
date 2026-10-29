@@ -23,15 +23,22 @@ class QuickAddParsed {
 QuickAddParsed parseQuickAdd(String input, {DateTime? now}) {
   var working = ' $input ';
   final tags = <String>[];
-  for (final m in RegExp(r'#([\p{L}\p{N}_-]+)', unicode: true)
-      .allMatches(working)) {
+  for (final m in RegExp(
+    r'#([\p{L}\p{N}_-]+)',
+    unicode: true,
+  ).allMatches(working)) {
     tags.add(m.group(1)!.toLowerCase());
   }
   working = working.replaceAll(
-      RegExp(r'#([\p{L}\p{N}_-]+)', unicode: true), ' ');
+    RegExp(r'#([\p{L}\p{N}_-]+)', unicode: true),
+    ' ',
+  );
 
   String? list;
-  final listM = RegExp(r'~([\p{L}\p{N}_-]+)', unicode: true).firstMatch(working);
+  final listM = RegExp(
+    r'~([\p{L}\p{N}_-]+)',
+    unicode: true,
+  ).firstMatch(working);
   if (listM != null) {
     list = listM.group(1)!;
     working = working.replaceFirst(listM.group(0)!, ' ');

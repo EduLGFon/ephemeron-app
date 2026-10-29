@@ -10,10 +10,11 @@ Checklist:
 - [x] Monthly 31st skip, last-day option; leap day Feb 28 default
 - [x] UNTIL UTC Z vs date for all-day
 - [x] WKST for weekly interval>1
-- [ ] occurrence_cache materialization repository (pending)
+- [x] occurrence_cache materialization repository (window rebuild, cancelled-exception exclusion, tz-aware dayKey, invalidate, watchDay stream)
 - [x] 1,000-instance cap
 - [x] property tests (DST, leap, month ends, UNTIL, EXDATE/RDATE)
-Acceptance: property tests green. Status: done (domain layer).
+Acceptance: property tests green. Status: done. Verified: `flutter test` 24 passed, `flutter analyze` clean.
+Note: root .gitignore bare `test` rule ignores new test files (meant for platform scaffolding); new tests force-added. Cancelled exception rows act as EXDATE equivalents; no separate EXDATE column.
 
 ## Phase 3 - Tasks, lists, tags, smart lists, trash, quick add (partial)
 Checklist:

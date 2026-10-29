@@ -57,14 +57,17 @@ ParsedNatural parseNatural(String input, {DateTime? now}) {
   String? rrule;
 
   final dailyRe = RegExp(
-      r'every day|todo dia|todos os dias|diariamente',
-      caseSensitive: false);
+    r'every day|todo dia|todos os dias|diariamente',
+    caseSensitive: false,
+  );
   if (dailyRe.hasMatch(working)) {
     rrule = 'FREQ=DAILY';
     working = _cut(working, dailyRe);
   }
-  final everyWd = RegExp(r'(?:every|toda|todo)\s+([a-zà-ú]+)',
-      caseSensitive: false).firstMatch(working);
+  final everyWd = RegExp(
+    r'(?:every|toda|todo)\s+([a-zà-ú]+)',
+    caseSensitive: false,
+  ).firstMatch(working);
   if (everyWd != null) {
     final wd = _weekdayMap[everyWd.group(1)!.toLowerCase()];
     if (wd != null && rrule == null) {
@@ -73,8 +76,10 @@ ParsedNatural parseNatural(String input, {DateTime? now}) {
     }
   }
 
-  final timeH =
-      RegExp(r'(\d{1,2})h(\d{2})?', caseSensitive: false).firstMatch(working);
+  final timeH = RegExp(
+    r'(\d{1,2})h(\d{2})?',
+    caseSensitive: false,
+  ).firstMatch(working);
   if (timeH != null) {
     hour = int.parse(timeH.group(1)!);
     if (timeH.group(2) != null) minute = int.parse(timeH.group(2)!);
@@ -86,8 +91,10 @@ ParsedNatural parseNatural(String input, {DateTime? now}) {
       minute = int.parse(timeColon.group(2)!);
       working = _cut(working, timeColon.group(0)!);
     } else {
-      final timeAmPm = RegExp(r'(\d{1,2})\s?(am|pm)', caseSensitive: false)
-          .firstMatch(working);
+      final timeAmPm = RegExp(
+        r'(\d{1,2})\s?(am|pm)',
+        caseSensitive: false,
+      ).firstMatch(working);
       if (timeAmPm != null) {
         hour = int.parse(timeAmPm.group(1)!);
         if (timeAmPm.group(2)!.toLowerCase() == 'pm' && hour < 12) hour += 12;
@@ -96,9 +103,11 @@ ParsedNatural parseNatural(String input, {DateTime? now}) {
     }
   }
 
-  final todayRe =
-      RegExp(r'\btoday\b|\bhoje\b', caseSensitive: false);
-  final tomorrowRe = RegExp(r'\btomorrow\b|\bamanh[ãa]\b', caseSensitive: false);
+  final todayRe = RegExp(r'\btoday\b|\bhoje\b', caseSensitive: false);
+  final tomorrowRe = RegExp(
+    r'\btomorrow\b|\bamanh[ãa]\b',
+    caseSensitive: false,
+  );
   if (todayRe.hasMatch(working)) {
     date = DateTime(now.year, now.month, now.day);
     working = _cut(working, todayRe);
@@ -107,17 +116,19 @@ ParsedNatural parseNatural(String input, {DateTime? now}) {
     working = _cut(working, tomorrowRe);
   }
 
-  final inHours = RegExp(r'in\s+(\d+)\s*hours?|em\s+(\d+)\s*horas?',
-          caseSensitive: false)
-      .firstMatch(working);
+  final inHours = RegExp(
+    r'in\s+(\d+)\s*hours?|em\s+(\d+)\s*horas?',
+    caseSensitive: false,
+  ).firstMatch(working);
   if (inHours != null) {
     final n = int.parse((inHours.group(1) ?? inHours.group(2))!);
     date = now.add(Duration(hours: n));
     working = _cut(working, inHours.group(0)!);
   }
-  final inDays = RegExp(r'in\s+(\d+)\s*days?|em\s+(\d+)\s*dias?',
-          caseSensitive: false)
-      .firstMatch(working);
+  final inDays = RegExp(
+    r'in\s+(\d+)\s*days?|em\s+(\d+)\s*dias?',
+    caseSensitive: false,
+  ).firstMatch(working);
   if (inDays != null) {
     final n = int.parse((inDays.group(1) ?? inDays.group(2))!);
     date = DateTime(now.year, now.month, now.day).add(Duration(days: n));
@@ -125,12 +136,11 @@ ParsedNatural parseNatural(String input, {DateTime? now}) {
   }
 
   final nextWd = RegExp(
-          r'next\s+([a-zà-ú]+)|pr[óo]xim[oa]\s+([a-zà-ú]+)',
-          caseSensitive: false)
-      .firstMatch(working);
+    r'next\s+([a-zà-ú]+)|pr[óo]xim[oa]\s+([a-zà-ú]+)',
+    caseSensitive: false,
+  ).firstMatch(working);
   if (nextWd != null) {
-    final name =
-        (nextWd.group(1) ?? nextWd.group(2) ?? '').toLowerCase();
+    final name = (nextWd.group(1) ?? nextWd.group(2) ?? '').toLowerCase();
     final wd = _weekdayMap[name];
     if (wd != null) {
       date = _nextWeekday(now, wd);
@@ -147,7 +157,11 @@ ParsedNatural parseNatural(String input, {DateTime? now}) {
   }
 
   final title = working.replaceAll(RegExp(r'\s+'), ' ').trim();
-  return ParsedNatural(title: title.isEmpty ? input.trim() : title, due: date, rrule: rrule);
+  return ParsedNatural(
+    title: title.isEmpty ? input.trim() : title,
+    due: date,
+    rrule: rrule,
+  );
 }
 
 DateTime _nextWeekday(DateTime now, int weekday) {

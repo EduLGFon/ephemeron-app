@@ -20,7 +20,11 @@ DateTime? nextTaskDueDate({
     startUtc: base,
     rrule: rrule,
     tzId: tzId,
-    allDay: currentDueUtc == null ? false : (currentDueUtc.hour == 0 && currentDueUtc.minute == 0 && currentDueUtc.second == 0),
+    allDay: currentDueUtc == null
+        ? false
+        : (currentDueUtc.hour == 0 &&
+              currentDueUtc.minute == 0 &&
+              currentDueUtc.second == 0),
     rangeStartUtc: base.add(const Duration(seconds: 1)),
     cap: 1,
   );

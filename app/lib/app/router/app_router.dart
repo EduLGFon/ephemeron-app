@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 
 import '../shell/app_shell.dart';
 import '../shell/section_placeholder.dart';
+import '../../features/tasks/presentation/matrix_screen.dart';
+import '../../features/tasks/presentation/tasks_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -13,7 +15,31 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state, navigationShell) =>
             AppShell(navigationShell: navigationShell),
         branches: [
-          for (var i = 0; i < 7; i++)
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/tab0',
+                builder: (context, state) => const SectionPlaceholder(index: 0),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/tab1',
+                builder: (context, state) => const TasksScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/tab2',
+                builder: (context, state) => const MatrixScreen(),
+              ),
+            ],
+          ),
+          for (var i = 3; i < 7; i++)
             StatefulShellBranch(
               routes: [
                 GoRoute(
