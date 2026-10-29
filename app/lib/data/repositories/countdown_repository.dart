@@ -70,6 +70,15 @@ class CountdownRepository {
     );
   }
 
+  Future<void> restoreCountdown(String id) async {
+    await (_db.update(_db.countdowns)..where((c) => c.id.equals(id))).write(
+      CountdownsCompanion(
+        deletedAt: const Value(null),
+        updatedAt: Value(_now()),
+      ),
+    );
+  }
+
   Future<void> deleteCountdown(String id) async {
     await (_db.update(_db.countdowns)..where((c) => c.id.equals(id))).write(
       CountdownsCompanion(deletedAt: Value(_now()), updatedAt: Value(_now())),
