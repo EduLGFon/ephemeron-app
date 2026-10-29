@@ -66,6 +66,11 @@ class FocusRepository {
     return ((end - s.startUtc) / 60000).floor().clamp(0, 1 << 30);
   }
 
+  /// Deletes a session without credit (discard).
+  Future<void> deleteSession(String id) async {
+    await (_db.delete(_db.focusSessions)..where((f) => f.id.equals(id))).go();
+  }
+
   /// Total focused minutes in [fromUtc, toUtc].
   Future<int> totalMinutes(int fromUtc, int toUtc) async {
     final rows =

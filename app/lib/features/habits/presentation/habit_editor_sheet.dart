@@ -320,30 +320,28 @@ Future<String?> _askText(
   String title,
   String label,
 ) async {
+  // Not disposed: disposal would race the dialog pop transition, which
+  // rebuilds the text field for a few frames after pop.
   final controller = TextEditingController();
-  try {
-    return await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(labelText: label),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('Add'),
-          ),
-        ],
+  return showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: TextField(
+        controller: controller,
+        decoration: InputDecoration(labelText: label),
+        autofocus: true,
       ),
-    );
-  } finally {
-    controller.dispose();
-  }
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(controller.text),
+          child: const Text('Add'),
+        ),
+      ],
+    ),
+  );
 }
