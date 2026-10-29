@@ -93,4 +93,13 @@ Checklist:
 - [x] Backend account UI (AuthScreen section, settings entry, sync triggers, remote-data deletion)
 Acceptance: timers survive app kill, streaks correct. Status: Phase 8 done, verified `flutter test` 81 passed, `flutter analyze` clean.
 Notes: dialog TextEditingControllers are intentionally not disposed (disposal races the pop transition). Widget tests mock the ephemeron/alarms channel.
-Notes: bestStreak bridges skipped days without extending the run (matches currentStreak). Focus/countdown repos enqueue no outbox rows yet; backend sync step must add them. Focus weekly streaks ignore skipped; `finishSession` abandoned param unused.
+Notes: bestStreak bridges skipped days without extending the run (matches currentStreak). Backend push is cursor-based for logs/focus (their repos enqueue no outbox rows; harmless). Focus weekly streaks ignore skipped; `finishSession` abandoned param unused.
+
+## Phase 9 - Polish (in progress)
+Checklist:
+- [x] JSON backup + restore (21 tables, validated, transactional; attachment bytes excluded)
+- [ ] Global search across entities
+- [ ] Onboarding (permissions at moment of need)
+- [ ] Localization scaffolding (ARB EN/PT), accessibility pass
+- [ ] Widgets/shortcuts/share target; desktop/iOS/web parity; multiple Google accounts
+Acceptance: each item shippable alone. Status: backup done, verified `flutter test` 83 passed, `flutter analyze` clean.
