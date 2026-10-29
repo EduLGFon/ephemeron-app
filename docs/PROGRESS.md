@@ -98,8 +98,8 @@ Notes: bestStreak bridges skipped days without extending the run (matches curren
 ## Phase 9 - Polish (in progress)
 Checklist:
 - [x] JSON backup + restore (21 tables, validated, transactional; attachment bytes excluded)
-- [ ] Global search across entities
+- [x] Global search across entities (tasks/events/notes/habits/countdowns/tags; display-only rows)
 - [ ] Onboarding (permissions at moment of need)
 - [ ] Localization scaffolding (ARB EN/PT), accessibility pass
 - [ ] Widgets/shortcuts/share target; desktop/iOS/web parity; multiple Google accounts
-Acceptance: each item shippable alone. Status: backup done, verified `flutter test` 83 passed, `flutter analyze` clean.
+Acceptance: each item shippable alone. Status: backup + search done, verified `flutter test` 85 passed, `flutter analyze` clean.
