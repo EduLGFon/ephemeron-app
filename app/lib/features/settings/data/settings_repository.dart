@@ -53,4 +53,22 @@ class SettingsRepository {
   static const _kLastTab = 'session.lastTab';
   int get lastTabIndex => _prefs.getInt(_kLastTab) ?? 0;
   Future<void> setLastTabIndex(int v) => _prefs.setInt(_kLastTab, v);
+
+  static const _kCalView = 'calendar.view';
+  String get calendarView => _prefs.getString(_kCalView) ?? 'month';
+  Future<void> setCalendarView(String v) => _prefs.setString(_kCalView, v);
+
+  static const _kWeekStart = 'calendar.weekStart';
+  int get weekStart => _prefs.getInt(_kWeekStart) ?? DateTime.monday;
+  Future<void> setWeekStart(int v) => _prefs.setInt(_kWeekStart, v);
+
+  static const _kDefaultCal = 'calendar.defaultId';
+  String? get defaultCalendarId => _prefs.getString(_kDefaultCal);
+  Future<void> setDefaultCalendarId(String v) =>
+      _prefs.setString(_kDefaultCal, v);
+
+  static const _kDefaultDur = 'calendar.defaultDurationMin';
+  int get defaultDurationMin => _prefs.getInt(_kDefaultDur) ?? 60;
+  Future<void> setDefaultDurationMin(int v) =>
+      _prefs.setInt(_kDefaultDur, v);
 }

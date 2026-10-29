@@ -79,6 +79,18 @@ class OccurrenceRepository {
     )..where((c) => c.eventId.isIn(ids))).go();
   }
 
+  Stream<List<OccurrenceCacheData>> watchWindow(
+      DateTime fromUtc, DateTime toUtc) {
+    return (_db.select(_db.occurrenceCache)
+          ..where((c) =>
+              c.startUtc.isSmallerOrEqualValue(
+                  toUtc.toUtc().millisecondsSinceEpoch) &
+              c.endUtc.isBiggerOrEqualValue(
+                  fromUtc.toUtc().millisecondsSinceEpoch))
+          ..orderBy([(c) => OrderingTerm.asc(c.startUtc)]))
+        .watch();
+  }
+
   Stream<List<OccurrenceCacheData>> watchDay(String dayKey) {
     return (_db.select(_db.occurrenceCache)
           ..where((c) => c.dayKey.equals(dayKey))
