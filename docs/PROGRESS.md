@@ -102,8 +102,9 @@ Checklist:
 - [x] Onboarding (3 pages max, skip always; permissions at moment of need)
 - [x] Localization scaffolding (ARB EN/PT, delegates, language setting; search/backup/onboarding migrated)
 - [x] Accessibility pass (timer semantics, excluded decoration, stepper tooltips, weekday labels)
-- [ ] Widgets/shortcuts/share target; desktop/iOS/web parity; multiple Google accounts (need SDK/devices; deferred)
-Acceptance: each item shippable alone. Status: backup + search + onboarding + l10n + a11y done, verified `flutter test` 88 passed, `flutter analyze` clean.
+- [ ] Widgets/shortcuts/share target; desktop/iOS parity; multiple Google accounts (need SDK/devices; deferred)
+- [x] Web parity verified: boots with zero console errors, Drift opens via vendored WASM (IndexedDB fallback), DB reads/writes persist, all tabs + Search + Settings + Account + reorder sheet exercised in headless Chrome (debug + release)
+Acceptance: each item shippable alone. Status: backup + search + onboarding + l10n + a11y + web fixes done, verified `flutter test` 88 passed, `flutter analyze` clean.
 Notes: flutter_gen synthetic package is deprecated here; gen-l10n writes gitignored lib/l10n/src. Root README.md and ARCHITECTURE.md referenced by AGENTS.md do not exist (app/README.md does).
 
 ## Phase 10 - Release hardening (in progress)

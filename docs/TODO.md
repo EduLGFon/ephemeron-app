@@ -2,7 +2,7 @@
 
 ## Environment limits (no SDK/devices here; need owner machine)
 - Android SDK unavailable: cold-start measure, APK/AAB size, `flutter build apk --split-per-abi`, alarm matrix (Phase 5), 24 h battery benchmark (Phase 10).
-- iOS/macOS/Windows builds not verified locally; web wasm build not tested.
+- iOS/macOS/Windows builds not verified locally; web `--wasm` build not tested (standard release web build verified working in headless Chrome).
 - 3-day real-account Google soak test not run (Phase 6).
 - Migration tests from previous schema versions: none yet (only v1 exists).
 
