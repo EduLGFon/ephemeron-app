@@ -35,7 +35,10 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
   Widget build(BuildContext context) {
     final window = ref.watch(calendarStateProvider);
     final occAsync = ref.watch(windowOccurrencesProvider(window));
-    final occs = occAsync.valueOrNull ?? const <OccurrenceCacheData>[];
+    final occs = occAsync.maybeWhen(
+      data: (v) => v,
+      orElse: () => const <OccurrenceCacheData>[],
+    );
     final width = MediaQuery.of(context).size.width - 48;
     final colW = width / widget.dayCount;
     return SingleChildScrollView(

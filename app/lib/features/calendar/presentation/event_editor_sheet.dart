@@ -183,11 +183,13 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
       if (mounted) Navigator.of(context).pop();
       return;
     }
+    if (!mounted) return;
     final scope = await showScopeSheet(
       context,
       allowSingle: _rrule == existing.rrule,
     );
-    if (scope == null || !mounted) return;
+    if (scope == null) return;
+    if (!mounted) return;
     if (scope == EditScope.all &&
         (_start.toUtc().millisecondsSinceEpoch != existing.startUtc ||
             _end.toUtc().millisecondsSinceEpoch != existing.endUtc)) {

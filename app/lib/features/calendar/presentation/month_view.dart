@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/time/time.dart';
 import '../../../data/drift/app_database.dart';
 import '../application/calendar_providers.dart';
-import '../application/calendar_state.dart';
 
 class MonthView extends ConsumerWidget {
   const MonthView({super.key, required this.onDayTap});
@@ -21,7 +20,10 @@ class MonthView extends ConsumerWidget {
     final lead = (first.weekday - DateTime.monday + 7) % 7;
     final start = first.subtract(Duration(days: lead));
     final counts = <String, int>{};
-    for (final o in occAsync.valueOrNull ?? const <OccurrenceCacheData>[]) {
+    for (final o in occAsync.maybeWhen(
+      data: (v) => v,
+      orElse: () => const <OccurrenceCacheData>[],
+    )) {
       counts[o.dayKey] = (counts[o.dayKey] ?? 0) + 1;
     }
     return Column(

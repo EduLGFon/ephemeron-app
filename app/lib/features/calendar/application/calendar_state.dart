@@ -1,5 +1,7 @@
 // Visible calendar window: anchor date, view kind, day count.
 // Changing it triggers a cache rebuild (see CalendarScreen).
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 class CalendarWindow {
   CalendarWindow({required this.anchor, required this.view, this.dayCount = 1});
 

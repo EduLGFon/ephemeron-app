@@ -12,7 +12,10 @@ class YearView extends ConsumerWidget {
     final window = ref.watch(calendarStateProvider);
     final occAsync = ref.watch(windowOccurrencesProvider(window));
     final counts = <String, int>{};
-    for (final o in occAsync.valueOrNull ?? const []) {
+    for (final o in occAsync.maybeWhen(
+      data: (v) => v,
+      orElse: () => const [],
+    )) {
       final ym = o.dayKey.substring(0, 7);
       counts[ym] = (counts[ym] ?? 0) + 1;
     }
