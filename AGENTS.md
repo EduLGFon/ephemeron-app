@@ -8,6 +8,7 @@ on security, privacy, and data integrity wins (see section 1).
 
 ## 1. Instruction Precedence and Scope
 
+- Place all documentation inside `docs/` folder
 - Follow instructions in this order:
   1. System, platform, and safety instructions.
   2. Direct user instructions for the current task.
