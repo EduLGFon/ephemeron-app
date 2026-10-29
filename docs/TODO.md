@@ -7,3 +7,5 @@
 - Logger not yet wired into a visible developer log screen (storage only).
 - Phase 3 incomplete: task/list/tag repositories, UI, undo, trash, smart lists.
 - Phases 4-10 not started.
+- Phase 3 deferred: smart-list builder UI, move-between-lists undo snackbar
+  (repo `moveTasks`/`evalSmartList` ready; builder in Phase 9).

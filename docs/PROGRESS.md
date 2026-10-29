@@ -16,14 +16,18 @@ Checklist:
 Acceptance: property tests green. Status: done. Verified: `flutter test` 24 passed, `flutter analyze` clean.
 Note: root .gitignore bare `test` rule ignores new test files (meant for platform scaffolding); new tests force-added. Cancelled exception rows act as EXDATE equivalents; no separate EXDATE column.
 
-## Phase 3 - Tasks, lists, tags, smart lists, trash, quick add (partial)
+## Phase 3 - Tasks, lists, tags, smart lists, trash, quick add (done)
 Checklist:
 - [x] Eisenhower classification (domain)
-- [x] Recurring task next-due helper (domain)
-- [x] Natural language date/time parser EN + PT (domain)
-- [ ] Task/list/tag repositories and UI (not started)
-- [ ] Undo, trash, smart lists (not started)
-Acceptance: NOT yet (no full local task flow). Status: partial.
+- [x] Recurring task next-due helper (domain, from_due_date/from_completion_date, skip)
+- [x] Natural language date/time parser EN + PT (domain, case-preserving)
+- [x] Quick-add shorthand parser #tag ~list -p1..-p4 (domain, tested)
+- [x] Task/list/tag/smart-list repository with outbox rows, trash, restore, purge, subtasks
+- [x] Tasks UI: lists filter, overdue + reschedule-all, swipe complete/delete, editor, trash, completed, matrix
+- [x] Undo snackbars (6 s delete; complete; reopen from completed)
+- [ ] UI for move-between-lists undo, smart-list builder screen (repo supports filters; builder deferred to Phase 9 polish)
+Acceptance: full local task flow offline with undo. Status: done. Verified: `flutter test` 32 passed, `flutter analyze` clean.
+Note: parallel owner commit 1928290 restructured task screens; integrated on top.
 
 ## Phases 4-10
 Not started.
