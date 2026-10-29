@@ -82,3 +82,13 @@ Checklist:
 - [ ] Image compression to WebP (uses original bytes; image pkg added for Phase 9)
 Acceptance: notes usable offline with folders, search, preview. Status: done. Verified: `flutter test` 54 passed, `flutter analyze` clean.
 New deps (pinned exact): markdown 7.3.1 (parser only, custom renderer), image 4.3.0 (reserved for attachment compression). Size check deferred (no Android SDK).
+
+## Phase 8 - Habits, countdowns, focus (in progress)
+Checklist:
+- [x] Habit streak engine (domain, skip-neutral) + date keys + countdown date math
+- [x] Habit (outbox rows)/countdown/focus repositories (3 tests)
+- [ ] Habit/countdown/focus providers + UI screens (habits tab 3, countdowns 4, focus 5; replace router placeholders)
+- [ ] Focus timer from stored startedAt/targetEndUtc + AlarmScheduler end alarm (no polling)
+- [ ] Backend auth REST client + changeset sync for habits/focus with fake-server tests; re-verify Google data never touches it
+Acceptance: timers survive app kill, streaks correct. Status: local-first done, verified `flutter test` 64 passed, `flutter analyze` clean.
+Notes: bestStreak bridges skipped days without extending the run (matches currentStreak). Focus/countdown repos enqueue no outbox rows yet; backend sync step must add them. Focus weekly streaks ignore skipped; `finishSession` abandoned param unused.
