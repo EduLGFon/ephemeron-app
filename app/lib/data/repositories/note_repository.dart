@@ -14,7 +14,7 @@ class NoteSearchHit {
 
 class NoteRepository {
   NoteRepository(this._db, {Directory? attachmentDir})
-      : _attachmentDir = attachmentDir;
+    : _attachmentDir = attachmentDir;
 
   final AppDatabase _db;
   final Directory? _attachmentDir;
@@ -26,13 +26,17 @@ class NoteRepository {
   Future<String> createFolder(String name, {String? parentId}) async {
     final id = newId();
     final now = _now();
-    await _db.into(_db.folders).insert(FoldersCompanion.insert(
-          id: id,
-          parentId: Value(parentId),
-          name: name,
-          createdAt: now,
-          updatedAt: now,
-        ));
+    await _db
+        .into(_db.folders)
+        .insert(
+          FoldersCompanion.insert(
+            id: id,
+            parentId: Value(parentId),
+            name: name,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
     return id;
   }
 
@@ -41,9 +45,9 @@ class NoteRepository {
     final chain = <Folder>[];
     String? cursor = folderId;
     while (cursor != null) {
-      final f = await (_db.select(_db.folders)
-            ..where((t) => t.id.equals(cursor!)))
-          .getSingleOrNull();
+      final f = await (_db.select(
+        _db.folders,
+      )..where((t) => t.id.equals(cursor!))).getSingleOrNull();
       if (f == null) break;
       chain.insert(0, f);
       cursor = f.parentId;
@@ -58,44 +62,42 @@ class NoteRepository {
       final crumbs = await breadcrumbs(newParentId);
       if (crumbs.any((f) => f.id == folderId)) return;
     }
-    await (_db.update(_db.folders)
-          ..where((t) => t.id.equals(folderId)))
-        .write(FoldersCompanion(
-      parentId: Value(newParentId),
-      updatedAt: Value(_now()),
-    ));
+    await (_db.update(_db.folders)..where((t) => t.id.equals(folderId))).write(
+      FoldersCompanion(parentId: Value(newParentId), updatedAt: Value(_now())),
+    );
   }
 
   /// Deletes a folder: children are reparented to the deleted folder's
   /// parent and its notes follow the folder's notes destination.
   Future<void> deleteFolder(String folderId) async {
-    final folder = await (_db.select(_db.folders)
-          ..where((t) => t.id.equals(folderId)))
-        .getSingleOrNull();
+    final folder = await (_db.select(
+      _db.folders,
+    )..where((t) => t.id.equals(folderId))).getSingleOrNull();
     if (folder == null) return;
     await _db.transaction(() async {
-      await (_db.update(_db.folders)
-            ..where((t) => t.parentId.equals(folderId)))
-          .write(FoldersCompanion(
-        parentId: Value(folder.parentId),
-        updatedAt: Value(_now()),
-      ));
-      await (_db.update(_db.notes)
-            ..where((t) => t.folderId.equals(folderId)))
-          .write(NotesCompanion(
-        folderId: Value(folder.parentId),
-        updatedAt: Value(_now()),
-        dirty: const Value(true),
-      ));
-      await (_db.delete(_db.folders)
-            ..where((t) => t.id.equals(folderId)))
-          .go();
+      await (_db.update(
+        _db.folders,
+      )..where((t) => t.parentId.equals(folderId))).write(
+        FoldersCompanion(
+          parentId: Value(folder.parentId),
+          updatedAt: Value(_now()),
+        ),
+      );
+      await (_db.update(
+        _db.notes,
+      )..where((t) => t.folderId.equals(folderId))).write(
+        NotesCompanion(
+          folderId: Value(folder.parentId),
+          updatedAt: Value(_now()),
+          dirty: const Value(true),
+        ),
+      );
+      await (_db.delete(_db.folders)..where((t) => t.id.equals(folderId))).go();
     });
   }
 
   Stream<List<Folder>> watchFolders(String? parentId) {
-    final q = _db.select(_db.folders)
-      ..where((t) => t.deletedAt.isNull());
+    final q = _db.select(_db.folders)..where((t) => t.deletedAt.isNull());
     if (parentId == null) {
       q.where((t) => t.parentId.isNull());
     } else {
@@ -115,26 +117,32 @@ class NoteRepository {
   }) async {
     final id = newId();
     final now = _now();
-    await _db.into(_db.notes).insert(NotesCompanion.insert(
-          id: id,
-          folderId: Value(folderId),
-          title: Value(title),
-          body: Value(body),
-          linkedEventId: Value(linkedEventId),
-          createdAt: now,
-          updatedAt: now,
-        ));
+    await _db
+        .into(_db.notes)
+        .insert(
+          NotesCompanion.insert(
+            id: id,
+            folderId: Value(folderId),
+            title: Value(title),
+            body: Value(body),
+            linkedEventId: Value(linkedEventId),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
     return id;
   }
 
   Future<Note?> getNote(String id) {
-    return (_db.select(_db.notes)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    return (_db.select(
+      _db.notes,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
   Stream<Note?> watchNote(String id) {
-    return (_db.select(_db.notes)..where((t) => t.id.equals(id)))
-        .watchSingleOrNull();
+    return (_db.select(
+      _db.notes,
+    )..where((t) => t.id.equals(id))).watchSingleOrNull();
   }
 
   Future<void> updateNote(
@@ -143,24 +151,25 @@ class NoteRepository {
     String? Function()? body,
     String? Function()? folderId,
   }) async {
-    await (_db.update(_db.notes)..where((t) => t.id.equals(id)))
-        .write(NotesCompanion(
-      title: title == null ? const Value.absent() : Value(title),
-      body: body == null ? const Value.absent() : Value(body()),
-      folderId:
-          folderId == null ? const Value.absent() : Value(folderId()),
-      updatedAt: Value(_now()),
-      dirty: const Value(true),
-    ));
+    await (_db.update(_db.notes)..where((t) => t.id.equals(id))).write(
+      NotesCompanion(
+        title: title == null ? const Value.absent() : Value(title),
+        body: body == null ? const Value.absent() : Value(body()),
+        folderId: folderId == null ? const Value.absent() : Value(folderId()),
+        updatedAt: Value(_now()),
+        dirty: const Value(true),
+      ),
+    );
   }
 
   Future<void> setPinned(String id, bool pinned) async {
-    await (_db.update(_db.notes)..where((t) => t.id.equals(id)))
-        .write(NotesCompanion(
-      pinned: Value(pinned),
-      updatedAt: Value(_now()),
-      dirty: const Value(true),
-    ));
+    await (_db.update(_db.notes)..where((t) => t.id.equals(id))).write(
+      NotesCompanion(
+        pinned: Value(pinned),
+        updatedAt: Value(_now()),
+        dirty: const Value(true),
+      ),
+    );
   }
 
   Future<String> duplicateNote(String id) async {
@@ -175,26 +184,27 @@ class NoteRepository {
   }
 
   Future<void> trashNote(String id) async {
-    await (_db.update(_db.notes)..where((t) => t.id.equals(id)))
-        .write(NotesCompanion(
-      deletedAt: Value(_now()),
-      updatedAt: Value(_now()),
-      dirty: const Value(true),
-    ));
+    await (_db.update(_db.notes)..where((t) => t.id.equals(id))).write(
+      NotesCompanion(
+        deletedAt: Value(_now()),
+        updatedAt: Value(_now()),
+        dirty: const Value(true),
+      ),
+    );
   }
 
   Future<void> restoreNote(String id) async {
-    await (_db.update(_db.notes)..where((t) => t.id.equals(id)))
-        .write(NotesCompanion(
-      deletedAt: const Value(null),
-      updatedAt: Value(_now()),
-      dirty: const Value(true),
-    ));
+    await (_db.update(_db.notes)..where((t) => t.id.equals(id))).write(
+      NotesCompanion(
+        deletedAt: const Value(null),
+        updatedAt: Value(_now()),
+        dirty: const Value(true),
+      ),
+    );
   }
 
   Future<List<Note>> notesInFolder(String? folderId) {
-    final q = _db.select(_db.notes)
-      ..where((t) => t.deletedAt.isNull());
+    final q = _db.select(_db.notes)..where((t) => t.deletedAt.isNull());
     if (folderId == null) {
       q.where((t) => t.folderId.isNull());
     } else {
@@ -208,8 +218,7 @@ class NoteRepository {
   }
 
   Stream<List<Note>> watchNotesInFolder(String? folderId) {
-    final q = _db.select(_db.notes)
-      ..where((t) => t.deletedAt.isNull());
+    final q = _db.select(_db.notes)..where((t) => t.deletedAt.isNull());
     if (folderId == null) {
       q.where((t) => t.folderId.isNull());
     } else {
@@ -224,24 +233,22 @@ class NoteRepository {
 
   Future<List<Note>> notesForEvent(String eventId) {
     return (_db.select(_db.notes)
-          ..where((t) =>
-              t.linkedEventId.equals(eventId) &
-              t.deletedAt.isNull())
+          ..where((t) => t.linkedEventId.equals(eventId) & t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
         .get();
   }
 
   /// Overflow note for long event descriptions. Idempotent per event:
   /// returns the existing overflow note when present.
-  Future<String?> ensureOverflowNote(
-      String eventId, String fullText) async {
-    final existing = await (_db.select(_db.notes)
-          ..where((t) =>
-              t.linkedEventId.equals(eventId) &
-              t.deletedAt.isNull())
-          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)])
-          ..limit(1))
-        .getSingleOrNull();
+  Future<String?> ensureOverflowNote(String eventId, String fullText) async {
+    final existing =
+        await (_db.select(_db.notes)
+              ..where(
+                (t) => t.linkedEventId.equals(eventId) & t.deletedAt.isNull(),
+              )
+              ..orderBy([(t) => OrderingTerm.asc(t.createdAt)])
+              ..limit(1))
+            .getSingleOrNull();
     if (existing != null) {
       if (existing.body != fullText) {
         await updateNote(existing.id, body: () => fullText);
@@ -260,17 +267,18 @@ class NoteRepository {
   Future<List<NoteSearchHit>> searchNotes(String query) async {
     final q = query.trim();
     if (q.isEmpty) return [];
-    final like =
-        '%${q.replaceAll('%', '').replaceAll('_', '')}%';
-    final rows = await (_db.select(_db.notes)
-          ..where((t) =>
-              t.deletedAt.isNull() &
-              (t.title.like(like) | t.body.like(like)))
-          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
-        .get();
+    final like = '%${q.replaceAll('%', '').replaceAll('_', '')}%';
+    final rows =
+        await (_db.select(_db.notes)
+              ..where(
+                (t) =>
+                    t.deletedAt.isNull() &
+                    (t.title.like(like) | t.body.like(like)),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
+            .get();
     return [
-      for (final n in rows)
-        NoteSearchHit(note: n, snippet: _snippet(n, q)),
+      for (final n in rows) NoteSearchHit(note: n, snippet: _snippet(n, q)),
     ];
   }
 
@@ -312,7 +320,9 @@ class NoteRepository {
       await dest.writeAsBytes(bytes, flush: true);
     }
     final id = newId();
-    await _db.into(_db.attachments).insert(
+    await _db
+        .into(_db.attachments)
+        .insert(
           AttachmentsCompanion.insert(
             id: id,
             ownerType: 'note',
@@ -335,9 +345,9 @@ class NoteRepository {
     }
     for (final a in all) {
       if (!ownerIds.contains(a.ownerId)) {
-        await (_db.delete(_db.attachments)
-              ..where((t) => t.id.equals(a.id)))
-            .go();
+        await (_db.delete(
+          _db.attachments,
+        )..where((t) => t.id.equals(a.id))).go();
         try {
           await File(a.path).delete();
         } catch (_) {}
