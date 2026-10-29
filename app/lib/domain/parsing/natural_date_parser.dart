@@ -1,3 +1,6 @@
+// Natural date/time parsing for English and Portuguese. Pure Dart, offline.
+// Matching is case-insensitive; the returned title keeps original casing.
+
 class ParsedNatural {
   ParsedNatural({required this.title, this.due, this.rrule});
   final String title;
@@ -42,105 +45,102 @@ const _weekdayCode = {
   DateTime.sunday: 'SU',
 };
 
+String _cut(String src, Pattern pattern) =>
+    src.replaceAll(pattern, ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+
 ParsedNatural parseNatural(String input, {DateTime? now}) {
   now ??= DateTime.now();
-  var working = input.trim().toLowerCase();
+  var working = input.trim();
   DateTime? date;
   int? hour;
   int minute = 0;
   String? rrule;
 
-  if (working.contains('every day') ||
-      working.contains('todo dia') ||
-      working.contains('todos os dias') ||
-      working.contains('diariamente')) {
+  final dailyRe = RegExp(
+      r'every day|todo dia|todos os dias|diariamente',
+      caseSensitive: false);
+  if (dailyRe.hasMatch(working)) {
     rrule = 'FREQ=DAILY';
-    working = working
-        .replaceAll('every day', '')
-        .replaceAll('todo dia', '')
-        .replaceAll('todos os dias', '')
-        .replaceAll('diariamente', '');
+    working = _cut(working, dailyRe);
   }
-  final everyWd = RegExp(r'(?:every|toda|todo)\s+([a-zà-ú]+)').firstMatch(working);
+  final everyWd = RegExp(r'(?:every|toda|todo)\s+([a-zà-ú]+)',
+      caseSensitive: false).firstMatch(working);
   if (everyWd != null) {
-    final wname = everyWd.group(1)!;
-    final wd = _weekdayMap[wname];
+    final wd = _weekdayMap[everyWd.group(1)!.toLowerCase()];
     if (wd != null && rrule == null) {
       rrule = 'FREQ=WEEKLY;BYDAY=${_weekdayCode[wd]}';
-      working = working.replaceFirst(everyWd.group(0)!, '');
+      working = _cut(working, everyWd.group(0)!);
     }
   }
 
-  final timeH = RegExp(r'(\d{1,2})h(\d{2})?').firstMatch(working);
+  final timeH =
+      RegExp(r'(\d{1,2})h(\d{2})?', caseSensitive: false).firstMatch(working);
   if (timeH != null) {
     hour = int.parse(timeH.group(1)!);
     if (timeH.group(2) != null) minute = int.parse(timeH.group(2)!);
-    working = working.replaceFirst(timeH.group(0)!, '');
+    working = _cut(working, timeH.group(0)!);
   } else {
     final timeColon = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(working);
     if (timeColon != null) {
       hour = int.parse(timeColon.group(1)!);
       minute = int.parse(timeColon.group(2)!);
-      working = working.replaceFirst(timeColon.group(0)!, '');
+      working = _cut(working, timeColon.group(0)!);
     } else {
-      final timeAmPm = RegExp(r'(\d{1,2})\s?(am|pm)').firstMatch(working);
+      final timeAmPm = RegExp(r'(\d{1,2})\s?(am|pm)', caseSensitive: false)
+          .firstMatch(working);
       if (timeAmPm != null) {
         hour = int.parse(timeAmPm.group(1)!);
-        if (timeAmPm.group(2) == 'pm' && hour < 12) hour += 12;
-        working = working.replaceFirst(timeAmPm.group(0)!, '');
+        if (timeAmPm.group(2)!.toLowerCase() == 'pm' && hour < 12) hour += 12;
+        working = _cut(working, timeAmPm.group(0)!);
       }
     }
   }
 
-  if (working.contains('today') || working.contains('hoje')) {
+  final todayRe =
+      RegExp(r'\btoday\b|\bhoje\b', caseSensitive: false);
+  final tomorrowRe = RegExp(r'\btomorrow\b|\bamanh[ãa]\b', caseSensitive: false);
+  if (todayRe.hasMatch(working)) {
     date = DateTime(now.year, now.month, now.day);
-    working = working.replaceAll('today', '').replaceAll('hoje', '');
-  } else if (working.contains('tomorrow') ||
-      working.contains('amanha') ||
-      working.contains('amanhã')) {
+    working = _cut(working, todayRe);
+  } else if (tomorrowRe.hasMatch(working)) {
     date = DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
-    working = working
-        .replaceAll('tomorrow', '')
-        .replaceAll('amanha', '')
-        .replaceAll('amanhã', '');
+    working = _cut(working, tomorrowRe);
   }
 
-  final inHours = RegExp(r'in\s+(\d+)\s*hours?|em\s+(\d+)\s*horas?')
+  final inHours = RegExp(r'in\s+(\d+)\s*hours?|em\s+(\d+)\s*horas?',
+          caseSensitive: false)
       .firstMatch(working);
   if (inHours != null) {
     final n = int.parse((inHours.group(1) ?? inHours.group(2))!);
     date = now.add(Duration(hours: n));
-    working = working.replaceFirst(inHours.group(0)!, '');
+    working = _cut(working, inHours.group(0)!);
   }
-  final inDays = RegExp(r'in\s+(\d+)\s*days?|em\s+(\d+)\s*dias?')
+  final inDays = RegExp(r'in\s+(\d+)\s*days?|em\s+(\d+)\s*dias?',
+          caseSensitive: false)
       .firstMatch(working);
   if (inDays != null) {
     final n = int.parse((inDays.group(1) ?? inDays.group(2))!);
     date = DateTime(now.year, now.month, now.day).add(Duration(days: n));
-    working = working.replaceFirst(inDays.group(0)!, '');
+    working = _cut(working, inDays.group(0)!);
   }
 
   final nextWd = RegExp(
-          r'next\s+([a-zà-ú]+)|proxim[oa]\s+([a-zà-ú]+)|próxim[oa]\s+([a-zà-ú]+)')
+          r'next\s+([a-zà-ú]+)|pr[óo]xim[oa]\s+([a-zà-ú]+)',
+          caseSensitive: false)
       .firstMatch(working);
   if (nextWd != null) {
-    final name = (nextWd.group(1) ?? nextWd.group(2) ?? nextWd.group(3))!;
+    final name =
+        (nextWd.group(1) ?? nextWd.group(2) ?? '').toLowerCase();
     final wd = _weekdayMap[name];
     if (wd != null) {
       date = _nextWeekday(now, wd);
-      working = working.replaceFirst(nextWd.group(0)!, '');
+      working = _cut(working, nextWd.group(0)!);
     }
   }
 
   if (date != null && hour != null) {
     date = DateTime(date.year, date.month, date.day, hour, minute);
-  } else if (date == null && hour != null && rrule == null) {
-    var d = DateTime(now.year, now.month, now.day, hour, minute);
-    if (d.isBefore(now)) d = d.add(const Duration(days: 1));
-    date = d;
-  }
-
-  if (rrule != null && date == null && hour != null) {
+  } else if (date == null && hour != null) {
     var d = DateTime(now.year, now.month, now.day, hour, minute);
     if (d.isBefore(now)) d = d.add(const Duration(days: 1));
     date = d;
