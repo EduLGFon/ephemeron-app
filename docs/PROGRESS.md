@@ -99,7 +99,7 @@ Notes: bestStreak bridges skipped days without extending the run (matches curren
 Checklist:
 - [x] JSON backup + restore (21 tables, validated, transactional; attachment bytes excluded)
 - [x] Global search across entities (tasks/events/notes/habits/countdowns/tags; display-only rows)
-- [ ] Onboarding (permissions at moment of need)
+- [x] Onboarding (3 pages max, skip always; permissions at moment of need)
 - [ ] Localization scaffolding (ARB EN/PT), accessibility pass
 - [ ] Widgets/shortcuts/share target; desktop/iOS/web parity; multiple Google accounts
-Acceptance: each item shippable alone. Status: backup + search done, verified `flutter test` 85 passed, `flutter analyze` clean.
+Acceptance: each item shippable alone. Status: backup + search + onboarding done, verified `flutter test` 86 passed, `flutter analyze` clean.
