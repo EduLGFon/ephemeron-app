@@ -9,10 +9,11 @@ import 'package:http/http.dart' as http;
 import '../../core/config/app_config.dart';
 
 class BackendApiException implements Exception {
-  BackendApiException(this.status, this.message);
+  BackendApiException(this.status, this.message, {this.retryAfterSec});
 
   final int status;
   final String message;
+  final int? retryAfterSec;
 
   bool get isUnauthorized => status == 401;
   bool get isRateLimited => status == 429;
@@ -62,14 +63,21 @@ class HttpBackendApiClient implements BackendApiClient {
     );
   }
 
-  Never _throw(int status, String body) {
+  Never _throw(int status, String body, {int? retryAfterSec}) {
     var message = 'backend $status';
     try {
       final json = jsonDecode(body) as Map<String, dynamic>;
       final m = json['message'] ?? json['error'];
       if (m is String && m.isNotEmpty) message = m;
     } catch (_) {}
-    throw BackendApiException(status, message);
+    throw BackendApiException(status, message, retryAfterSec: retryAfterSec);
+  }
+
+  int? _retryAfter(Map<String, String> headers) {
+    for (final e in headers.entries) {
+      if (e.key.toLowerCase() == 'retry-after') return int.tryParse(e.value);
+    }
+    return null;
   }
 
   Future<Map<String, dynamic>> _post(
@@ -87,7 +95,7 @@ class HttpBackendApiClient implements BackendApiClient {
       body: jsonEncode(body),
     );
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      _throw(res.statusCode, res.body);
+      _throw(res.statusCode, res.body, retryAfterSec: _retryAfter(res.headers));
     }
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
@@ -125,7 +133,7 @@ class HttpBackendApiClient implements BackendApiClient {
       headers: {'Authorization': 'Bearer $accessToken'},
     );
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      _throw(res.statusCode, res.body);
+      _throw(res.statusCode, res.body, retryAfterSec: _retryAfter(res.headers));
     }
   }
 }

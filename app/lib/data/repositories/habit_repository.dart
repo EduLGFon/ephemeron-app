@@ -85,6 +85,7 @@ class HabitRepository {
             alarmPreset: Value(alarmPreset),
             createdAt: now,
             updatedAt: now,
+            dirty: const Value(true),
           ),
         );
     await _enqueue('habit', id, 'create');

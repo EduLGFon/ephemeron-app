@@ -78,6 +78,9 @@ class SyncEngine {
               ..orderBy([(o) => OrderingTerm.asc(o.createdAt)]))
             .get();
     for (final op in ops) {
+      // Backend-owned entities (habits, focus) have their own engine and
+      // cursors; the Google engine must leave their outbox rows alone.
+      if (!_isGoogleEntity(op.entity)) continue;
       try {
         await _applyOp(client, op);
         await (_db.delete(_db.outbox)..where((o) => o.id.equals(op.id))).go();
@@ -256,6 +259,9 @@ class SyncEngine {
     final base = 5000 * (1 << attempts.clamp(0, 5));
     return base + _rand.nextInt(1000);
   }
+
+  static bool _isGoogleEntity(String entity) =>
+      entity == 'event' || entity == 'task' || entity == 'task_list';
 
   Future<void> retryFailed(String outboxId) async {
     await (_db.update(_db.outbox)..where((o) => o.id.equals(outboxId))).write(
