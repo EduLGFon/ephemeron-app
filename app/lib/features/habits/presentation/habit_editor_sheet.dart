@@ -266,17 +266,31 @@ class _WeekdayPicker extends StatelessWidget {
   final int mask;
   final void Function(int mask) onChanged;
 
+  static const _labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  static const _names = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+
   @override
   Widget build(BuildContext context) {
-    const labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     return Wrap(
       spacing: 4,
       children: [
         for (var i = 0; i < 7; i++)
-          FilterChip(
-            label: Text(labels[i]),
+          Semantics(
+            label: _names[i],
             selected: (mask & (1 << i)) != 0,
-            onSelected: (_) => onChanged(mask ^ (1 << i)),
+            child: FilterChip(
+              label: Text(_labels[i]),
+              selected: (mask & (1 << i)) != 0,
+              onSelected: (_) => onChanged(mask ^ (1 << i)),
+            ),
           ),
       ],
     );
@@ -303,11 +317,13 @@ class _Stepper extends StatelessWidget {
         Expanded(child: Text(label)),
         IconButton(
           icon: const Icon(Icons.remove),
+          tooltip: 'Decrease $label',
           onPressed: value > min ? () => onChanged(value - 1) : null,
         ),
         Text('$value'),
         IconButton(
           icon: const Icon(Icons.add),
+          tooltip: 'Increase $label',
           onPressed: () => onChanged(value + 1),
         ),
       ],

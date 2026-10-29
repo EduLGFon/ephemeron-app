@@ -29,6 +29,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('Finish'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(RegExp('Focus time remaining')),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Finish'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));

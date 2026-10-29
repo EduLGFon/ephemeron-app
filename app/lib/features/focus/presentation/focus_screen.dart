@@ -254,9 +254,12 @@ class _RunningViewState extends ConsumerState<_RunningView> {
             ),
           const SizedBox(height: 24),
           Center(
-            child: Text(
-              remaining,
-              style: Theme.of(context).textTheme.displayLarge,
+            child: Semantics(
+              label: 'Focus time remaining: $remaining',
+              child: Text(
+                remaining,
+                style: Theme.of(context).textTheme.displayLarge,
+              ),
             ),
           ),
           Center(
@@ -373,28 +376,30 @@ class _WeekBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final max = days.fold<int>(1, (a, b) => b > a ? b : a);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        for (var i = 0; i < days.length; i++)
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2),
-              child: Column(
-                children: [
-                  Container(
-                    height: 60 * (days[i] / max),
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  Text(
-                    '${days[i]}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
+    return ExcludeSemantics(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (var i = 0; i < days.length; i++)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Column(
+                  children: [
+                    Container(
+                      height: 60 * (days[i] / max),
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    Text(
+                      '${days[i]}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
