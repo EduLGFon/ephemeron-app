@@ -6,6 +6,8 @@ import '../shell/section_placeholder.dart';
 import '../../features/calendar/presentation/calendar_screen.dart';
 import '../../features/tasks/presentation/matrix_screen.dart';
 import '../../features/tasks/presentation/tasks_screen.dart';
+import '../../features/alarms/presentation/alarm_settings_screen.dart';
+import '../../features/alarms/presentation/ring_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -50,6 +52,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ],
             ),
         ],
+      ),
+      GoRoute(path: '/ring', builder: (context, state) => const RingScreen()),
+      GoRoute(
+        path: '/alarm-settings',
+        builder: (context, state) => const AlarmSettingsScreen(),
       ),
       GoRoute(
         path: '/settings',

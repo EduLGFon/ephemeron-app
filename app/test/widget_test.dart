@@ -10,10 +10,12 @@ import 'package:ephemeron/main.dart';
 void main() {
   testWidgets('app builds', (WidgetTester tester) async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
-    await tester.pumpWidget(ProviderScope(
-      overrides: [appDatabaseProvider.overrideWithValue(db)],
-      child: const EphemeronApp(),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appDatabaseProvider.overrideWithValue(db)],
+        child: const EphemeronApp(),
+      ),
+    );
     await tester.pump();
     expect(find.byType(MaterialApp), findsOneWidget);
     // Close the db and unmount inside the test so Drift's stream-close
