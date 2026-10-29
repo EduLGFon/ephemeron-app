@@ -78,11 +78,12 @@ class HttpGoogleApiClient implements GoogleApiClient {
   Future<Map<String, String>> _headers({String? etag}) async {
     final token = await _accessToken();
     if (token == null) throw GoogleApiException(401, 'no token');
-    return {
+    final headers = <String, String>{
       'Authorization': 'Bearer $token',
       'Content-Type': 'application/json',
-      if (etag != null) 'If-Match': etag!,
     };
+    if (etag != null) headers['If-Match'] = etag;
+    return headers;
   }
 
   Never _throw(http.Response r) {
@@ -114,10 +115,10 @@ class HttpGoogleApiClient implements GoogleApiClient {
       'singleEvents': 'false',
       'showDeleted': 'true',
       'maxResults': '250',
-      if (syncToken != null) 'syncToken': syncToken!,
-      if (timeMin != null) 'timeMin': timeMin!,
-      if (timeMax != null) 'timeMax': timeMax!,
     };
+    if (syncToken != null) q['syncToken'] = syncToken;
+    if (timeMin != null) q['timeMin'] = timeMin;
+    if (timeMax != null) q['timeMax'] = timeMax;
     final r = await _http.get(
       Uri.parse(
         '${AppConfig.calendarApiBase}/calendars/$calendarId/events',
@@ -193,8 +194,8 @@ class HttpGoogleApiClient implements GoogleApiClient {
       'showCompleted': 'true',
       'showHidden': 'true',
       'maxResults': '100',
-      if (updatedMin != null) 'updatedMin': updatedMin!,
     };
+    if (updatedMin != null) q['updatedMin'] = updatedMin;
     final r = await _http.get(
       Uri.parse(
         '${AppConfig.tasksApiBase}/lists/$taskListId/tasks',
