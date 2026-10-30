@@ -1,6 +1,7 @@
 {
   "@@locale": "pt",
   "searchTitle": "Buscar",
+  "@searchTitle": { "description": "Global search screen title" },
   "searchHint": "Buscar em tudo",
   "searchEmpty": "Digite para buscar.",
   "searchAll": "Tudo",
@@ -18,6 +19,7 @@
   "backupRestoreBody": "Isto substitui todos os dados atuais do dispositivo pelo backup. Exporte antes se precisar do estado atual.",
   "backupCancel": "Cancelar",
   "backupExported": "Backup salvo: {name}",
+  "@backupExported": { "placeholders": { "name": {} } },
   "backupExportFailed": "Falha na exportação.",
   "backupRestored": "Backup restaurado.",
   "onboardingSkip": "Pular",

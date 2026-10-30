@@ -46,7 +46,7 @@ class _SyncTitleState extends ConsumerState<SyncTitle> {
             const Duration(minutes: 30);
     final color = (fresh || status == SyncStatus.syncing)
         ? Theme.of(context).colorScheme.primary
-        : Colors.grey;
+        : Theme.of(context).colorScheme.outline;
     return InkWell(
       onTap: () =>
           ref.read(googleAutoSyncServiceProvider).syncNowAndReschedule(),

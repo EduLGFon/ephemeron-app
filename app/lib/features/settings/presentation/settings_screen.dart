@@ -53,7 +53,19 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Settings')),
       body: asyncRepo.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Could not load settings.'),
+              const SizedBox(height: 8),
+              FilledButton(
+                onPressed: () => ref.invalidate(settingsRepositoryProvider),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
         data: (repo) => ListView(
           children: [
             const _SectionHeader('Appearance'),
@@ -93,7 +105,7 @@ class SettingsScreen extends ConsumerWidget {
                     GestureDetector(
                       onTap: () =>
                           _mutate(ref, (r) => r.setPrimaryColorHex(_hex(c))),
-                      child: CircleAvatar(backgroundColor: c, radius: 14),
+                      child: CircleAvatar(backgroundColor: c, radius: 20),
                     ),
                 ],
               ),
@@ -107,7 +119,7 @@ class SettingsScreen extends ConsumerWidget {
                     GestureDetector(
                       onTap: () =>
                           _mutate(ref, (r) => r.setBackgroundColorHex(_hex(c))),
-                      child: CircleAvatar(backgroundColor: c, radius: 14),
+                      child: CircleAvatar(backgroundColor: c, radius: 20),
                     ),
                 ],
               ),

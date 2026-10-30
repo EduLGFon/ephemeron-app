@@ -766,7 +766,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                     GestureDetector(
                       onTap: () => setState(() => _colorId = c),
                       child: CircleAvatar(
-                        radius: 14,
+                        radius: 20,
                         backgroundColor: c == null
                             ? Theme.of(context).colorScheme.primary
                             : googleCalendarColor(c),

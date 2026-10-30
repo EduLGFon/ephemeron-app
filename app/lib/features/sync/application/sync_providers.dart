@@ -11,6 +11,7 @@ import '../../../data/remote/google_api_client.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../calendar/application/calendar_providers.dart';
 import '../../settings/application/settings_providers.dart';
+import '../../settings/data/settings_repository.dart';
 import '../data/backend_sync_engine.dart';
 import '../data/background_sync.dart';
 import '../data/sync_engine.dart';
@@ -149,6 +150,10 @@ class GoogleAutoSyncService {
     try {
       final repo = await _ref.read(settingsRepositoryProvider.future);
       intervalMin = repo.syncIntervalMin;
+      // Battery-aware: halve frequency when power saving is forced on.
+      if (repo.powerSavingMode == PowerSavingMode.on && intervalMin > 0) {
+        intervalMin = intervalMin * 2;
+      }
     } catch (_) {
       // Prefs unavailable: fall back to the compiled default.
     }
@@ -244,6 +249,9 @@ class BackendAutoSyncService {
     try {
       final repo = await _ref.read(settingsRepositoryProvider.future);
       intervalMin = repo.backendSyncIntervalMin;
+      if (repo.powerSavingMode == PowerSavingMode.on && intervalMin > 0) {
+        intervalMin = intervalMin * 2;
+      }
     } catch (_) {
       // Prefs unavailable: stay manual.
     }

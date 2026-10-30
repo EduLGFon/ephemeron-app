@@ -228,28 +228,32 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
                                   behavior: HitTestBehavior.opaque,
                                   onTapUp: (d) =>
                                       _tapEmpty(d.localPosition, colW),
-                                  child: CustomPaint(
-                                    size: Size(cons.maxWidth, 24 * hourHeight),
-                                    painter: _TimelinePainter(
-                                      anchor: widget.anchor,
-                                      dayCount: widget.dayCount,
-                                      hourHeight: hourHeight,
-                                      now: DateTime.now(),
-                                      primary: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
+                                  child: RepaintBoundary(
+                                    child: CustomPaint(
+                                      size: Size(cons.maxWidth, 24 * hourHeight),
+                                      painter: _TimelinePainter(
+                                        anchor: widget.anchor,
+                                        dayCount: widget.dayCount,
+                                        hourHeight: hourHeight,
+                                        now: DateTime.now(),
+                                        primary: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
+                                      ),
                                     ),
                                   ),
                                 ),
                                 for (final o in timed) _eventBlock(o, colW),
                                 IgnorePointer(
-                                  child: CustomPaint(
-                                    size: Size(cons.maxWidth, 24 * hourHeight),
-                                    painter: _NowLinePainter(
-                                      anchor: widget.anchor,
-                                      dayCount: widget.dayCount,
-                                      hourHeight: hourHeight,
-                                      now: DateTime.now(),
+                                  child: RepaintBoundary(
+                                    child: CustomPaint(
+                                      size: Size(cons.maxWidth, 24 * hourHeight),
+                                      painter: _NowLinePainter(
+                                        anchor: widget.anchor,
+                                        dayCount: widget.dayCount,
+                                        hourHeight: hourHeight,
+                                        now: DateTime.now(),
+                                      ),
                                     ),
                                   ),
                                 ),
