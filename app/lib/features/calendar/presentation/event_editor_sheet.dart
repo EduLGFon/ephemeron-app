@@ -383,7 +383,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                   for (final c in cals) {
                     groups
                         .putIfAbsent(
-                          c.source == 'google' ? 'Google' : 'Device',
+                          c.source == 'google' ? (c.googleAccount ?? 'Google') : 'Device',
                           () => [],
                         )
                         .add(c);

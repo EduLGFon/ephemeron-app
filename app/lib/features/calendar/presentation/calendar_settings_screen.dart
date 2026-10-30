@@ -11,7 +11,9 @@ import '../../../data/services/device_calendar_import_service.dart';
 List<MapEntry<String, List<Calendar>>> _groupCalendars(List<Calendar> cals) {
   final map = <String, List<Calendar>>{};
   for (final c in cals) {
-    final key = c.source == 'google' ? 'Google' : 'Device';
+    final key = c.source == 'google'
+        ? (c.googleAccount ?? 'Google')
+        : 'Device';
     map.putIfAbsent(key, () => []).add(c);
   }
   return map.entries.toList();
