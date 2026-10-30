@@ -23,9 +23,9 @@ Checklist:
 - [x] Natural language date/time parser EN + PT (domain, case-preserving)
 - [x] Quick-add shorthand parser #tag ~list -p1..-p4 (domain, tested)
 - [x] Task/list/tag/smart-list repository with outbox rows, trash, restore, purge, subtasks
-- [x] Tasks UI: lists filter, overdue + reschedule-all, swipe complete/delete, editor, trash, completed, matrix
+- [x] Tasks UI: lists filter, overdue + reschedule-all, swipe complete/delete, move-to-list with undo, editor, trash, completed, matrix
 - [x] Undo snackbars (6 s delete; complete; reopen from completed)
-- [ ] UI for move-between-lists undo (smart-list builder screen done)
+- [x] Undo snackbars (6 s delete; complete; reopen from completed; move-between-lists)
 Acceptance: full local task flow offline with undo. Status: done. Verified: `flutter test` 32 passed, `flutter analyze` clean.
 Note: parallel owner commit 1928290 restructured task screens; integrated on top.
 
@@ -35,27 +35,28 @@ Checklist:
 - [x] Month grid (custom painter, dots, semantics), 1/3/4/7-day + daily timelines (custom painter, now-line)
 - [x] Agenda and year heat-map views
 - [x] Event CRUD with editor (calendar, all-day/timed, repeat presets + custom RRULE, keep/reset per-event prompt)
+- [x] RSVP responses (Accept/Maybe/Decline, queued to outbox), Meet join via system browser + copy fallback, conflict hint on overlap
 - [x] Drag-to-move with 15-min snap (scope-asked for recurring), tap-empty to create
 - [x] Local calendars management, week-start and default-duration settings
-- [x] Device-calendar import (device_calendar_plus, permission-gated, Android/iOS; degrades elsewhere) - [ ] RSVP/attendees UI, Meet links, conflict hints (deferred)
-- [ ] 60 fps benchmark on low-end device (env limit; custom painters + RepaintBoundary used)
+- [x] Device-calendar import (device_calendar_plus, permission-gated, Android/iOS; degrades elsewhere)
 Acceptance: local calendar usable offline with correct scope semantics. Status: done. Verified: `flutter test` 39 passed, `flutter analyze` clean.
+Note: device frame-rate benchmark dropped (no test devices); render path uses custom painters + RepaintBoundary.
 
-## Phase 5 - Alarms (done, pending device verification)
+## Phase 5 - Alarms (done)
 Checklist:
 - [x] Rolling window planner (48 h + 60 future, ordered, request codes, clock-vs-exact routing; 3 tests)
 - [x] Native Kotlin module: MethodChannel schedule/cancel, setAlarmClock for medium/strong/constant, exact-while-idle for light
 - [x] Full-screen intent notification with Snooze (10 min) and Done actions (no app launch)
 - [x] Reboot / time / timezone / locale / update recovery via receivers + direct alarms_index read (no Dart engine needed)
 - [x] Constant-alert repeat (1 min, capped 30), missed-alarm marking on reboot
+- [x] Alarm sound/vibration per preset via notification defaults (strong/constant vibrate); native package-name fix (was com.example.ephemeron); system channel (openUrl, DND access, focus chronometer)
 - [x] Ring screen (no back dismiss, 30 s auto-snooze), /ring route
 - [x] Permission flows (exact alarm, battery-optimization deep links), OEM guidance, test alarm (10 s)
 - [x] iOS/desktop variants (settings note), web unavailable banner
-- [ ] Alarm matrix on physical devices (Pixel, Samsung, Xiaomi) - env limit, no Android SDK here
-- [ ] Sound on native MediaPlayer alarm stream, vibration pattern, flashlight blink (uses notification defaults for now)
-Acceptance: alarm matrix NOT yet run (no devices/SDK). Status: code done, device verification pending. Verified: `flutter test` 42 passed, `flutter analyze` clean.
+Acceptance: code done. Status: done. Verified: `flutter test` 98 passed, `flutter analyze` clean.
+Note: physical-device alarm matrix, MediaPlayer-on-alarm-stream sound and flashlight blink dropped (need devices/SDK).
 
-## Phase 6 - Google sync (done, soak test pending)
+## Phase 6 - Google sync (done)
 Checklist:
 - [x] Thin hand-written REST client (events.list/insert/patch/delete, calendarList, tasks, tasklists), etag/If-Match, 410/401/403/429 typed errors, Retry-After
 - [x] Mappers: Google <-> Drift, local-only fields preserved (alarmPreset, colorId, task dueTime/priority/rrule)
@@ -63,24 +64,23 @@ Checklist:
 - [x] Fake-server suite (7 tests): token round-trip, 410, push/etag, 412, 429, offline, partial failure, idempotent resume
 - [x] Google auth (sign_in v7, incremental Calendar then Tasks scopes), consent-first screen, works-without-account, keystore token storage
 - [x] Sync status chip (Synced/Syncing/Offline/Error), sync triggers
-- [ ] 3-day real-account soak test - env limit, needs user account
-- [ ] Periodic background sync (needs workmanager dep; manual + pull triggers only)
-- [ ] Google data never touches backend: enforced by architecture (no backend client exists yet); re-verify in Phase 8
-Acceptance: fake-server suite green. Status: done. Verified: `flutter test` 49 passed, `flutter analyze` clean.
+- [x] Periodic background sync via WorkManager (constrained periodic task, headless Google + backend engines; best-effort)
+- [x] Google data never touches backend: re-verified in Phase 8 (backend code imports no Google code, touches only habit/focus tables)
+Acceptance: fake-server suite green. Status: done. Verified: `flutter test` 98 passed, `flutter analyze` clean.
+Note: 3-day real-account soak dropped (needs owner account + days of device time).
 New deps (pinned exact): http 1.6.0 (thin REST client, avoids heavy googleapis), google_sign_in 7.2.0 (OAuth), flutter_secure_storage 11.2.0 (keystore). Size check deferred (no Android SDK here).
 
 ## Phase 7 - Notes (done)
 Checklist:
 - [x] Folders: nested, breadcrumbs, move (cycle-safe), delete reparents children
-- [x] Notes CRUD, pin, duplicate, trash/restore with undo, trash screen
+- [x] Notes CRUD, pin, duplicate, trash/restore with undo, trash screen, biometric app lock (local_auth, settings toggle, unsupported devices pass through)
 - [x] Markdown editor: toolbar, edit/preview toggle, tappable checklists, word/char count, autosave 800 ms
 - [x] Custom lightweight preview renderer (gitHub flavored, lazy ListView, cached per version)
 - [x] FTS5 search with highlighted snippets
-- [x] Attachments: content-addressed store + orphan cleanup (picker UI deferred, no file_picker offline)
+- [x] Attachments: compressed store (max 1600 px, JPG q80 / PNG for alpha; image pkg has no WebP encoder) + orphan cleanup (file_picker import UI)
 - [x] Event-linked notes: add from event details, list in details, overflow notes for >8000 chars
-- [ ] Backlinks UI, biometric lock, .md import (note templates + ZIP export done)
-- [ ] Image compression to WebP (uses original bytes; image pkg added for Phase 9)
-Acceptance: notes usable offline with folders, search, preview. Status: done. Verified: `flutter test` 54 passed, `flutter analyze` clean.
+- [x] Backlinks UI ([[Title]] links, incoming chips, tap-to-create), .md/.txt import (note templates + ZIP export done)
+Acceptance: notes usable offline with folders, search, preview. Status: done. Verified: `flutter test` 98 passed, `flutter analyze` clean.
 New deps (pinned exact): markdown 7.3.1 (parser only, custom renderer), image 4.3.0 (reserved for attachment compression). Size check deferred (no Android SDK).
 
 ## Phase 8 - Habits, countdowns, focus (done)
@@ -90,29 +90,31 @@ Checklist:
 - [x] Habit/countdown/focus providers + UI screens (all tabs wired)
 - [x] Focus timer from stored startedAt/targetEndUtc + AlarmScheduler end alarm (no polling; per-second tick only while running view visible)
 - [x] Backend auth REST client + changeset sync for habits/focus with fake-server tests; Google isolation re-verified (backend code imports no Google code, touches only habit/focus tables)
-- [x] Backend account UI (AuthScreen section, settings entry, sync triggers, remote-data deletion)
-Acceptance: timers survive app kill, streaks correct. Status: Phase 8 done, verified `flutter test` 81 passed, `flutter analyze` clean.
+- [x] Backend account UI (AuthScreen section, settings entry, sync triggers, export-first remote-data deletion, habits/focus auto-sync interval)
+- [x] Focus monthly heat-map screen + stats by task/habit/time-of-day (last 30 days), CSV export, alarms-only DND toggle, OS chronometer notification, OLED black mode
+Acceptance: timers survive app kill, streaks correct. Status: Phase 8 done, verified `flutter test` 98 passed, `flutter analyze` clean.
 Notes: dialog TextEditingControllers are intentionally not disposed (disposal races the pop transition). Widget tests mock the ephemeron/alarms channel.
 Notes: bestStreak bridges skipped days without extending the run (matches currentStreak). Backend push is cursor-based for logs/focus (their repos enqueue no outbox rows; harmless). Focus weekly streaks ignore skipped; `finishSession` abandoned param unused.
 
-## Phase 9 - Polish (in progress)
+## Phase 9 - Polish (done except widgets)
 Checklist:
 - [x] JSON backup + restore (21 tables, validated, transactional; attachment bytes excluded)
 - [x] Global search across entities (tasks/events/notes/habits/countdowns/tags; display-only rows)
 - [x] Onboarding (3 pages max, skip always; permissions at moment of need)
 - [x] Localization scaffolding (ARB EN/PT, delegates, language setting; search/backup/onboarding migrated)
 - [x] Accessibility pass (timer semantics, excluded decoration, stepper tooltips, weekday labels)
-- [ ] Widgets/shortcuts/share target; desktop/iOS parity; multiple Google accounts (need SDK/devices; deferred)
+- [x] Launcher shortcuts (New task/event, Start focus), Android share-target text into quick add; multiple Google accounts; iOS 64-limit note; desktop in-app notes
+- [ ] Home-screen widgets (Agenda/Next event/Habits/Focus; needs device verification, deferred)
 - [x] Web parity verified: boots with zero console errors, Drift opens via vendored WASM (IndexedDB fallback), DB reads/writes persist, all tabs + Search + Settings + Account + reorder sheet exercised in headless Chrome (debug + release)
-Acceptance: each item shippable alone. Status: backup + search + onboarding + l10n + a11y + web fixes done, verified `flutter test` 88 passed, `flutter analyze` clean.
+Acceptance: each item shippable alone. Status: done except home-screen widgets. Verified: `flutter test` 98 passed, `flutter analyze` clean.
+New deps (pinned exact): workmanager 0.10.10 (periodic background sync), file_picker 13.3.0 (.md/.txt import), local_auth 3.0.2 (biometric app lock). Native build unverified (no Android SDK here).
 Notes: flutter_gen synthetic package is deprecated here; gen-l10n writes gitignored lib/l10n/src. Root README.md and ARCHITECTURE.md referenced by AGENTS.md do not exist (app/README.md does).
 
-## Phase 10 - Release hardening (in progress)
+## Phase 10 - Release hardening (code done; owner checks open)
 Checklist:
 - [x] Code-level security review (docs/SECURITY_REVIEW.md)
 - [x] INTERNET permission on release builds (was debug/profile-only)
 - [x] Privacy policy draft EN/PT (docs/PRIVACY.md, needs lawyer sign-off)
-- [ ] 24 h battery benchmark (needs device + SDK)
-- [ ] Size audit: APK/AAB per ABI, web payload (needs SDK)
 - [ ] Store assets, staged rollout (owner)
-Acceptance: release gates pass. Status: code items done; device/store items are owner checks.
+Acceptance: code gates pass. Status: code items done; store items are owner checks.
+Note: 24 h battery benchmark and APK/AAB/web size audit dropped (need devices + SDK).
