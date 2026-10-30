@@ -53,7 +53,6 @@ class _AppShellState extends ConsumerState<AppShell> {
     final more = order.skip(5).toList();
 
     return Scaffold(
-      extendBody: true,
       body: widget.navigationShell,
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
