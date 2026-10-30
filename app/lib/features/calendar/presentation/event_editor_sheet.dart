@@ -8,6 +8,7 @@ import '../../../data/repositories/event_repository.dart';
 import '../../settings/application/settings_providers.dart';
 import '../../notes/application/notes_providers.dart';
 import '../application/calendar_providers.dart';
+import '../../../domain/recurrence/recurrence_rule.dart';
 import 'scope_sheet.dart';
 
 Future<void> showEventEditor(
@@ -359,22 +360,55 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                 onChanged: (v) async {
                   if (v == '__custom__') {
                     final ctl = TextEditingController(text: _rrule ?? '');
+                    String? error;
                     final custom = await showDialog<String>(
                       context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Custom RRULE'),
-                        content: TextField(controller: ctl, autofocus: true),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(),
-                            child: const Text('Cancel'),
+                      builder: (ctx) => StatefulBuilder(
+                        builder: (ctx, setSt) => AlertDialog(
+                          title: const Text('Custom RRULE'),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextField(
+                                controller: ctl,
+                                autofocus: true,
+                                decoration: InputDecoration(
+                                  hintText: 'FREQ=WEEKLY;BYDAY=MO,WE',
+                                  errorText: error,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Examples: FREQ=DAILY;INTERVAL=2, '
+                                'FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=10, '
+                                'FREQ=MONTHLY;BYMONTHDAY=15;UNTIL=20261231',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                            ],
                           ),
-                          FilledButton(
-                            onPressed: () =>
-                                Navigator.of(ctx).pop(ctl.text.trim()),
-                            child: const Text('OK'),
-                          ),
-                        ],
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              onPressed: () {
+                                final text = ctl.text.trim();
+                                if (text.isEmpty) {
+                                  Navigator.of(ctx).pop(text);
+                                  return;
+                                }
+                                try {
+                                  RecurrenceRule.parse(text);
+                                  Navigator.of(ctx).pop(text);
+                                } catch (_) {
+                                  setSt(() => error = 'Invalid RRULE');
+                                }
+                              },
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                     if (custom != null) {
