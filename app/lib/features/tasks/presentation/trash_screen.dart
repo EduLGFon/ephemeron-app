@@ -45,10 +45,7 @@ class TrashScreen extends ConsumerWidget {
                   color: Colors.red,
                   alignment: Alignment.centerRight,
                   padding: const EdgeInsets.only(right: 16),
-                  child: const Icon(
-                    Icons.delete_forever,
-                    color: Colors.white,
-                  ),
+                  child: const Icon(Icons.delete_forever, color: Colors.white),
                 ),
                 confirmDismiss: (_) async {
                   return await showDialog<bool>(

@@ -278,7 +278,8 @@ class _RunningViewState extends ConsumerState<_RunningView> {
       valueListenable: _now,
       builder: (context, now, _) {
         final target = widget.session.targetEndUtc;
-        final elapsedMin = ((now - widget.session.startUtc) / msPerMinute).floor();
+        final elapsedMin = ((now - widget.session.startUtc) / msPerMinute)
+            .floor();
         final remainingMs = target == null ? 0 : target - now;
         final finished = target != null && remainingMs <= 0;
         final remaining = finished

@@ -28,7 +28,10 @@ final focusTodayMinutesProvider = FutureProvider<int>((ref) {
   final now = DateTime.now().toUtc();
   return ref
       .watch(focusRepositoryProvider)
-      .totalMinutes(_dayStartUtc(now), now.millisecondsSinceEpoch + msPerMinute);
+      .totalMinutes(
+        _dayStartUtc(now),
+        now.millisecondsSinceEpoch + msPerMinute,
+      );
 });
 
 /// Minutes per day for the last 7 days, oldest first.
@@ -87,7 +90,8 @@ Future<List<(String, int)>> _groupMinutes(
     final end = s.endUtc ?? now;
     if (end <= s.startUtc) continue;
     final key = keyOf(s) ?? fallback;
-    totals[key] = (totals[key] ?? 0) + ((end - s.startUtc) / msPerMinute).floor();
+    totals[key] =
+        (totals[key] ?? 0) + ((end - s.startUtc) / msPerMinute).floor();
   }
   final rows = [
     for (final e in totals.entries) (labels[e.key] ?? e.key, e.value),
@@ -138,7 +142,8 @@ final focusStatsByTimeOfDayProvider = FutureProvider<List<(String, int)>>((
         : hour >= 18 && hour < 23
         ? 'Evening'
         : 'Night';
-    totals[bucket] = totals[bucket]! + ((end - s.startUtc) / msPerMinute).floor();
+    totals[bucket] =
+        totals[bucket]! + ((end - s.startUtc) / msPerMinute).floor();
   }
   return totals.entries.map((e) => (e.key, e.value)).toList();
 });

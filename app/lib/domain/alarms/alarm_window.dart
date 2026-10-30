@@ -1,4 +1,5 @@
 import 'package:ephemeron/core/time/time.dart';
+
 // Rolling alarm window (PLAN 7.1): keep the next 48 h plus the next N
 // future alarms registered. Pure Dart; the native module mirrors this.
 class AlarmCandidate {
