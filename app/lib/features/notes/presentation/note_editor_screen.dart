@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
+import '../../../data/repositories/note_repository.dart';
 import '../application/notes_providers.dart';
 import 'markdown_preview.dart' show MarkdownPreview, countWords;
 
@@ -25,11 +26,21 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   Timer? _saveTimer;
   bool _preview = false;
   bool _loaded = false;
+  NoteRepository? _repo;
 
   @override
   void dispose() {
     _saveTimer?.cancel();
-    _flush();
+    // Never use ref after unmount: flush via the cached repository.
+    final repo = _repo;
+    if (_loaded && repo != null) {
+      final id = widget.noteId;
+      final title = _titleCtl.text;
+      final body = _bodyCtl.text;
+      unawaited(
+        repo.updateNote(id, title: title, body: () => body),
+      );
+    }
     _titleCtl.dispose();
     _bodyCtl.dispose();
     super.dispose();
@@ -41,14 +52,13 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   }
 
   Future<void> _flush() async {
-    if (!_loaded) return;
-    await ref
-        .read(noteRepositoryProvider)
-        .updateNote(
-          widget.noteId,
-          title: _titleCtl.text,
-          body: () => _bodyCtl.text,
-        );
+    final repo = _repo;
+    if (!_loaded || repo == null) return;
+    await repo.updateNote(
+      widget.noteId,
+      title: _titleCtl.text,
+      body: () => _bodyCtl.text,
+    );
   }
 
   void _toggleTask(int blockIndex) {
@@ -109,6 +119,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
         }
         if (!_loaded) {
           _loaded = true;
+          _repo ??= ref.read(noteRepositoryProvider);
           _titleCtl.text = note.title;
           _bodyCtl.text = note.body ?? '';
           _titleCtl.addListener(_scheduleSave);

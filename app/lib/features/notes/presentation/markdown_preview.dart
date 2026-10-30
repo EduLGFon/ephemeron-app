@@ -78,21 +78,38 @@ class _Blocks implements md.NodeVisitor {
       return true;
     }
     if (tag == 'li') {
-      final text = element.textContent.trim();
-      final taskMatch = RegExp(r'^\[([ xX])\] (.*)').firstMatch(text);
-      if (taskMatch != null) {
+      // GitHub-flavored task lists parse to <li class="task-list-item">
+      // with an <input type="checkbox"> child; textContent no longer
+      // contains the "[ ]" marker, so detect via the input element.
+      final children = element.children ?? const <md.Node>[];
+      md.Element? checkbox;
+      for (final c in children) {
+        if (c is md.Element &&
+            c.tag == 'input' &&
+            c.attributes['type'] == 'checkbox') {
+          checkbox = c;
+          break;
+        }
+      }
+      final isTask =
+          checkbox != null ||
+          element.attributes['class'] == 'task-list-item';
+      if (isTask) {
         final idx = taskIndex++;
-        final checked = taskMatch.group(1)!.toLowerCase() == 'x';
+        final checked =
+            checkbox?.attributes.containsKey('checked') ?? false;
+        final label = element.textContent.trim();
         widgets.add(
           CheckboxListTile(
             value: checked,
             onChanged: onToggleTask == null ? null : (_) => onToggleTask!(idx),
-            title: Text(taskMatch.group(2)!),
+            title: Text(label.isEmpty ? '(task)' : label),
             contentPadding: EdgeInsets.zero,
             controlAffinity: ListTileControlAffinity.leading,
           ),
         );
       } else {
+        final text = element.textContent.trim();
         widgets.add(
           Padding(
             padding: EdgeInsets.only(left: listDepth * 16.0, bottom: 2),
