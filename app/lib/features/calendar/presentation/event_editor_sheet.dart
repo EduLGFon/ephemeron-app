@@ -334,18 +334,44 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
               ),
               const SizedBox(height: 8),
               calsAsync.maybeWhen(
-                data: (cals) => DropdownButtonFormField<String?>(
-                  initialValue: _calendarId,
-                  decoration: const InputDecoration(
-                    labelText: 'Calendar',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final c in cals)
-                      DropdownMenuItem(value: c.id, child: Text(c.name)),
-                  ],
-                  onChanged: (v) => setState(() => _calendarId = v),
-                ),
+                data: (cals) {
+                  final groups = <String, List<Calendar>>{};
+                  for (final c in cals) {
+                    groups.putIfAbsent(
+                      c.source == 'google' ? 'Google' : 'Device',
+                      () => [],
+                    ).add(c);
+                  }
+                  final items = <DropdownMenuItem<String?>>[];
+                  for (final entry in groups.entries) {
+                    items.add(
+                      DropdownMenuItem<String?>(
+                        enabled: false,
+                        child: Text(
+                          entry.key,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    );
+                    for (final c in entry.value) {
+                      items.add(
+                        DropdownMenuItem<String?>(
+                          value: c.id,
+                          child: Text('  ${c.name}'),
+                        ),
+                      );
+                    }
+                  }
+                  return DropdownButtonFormField<String?>(
+                    initialValue: _calendarId,
+                    decoration: const InputDecoration(
+                      labelText: 'Calendar',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: items,
+                    onChanged: (v) => setState(() => _calendarId = v),
+                  );
+                },
                 orElse: () => const SizedBox.shrink(),
               ),
               const SizedBox(height: 8),

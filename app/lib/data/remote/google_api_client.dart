@@ -139,7 +139,9 @@ class HttpGoogleApiClient implements GoogleApiClient {
     Map<String, dynamic> body,
   ) async {
     final r = await _http.post(
-      Uri.parse('${AppConfig.calendarApiBase}/calendars/${Uri.encodeComponent(calendarId)}/events'),
+      Uri.parse(
+        '${AppConfig.calendarApiBase}/calendars/${Uri.encodeComponent(calendarId)}/events',
+      ).replace(queryParameters: {'conferenceDataVersion': '1'}),
       headers: await _headers(),
       body: jsonEncode(body),
     );
@@ -157,7 +159,7 @@ class HttpGoogleApiClient implements GoogleApiClient {
     final r = await _http.patch(
       Uri.parse(
         '${AppConfig.calendarApiBase}/calendars/${Uri.encodeComponent(calendarId)}/events/${Uri.encodeComponent(eventId)}',
-      ),
+      ).replace(queryParameters: {'conferenceDataVersion': '1'}),
       headers: await _headers(etag: etag),
       body: jsonEncode(body),
     );

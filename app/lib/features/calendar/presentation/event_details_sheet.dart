@@ -58,6 +58,12 @@ class _Details extends ConsumerWidget {
                   leading: const Icon(Icons.place_outlined),
                   title: Text(e.location!),
                 ),
+              if (e.meetUrl != null && e.meetUrl!.isNotEmpty)
+                ListTile(
+                  leading: const Icon(Icons.videocam_outlined),
+                  title: Text(e.meetUrl!),
+                  subtitle: const Text('Google Meet'),
+                ),
               if (e.notes != null && e.notes!.isNotEmpty)
                 ListTile(
                   leading: const Icon(Icons.notes_outlined),

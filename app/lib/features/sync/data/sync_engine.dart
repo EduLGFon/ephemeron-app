@@ -256,6 +256,15 @@ class SyncEngine {
       // Token refresh handled by caller; retry next run.
       return;
     }
+    // Stale rows from a previous account (or deleted remote) can never
+    // succeed against the new account; drop them instead of retrying.
+    if (e.status == 403 || e.status == 404) {
+      debugPrint('[sync] dropping stale outbox op ${op.id} status=${e.status}');
+      await (_db.delete(
+        _db.outbox,
+      )..where((o) => o.id.equals(op.id))).go();
+      return;
+    }
     if (e.isRateLimited) {
       final wait = (e.retryAfterSec ?? 60) * 1000;
       await (_db.update(_db.outbox)..where((o) => o.id.equals(op.id))).write(
@@ -401,6 +410,21 @@ class SyncEngine {
         seen.add(key);
       }
     }
+    // Disable calendars from accounts that are no longer reachable, but only
+    // when the remote list is non-empty (an empty result is ambiguous).
+    if (remote.isNotEmpty) {
+      final remoteIds = {for (final c in remote) c['id'] as String?}
+        ..removeWhere((x) => x == null);
+      for (final c in all) {
+        if (c.remoteId != null && !remoteIds.contains(c.remoteId)) {
+          await (_db.update(
+            _db.calendars,
+          )..where((x) => x.id.equals(c.id))).write(
+            const CalendarsCompanion(enabled: Value(false)),
+          );
+        }
+      }
+    }
     return (remote.length, created);
   }
 
@@ -486,6 +510,14 @@ class SyncEngine {
         if (e.isGone) {
           total += await _fullCalendarResync(cal, client, keepDirty: true);
           await _setSyncMeta('cal:${cal.id}', error: null);
+        } else if (e.status == 404) {
+          debugPrint('[sync] disabling unreachable calendar ${cal.id}');
+          await (_db.update(
+            _db.calendars,
+          )..where((x) => x.id.equals(cal.id))).write(
+            const CalendarsCompanion(enabled: Value(false)),
+          );
+          await _setSyncMeta('cal:${cal.id}', error: 'Google 404');
         } else {
           await _setSyncMeta('cal:${cal.id}', error: 'Google ${e.status}');
           rethrow;

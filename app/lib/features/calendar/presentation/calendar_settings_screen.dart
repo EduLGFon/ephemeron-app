@@ -5,6 +5,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../settings/application/settings_providers.dart';
 import '../application/calendar_providers.dart';
+import '../../../data/drift/app_database.dart';
+
+List<MapEntry<String, List<Calendar>>> _groupCalendars(List<Calendar> cals) {
+  final map = <String, List<Calendar>>{};
+  for (final c in cals) {
+    final key = c.source == 'google' ? 'Google' : 'Device';
+    map.putIfAbsent(key, () => []).add(c);
+  }
+  return map.entries.toList();
+}
 
 class CalendarSettingsScreen extends ConsumerWidget {
   const CalendarSettingsScreen({super.key});
@@ -19,15 +29,24 @@ class CalendarSettingsScreen extends ConsumerWidget {
           calsAsync.maybeWhen(
             data: (cals) => Column(
               children: [
-                for (final c in cals)
-                  SwitchListTile(
-                    value: c.enabled,
-                    onChanged: (v) => ref
-                        .read(eventRepositoryProvider)
-                        .setCalendarEnabled(c.id, v),
-                    title: Text(c.name),
-                    subtitle: Text(c.source),
+                for (final group in _groupCalendars(cals)) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                    child: Text(
+                      group.key,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
                   ),
+                  for (final c in group.value)
+                    SwitchListTile(
+                      value: c.enabled,
+                      onChanged: (v) => ref
+                          .read(eventRepositoryProvider)
+                          .setCalendarEnabled(c.id, v),
+                      title: Text(c.name),
+                      subtitle: Text(c.source),
+                    ),
+                ],
                 ListTile(
                   leading: const Icon(Icons.add),
                   title: const Text('Add local calendar'),
