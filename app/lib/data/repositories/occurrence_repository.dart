@@ -153,6 +153,8 @@ class OccurrenceRepository {
         startMs,
         endMs,
         _dayKey(startMs, master.tzId),
+        title: master.title,
+        colorId: master.colorId,
       );
       n++;
     }
@@ -200,6 +202,8 @@ class OccurrenceRepository {
         s.millisecondsSinceEpoch,
         dayEnd.millisecondsSinceEpoch - 1,
         day,
+        title: master.title,
+        colorId: master.colorId,
       );
       n++;
     }
@@ -226,6 +230,8 @@ class OccurrenceRepository {
           cursor.millisecondsSinceEpoch,
           next.millisecondsSinceEpoch - 1,
           dateKey(cursor),
+          title: e.title,
+          colorId: e.colorId,
         );
         n++;
         if (n > 366) break;
@@ -239,7 +245,14 @@ class OccurrenceRepository {
         e.startUtc! > rangeEnd.toUtc().millisecondsSinceEpoch) {
       return 0;
     }
-    await _insertRow(e.id, e.startUtc!, endMs, _dayKey(e.startUtc!, e.tzId));
+    await _insertRow(
+      e.id,
+      e.startUtc!,
+      endMs,
+      _dayKey(e.startUtc!, e.tzId),
+      title: e.title,
+      colorId: e.colorId,
+    );
     return 1;
   }
 
@@ -247,14 +260,18 @@ class OccurrenceRepository {
     String eventId,
     int startMs,
     int endMs,
-    String dayKeyValue,
-  ) {
+    String dayKeyValue, {
+    String? title,
+    String? colorId,
+  }) {
     return _db
         .into(_db.occurrenceCache)
         .insert(
           OccurrenceCacheCompanion.insert(
             id: newId(),
             eventId: eventId,
+            title: Value(title),
+            colorId: Value(colorId),
             startUtc: startMs,
             endUtc: endMs,
             dayKey: dayKeyValue,

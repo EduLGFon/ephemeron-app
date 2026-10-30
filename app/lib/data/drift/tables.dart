@@ -73,6 +73,8 @@ class EventAttendees extends Table {
 class OccurrenceCache extends Table {
   TextColumn get id => text()();
   TextColumn get eventId => text().references(Events, #id)();
+  TextColumn get title => text().nullable()();
+  TextColumn get colorId => text().nullable()();
   IntColumn get startUtc => integer()();
   IntColumn get endUtc => integer()();
   TextColumn get dayKey => text()();

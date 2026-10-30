@@ -64,6 +64,7 @@ MappedEvent eventFromGoogle(
       status: Value((g['status'] as String?) ?? 'confirmed'),
       transparency: Value(g['transparency'] as String?),
       visibility: Value(g['visibility'] as String?),
+      colorId: Value(g['colorId'] as String?),
       remoteId: Value(g['id'] as String?),
       remoteEtag: Value(g['etag'] as String?),
       dirty: const Value(false),
@@ -105,6 +106,7 @@ Map<String, dynamic> eventToGoogle(Event e) {
               ).toIso8601String(),
         if ((e.endTzId ?? e.tzId) != null) 'timeZone': e.endTzId ?? e.tzId,
       },
+    if (e.colorId != null) 'colorId': e.colorId,
     if (e.rrule != null && e.rrule!.isNotEmpty)
       'recurrence': ['RRULE:${e.rrule}'],
   };

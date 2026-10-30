@@ -33,8 +33,8 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
   late final ScrollController _scroll;
   String? _dragId;
   double _dragDy = 0;
-  Map<String, Event> _events = const {};
-  String _loadedKey = '';
+  double _dragOffset = 0;
+  String? _pendingMovedId;
   bool _didJump = false;
   double _scale = 1;
 
@@ -170,8 +170,6 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
       data: (v) => v,
       orElse: () => const <OccurrenceCacheData>[],
     );
-    _maybeLoadEvents(occs);
-
     final timed = <OccurrenceCacheData>[];
     final allDay = <OccurrenceCacheData>[];
     for (final o in occs) {
@@ -203,7 +201,6 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
                 occs: allDay,
                 anchor: widget.anchor,
                 dayCount: widget.dayCount,
-                events: _events,
                 gutterWidth: gutterWidth,
                 onTap: (id) => showEventDetails(context, id),
               ),
@@ -256,6 +253,27 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
     );
   }
 
+  static const Map<String, Color> _googleColors = {
+    '1': Color(0xFF7986CB),
+    '2': Color(0xFF33B679),
+    '3': Color(0xFF8E24AA),
+    '4': Color(0xFFE67C73),
+    '5': Color(0xFFF6BF26),
+    '6': Color(0xFF3F51B5),
+    '7': Color(0xFF039BE5),
+    '8': Color(0xFF0B8043),
+    '9': Color(0xFFD50000),
+    '10': Color(0xFF303F9F),
+    '11': Color(0xFF616161),
+  };
+
+  Color _eventColor(BuildContext context, String? colorId) {
+    if (colorId != null && _googleColors.containsKey(colorId)) {
+      return _googleColors[colorId]!;
+    }
+    return Theme.of(context).colorScheme.primary;
+  }
+
   bool _isVisibleDay(String dayKeyValue) {
     for (var i = 0; i < widget.dayCount; i++) {
       if (dateKey(_dayStart(i)) == dayKeyValue) return true;
@@ -267,24 +285,6 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
     final e = _events[o.eventId];
     if (e != null) return e.isAllDay;
     return (o.endUtc - o.startUtc) >= const Duration(hours: 23).inMilliseconds;
-  }
-
-  void _maybeLoadEvents(List<OccurrenceCacheData> occs) {
-    final ids = {for (final o in occs) o.eventId}.toList()..sort();
-    final key = ids.join(',');
-    if (key == _loadedKey) return;
-    _loadedKey = key;
-    if (ids.isEmpty) {
-      _events = const {};
-      return;
-    }
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      final repo = ref.read(eventRepositoryProvider);
-      final rows = await (repo.dbSelect()..where((e) => e.id.isIn(ids))).get();
-      if (!mounted) return;
-      setState(() => _events = {for (final e in rows) e.id: e});
-    });
   }
 
   Widget _eventBlock(OccurrenceCacheData o, double colW) {
@@ -303,8 +303,11 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
     if (o.eventId == _dragId) {
       y0 += _dragDy;
       y1 += _dragDy;
+    } else if (_dragOffset != 0 && o.eventId == _pendingMovedId) {
+      y0 += _dragOffset;
+      y1 += _dragOffset;
     }
-    final title = _events[o.eventId]?.title ?? '…';
+    final title = o.title ?? '…';
     return Positioned(
       left: dayIdx * colW + 2,
       top: y0,
@@ -313,16 +316,26 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => showEventDetails(context, o.eventId),
-        onVerticalDragStart: (_) => setState(() {
+        onLongPressStart: (_) => setState(() {
           _dragId = o.eventId;
           _dragDy = 0;
         }),
-        onVerticalDragUpdate: (d) => setState(() => _dragDy += d.delta.dy),
-        onVerticalDragEnd: (_) => _dragEnd(),
+        onLongPressMoveUpdate: (d) {
+          if (_dragId != o.eventId) return;
+          final snap = (d.offsetFromOrigin.dy / hourHeight * 60 / 15)
+              .round() *
+              15 /
+              60 *
+              hourHeight;
+          setState(() => _dragDy = snap);
+        },
+        onLongPressEnd: (_) {
+          if (_dragId == o.eventId) _dragEnd();
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.9),
+            color: _eventColor(context, o.colorId).withValues(alpha: 0.9),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(
@@ -350,6 +363,8 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
     setState(() {
       _dragId = null;
       _dragDy = 0;
+      _pendingMovedId = id;
+      _dragOffset = dy;
     });
     if (id == null) return;
     final snapMin = (dy / hourHeight * 60).round();
@@ -389,9 +404,27 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
       );
     }
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Event moved')));
+      // Rebuild occurrence cache so the moved event reappears immediately.
+      try {
+        final window = ref.read(calendarStateProvider);
+        await ref
+            .read(occurrenceRepositoryProvider)
+            .rebuildWindow(
+              windowStartUtc: window.fromUtc,
+              windowEndUtc: window.toUtc,
+            );
+      } catch (_) {
+        // Best-effort; next navigation rebuilds.
+      }
+      if (mounted) {
+        setState(() {
+          _dragOffset = 0;
+          _pendingMovedId = null;
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Event moved')));
+      }
     }
   }
 }
@@ -491,7 +524,6 @@ class _AllDayStrip extends StatelessWidget {
     required this.occs,
     required this.anchor,
     required this.dayCount,
-    required this.events,
     required this.gutterWidth,
     required this.onTap,
   });
@@ -499,7 +531,6 @@ class _AllDayStrip extends StatelessWidget {
   final List<OccurrenceCacheData> occs;
   final DateTime anchor;
   final int dayCount;
-  final Map<String, Event> events;
   final double gutterWidth;
   final ValueChanged<String> onTap;
 
@@ -553,7 +584,7 @@ class _AllDayStrip extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    events[o.eventId]?.title ?? 'All-day',
+                    o.title ?? 'All-day',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(ctx).textTheme.labelSmall,

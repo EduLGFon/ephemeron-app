@@ -38,7 +38,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -46,7 +46,12 @@ class AppDatabase extends _$AppDatabase {
       await m.createAll();
       await _createIndexesAndFts(this);
     },
-    onUpgrade: (m, from, to) async {},
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(occurrenceCache, occurrenceCache.title);
+        await m.addColumn(occurrenceCache, occurrenceCache.colorId);
+      }
+    },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON;');
       await customStatement('PRAGMA journal_mode = WAL;');

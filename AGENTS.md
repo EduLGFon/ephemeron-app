@@ -140,6 +140,7 @@ General Principles
 - Keep functions and modules focused on coherent responsibilities.
 - Prefer composition over inheritance unless inheritance is clearly appropriate.
 - Prefer early returns over unnecessary nesting.
+- Prefer optimistic updates: apply user mutations to local state/UI immediately and reconcile with the server in the background; never block the user on network I/O.
 - Prefer explicit error handling over silently ignoring failures.
 - Avoid premature abstraction.
 - Introduce abstractions when they remove meaningful duplication or clarify

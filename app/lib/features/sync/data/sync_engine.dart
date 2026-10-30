@@ -543,7 +543,6 @@ class SyncEngine {
         )..where((e) => e.id.equals(existing.id))).write(
           mapped.companion.copyWith(
             alarmPreset: const Value.absent(),
-            colorId: const Value.absent(),
           ),
         );
         n++;
