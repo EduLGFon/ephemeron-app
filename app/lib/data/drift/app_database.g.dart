@@ -2865,9 +2865,6 @@ class $OccurrenceCacheTable extends OccurrenceCache
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES events (id)',
-    ),
   );
   static const VerificationMeta _titleMeta = const VerificationMeta('title');
   @override
@@ -14014,26 +14011,6 @@ final class $$EventsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
-
-  static MultiTypedResultKey<$OccurrenceCacheTable, List<OccurrenceCacheData>>
-  _occurrenceCacheRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.occurrenceCache,
-    aliasName: 'events__id__occurrence_cache__event_id',
-  );
-
-  $$OccurrenceCacheTableProcessedTableManager get occurrenceCacheRefs {
-    final manager = $$OccurrenceCacheTableTableManager(
-      $_db,
-      $_db.occurrenceCache,
-    ).filter((f) => f.eventId.id.sqlEquals($_itemColumn<String>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(
-      _occurrenceCacheRefsTable($_db),
-    );
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
 }
 
 class $$EventsTableFilterComposer
@@ -14229,31 +14206,6 @@ class $$EventsTableFilterComposer
           }) => $$EventAttendeesTableFilterComposer(
             $db: $db,
             $table: $db.eventAttendees,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<bool> occurrenceCacheRefs(
-    Expression<bool> Function($$OccurrenceCacheTableFilterComposer f) f,
-  ) {
-    final $$OccurrenceCacheTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.occurrenceCache,
-      getReferencedColumn: (t) => t.eventId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$OccurrenceCacheTableFilterComposer(
-            $db: $db,
-            $table: $db.occurrenceCache,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -14601,31 +14553,6 @@ class $$EventsTableAnnotationComposer
     );
     return f(composer);
   }
-
-  Expression<T> occurrenceCacheRefs<T extends Object>(
-    Expression<T> Function($$OccurrenceCacheTableAnnotationComposer a) f,
-  ) {
-    final $$OccurrenceCacheTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.occurrenceCache,
-      getReferencedColumn: (t) => t.eventId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$OccurrenceCacheTableAnnotationComposer(
-            $db: $db,
-            $table: $db.occurrenceCache,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
 }
 
 class $$EventsTableTableManager
@@ -14641,11 +14568,7 @@ class $$EventsTableTableManager
           $$EventsTableUpdateCompanionBuilder,
           (Event, $$EventsTableReferences),
           Event,
-          PrefetchHooks Function({
-            bool calendarId,
-            bool eventAttendeesRefs,
-            bool occurrenceCacheRefs,
-          })
+          PrefetchHooks Function({bool calendarId, bool eventAttendeesRefs})
         > {
   $$EventsTableTableManager(_$AppDatabase db, $EventsTable table)
     : super(
@@ -14799,16 +14722,11 @@ class $$EventsTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({
-                calendarId = false,
-                eventAttendeesRefs = false,
-                occurrenceCacheRefs = false,
-              }) {
+              ({calendarId = false, eventAttendeesRefs = false}) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (eventAttendeesRefs) db.eventAttendees,
-                    if (occurrenceCacheRefs) db.occurrenceCache,
                   ],
                   addJoins:
                       <
@@ -14864,26 +14782,6 @@ class $$EventsTableTableManager
                           referencedColumn: 'event_id',
                           typedResults: items,
                         ),
-                      if (occurrenceCacheRefs)
-                        await $_getPrefetchedDataByColumns<
-                          Event,
-                          $EventsTable,
-                          OccurrenceCacheData,
-                          $OccurrenceCacheTable
-                        >(
-                          currentTable: table,
-                          referencedTable: $$EventsTableReferences
-                              ._occurrenceCacheRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$EventsTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).occurrenceCacheRefs,
-                          currentColumn: 'id',
-                          referencedColumn: 'event_id',
-                          typedResults: items,
-                        ),
                     ];
                   },
                 );
@@ -14904,11 +14802,7 @@ typedef $$EventsTableProcessedTableManager =
       $$EventsTableUpdateCompanionBuilder,
       (Event, $$EventsTableReferences),
       Event,
-      PrefetchHooks Function({
-        bool calendarId,
-        bool eventAttendeesRefs,
-        bool occurrenceCacheRefs,
-      })
+      PrefetchHooks Function({bool calendarId, bool eventAttendeesRefs})
     >;
 typedef $$EventAttendeesTableCreateCompanionBuilder =
     EventAttendeesCompanion Function({
@@ -15297,37 +15191,6 @@ typedef $$OccurrenceCacheTableUpdateCompanionBuilder =
       Value<int> rowid,
     });
 
-final class $$OccurrenceCacheTableReferences
-    extends
-        BaseReferences<
-          _$AppDatabase,
-          $OccurrenceCacheTable,
-          OccurrenceCacheData
-        > {
-  $$OccurrenceCacheTableReferences(
-    super.$_db,
-    super.$_table,
-    super.$_typedResult,
-  );
-
-  static $EventsTable _eventIdTable(_$AppDatabase db) =>
-      db.events.createAlias('occurrence_cache__event_id__events__id');
-
-  $$EventsTableProcessedTableManager get eventId {
-    final $_column = $_itemColumn<String>('event_id')!;
-
-    final manager = $$EventsTableTableManager(
-      $_db,
-      $_db.events,
-    ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_eventIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
-  }
-}
-
 class $$OccurrenceCacheTableFilterComposer
     extends Composer<_$AppDatabase, $OccurrenceCacheTable> {
   $$OccurrenceCacheTableFilterComposer({
@@ -15339,6 +15202,11 @@ class $$OccurrenceCacheTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get eventId => $composableBuilder(
+    column: $table.eventId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15366,29 +15234,6 @@ class $$OccurrenceCacheTableFilterComposer
     column: $table.dayKey,
     builder: (column) => ColumnFilters(column),
   );
-
-  $$EventsTableFilterComposer get eventId {
-    final $$EventsTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.eventId,
-      referencedTable: $db.events,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$EventsTableFilterComposer(
-            $db: $db,
-            $table: $db.events,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
 }
 
 class $$OccurrenceCacheTableOrderingComposer
@@ -15402,6 +15247,11 @@ class $$OccurrenceCacheTableOrderingComposer
   });
   ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get eventId => $composableBuilder(
+    column: $table.eventId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -15429,29 +15279,6 @@ class $$OccurrenceCacheTableOrderingComposer
     column: $table.dayKey,
     builder: (column) => ColumnOrderings(column),
   );
-
-  $$EventsTableOrderingComposer get eventId {
-    final $$EventsTableOrderingComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.eventId,
-      referencedTable: $db.events,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$EventsTableOrderingComposer(
-            $db: $db,
-            $table: $db.events,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
 }
 
 class $$OccurrenceCacheTableAnnotationComposer
@@ -15465,6 +15292,9 @@ class $$OccurrenceCacheTableAnnotationComposer
   });
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get eventId =>
+      $composableBuilder(column: $table.eventId, builder: (column) => column);
 
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
@@ -15480,29 +15310,6 @@ class $$OccurrenceCacheTableAnnotationComposer
 
   GeneratedColumn<String> get dayKey =>
       $composableBuilder(column: $table.dayKey, builder: (column) => column);
-
-  $$EventsTableAnnotationComposer get eventId {
-    final $$EventsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.eventId,
-      referencedTable: $db.events,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$EventsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.events,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
 }
 
 class $$OccurrenceCacheTableTableManager
@@ -15516,9 +15323,16 @@ class $$OccurrenceCacheTableTableManager
           $$OccurrenceCacheTableAnnotationComposer,
           $$OccurrenceCacheTableCreateCompanionBuilder,
           $$OccurrenceCacheTableUpdateCompanionBuilder,
-          (OccurrenceCacheData, $$OccurrenceCacheTableReferences),
+          (
+            OccurrenceCacheData,
+            BaseReferences<
+              _$AppDatabase,
+              $OccurrenceCacheTable,
+              OccurrenceCacheData
+            >,
+          ),
           OccurrenceCacheData,
-          PrefetchHooks Function({bool eventId})
+          PrefetchHooks Function()
         > {
   $$OccurrenceCacheTableTableManager(
     _$AppDatabase db,
@@ -15579,53 +15393,15 @@ class $$OccurrenceCacheTableTableManager
                   e.readTable<$OccurrenceCacheTable, OccurrenceCacheData>(
                     table,
                   ),
-                  $$OccurrenceCacheTableReferences(db, table, e),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $OccurrenceCacheTable,
+                    OccurrenceCacheData
+                  >(db, table, e),
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({eventId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (eventId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.eventId,
-                                referencedTable:
-                                    $$OccurrenceCacheTableReferences
-                                        ._eventIdTable(db),
-                                referencedColumn:
-                                    $$OccurrenceCacheTableReferences
-                                        ._eventIdTable(db)
-                                        .id,
-                              )
-                              as T;
-                    }
-
-                    return state;
-                  },
-              getPrefetchedDataCallback: (items) async {
-                return [];
-              },
-            );
-          },
+          prefetchHooksCallback: null,
         ),
       );
 }
@@ -15640,9 +15416,16 @@ typedef $$OccurrenceCacheTableProcessedTableManager =
       $$OccurrenceCacheTableAnnotationComposer,
       $$OccurrenceCacheTableCreateCompanionBuilder,
       $$OccurrenceCacheTableUpdateCompanionBuilder,
-      (OccurrenceCacheData, $$OccurrenceCacheTableReferences),
+      (
+        OccurrenceCacheData,
+        BaseReferences<
+          _$AppDatabase,
+          $OccurrenceCacheTable,
+          OccurrenceCacheData
+        >,
+      ),
       OccurrenceCacheData,
-      PrefetchHooks Function({bool eventId})
+      PrefetchHooks Function()
     >;
 typedef $$TaskListsTableCreateCompanionBuilder =
     TaskListsCompanion Function({

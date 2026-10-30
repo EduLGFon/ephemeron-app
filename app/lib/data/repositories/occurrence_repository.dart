@@ -43,6 +43,10 @@ class OccurrenceRepository {
       }
     }
 
+    final tasks = await (_db.select(
+      _db.tasks,
+    )..where((t) => t.deletedAt.isNull() & t.completedAt.isNull())).get();
+
     var inserted = 0;
     await _db.transaction(() async {
       await (_db.delete(_db.occurrenceCache)..where(
@@ -61,6 +65,9 @@ class OccurrenceRepository {
       }
       for (final s in singles) {
         inserted += await _insertSingle(s, windowStartUtc, windowEndUtc);
+      }
+      for (final t in tasks) {
+        inserted += await _insertTask(t, windowStartUtc, windowEndUtc);
       }
     });
     return inserted;
@@ -252,6 +259,49 @@ class OccurrenceRepository {
       _dayKey(e.startUtc!, e.tzId),
       title: e.title,
       colorId: e.colorId,
+    );
+    return 1;
+  }
+
+  Future<int> _insertTask(
+    Task t,
+    DateTime rangeStart,
+    DateTime rangeEnd,
+  ) async {
+    if (t.dueDate == null) return 0;
+    if (t.dueDate!.compareTo(dateKey(rangeEnd)) > 0) return 0;
+    if (t.dueDate!.compareTo(dateKey(rangeStart)) < 0) return 0;
+    final p = t.dueDate!.split('-');
+    int startMs;
+    int endMs;
+    if (t.dueTime == null) {
+      final cursor = DateTime.utc(
+        int.parse(p[0]),
+        int.parse(p[1]),
+        int.parse(p[2]),
+      );
+      startMs = cursor.millisecondsSinceEpoch;
+      endMs = cursor.add(const Duration(days: 1)).millisecondsSinceEpoch - 1;
+    } else {
+      final mins = t.dueTime!;
+      final dt = DateTime.utc(
+        int.parse(p[0]),
+        int.parse(p[1]),
+        int.parse(p[2]),
+        mins ~/ 60,
+        mins % 60,
+      );
+      startMs = dt.millisecondsSinceEpoch;
+      final dur = Duration(minutes: t.durationMin ?? 30);
+      endMs = dt.add(dur).millisecondsSinceEpoch;
+    }
+    await _insertRow(
+      t.id,
+      startMs,
+      endMs,
+      t.dueDate!,
+      title: t.title,
+      colorId: null,
     );
     return 1;
   }
