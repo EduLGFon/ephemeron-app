@@ -2762,6 +2762,26 @@ class $OccurrenceCacheTable extends OccurrenceCache
       'REFERENCES events (id)',
     ),
   );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _colorIdMeta = const VerificationMeta(
+    'colorId',
+  );
+  @override
+  late final GeneratedColumn<String> colorId = GeneratedColumn<String>(
+    'color_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _startUtcMeta = const VerificationMeta(
     'startUtc',
   );
@@ -2792,7 +2812,15 @@ class $OccurrenceCacheTable extends OccurrenceCache
     requiredDuringInsert: true,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, eventId, startUtc, endUtc, dayKey];
+  List<GeneratedColumn> get $columns => [
+    id,
+    eventId,
+    title,
+    colorId,
+    startUtc,
+    endUtc,
+    dayKey,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2817,6 +2845,18 @@ class $OccurrenceCacheTable extends OccurrenceCache
       );
     } else if (isInserting) {
       context.missing(_eventIdMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    }
+    if (data.containsKey('color_id')) {
+      context.handle(
+        _colorIdMeta,
+        colorId.isAcceptableOrUnknown(data['color_id']!, _colorIdMeta),
+      );
     }
     if (data.containsKey('start_utc')) {
       context.handle(
@@ -2859,6 +2899,14 @@ class $OccurrenceCacheTable extends OccurrenceCache
         DriftSqlType.string,
         data['${effectivePrefix}event_id'],
       )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      ),
+      colorId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}color_id'],
+      ),
       startUtc: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}start_utc'],
@@ -2884,12 +2932,16 @@ class OccurrenceCacheData extends DataClass
     implements Insertable<OccurrenceCacheData> {
   final String id;
   final String eventId;
+  final String? title;
+  final String? colorId;
   final int startUtc;
   final int endUtc;
   final String dayKey;
   const OccurrenceCacheData({
     required this.id,
     required this.eventId,
+    this.title,
+    this.colorId,
     required this.startUtc,
     required this.endUtc,
     required this.dayKey,
@@ -2899,6 +2951,12 @@ class OccurrenceCacheData extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['event_id'] = Variable<String>(eventId);
+    if (!nullToAbsent || title != null) {
+      map['title'] = Variable<String>(title);
+    }
+    if (!nullToAbsent || colorId != null) {
+      map['color_id'] = Variable<String>(colorId);
+    }
     map['start_utc'] = Variable<int>(startUtc);
     map['end_utc'] = Variable<int>(endUtc);
     map['day_key'] = Variable<String>(dayKey);
@@ -2909,6 +2967,12 @@ class OccurrenceCacheData extends DataClass
     return OccurrenceCacheCompanion(
       id: Value(id),
       eventId: Value(eventId),
+      title: title == null && nullToAbsent
+          ? const Value.absent()
+          : Value(title),
+      colorId: colorId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(colorId),
       startUtc: Value(startUtc),
       endUtc: Value(endUtc),
       dayKey: Value(dayKey),
@@ -2923,6 +2987,8 @@ class OccurrenceCacheData extends DataClass
     return OccurrenceCacheData(
       id: serializer.fromJson<String>(json['id']),
       eventId: serializer.fromJson<String>(json['eventId']),
+      title: serializer.fromJson<String?>(json['title']),
+      colorId: serializer.fromJson<String?>(json['colorId']),
       startUtc: serializer.fromJson<int>(json['startUtc']),
       endUtc: serializer.fromJson<int>(json['endUtc']),
       dayKey: serializer.fromJson<String>(json['dayKey']),
@@ -2934,6 +3000,8 @@ class OccurrenceCacheData extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'eventId': serializer.toJson<String>(eventId),
+      'title': serializer.toJson<String?>(title),
+      'colorId': serializer.toJson<String?>(colorId),
       'startUtc': serializer.toJson<int>(startUtc),
       'endUtc': serializer.toJson<int>(endUtc),
       'dayKey': serializer.toJson<String>(dayKey),
@@ -2943,12 +3011,16 @@ class OccurrenceCacheData extends DataClass
   OccurrenceCacheData copyWith({
     String? id,
     String? eventId,
+    Value<String?> title = const Value.absent(),
+    Value<String?> colorId = const Value.absent(),
     int? startUtc,
     int? endUtc,
     String? dayKey,
   }) => OccurrenceCacheData(
     id: id ?? this.id,
     eventId: eventId ?? this.eventId,
+    title: title.present ? title.value : this.title,
+    colorId: colorId.present ? colorId.value : this.colorId,
     startUtc: startUtc ?? this.startUtc,
     endUtc: endUtc ?? this.endUtc,
     dayKey: dayKey ?? this.dayKey,
@@ -2957,6 +3029,8 @@ class OccurrenceCacheData extends DataClass
     return OccurrenceCacheData(
       id: data.id.present ? data.id.value : this.id,
       eventId: data.eventId.present ? data.eventId.value : this.eventId,
+      title: data.title.present ? data.title.value : this.title,
+      colorId: data.colorId.present ? data.colorId.value : this.colorId,
       startUtc: data.startUtc.present ? data.startUtc.value : this.startUtc,
       endUtc: data.endUtc.present ? data.endUtc.value : this.endUtc,
       dayKey: data.dayKey.present ? data.dayKey.value : this.dayKey,
@@ -2968,6 +3042,8 @@ class OccurrenceCacheData extends DataClass
     return (StringBuffer('OccurrenceCacheData(')
           ..write('id: $id, ')
           ..write('eventId: $eventId, ')
+          ..write('title: $title, ')
+          ..write('colorId: $colorId, ')
           ..write('startUtc: $startUtc, ')
           ..write('endUtc: $endUtc, ')
           ..write('dayKey: $dayKey')
@@ -2976,13 +3052,16 @@ class OccurrenceCacheData extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(id, eventId, startUtc, endUtc, dayKey);
+  int get hashCode =>
+      Object.hash(id, eventId, title, colorId, startUtc, endUtc, dayKey);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is OccurrenceCacheData &&
           other.id == this.id &&
           other.eventId == this.eventId &&
+          other.title == this.title &&
+          other.colorId == this.colorId &&
           other.startUtc == this.startUtc &&
           other.endUtc == this.endUtc &&
           other.dayKey == this.dayKey);
@@ -2991,6 +3070,8 @@ class OccurrenceCacheData extends DataClass
 class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
   final Value<String> id;
   final Value<String> eventId;
+  final Value<String?> title;
+  final Value<String?> colorId;
   final Value<int> startUtc;
   final Value<int> endUtc;
   final Value<String> dayKey;
@@ -2998,6 +3079,8 @@ class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
   const OccurrenceCacheCompanion({
     this.id = const Value.absent(),
     this.eventId = const Value.absent(),
+    this.title = const Value.absent(),
+    this.colorId = const Value.absent(),
     this.startUtc = const Value.absent(),
     this.endUtc = const Value.absent(),
     this.dayKey = const Value.absent(),
@@ -3006,6 +3089,8 @@ class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
   OccurrenceCacheCompanion.insert({
     required String id,
     required String eventId,
+    this.title = const Value.absent(),
+    this.colorId = const Value.absent(),
     required int startUtc,
     required int endUtc,
     required String dayKey,
@@ -3018,6 +3103,8 @@ class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
   static Insertable<OccurrenceCacheData> custom({
     Expression<String>? id,
     Expression<String>? eventId,
+    Expression<String>? title,
+    Expression<String>? colorId,
     Expression<int>? startUtc,
     Expression<int>? endUtc,
     Expression<String>? dayKey,
@@ -3026,6 +3113,8 @@ class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (eventId != null) 'event_id': eventId,
+      if (title != null) 'title': title,
+      if (colorId != null) 'color_id': colorId,
       if (startUtc != null) 'start_utc': startUtc,
       if (endUtc != null) 'end_utc': endUtc,
       if (dayKey != null) 'day_key': dayKey,
@@ -3036,6 +3125,8 @@ class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
   OccurrenceCacheCompanion copyWith({
     Value<String>? id,
     Value<String>? eventId,
+    Value<String?>? title,
+    Value<String?>? colorId,
     Value<int>? startUtc,
     Value<int>? endUtc,
     Value<String>? dayKey,
@@ -3044,6 +3135,8 @@ class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
     return OccurrenceCacheCompanion(
       id: id ?? this.id,
       eventId: eventId ?? this.eventId,
+      title: title ?? this.title,
+      colorId: colorId ?? this.colorId,
       startUtc: startUtc ?? this.startUtc,
       endUtc: endUtc ?? this.endUtc,
       dayKey: dayKey ?? this.dayKey,
@@ -3059,6 +3152,12 @@ class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
     }
     if (eventId.present) {
       map['event_id'] = Variable<String>(eventId.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (colorId.present) {
+      map['color_id'] = Variable<String>(colorId.value);
     }
     if (startUtc.present) {
       map['start_utc'] = Variable<int>(startUtc.value);
@@ -3080,6 +3179,8 @@ class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
     return (StringBuffer('OccurrenceCacheCompanion(')
           ..write('id: $id, ')
           ..write('eventId: $eventId, ')
+          ..write('title: $title, ')
+          ..write('colorId: $colorId, ')
           ..write('startUtc: $startUtc, ')
           ..write('endUtc: $endUtc, ')
           ..write('dayKey: $dayKey, ')
@@ -14972,6 +15073,8 @@ typedef $$OccurrenceCacheTableCreateCompanionBuilder =
     OccurrenceCacheCompanion Function({
       required String id,
       required String eventId,
+      Value<String?> title,
+      Value<String?> colorId,
       required int startUtc,
       required int endUtc,
       required String dayKey,
@@ -14981,6 +15084,8 @@ typedef $$OccurrenceCacheTableUpdateCompanionBuilder =
     OccurrenceCacheCompanion Function({
       Value<String> id,
       Value<String> eventId,
+      Value<String?> title,
+      Value<String?> colorId,
       Value<int> startUtc,
       Value<int> endUtc,
       Value<String> dayKey,
@@ -15029,6 +15134,16 @@ class $$OccurrenceCacheTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get colorId => $composableBuilder(
+    column: $table.colorId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15085,6 +15200,16 @@ class $$OccurrenceCacheTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get colorId => $composableBuilder(
+    column: $table.colorId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get startUtc => $composableBuilder(
     column: $table.startUtc,
     builder: (column) => ColumnOrderings(column),
@@ -15135,6 +15260,12 @@ class $$OccurrenceCacheTableAnnotationComposer
   });
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get colorId =>
+      $composableBuilder(column: $table.colorId, builder: (column) => column);
 
   GeneratedColumn<int> get startUtc =>
       $composableBuilder(column: $table.startUtc, builder: (column) => column);
@@ -15201,6 +15332,8 @@ class $$OccurrenceCacheTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> eventId = const Value.absent(),
+                Value<String?> title = const Value.absent(),
+                Value<String?> colorId = const Value.absent(),
                 Value<int> startUtc = const Value.absent(),
                 Value<int> endUtc = const Value.absent(),
                 Value<String> dayKey = const Value.absent(),
@@ -15208,6 +15341,8 @@ class $$OccurrenceCacheTableTableManager
               }) => OccurrenceCacheCompanion(
                 id: id,
                 eventId: eventId,
+                title: title,
+                colorId: colorId,
                 startUtc: startUtc,
                 endUtc: endUtc,
                 dayKey: dayKey,
@@ -15217,6 +15352,8 @@ class $$OccurrenceCacheTableTableManager
               ({
                 required String id,
                 required String eventId,
+                Value<String?> title = const Value.absent(),
+                Value<String?> colorId = const Value.absent(),
                 required int startUtc,
                 required int endUtc,
                 required String dayKey,
@@ -15224,6 +15361,8 @@ class $$OccurrenceCacheTableTableManager
               }) => OccurrenceCacheCompanion.insert(
                 id: id,
                 eventId: eventId,
+                title: title,
+                colorId: colorId,
                 startUtc: startUtc,
                 endUtc: endUtc,
                 dayKey: dayKey,

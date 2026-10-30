@@ -33,7 +33,10 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
   late final ScrollController _scroll;
   String? _dragId;
   double _dragDy = 0;
+  int _dragDayDelta = 0;
   double _dragOffset = 0;
+  double _dragXOffset = 0;
+  double _lastColW = 1;
   String? _pendingMovedId;
   bool _didJump = false;
   double _scale = 1;
@@ -217,6 +220,7 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
                         child: LayoutBuilder(
                           builder: (ctx, cons) {
                             final colW = cons.maxWidth / widget.dayCount;
+                          _lastColW = colW;
                             return Stack(
                               children: [
                                 GestureDetector(
@@ -282,8 +286,6 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
   }
 
   bool _isAllDay(OccurrenceCacheData o) {
-    final e = _events[o.eventId];
-    if (e != null) return e.isAllDay;
     return (o.endUtc - o.startUtc) >= const Duration(hours: 23).inMilliseconds;
   }
 
@@ -308,8 +310,11 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
       y1 += _dragOffset;
     }
     final title = o.title ?? '…';
+    final leftShift = (o.eventId == _dragId)
+        ? _dragDayDelta * colW
+        : (_pendingMovedId == o.eventId ? _dragXOffset : 0.0);
     return Positioned(
-      left: dayIdx * colW + 2,
+      left: dayIdx * colW + 2 + leftShift,
       top: y0,
       width: colW - 4,
       height: y1 - y0,
@@ -319,15 +324,20 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
         onLongPressStart: (_) => setState(() {
           _dragId = o.eventId;
           _dragDy = 0;
+          _dragDayDelta = 0;
         }),
         onLongPressMoveUpdate: (d) {
           if (_dragId != o.eventId) return;
+          final dayDelta = (d.offsetFromOrigin.dx / _lastColW).round();
           final snap = (d.offsetFromOrigin.dy / hourHeight * 60 / 15)
-              .round() *
+                  .round() *
               15 /
               60 *
               hourHeight;
-          setState(() => _dragDy = snap);
+          setState(() {
+            _dragDy = snap;
+            _dragDayDelta = dayDelta;
+          });
         },
         onLongPressEnd: (_) {
           if (_dragId == o.eventId) _dragEnd();
@@ -360,11 +370,14 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
   Future<void> _dragEnd() async {
     final id = _dragId;
     final dy = _dragDy;
+    final dayDelta = _dragDayDelta;
     setState(() {
       _dragId = null;
       _dragDy = 0;
+      _dragDayDelta = 0;
       _pendingMovedId = id;
       _dragOffset = dy;
+      _dragXOffset = dayDelta * _lastColW;
     });
     if (id == null) return;
     final snapMin = (dy / hourHeight * 60).round();
@@ -379,11 +392,13 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
       master.startUtc!,
       isUtc: true,
     );
-    final newStart = orig.add(Duration(minutes: snapped));
+    final newStart = orig
+        .add(Duration(minutes: snapped))
+        .add(Duration(days: dayDelta));
     final newEnd = DateTime.fromMillisecondsSinceEpoch(
       master.endUtc ?? master.startUtc!,
       isUtc: true,
-    ).add(Duration(minutes: snapped));
+    ).add(Duration(minutes: snapped)).add(Duration(days: dayDelta));
     if (master.rrule != null && master.rrule!.isNotEmpty) {
       final scope = await showScopeSheet(context);
       if (scope == null || !mounted) return;
