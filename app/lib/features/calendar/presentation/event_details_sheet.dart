@@ -1,6 +1,7 @@
 // Event details sheet: view, edit, delete with scope, duplicate.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/event_repository.dart';
@@ -184,13 +185,12 @@ String _when(Event e) {
   if (e.isAllDay) return e.startDate ?? '';
   final s = e.startUtc == null
       ? '?'
-      : DateTime.fromMillisecondsSinceEpoch(
-          e.startUtc!,
-          isUtc: true,
-        ).toLocal().toString().substring(0, 16);
+      : DateFormat.yMMMd().add_Hm().format(
+          DateTime.fromMillisecondsSinceEpoch(e.startUtc!, isUtc: true).toLocal(),
+        );
   final en = e.endUtc == null
       ? ''
-      : ' - ${DateTime.fromMillisecondsSinceEpoch(e.endUtc!, isUtc: true).toLocal().toString().substring(11, 16)}';
+      : ' - ${DateFormat.Hm().format(DateTime.fromMillisecondsSinceEpoch(e.endUtc!, isUtc: true).toLocal())}';
   return '$s$en';
 }
 

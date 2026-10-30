@@ -1,6 +1,7 @@
 // Calendar screen: view switcher, navigation, rebuild-on-window-change.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../settings/application/settings_providers.dart';
 import '../../sync/presentation/sync_title.dart';
@@ -137,8 +138,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     _ => 1,
   };
 
-  String _title(CalendarWindow w) =>
-      '${w.anchor.year}-${w.anchor.month.toString().padLeft(2, '0')}';
+  String _title(CalendarWindow w) => DateFormat.yMMM().format(w.anchor);
 
   Future<void> _pickDayCount() async {
     final n = await showDialog<int>(
