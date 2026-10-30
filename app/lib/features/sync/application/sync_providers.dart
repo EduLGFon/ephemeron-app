@@ -12,6 +12,7 @@ import '../../auth/application/auth_providers.dart';
 import '../../calendar/application/calendar_providers.dart';
 import '../../settings/application/settings_providers.dart';
 import '../data/backend_sync_engine.dart';
+import '../data/background_sync.dart';
 import '../data/sync_engine.dart';
 
 final googleApiClientProvider = Provider<GoogleApiClient>((ref) {
@@ -154,6 +155,9 @@ class GoogleAutoSyncService {
     _timer?.cancel();
     _timer = null;
     debugPrint('[sync] auto-sync reschedule intervalMin=$intervalMin');
+    // Keep a WorkManager periodic task in step with the foreground timer so
+    // sync also runs when the app was killed. 0 cancels the background task.
+    unawaited(BackgroundSync.reschedule(intervalMin));
     if (intervalMin <= 0) return;
     _timer = Timer.periodic(Duration(minutes: intervalMin), (_) => _tick());
   }
@@ -216,5 +220,52 @@ class BackendSyncStatusNotifier extends Notifier<SyncStatus> {
     final engine = ref.read(backendSyncEngineProvider);
     await engine.syncNow();
     state = engine.status;
+  }
+}
+
+/// Battery-friendly backend auto-sync: mirrors GoogleAutoSyncService.
+/// Manual syncs reschedule so the next auto run is a full interval later.
+final backendAutoSyncServiceProvider = Provider<BackendAutoSyncService>((ref) {
+  final svc = BackendAutoSyncService(ref);
+  ref.onDispose(svc.dispose);
+  return svc;
+});
+
+class BackendAutoSyncService {
+  BackendAutoSyncService(this._ref);
+
+  final Ref _ref;
+  Timer? _timer;
+
+  Future<void> start() => reschedule();
+
+  Future<void> reschedule() async {
+    int intervalMin = 0;
+    try {
+      final repo = await _ref.read(settingsRepositoryProvider.future);
+      intervalMin = repo.backendSyncIntervalMin;
+    } catch (_) {
+      // Prefs unavailable: stay manual.
+    }
+    _timer?.cancel();
+    _timer = null;
+    unawaited(BackgroundSync.reschedule(intervalMin));
+    if (intervalMin <= 0) return;
+    _timer = Timer.periodic(Duration(minutes: intervalMin), (_) => _tick());
+  }
+
+  Future<void> _tick() async {
+    if (!_ref.read(backendAuthProvider).isSignedIn) return;
+    await _ref.read(backendSyncStatusProvider.notifier).syncNow();
+  }
+
+  Future<void> syncNowAndReschedule() async {
+    await _ref.read(backendSyncStatusProvider.notifier).syncNow();
+    await reschedule();
+  }
+
+  void dispose() {
+    _timer?.cancel();
+    _timer = null;
   }
 }

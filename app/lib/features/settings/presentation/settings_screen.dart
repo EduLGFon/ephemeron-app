@@ -213,6 +213,28 @@ class SettingsScreen extends ConsumerWidget {
                 },
               ),
             ),
+            ListTile(
+              title: const Text('Habits/focus auto-sync'),
+              subtitle: const Text(
+                'Periodic sync of habits and focus sessions. Manual when Off.',
+              ),
+              trailing: DropdownButton<int>(
+                value: repo.backendSyncIntervalMin,
+                items: const [
+                  DropdownMenuItem(value: 0, child: Text('Manual')),
+                  DropdownMenuItem(value: 15, child: Text('15 min')),
+                  DropdownMenuItem(value: 30, child: Text('30 min')),
+                  DropdownMenuItem(value: 60, child: Text('1 hour')),
+                  DropdownMenuItem(value: 120, child: Text('2 hours')),
+                ],
+                onChanged: (v) async {
+                  if (v == null) return;
+                  await repo.setBackendSyncIntervalMin(v);
+                  ref.invalidate(settingsRepositoryProvider);
+                  await ref.read(backendAutoSyncServiceProvider).reschedule();
+                },
+              ),
+            ),
             _SectionHeader(AppLocalizations.of(context).backupTitle),
             const _BackupSection(),
           ],

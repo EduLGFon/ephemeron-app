@@ -2,18 +2,22 @@
 // backend email account for habits/focus sync. Google data never
 // touches the backend; the backend only stores habits and focus sessions.
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:path_provider/path_provider.dart';
 
+import '../../../core/config/app_config.dart';
+import '../../../core/db/db_provider.dart';
 import '../../../data/remote/backend_api_client.dart';
+import '../../settings/data/backup_service.dart';
 import '../../sync/application/sync_providers.dart';
 import '../../sync/data/sync_engine.dart';
 import '../application/auth_providers.dart';
 import '../data/google_auth.dart';
-import '../../../core/config/app_config.dart';
 
 import 'package:google_sign_in_web/web_only.dart'
     if (dart.library.io) 'google_signin_web_stub.dart';
@@ -80,7 +84,8 @@ class AuthScreen extends ConsumerWidget {
                   onPressed: () =>
                       ref.read(googleAccountProvider.notifier).signOut(a),
                 ),
-                onTap: () => ref.read(googleAccountProvider.notifier).setActive(a),
+                onTap: () =>
+                    ref.read(googleAccountProvider.notifier).setActive(a),
               ),
             const SizedBox(height: 8),
             FilledButton(
@@ -226,6 +231,7 @@ class _BackendSectionState extends ConsumerState<_BackendSection> {
         await notifier.signUp(_email.text.trim(), _password.text);
       }
       await ref.read(backendSyncStatusProvider.notifier).syncNow();
+      await ref.read(backendAutoSyncServiceProvider).reschedule();
     } on BackendApiException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -240,7 +246,7 @@ class _BackendSectionState extends ConsumerState<_BackendSection> {
         title: const Text('Delete remote data?'),
         content: const Text(
           'This permanently deletes your habits and focus sessions from the server. '
-          'Your on-device data stays. Export via backup first (backup ships in a later update).',
+          'Your on-device data stays. A JSON backup is saved to your documents folder first.',
         ),
         actions: [
           TextButton(
@@ -255,15 +261,49 @@ class _BackendSectionState extends ConsumerState<_BackendSection> {
       ),
     );
     if (ok != true || !context.mounted) return;
+    String? backupPath;
+    try {
+      backupPath = await _exportBackup(ref);
+    } catch (e) {
+      debugPrint('pre-delete backup failed: $e');
+    }
     try {
       await ref.read(backendAuthProvider).deleteAccount();
       await ref.read(backendAccountProvider.notifier).signOut();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              backupPath == null
+                  ? 'Remote data deleted.'
+                  : 'Remote data deleted. Backup saved to $backupPath',
+            ),
+          ),
+        );
+      }
     } on BackendApiException catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.message)));
     }
+  }
+
+  /// Saves a full JSON backup before remote-data deletion (export-first).
+  Future<String> _exportBackup(WidgetRef ref) async {
+    final db = ref.read(appDatabaseProvider);
+    final service = BackupService(db);
+    final backup = await service.exportJson();
+    final dir = await getApplicationDocumentsDirectory();
+    final stamp = DateTime.now()
+        .toUtc()
+        .toIso8601String()
+        .replaceAll(':', '-')
+        .split('.')
+        .first;
+    final file = File('${dir.path}/ephemeron-backup-$stamp.json');
+    await file.writeAsString(service.encode(backup), flush: true);
+    return file.path;
   }
 }
 

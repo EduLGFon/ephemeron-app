@@ -73,13 +73,7 @@ class FocusRepository {
 
   /// Total focused minutes in [fromUtc, toUtc].
   Future<int> totalMinutes(int fromUtc, int toUtc) async {
-    final rows =
-        await (_db.select(_db.focusSessions)..where(
-              (f) =>
-                  f.startUtc.isBiggerOrEqualValue(fromUtc) &
-                  f.startUtc.isSmallerThanValue(toUtc),
-            ))
-            .get();
+    final rows = await sessionsInRange(fromUtc, toUtc);
     var total = 0;
     for (final r in rows) {
       final end = r.endUtc ?? toUtc;
@@ -88,6 +82,16 @@ class FocusRepository {
       }
     }
     return total;
+  }
+
+  /// Finished sessions overlapping [fromUtc, toUtc], newest last.
+  Future<List<FocusSession>> sessionsInRange(int fromUtc, int toUtc) {
+    return (_db.select(_db.focusSessions)..where(
+          (f) =>
+              f.startUtc.isSmallerThanValue(toUtc) &
+              (f.endUtc.isNull() | f.endUtc.isBiggerOrEqualValue(fromUtc)),
+        ))
+        .get();
   }
 
   Stream<List<FocusSession>> watchRecent({int limit = 50}) {

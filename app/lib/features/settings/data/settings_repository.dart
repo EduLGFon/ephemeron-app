@@ -85,6 +85,18 @@ class SettingsRepository {
   int get syncIntervalMin => _prefs.getInt(_kSyncInterval) ?? 30;
   Future<void> setSyncIntervalMin(int v) => _prefs.setInt(_kSyncInterval, v);
 
+  /// Focus: enable alarms-only DND while a session runs (Android only,
+  /// needs notification-policy access granted in system settings).
+  static const _kFocusDnd = 'focus.dnd';
+  bool get focusDnd => _prefs.getBool(_kFocusDnd) ?? false;
+  Future<void> setFocusDnd(bool v) => _prefs.setBool(_kFocusDnd, v);
+
+  /// Backend habits/focus auto-sync interval in minutes. 0 means manual.
+  static const _kBackendSyncInterval = 'sync.backendIntervalMin';
+  int get backendSyncIntervalMin => _prefs.getInt(_kBackendSyncInterval) ?? 0;
+  Future<void> setBackendSyncIntervalMin(int v) =>
+      _prefs.setInt(_kBackendSyncInterval, v);
+
   /// Last successful Google sync, for title freshness + scheduling.
   static const _kLastGoogleSync = 'sync.lastGoogleSyncAtMs';
   DateTime? get lastGoogleSyncAt {

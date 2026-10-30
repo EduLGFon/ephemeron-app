@@ -49,7 +49,9 @@ class GoogleAuth {
       if (token == null) {
         // keep accounts; token may refresh later
       }
-      debugPrint('GoogleAuth.restore ok accounts=$_accounts active=$_activeEmail');
+      debugPrint(
+        'GoogleAuth.restore ok accounts=$_accounts active=$_activeEmail',
+      );
       return _activeEmail;
     } catch (e) {
       debugPrint('GoogleAuth.restore failed: $e');
@@ -167,7 +169,9 @@ class GoogleAuth {
     final clientId = AppConfig.linuxGoogleClientId;
     final clientSecret = AppConfig.linuxGoogleClientSecret;
     if (clientId.isEmpty) {
-      throw GoogleAuthException('Google sign-in is not configured for desktop.');
+      throw GoogleAuthException(
+        'Google sign-in is not configured for desktop.',
+      );
     }
     HttpServer? server;
     int port = 0;
@@ -235,7 +239,10 @@ class GoogleAuth {
     final tokenReq = await HttpClient().postUrl(
       Uri.parse('https://oauth2.googleapis.com/token'),
     );
-    tokenReq.headers.contentType = ContentType('application', 'x-www-form-urlencoded');
+    tokenReq.headers.contentType = ContentType(
+      'application',
+      'x-www-form-urlencoded',
+    );
     final body =
         'code=${Uri.encodeQueryComponent(code)}'
         '&client_id=${Uri.encodeQueryComponent(clientId)}'
@@ -315,8 +322,7 @@ class GoogleAuth {
     final cached = _accessTokens[account];
     if (cached != null) {
       final exp = await _storage.googleExpiryMsFor(account);
-      if (exp == null ||
-          DateTime.now().toUtc().millisecondsSinceEpoch < exp) {
+      if (exp == null || DateTime.now().toUtc().millisecondsSinceEpoch < exp) {
         return cached;
       }
     }

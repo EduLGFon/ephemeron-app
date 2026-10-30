@@ -13,8 +13,11 @@ import 'package:ephemeron/data/remote/google_api_client.dart';
 enum SyncStatus { synced, syncing, offline, error }
 
 class SyncEngine {
-  SyncEngine(this._db, {GoogleApiClient? Function()? clientFactory, this.account})
-    : _clientFactory = clientFactory;
+  SyncEngine(
+    this._db, {
+    GoogleApiClient? Function()? clientFactory,
+    this.account,
+  }) : _clientFactory = clientFactory;
 
   final AppDatabase _db;
   final GoogleApiClient? Function()? _clientFactory;
@@ -261,9 +264,7 @@ class SyncEngine {
     // succeed against the new account; drop them instead of retrying.
     if (e.status == 403 || e.status == 404) {
       debugPrint('[sync] dropping stale outbox op ${op.id} status=${e.status}');
-      await (_db.delete(
-        _db.outbox,
-      )..where((o) => o.id.equals(op.id))).go();
+      await (_db.delete(_db.outbox)..where((o) => o.id.equals(op.id))).go();
       return;
     }
     if (e.isRateLimited) {
@@ -356,20 +357,23 @@ class SyncEngine {
       )..where((t) => t.remoteId.equals(id))).getSingleOrNull();
       // Repair legacy rows created before remoteId was persisted.
       if (existing == null && name != null && name.isNotEmpty) {
-        existing = await (_db.select(_db.calendars)..where(
-              (t) =>
-                  t.source.equals('google') &
-                  t.remoteId.isNull() &
-                  t.name.equals(name),
-            ))
-            .getSingleOrNull();
+        existing =
+            await (_db.select(_db.calendars)..where(
+                  (t) =>
+                      t.source.equals('google') &
+                      t.remoteId.isNull() &
+                      t.name.equals(name),
+                ))
+                .getSingleOrNull();
         if (existing != null) {
           await (_db.update(
             _db.calendars,
           )..where((t) => t.id.equals(existing!.id))).write(
             CalendarsCompanion(remoteId: Value(id), updatedAt: Value(now)),
           );
-          debugPrint('[sync] repaired legacy calendar remoteId id=${existing.id}');
+          debugPrint(
+            '[sync] repaired legacy calendar remoteId id=${existing.id}',
+          );
         }
       }
       if (existing == null) {
@@ -405,9 +409,7 @@ class SyncEngine {
       final key = c.remoteId;
       if (key == null) continue;
       if (seen.contains(key)) {
-        await (_db.delete(
-          _db.calendars,
-        )..where((x) => x.id.equals(c.id))).go();
+        await (_db.delete(_db.calendars)..where((x) => x.id.equals(c.id))).go();
       } else {
         seen.add(key);
       }
@@ -419,11 +421,8 @@ class SyncEngine {
         ..removeWhere((x) => x == null);
       for (final c in all) {
         if (c.remoteId != null && !remoteIds.contains(c.remoteId)) {
-          await (_db.update(
-            _db.calendars,
-          )..where((x) => x.id.equals(c.id))).write(
-            const CalendarsCompanion(enabled: Value(false)),
-          );
+          await (_db.update(_db.calendars)..where((x) => x.id.equals(c.id)))
+              .write(const CalendarsCompanion(enabled: Value(false)));
         }
       }
     }
@@ -494,10 +493,7 @@ class SyncEngine {
         if (token == null) {
           total += await _fullCalendarResync(cal, client, keepDirty: true);
         } else {
-          final page = await client.eventsList(
-            remoteId,
-            syncToken: token,
-          );
+          final page = await client.eventsList(remoteId, syncToken: token);
           debugPrint(
             '[sync] incremental pull got ${page.items.length} items (has remoteId=${cal.remoteId != null})',
           );
@@ -514,11 +510,8 @@ class SyncEngine {
           await _setSyncMeta('cal:${cal.id}', error: null);
         } else if (e.status == 404) {
           debugPrint('[sync] disabling unreachable calendar ${cal.id}');
-          await (_db.update(
-            _db.calendars,
-          )..where((x) => x.id.equals(cal.id))).write(
-            const CalendarsCompanion(enabled: Value(false)),
-          );
+          await (_db.update(_db.calendars)..where((x) => x.id.equals(cal.id)))
+              .write(const CalendarsCompanion(enabled: Value(false)));
           await _setSyncMeta('cal:${cal.id}', error: 'Google 404');
         } else {
           await _setSyncMeta('cal:${cal.id}', error: 'Google ${e.status}');
@@ -551,9 +544,9 @@ class SyncEngine {
               .get();
       for (final e in local) {
         if (e.remoteId != null && !(keepDirty && e.dirty)) {
-          await (_db.delete(_db.occurrenceCache)..where(
-                (o) => o.eventId.equals(e.id),
-              )).go();
+          await (_db.delete(
+            _db.occurrenceCache,
+          )..where((o) => o.eventId.equals(e.id))).go();
           await (_db.delete(_db.events)..where((x) => x.id.equals(e.id))).go();
         }
       }
@@ -607,9 +600,7 @@ class SyncEngine {
         await (_db.update(
           _db.events,
         )..where((e) => e.id.equals(existing.id))).write(
-          mapped.companion.copyWith(
-            alarmPreset: const Value.absent(),
-          ),
+          mapped.companion.copyWith(alarmPreset: const Value.absent()),
         );
         localId = existing.id;
         n++;
@@ -618,11 +609,8 @@ class SyncEngine {
       }
       final hangout = g['hangoutLink'] as String?;
       if (hangout != null) {
-        await (_db.update(
-          _db.events,
-        )..where((e) => e.id.equals(localId))).write(
-          EventsCompanion(meetUrl: Value(hangout)),
-        );
+        await (_db.update(_db.events)..where((e) => e.id.equals(localId)))
+            .write(EventsCompanion(meetUrl: Value(hangout)));
       }
       await _mergeAttendees(localId, g);
     }

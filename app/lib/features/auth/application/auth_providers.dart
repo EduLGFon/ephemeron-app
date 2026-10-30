@@ -14,8 +14,8 @@ final googleAccountProvider = NotifierProvider<GoogleAccountNotifier, String?>(
 
 final googleAccountsProvider =
     NotifierProvider<GoogleAccountsNotifier, List<String>>(
-  GoogleAccountsNotifier.new,
-);
+      GoogleAccountsNotifier.new,
+    );
 
 class GoogleAccountNotifier extends Notifier<String?> {
   @override

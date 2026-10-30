@@ -7,11 +7,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../../core/platform/system_launcher.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../domain/habits/date_key.dart';
 import '../../alarms/data/alarm_scheduler.dart';
 import '../../habits/application/habits_providers.dart';
+import '../../settings/application/settings_providers.dart';
 import '../application/focus_providers.dart';
+import 'focus_stats_screen.dart';
 
 const _focusPresets = [15, 25, 50];
 const _breakPresets = [5, 10, 15];
@@ -42,6 +45,13 @@ class FocusScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Focus'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.bar_chart_outlined),
+            tooltip: 'Monthly stats',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const FocusStatsScreen()),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.download_outlined),
             tooltip: 'Export CSV',
@@ -214,6 +224,16 @@ class _StartViewState extends ConsumerState<_StartView> {
     final session = await repo.currentSession();
     if (session != null && session.id == id) {
       await _scheduleEndAlarm(session);
+      await SystemLauncher.startFocusChronometer(
+        '${session.phase ?? 'focus'} session',
+        session.startUtc,
+      );
+      try {
+        final settings = await ref.read(settingsRepositoryProvider.future);
+        if (settings.focusDnd) await SystemLauncher.setDnd(true);
+      } catch (_) {
+        // DND is best-effort; the session runs regardless.
+      }
     }
     _refresh(ref);
   }
@@ -324,6 +344,11 @@ class _RunningViewState extends ConsumerState<_RunningView> {
     if (!context.mounted) return;
     final kept = await repo.finishSession(widget.session.id, note: note);
     await AlarmScheduler.cancel(_requestCode(widget.session.id));
+    await SystemLauncher.stopFocusChronometer();
+    try {
+      final settings = await ref.read(settingsRepositoryProvider.future);
+      if (settings.focusDnd) await SystemLauncher.setDnd(false);
+    } catch (_) {}
     final habitId = widget.session.habitId;
     if (habitId != null && kept > 0 && context.mounted) {
       await _creditHabit(context, ref, habitId, kept);
@@ -335,6 +360,11 @@ class _RunningViewState extends ConsumerState<_RunningView> {
     final repo = ref.read(focusRepositoryProvider);
     await repo.deleteSession(widget.session.id);
     await AlarmScheduler.cancel(_requestCode(widget.session.id));
+    await SystemLauncher.stopFocusChronometer();
+    try {
+      final settings = await ref.read(settingsRepositoryProvider.future);
+      if (settings.focusDnd) await SystemLauncher.setDnd(false);
+    } catch (_) {}
     _refresh(ref);
   }
 }
