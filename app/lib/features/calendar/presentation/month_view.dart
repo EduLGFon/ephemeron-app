@@ -1,5 +1,6 @@
 // Month grid: custom painter, occurrence dots, tap to select day.
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/time/time.dart';
@@ -78,21 +79,7 @@ class MonthView extends ConsumerWidget {
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  String _monthName(int m) => const [
-    '',
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ][m];
+  String _monthName(int m) => DateFormat.MMMM().format(DateTime(2000, m));
 }
 
 class _WeekdayHeader extends StatelessWidget {

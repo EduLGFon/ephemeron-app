@@ -1,5 +1,6 @@
 // Year heat-map: 12 mini month grids shaded by event counts.
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/calendar_providers.dart';
@@ -43,19 +44,5 @@ class YearView extends ConsumerWidget {
     );
   }
 
-  String _name(int m) => const [
-    '',
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ][m];
+  String _name(int m) => DateFormat.MMM().format(DateTime(2000, m));
 }

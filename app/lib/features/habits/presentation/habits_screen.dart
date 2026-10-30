@@ -2,13 +2,12 @@
 // skip, streaks, archive with undo.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../../../domain/habits/date_key.dart';
 import '../application/habits_providers.dart';
 import 'habit_editor_sheet.dart';
-
-const _weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 class HabitsScreen extends ConsumerWidget {
   const HabitsScreen({super.key});
@@ -88,7 +87,7 @@ class _DayStrip extends StatelessWidget {
         children: [
           for (final d in days) ...[
             ChoiceChip(
-              label: Text('${_weekdayLabels[d.weekday - 1]} ${d.day}'),
+              label: Text('${DateFormat.E().format(d)} ${d.day}'),
               selected: habitDateKey(d) == selected,
               onSelected: (_) => onSelect(habitDateKey(d)),
             ),
