@@ -12,6 +12,7 @@ import '../../features/settings/presentation/onboarding_screen.dart';
 import '../../features/sync/application/sync_providers.dart';
 import '../../features/tasks/presentation/quick_add_sheet.dart';
 import 'app_sections.dart';
+import 'more_sheet.dart';
 
 const List<LogicalKeyboardKey> _digitKeys = <LogicalKeyboardKey>[
   LogicalKeyboardKey.digit1,
@@ -193,7 +194,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   void _showMore(BuildContext context, List<int> more, List<int> order) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (ctx) => _MoreSheet(
+      builder: (ctx) => MoreSheet(
         more: more,
         onSelected: (idx) {
           Navigator.of(ctx).pop();
@@ -262,56 +263,6 @@ class _AppShellState extends ConsumerState<AppShell> {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _MoreSheet extends StatelessWidget {
-  const _MoreSheet({
-    required this.more,
-    required this.onSelected,
-    required this.onReorder,
-  });
-
-  final List<int> more;
-  final ValueChanged<int> onSelected;
-  final VoidCallback onReorder;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final idx in more)
-            ListTile(
-              leading: Icon(AppSection.values[idx].icon),
-              title: Text(AppSection.values[idx].title),
-              onTap: () => onSelected(idx),
-            ),
-          ListTile(
-            leading: const Icon(Icons.search),
-            title: const Text('Search'),
-            onTap: () {
-              Navigator.of(context).pop();
-              context.push('/search');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.settings_outlined),
-            title: const Text('Settings'),
-            onTap: () {
-              Navigator.of(context).pop();
-              context.push('/settings');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.reorder),
-            title: const Text('Customize navigation'),
-            onTap: onReorder,
-          ),
-        ],
       ),
     );
   }
