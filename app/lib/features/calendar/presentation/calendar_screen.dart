@@ -29,6 +29,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }
 
   Future<void> _maybeRebuild() async {
+    if (!mounted) return;
     final window = ref.read(calendarStateProvider);
     if (_built == window) return;
     _built = window;
