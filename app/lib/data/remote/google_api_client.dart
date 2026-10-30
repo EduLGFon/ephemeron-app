@@ -111,26 +111,38 @@ class HttpGoogleApiClient implements GoogleApiClient {
     String? timeMin,
     String? timeMax,
   }) async {
-    final q = <String, String>{
-      'singleEvents': 'false',
-      'showDeleted': 'true',
-      'maxResults': '250',
-    };
-    if (syncToken != null) q['syncToken'] = syncToken;
-    if (timeMin != null) q['timeMin'] = timeMin;
-    if (timeMax != null) q['timeMax'] = timeMax;
-    final r = await _http.get(
-      Uri.parse(
-        '${AppConfig.calendarApiBase}/calendars/${Uri.encodeComponent(calendarId)}/events',
-      ).replace(queryParameters: q),
-      headers: await _headers(),
-    );
-    if (r.statusCode != 200) _throw(r);
-    final body = jsonDecode(r.body) as Map<String, dynamic>;
-    return CalendarPage(
-      items: ((body['items'] as List?) ?? []).cast<Map<String, dynamic>>(),
-      nextSyncToken: body['nextSyncToken'] as String?,
-    );
+    final all = <Map<String, dynamic>>[];
+    String? pageToken;
+    String? nextSyncToken;
+    var pages = 0;
+    do {
+      final q = <String, String>{
+        'singleEvents': 'false',
+        'showDeleted': 'true',
+        'maxResults': '250',
+      };
+      if (syncToken != null) q['syncToken'] = syncToken;
+      if (timeMin != null) q['timeMin'] = timeMin;
+      if (timeMax != null) q['timeMax'] = timeMax;
+      if (pageToken != null) q['pageToken'] = pageToken;
+      final r = await _http.get(
+        Uri.parse(
+          '${AppConfig.calendarApiBase}/calendars/${Uri.encodeComponent(calendarId)}/events',
+        ).replace(queryParameters: q),
+        headers: await _headers(),
+      );
+      if (r.statusCode != 200) _throw(r);
+      final body = jsonDecode(r.body) as Map<String, dynamic>;
+      all.addAll(
+        ((body['items'] as List?) ?? []).cast<Map<String, dynamic>>(),
+      );
+      pageToken = body['nextPageToken'] as String?;
+      if (body['nextSyncToken'] != null) {
+        nextSyncToken = body['nextSyncToken'] as String;
+      }
+      pages++;
+    } while (pageToken != null && pages < 50);
+    return CalendarPage(items: all, nextSyncToken: nextSyncToken);
   }
 
   @override
@@ -191,23 +203,34 @@ class HttpGoogleApiClient implements GoogleApiClient {
 
   @override
   Future<TasksPage> tasksList(String taskListId, {String? updatedMin}) async {
-    final q = <String, String>{
-      'showDeleted': 'true',
-      'showCompleted': 'true',
-      'showHidden': 'true',
-      'maxResults': '100',
-    };
-    if (updatedMin != null) q['updatedMin'] = updatedMin;
-    final r = await _http.get(
-      Uri.parse(
-        '${AppConfig.tasksApiBase}/lists/${Uri.encodeComponent(taskListId)}/tasks',
-      ).replace(queryParameters: q),
-      headers: await _headers(),
-    );
-    if (r.statusCode != 200) _throw(r);
-    final body = jsonDecode(r.body) as Map<String, dynamic>;
+    final all = <Map<String, dynamic>>[];
+    String? pageToken;
+    var pages = 0;
+    do {
+      final q = <String, String>{
+        'showDeleted': 'true',
+        'showCompleted': 'true',
+        'showHidden': 'true',
+        'maxResults': '100',
+      };
+      if (updatedMin != null) q['updatedMin'] = updatedMin;
+      if (pageToken != null) q['pageToken'] = pageToken;
+      final r = await _http.get(
+        Uri.parse(
+          '${AppConfig.tasksApiBase}/lists/${Uri.encodeComponent(taskListId)}/tasks',
+        ).replace(queryParameters: q),
+        headers: await _headers(),
+      );
+      if (r.statusCode != 200) _throw(r);
+      final body = jsonDecode(r.body) as Map<String, dynamic>;
+      all.addAll(
+        ((body['items'] as List?) ?? []).cast<Map<String, dynamic>>(),
+      );
+      pageToken = body['nextPageToken'] as String?;
+      pages++;
+    } while (pageToken != null && pages < 50);
     return TasksPage(
-      items: ((body['items'] as List?) ?? []).cast<Map<String, dynamic>>(),
+      items: all,
       nextUpdatedMin: DateTime.now().toUtc().toIso8601String(),
     );
   }

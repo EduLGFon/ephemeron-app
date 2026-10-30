@@ -13,6 +13,7 @@ import '../application/calendar_providers.dart';
 import 'event_details_sheet.dart';
 import 'event_editor_sheet.dart';
 import 'scope_sheet.dart';
+import 'google_calendar_colors.dart';
 
 class TimelineView extends ConsumerStatefulWidget {
   const TimelineView({super.key, required this.anchor, required this.dayCount});
@@ -268,23 +269,9 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
     );
   }
 
-  static const Map<String, Color> _googleColors = {
-    '1': Color(0xFF7986CB),
-    '2': Color(0xFF33B679),
-    '3': Color(0xFF8E24AA),
-    '4': Color(0xFFE67C73),
-    '5': Color(0xFFF6BF26),
-    '6': Color(0xFF3F51B5),
-    '7': Color(0xFF039BE5),
-    '8': Color(0xFF0B8043),
-    '9': Color(0xFFD50000),
-    '10': Color(0xFF303F9F),
-    '11': Color(0xFF616161),
-  };
-
   Color _eventColor(BuildContext context, String? colorId) {
-    if (colorId != null && _googleColors.containsKey(colorId)) {
-      return _googleColors[colorId]!;
+    if (colorId != null && googleCalendarColors.containsKey(colorId)) {
+      return googleCalendarColors[colorId]!;
     }
     return Theme.of(context).colorScheme.primary;
   }

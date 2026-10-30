@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/platform/system_launcher.dart';
 import '../../features/auth/application/auth_providers.dart';
 import '../../features/calendar/application/calendar_providers.dart';
+import '../../features/calendar/application/calendar_state.dart';
 import '../../features/settings/application/settings_providers.dart';
 import '../../features/settings/presentation/onboarding_screen.dart';
 import '../../features/sync/application/sync_providers.dart';
@@ -120,6 +121,34 @@ class _AppShellState extends ConsumerState<AppShell> {
         final nav = Navigator.of(context);
         if (nav.canPop()) nav.pop();
       },
+      SingleActivator(LogicalKeyboardKey.arrowLeft): () {
+        if (!mounted) return;
+        if (widget.navigationShell.currentIndex != AppSection.calendar.index) {
+          return;
+        }
+        final w = ref.read(calendarStateProvider);
+        final step = switch (w.view) {
+          CalendarViewKind.month => 30,
+          CalendarViewKind.year => 365,
+          CalendarViewKind.multiDay => w.dayCount,
+          _ => 1,
+        };
+        ref.read(calendarStateProvider.notifier).shift(-step);
+      },
+      SingleActivator(LogicalKeyboardKey.arrowRight): () {
+        if (!mounted) return;
+        if (widget.navigationShell.currentIndex != AppSection.calendar.index) {
+          return;
+        }
+        final w = ref.read(calendarStateProvider);
+        final step = switch (w.view) {
+          CalendarViewKind.month => 30,
+          CalendarViewKind.year => 365,
+          CalendarViewKind.multiDay => w.dayCount,
+          _ => 1,
+        };
+        ref.read(calendarStateProvider.notifier).shift(step);
+      },
       for (var i = 0; i < AppSection.values.length; i++)
         SingleActivator(_digitKeys[i]): () {
           if (!mounted) return;
@@ -132,33 +161,33 @@ class _AppShellState extends ConsumerState<AppShell> {
       child: Scaffold(
         body: widget.navigationShell,
         bottomNavigationBar: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        child: NavigationBar(
-          selectedIndex: pinned.contains(widget.navigationShell.currentIndex)
-              ? pinned.indexOf(widget.navigationShell.currentIndex)
-              : 5,
-          onDestinationSelected: (i) {
-            if (i < 5) {
-              _onTabSelected(pinned[i]);
-            } else {
-              _showMore(context, more, order);
-            }
-          },
-          destinations: [
-            for (final idx in pinned)
-              NavigationDestination(
-                icon: Icon(AppSection.values[idx].icon),
-                label: AppSection.values[idx].title,
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          child: NavigationBar(
+            selectedIndex: pinned.contains(widget.navigationShell.currentIndex)
+                ? pinned.indexOf(widget.navigationShell.currentIndex)
+                : 5,
+            onDestinationSelected: (i) {
+              if (i < 5) {
+                _onTabSelected(pinned[i]);
+              } else {
+                _showMore(context, more, order);
+              }
+            },
+            destinations: [
+              for (final idx in pinned)
+                NavigationDestination(
+                  icon: Icon(AppSection.values[idx].icon),
+                  label: AppSection.values[idx].title,
+                ),
+              const NavigationDestination(
+                icon: Icon(Icons.more_horiz),
+                label: 'More',
               ),
-            const NavigationDestination(
-              icon: Icon(Icons.more_horiz),
-              label: 'More',
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    ), // Scaffold
-  ); // CallbackShortcuts
+      ), // Scaffold
+    ); // CallbackShortcuts
   }
 
   void _showMore(BuildContext context, List<int> more, List<int> order) {

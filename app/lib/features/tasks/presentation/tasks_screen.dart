@@ -94,7 +94,10 @@ class TasksScreen extends ConsumerWidget {
                           t.dueDate != null && t.dueDate!.compareTo(today) < 0,
                     )
                     .toList();
-                final rest = tasks.where((t) => !overdue.contains(t)).toList();
+                final overdueIds = overdue.map((t) => t.id).toSet();
+                final rest = tasks
+                    .where((t) => !overdueIds.contains(t.id))
+                    .toList();
                 return ListView(
                   children: [
                     if (overdue.isNotEmpty) ...[

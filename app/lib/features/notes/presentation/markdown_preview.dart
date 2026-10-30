@@ -6,6 +6,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:markdown/markdown.dart' as md;
 
+import '../../../core/platform/system_launcher.dart';
+
 class MarkdownPreview extends StatelessWidget {
   const MarkdownPreview({super.key, required this.body, this.onToggleTask});
 
@@ -206,7 +208,10 @@ class _Blocks implements md.NodeVisitor {
                 fontSize: 12,
                 color: Theme.of(context).colorScheme.outline,
               ),
-              recognizer: TapGestureRecognizer()..onTap = () {},
+              recognizer: TapGestureRecognizer()
+                ..onTap = () {
+                  SystemLauncher.openUrl(url);
+                },
             ),
           );
         }

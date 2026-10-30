@@ -10,6 +10,7 @@ import '../../notes/application/notes_providers.dart';
 import '../application/calendar_providers.dart';
 import '../../../domain/recurrence/recurrence_rule.dart';
 import 'scope_sheet.dart';
+import 'google_calendar_colors.dart';
 
 Future<void> showEventEditor(
   BuildContext context, {
@@ -27,22 +28,6 @@ Future<void> showEventEditor(
     ),
   );
 }
-
-const _googleColorMap = <String, Color>{
-  '1': Color(0xFF7986CB),
-  '2': Color(0xFF33B679),
-  '3': Color(0xFF8E24AA),
-  '4': Color(0xFFE67C73),
-  '5': Color(0xFFF6BF26),
-  '6': Color(0xFF3F51B5),
-  '7': Color(0xFF039BE5),
-  '8': Color(0xFF0B8043),
-  '9': Color(0xFFD50000),
-  '10': Color(0xFF303F9F),
-  '11': Color(0xFF616161),
-};
-
-Color _googleColor(String id) => _googleColorMap[id] ?? Colors.blue;
 
 String _summarizeRrule(String rrule) {
   try {
@@ -383,7 +368,9 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                   for (final c in cals) {
                     groups
                         .putIfAbsent(
-                          c.source == 'google' ? (c.googleAccount ?? 'Google') : 'Device',
+                          c.source == 'google'
+                              ? (c.googleAccount ?? 'Google')
+                              : 'Device',
                           () => [],
                         )
                         .add(c);
@@ -782,7 +769,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                         radius: 14,
                         backgroundColor: c == null
                             ? Theme.of(context).colorScheme.primary
-                            : _googleColor(c),
+                            : googleCalendarColor(c),
                         child: _colorId == c
                             ? const Icon(
                                 Icons.check,

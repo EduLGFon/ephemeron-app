@@ -8,6 +8,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:google_sign_in_web/web_only.dart'
+    if (dart.library.io) 'google_signin_web_stub.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../core/config/app_config.dart';
@@ -18,9 +20,6 @@ import '../../sync/application/sync_providers.dart';
 import '../../sync/data/sync_engine.dart';
 import '../application/auth_providers.dart';
 import '../data/google_auth.dart';
-
-import 'package:google_sign_in_web/web_only.dart'
-    if (dart.library.io) 'google_signin_web_stub.dart';
 
 class AuthScreen extends ConsumerWidget {
   const AuthScreen({super.key});
@@ -342,7 +341,7 @@ class _WebGoogleButtonState extends ConsumerState<_WebGoogleButton> {
   }
 
   Future<void> _handle(GoogleSignInAccount account) async {
-    debugPrint('WebGoogleButton handle account=${account.email}');
+    debugPrint('WebGoogleButton handle account (redacted)');
     try {
       await ref.read(googleAuthProvider).handleWebAccount(account);
       ref.read(googleAccountProvider.notifier).setSignedInEmail(account.email);

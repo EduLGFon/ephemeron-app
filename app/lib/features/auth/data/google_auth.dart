@@ -49,9 +49,7 @@ class GoogleAuth {
       if (token == null) {
         // keep accounts; token may refresh later
       }
-      debugPrint(
-        'GoogleAuth.restore ok accounts=$_accounts active=$_activeEmail',
-      );
+      debugPrint('GoogleAuth.restore ok');
       return _activeEmail;
     } catch (e) {
       debugPrint('GoogleAuth.restore failed: $e');

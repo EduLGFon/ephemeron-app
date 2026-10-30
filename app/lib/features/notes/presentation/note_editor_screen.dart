@@ -127,10 +127,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
         final counts = countWords(_bodyCtl.text);
         return CallbackShortcuts(
           bindings: {
-            SingleActivator(
-              LogicalKeyboardKey.enter,
-              control: true,
-            ): () {
+            SingleActivator(LogicalKeyboardKey.enter, control: true): () {
               if (!mounted) return;
               _flush();
             },
@@ -141,76 +138,78 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
           },
           child: Scaffold(
             appBar: AppBar(
-            title: const Text('Note'),
-            actions: [
-              IconButton(
-                icon: Icon(
-                  _preview ? Icons.edit_outlined : Icons.preview_outlined,
-                ),
-                tooltip: _preview ? 'Edit' : 'Preview',
-                onPressed: () => setState(() => _preview = !_preview),
-              ),
-              PopupMenuButton<String>(
-                onSelected: (v) => _menu(v, note),
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'pin', child: Text('Pin / unpin')),
-                  PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
-                  PopupMenuItem(value: 'move', child: Text('Move to folder')),
-                  PopupMenuItem(
-                    value: 'share',
-                    child: Text('Share as Markdown'),
+              title: const Text('Note'),
+              actions: [
+                IconButton(
+                  icon: Icon(
+                    _preview ? Icons.edit_outlined : Icons.preview_outlined,
                   ),
-                  PopupMenuItem(value: 'delete', child: Text('Delete')),
-                ],
-              ),
-            ],
-          ),
-          body: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: TextField(
-                  controller: _titleCtl,
-                  decoration: const InputDecoration(
-                    hintText: 'Title',
-                    border: InputBorder.none,
-                  ),
-                  style: Theme.of(context).textTheme.headlineSmall,
+                  tooltip: _preview ? 'Edit' : 'Preview',
+                  onPressed: () => setState(() => _preview = !_preview),
                 ),
-              ),
-              if (!_preview) _Toolbar(onAction: _wrap),
-              Expanded(
-                child: _preview
-                    ? MarkdownPreview(
-                        body: _bodyCtl.text,
-                        onToggleTask: (i) => _toggleTask(0 - 0 + _taskIndex(i)),
-                      )
-                    : Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: TextField(
-                          controller: _bodyCtl,
-                          maxLines: null,
-                          expands: true,
-                          textAlignVertical: TextAlignVertical.top,
-                          decoration: const InputDecoration(
-                            hintText: 'Write Markdown... - [ ] task lists work',
-                            border: InputBorder.none,
+                PopupMenuButton<String>(
+                  onSelected: (v) => _menu(v, note),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'pin', child: Text('Pin / unpin')),
+                    PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
+                    PopupMenuItem(value: 'move', child: Text('Move to folder')),
+                    PopupMenuItem(
+                      value: 'share',
+                      child: Text('Share as Markdown'),
+                    ),
+                    PopupMenuItem(value: 'delete', child: Text('Delete')),
+                  ],
+                ),
+              ],
+            ),
+            body: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: TextField(
+                    controller: _titleCtl,
+                    decoration: const InputDecoration(
+                      hintText: 'Title',
+                      border: InputBorder.none,
+                    ),
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                ),
+                if (!_preview) _Toolbar(onAction: _wrap),
+                Expanded(
+                  child: _preview
+                      ? MarkdownPreview(
+                          body: _bodyCtl.text,
+                          onToggleTask: (i) =>
+                              _toggleTask(0 - 0 + _taskIndex(i)),
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: TextField(
+                            controller: _bodyCtl,
+                            maxLines: null,
+                            expands: true,
+                            textAlignVertical: TextAlignVertical.top,
+                            decoration: const InputDecoration(
+                              hintText:
+                                  'Write Markdown... - [ ] task lists work',
+                              border: InputBorder.none,
+                            ),
                           ),
                         ),
-                      ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Text(
-                  '${counts.words} words, ${counts.chars} chars - autosaved',
-                  style: Theme.of(context).textTheme.bodySmall,
                 ),
-              ),
-              _LinksSection(noteId: widget.noteId),
-            ],
-          ), // Column
-        ), // Scaffold
-      ); // CallbackShortcuts
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    '${counts.words} words, ${counts.chars} chars - autosaved',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                _LinksSection(noteId: widget.noteId),
+              ],
+            ), // Column
+          ), // Scaffold
+        ); // CallbackShortcuts
       },
     );
   }

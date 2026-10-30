@@ -250,38 +250,44 @@ class _RunningView extends ConsumerStatefulWidget {
 
 class _RunningViewState extends ConsumerState<_RunningView> {
   Timer? _ticker;
+  final ValueNotifier<int> _now = ValueNotifier<int>(
+    DateTime.now().toUtc().millisecondsSinceEpoch,
+  );
 
   @override
   void initState() {
     super.initState();
     WakelockPlus.enable();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
+      if (mounted) _now.value = DateTime.now().toUtc().millisecondsSinceEpoch;
     });
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
+    _now.dispose();
     WakelockPlus.disable();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-    final target = widget.session.targetEndUtc;
-    final elapsedMin = ((now - widget.session.startUtc) / 60000).floor();
-    final remainingMs = target == null ? 0 : target - now;
-    final finished = target != null && remainingMs <= 0;
-    final remaining = finished
-        ? '00:00'
-        : '${(remainingMs ~/ 60000).toString().padLeft(2, '0')}:${((remainingMs % 60000) ~/ 1000).toString().padLeft(2, '0')}';
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    return ValueListenableBuilder<int>(
+      valueListenable: _now,
+      builder: (context, now, _) {
+        final target = widget.session.targetEndUtc;
+        final elapsedMin = ((now - widget.session.startUtc) / 60000).floor();
+        final remainingMs = target == null ? 0 : target - now;
+        final finished = target != null && remainingMs <= 0;
+        final remaining = finished
+            ? '00:00'
+            : '${(remainingMs ~/ 60000).toString().padLeft(2, '0')}:${((remainingMs % 60000) ~/ 1000).toString().padLeft(2, '0')}';
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
           if (_isAbandoned(now))
             Card(
               child: Padding(
@@ -329,6 +335,8 @@ class _RunningViewState extends ConsumerState<_RunningView> {
           ),
         ],
       ),
+    );
+      },
     );
   }
 

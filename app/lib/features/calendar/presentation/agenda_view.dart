@@ -45,18 +45,11 @@ class AgendaView extends ConsumerWidget {
                 child: Text(d, style: Theme.of(context).textTheme.titleSmall),
               ),
               for (final o in byDay[d]!)
-                FutureBuilder<Event?>(
-                  future: _event(ref, o.eventId),
-                  builder: (ctx, snap) {
-                    final t = o.title ?? snap.data?.title ?? '…';
-                    final s = DateTime.fromMillisecondsSinceEpoch(o.startUtc);
-                    return ListTile(
-                      title: Text(t),
-                      trailing: Text(
-                        '${s.hour.toString().padLeft(2, '0')}:${s.minute.toString().padLeft(2, '0')}',
-                      ),
-                    );
-                  },
+                ListTile(
+                  title: Text(o.title ?? '…'),
+                  trailing: Text(
+                    '${DateTime.fromMillisecondsSinceEpoch(o.startUtc).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(o.startUtc).minute.toString().padLeft(2, '0')}',
+                  ),
                 ),
             ],
           ],
@@ -65,10 +58,6 @@ class AgendaView extends ConsumerWidget {
     );
   }
 
-  Future<Event?> _event(WidgetRef ref, String id) {
-    final repo = ref.read(eventRepositoryProvider);
-    return (repo.dbSelect()..where((e) => e.id.equals(id))).getSingleOrNull();
-  }
 }
 
 String agendaDayKey(DateTime d) => dateKey(d);
