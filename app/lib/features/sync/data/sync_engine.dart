@@ -41,6 +41,8 @@ class SyncEngine {
         return;
       }
       await _pushOutbox(client);
+      await _syncCalendarList(client);
+      await _syncTaskLists(client);
       await _pullCalendars(client);
       await _pullTasks(client);
       _status = SyncStatus.synced;
@@ -288,6 +290,76 @@ class SyncEngine {
         .watch();
   }
 
+  // Discovery: mirror the remote calendar/task-list catalog locally so
+  // the first sync after sign-in has something to pull into. Local-only
+  // rows are never touched; renamed remotes update in place when clean.
+
+  Future<void> _syncCalendarList(GoogleApiClient client) async {
+    final remote = await client.calendarList();
+    final now = _now();
+    for (final c in remote) {
+      final id = c['id'] as String?;
+      if (id == null || c['deleted'] == true) continue;
+      final name = (c['summary'] as String?)?.trim();
+      final existing = await (_db.select(
+        _db.calendars,
+      )..where((t) => t.remoteId.equals(id))).getSingleOrNull();
+      if (existing == null) {
+        await _db
+            .into(_db.calendars)
+            .insert(
+              CalendarsCompanion.insert(
+                id: newId(),
+                remoteId: Value(id),
+                name: (name == null || name.isEmpty) ? id : name,
+                source: const Value('google'),
+                readOnly: Value((c['accessRole'] as String?) == 'reader'),
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+      } else if (!existing.dirty && name != null && name.isNotEmpty) {
+        await (_db.update(
+          _db.calendars,
+        )..where((t) => t.id.equals(existing.id))).write(
+          CalendarsCompanion(name: Value(name), updatedAt: Value(now)),
+        );
+      }
+    }
+  }
+
+  Future<void> _syncTaskLists(GoogleApiClient client) async {
+    final remote = await client.taskLists();
+    final now = _now();
+    for (final l in remote) {
+      final id = l['id'] as String?;
+      if (id == null) continue;
+      final name = (l['title'] as String?)?.trim();
+      final existing = await (_db.select(
+        _db.taskLists,
+      )..where((t) => t.remoteId.equals(id))).getSingleOrNull();
+      if (existing == null) {
+        await _db
+            .into(_db.taskLists)
+            .insert(
+              TaskListsCompanion.insert(
+                id: newId(),
+                remoteId: Value(id),
+                name: (name == null || name.isEmpty) ? id : name,
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+      } else if (!existing.dirty && name != null && name.isNotEmpty) {
+        await (_db.update(
+          _db.taskLists,
+        )..where((t) => t.id.equals(existing.id))).write(
+          TaskListsCompanion(name: Value(name), updatedAt: Value(now)),
+        );
+      }
+    }
+  }
+
   // Pull.
 
   Future<void> _pullCalendars(GoogleApiClient client) async {
@@ -407,12 +479,13 @@ class SyncEngine {
       _db.taskLists,
     )..where((l) => l.deletedAt.isNull())).get();
     for (final list in lists) {
+      // Device-only lists have no remote counterpart; skip them instead
+      // of querying Google with a local UUID (which 404s and fails sync).
+      final remoteId = list.remoteId;
+      if (remoteId == null) continue;
       final updatedMin = await _syncValue('tasks:${list.id}:updatedMin');
       try {
-        final page = await client.tasksList(
-          list.remoteId ?? list.id,
-          updatedMin: updatedMin,
-        );
+        final page = await client.tasksList(remoteId, updatedMin: updatedMin);
         for (final g in page.items) {
           await _mergeTask(list, g);
         }

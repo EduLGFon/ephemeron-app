@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/tasks/eisenhower.dart';
 import '../../../data/drift/app_database.dart';
+import '../../sync/presentation/sync_title.dart';
 import '../application/tasks_providers.dart';
 import 'task_editor_sheet.dart';
 
@@ -15,7 +16,7 @@ class MatrixScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tasksAsync = ref.watch(openTasksProvider(null));
     return Scaffold(
-      appBar: AppBar(title: const Text('Matrix')),
+      appBar: AppBar(title: const SyncTitle(text: 'Matrix')),
       body: tasksAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => const Center(child: Text('Could not load.')),

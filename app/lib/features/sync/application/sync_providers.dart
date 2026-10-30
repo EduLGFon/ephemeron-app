@@ -1,4 +1,6 @@
-// Sync providers: engine, status, manual triggers.
+// Sync providers: engine, status, manual triggers, auto-sync schedule.
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/app_config.dart';
@@ -6,6 +8,8 @@ import '../../../core/db/db_provider.dart';
 import '../../../data/remote/backend_sync_api.dart';
 import '../../../data/remote/google_api_client.dart';
 import '../../auth/application/auth_providers.dart';
+import '../../calendar/application/calendar_providers.dart';
+import '../../settings/application/settings_providers.dart';
 import '../data/backend_sync_engine.dart';
 import '../data/sync_engine.dart';
 
@@ -46,6 +50,105 @@ class SyncStatusNotifier extends Notifier<SyncStatus> {
     }
     await engine.syncNow();
     state = engine.status;
+    if (engine.status == SyncStatus.synced) {
+      unawaited(ref.read(lastGoogleSyncAtProvider.notifier).recordNow());
+      // Pulled events land in the events table; rebuild the visible
+      // occurrence window so the calendar shows them right away.
+      try {
+        final window = ref.read(calendarStateProvider);
+        await ref
+            .read(occurrenceRepositoryProvider)
+            .rebuildWindow(
+              windowStartUtc: window.fromUtc,
+              windowEndUtc: window.toUtc,
+            );
+        ref.invalidate(windowOccurrencesProvider);
+      } catch (_) {
+        // Cache rebuild is best-effort; next navigation rebuilds anyway.
+      }
+    }
+  }
+}
+
+/// Last successful Google sync. Reactive cache of the persisted value in
+/// SettingsRepository; drives title freshness colors.
+final lastGoogleSyncAtProvider =
+    NotifierProvider<LastGoogleSyncNotifier, DateTime?>(
+      LastGoogleSyncNotifier.new,
+    );
+
+class LastGoogleSyncNotifier extends Notifier<DateTime?> {
+  @override
+  DateTime? build() {
+    unawaited(_load());
+    return null;
+  }
+
+  Future<void> _load() async {
+    try {
+      final repo = await ref.read(settingsRepositoryProvider.future);
+      state = repo.lastGoogleSyncAt;
+    } catch (_) {
+      // Prefs unavailable: stay null (titles render gray).
+    }
+  }
+
+  Future<void> recordNow() async {
+    state = DateTime.now().toUtc();
+    try {
+      final repo = await ref.read(settingsRepositoryProvider.future);
+      await repo.setLastGoogleSyncAt(state);
+    } catch (_) {
+      // Persistence is best-effort; in-memory state still drives the UI.
+    }
+  }
+}
+
+/// Battery-friendly auto-sync: one periodic timer, no background polling.
+/// Manual syncs reschedule so the next auto run is a full interval later.
+final googleAutoSyncServiceProvider = Provider<GoogleAutoSyncService>((ref) {
+  final svc = GoogleAutoSyncService(ref);
+  ref.onDispose(svc.dispose);
+  return svc;
+});
+
+class GoogleAutoSyncService {
+  GoogleAutoSyncService(this._ref);
+
+  final Ref _ref;
+  Timer? _timer;
+
+  /// Starts (or restarts) the schedule from the persisted interval.
+  Future<void> start() => reschedule();
+
+  Future<void> reschedule() async {
+    int intervalMin = AppConfig.syncIntervalMin;
+    try {
+      final repo = await _ref.read(settingsRepositoryProvider.future);
+      intervalMin = repo.syncIntervalMin;
+    } catch (_) {
+      // Prefs unavailable: fall back to the compiled default.
+    }
+    _timer?.cancel();
+    _timer = null;
+    if (intervalMin <= 0) return;
+    _timer = Timer.periodic(Duration(minutes: intervalMin), (_) => _tick());
+  }
+
+  Future<void> _tick() async {
+    if (!_ref.read(googleAuthProvider).isSignedIn) return;
+    await _ref.read(syncStatusProvider.notifier).syncNow();
+  }
+
+  /// Manual sync (title tap): sync now, then restart the auto countdown.
+  Future<void> syncNowAndReschedule() async {
+    await _ref.read(syncStatusProvider.notifier).syncNow();
+    await reschedule();
+  }
+
+  void dispose() {
+    _timer?.cancel();
+    _timer = null;
   }
 }
 

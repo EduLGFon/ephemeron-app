@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../settings/application/settings_providers.dart';
+import '../../sync/presentation/sync_title.dart';
 import '../application/calendar_providers.dart';
 import '../application/calendar_state.dart';
 import 'agenda_view.dart';
@@ -48,7 +49,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRebuild());
     return Scaffold(
       appBar: AppBar(
-        title: Text(_title(window)),
+        title: SyncTitle(text: 'Calendar ${_title(window)}'),
         leading: IconButton(
           icon: const Icon(Icons.today),
           tooltip: 'Today',

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../auth/presentation/auth_screen.dart';
+import '../../sync/application/sync_providers.dart';
 import '../application/settings_providers.dart';
 import '../data/backup_service.dart';
 import '../data/settings_repository.dart';
@@ -187,6 +188,29 @@ class SettingsScreen extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(builder: (_) => const AuthScreen()),
+              ),
+            ),
+            const _SectionHeader('Google sync'),
+            ListTile(
+              title: const Text('Auto-sync interval'),
+              subtitle: const Text(
+                'Sync starts right after sign-in. Tapping the Calendar, Tasks or Matrix title syncs now and restarts the countdown.',
+              ),
+              trailing: DropdownButton<int>(
+                value: repo.syncIntervalMin,
+                items: const [
+                  DropdownMenuItem(value: 0, child: Text('Off')),
+                  DropdownMenuItem(value: 15, child: Text('15 min')),
+                  DropdownMenuItem(value: 30, child: Text('30 min')),
+                  DropdownMenuItem(value: 60, child: Text('1 hour')),
+                  DropdownMenuItem(value: 120, child: Text('2 hours')),
+                ],
+                onChanged: (v) async {
+                  if (v == null) return;
+                  await repo.setSyncIntervalMin(v);
+                  ref.invalidate(settingsRepositoryProvider);
+                  await ref.read(googleAutoSyncServiceProvider).reschedule();
+                },
               ),
             ),
             _SectionHeader(AppLocalizations.of(context).backupTitle),

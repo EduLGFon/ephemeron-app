@@ -1,4 +1,6 @@
 // Auth providers.
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/backend_auth.dart';
@@ -12,7 +14,20 @@ final googleAccountProvider = NotifierProvider<GoogleAccountNotifier, String?>(
 
 class GoogleAccountNotifier extends Notifier<String?> {
   @override
-  String? build() => null;
+  String? build() {
+    unawaited(restore());
+    return null;
+  }
+
+  /// Restores a previous sign-in (tokens + email live in secure storage).
+  /// Called on startup and safe to call again after sign-in.
+  Future<void> restore() async {
+    try {
+      state = await ref.read(googleAuthProvider).restore();
+    } catch (_) {
+      // No stored session: stay signed out.
+    }
+  }
 
   Future<void> signIn({bool tasks = false}) async {
     state = await ref.read(googleAuthProvider).signIn(tasks: tasks);

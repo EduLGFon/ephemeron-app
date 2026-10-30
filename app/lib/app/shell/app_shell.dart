@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/auth/application/auth_providers.dart';
 import '../../features/settings/application/settings_providers.dart';
 import '../../features/settings/presentation/onboarding_screen.dart';
+import '../../features/sync/application/sync_providers.dart';
 import 'app_sections.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -20,6 +22,8 @@ class _AppShellState extends ConsumerState<AppShell> {
   void initState() {
     super.initState();
     _restoreLastTab();
+    // Restart the persisted auto-sync schedule on every launch.
+    Future.microtask(() => ref.read(googleAutoSyncServiceProvider).start());
   }
 
   Future<void> _restoreLastTab() async {
@@ -29,6 +33,8 @@ class _AppShellState extends ConsumerState<AppShell> {
     if (idx != widget.navigationShell.currentIndex) {
       widget.navigationShell.goBranch(idx);
     }
+    // Restore a previous Google sign-in so sync works after restart.
+    await ref.read(googleAccountProvider.notifier).restore();
   }
 
   Future<void> _onTabSelected(int branchIndex) async {

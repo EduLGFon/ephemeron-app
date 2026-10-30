@@ -12,6 +12,7 @@ class SafeSecureStorage {
   static const _kGoogleAccess = 'google.accessToken';
   static const _kGoogleRefresh = 'google.refreshToken';
   static const _kGoogleExpiry = 'google.expiryMs';
+  static const _kGoogleEmail = 'google.email';
   static const _kBackendRefresh = 'backend.refreshToken';
 
   Future<void> saveGoogleTokens({
@@ -26,6 +27,10 @@ class SafeSecureStorage {
     await _storage.write(key: _kGoogleExpiry, value: expiryMs.toString());
   }
 
+  Future<void> saveGoogleEmail(String email) =>
+      _storage.write(key: _kGoogleEmail, value: email);
+  Future<String?> get googleEmail => _storage.read(key: _kGoogleEmail);
+
   Future<String?> get googleAccessToken => _storage.read(key: _kGoogleAccess);
   Future<String?> get googleRefreshToken => _storage.read(key: _kGoogleRefresh);
   Future<int?> get googleExpiryMs async {
@@ -37,6 +42,7 @@ class SafeSecureStorage {
     await _storage.delete(key: _kGoogleAccess);
     await _storage.delete(key: _kGoogleRefresh);
     await _storage.delete(key: _kGoogleExpiry);
+    await _storage.delete(key: _kGoogleEmail);
   }
 
   Future<void> saveBackendRefresh(String token) =>

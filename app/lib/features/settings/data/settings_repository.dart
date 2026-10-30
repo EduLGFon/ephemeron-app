@@ -79,4 +79,22 @@ class SettingsRepository {
   static const _kDefaultDur = 'calendar.defaultDurationMin';
   int get defaultDurationMin => _prefs.getInt(_kDefaultDur) ?? 60;
   Future<void> setDefaultDurationMin(int v) => _prefs.setInt(_kDefaultDur, v);
+
+  /// Google auto-sync interval in minutes. 0 means disabled.
+  static const _kSyncInterval = 'sync.intervalMin';
+  int get syncIntervalMin => _prefs.getInt(_kSyncInterval) ?? 30;
+  Future<void> setSyncIntervalMin(int v) => _prefs.setInt(_kSyncInterval, v);
+
+  /// Last successful Google sync, for title freshness + scheduling.
+  static const _kLastGoogleSync = 'sync.lastGoogleSyncAtMs';
+  DateTime? get lastGoogleSyncAt {
+    final ms = _prefs.getInt(_kLastGoogleSync);
+    return ms == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true);
+  }
+
+  Future<void> setLastGoogleSyncAt(DateTime? v) => v == null
+      ? _prefs.remove(_kLastGoogleSync)
+      : _prefs.setInt(_kLastGoogleSync, v.toUtc().millisecondsSinceEpoch);
 }

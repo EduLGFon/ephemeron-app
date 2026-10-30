@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
+import '../../sync/presentation/sync_title.dart';
 import '../application/tasks_providers.dart';
 import 'quick_add_sheet.dart';
 import 'task_editor_sheet.dart';
@@ -19,7 +20,7 @@ class TasksScreen extends ConsumerWidget {
     final listsAsync = ref.watch(taskListsProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tasks'),
+        title: const SyncTitle(text: 'Tasks'),
         actions: [
           IconButton(
             icon: const Icon(Icons.done_all),

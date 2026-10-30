@@ -30,6 +30,28 @@ class GoogleAuth {
   String? get email => _email;
   bool get isSignedIn => _email != null;
 
+  /// Restores a previous sign-in after restart. Returns the email when
+  /// stored credentials are still usable, null otherwise (and forgets
+  /// dead credentials so the UI shows signed-out).
+  Future<String?> restore() async {
+    final email = await _storage.googleEmail;
+    if (email == null || email.isEmpty) return null;
+    try {
+      await _ensureInit();
+      final token = await accessToken();
+      if (token == null) {
+        await _storage.clearGoogle();
+        return null;
+      }
+      _email = email;
+      debugPrint('GoogleAuth.restore ok email=$_email');
+      return _email;
+    } catch (e) {
+      debugPrint('GoogleAuth.restore failed: $e');
+      return null;
+    }
+  }
+
   Future<void> _ensureInit() async {
     if (_initialized) return;
     if (kIsWeb && AppConfig.webGoogleClientId.isEmpty) {
@@ -82,6 +104,7 @@ class GoogleAuth {
   }
 
   Future<String?> signIn({bool tasks = false}) async {
+    debugPrint('GoogleAuth.signIn start platform=$defaultTargetPlatform');
     try {
       await _ensureInit();
     } on UnimplementedError {
@@ -92,7 +115,12 @@ class GoogleAuth {
     }
     if (defaultTargetPlatform == TargetPlatform.linux ||
         defaultTargetPlatform == TargetPlatform.windows) {
-      return _signInDesktop();
+      try {
+        return await _signInDesktop();
+      } catch (e, st) {
+        debugPrint('GoogleAuth desktop error: $e\n$st');
+        rethrow;
+      }
     }
     if (kIsWeb) {
       // Web uses the rendered button; signIn is a no-op fallback.
@@ -109,6 +137,7 @@ class GoogleAuth {
         _scopes(tasks),
       );
       _accessToken = authz.accessToken;
+      if (_email != null) await _storage.saveGoogleEmail(_email!);
       await _storage.saveGoogleTokens(
         accessToken: _accessToken!,
         expiryMs: DateTime.now()
@@ -129,14 +158,16 @@ class GoogleAuth {
     final clientId = AppConfig.linuxGoogleClientId;
     final clientSecret = AppConfig.linuxGoogleClientSecret;
     if (clientId.isEmpty) {
-      throw GoogleAuthException('Google sign-in is not configured for desktop.');
+      throw GoogleAuthException(
+        'Google sign-in is not configured for desktop.',
+      );
     }
     // Find a free loopback port.
     HttpServer? server;
     int port = 0;
     for (var p = 8085; p <= 8095; p++) {
       try {
-        server = await HttpServer.bind('127.0.0.1', p);
+        server = await HttpServer.bind('localhost', p);
         port = p;
         break;
       } catch (_) {
@@ -146,7 +177,7 @@ class GoogleAuth {
     if (server == null) {
       throw GoogleAuthException('Could not start local sign-in server.');
     }
-    final redirectUri = 'http://127.0.0.1:$port';
+    final redirectUri = 'http://localhost:$port';
     final state = _randomString(32);
     final verifier = _randomString(64);
     final challenge = verifier;
@@ -154,7 +185,7 @@ class GoogleAuth {
       'client_id': clientId,
       'redirect_uri': redirectUri,
       'response_type': 'code',
-      'scope': AppConfig.googleScopes.join(' '),
+      'scope': [...AppConfig.googleScopes, 'openid', 'email'].join(' '),
       'access_type': 'offline',
       'prompt': 'consent',
       'state': state,
@@ -173,7 +204,7 @@ class GoogleAuth {
         await req.response.close();
         return;
       }
-      if (code != null) {
+      if (code != null && !codeCompleter.isCompleted) {
         codeCompleter.complete(code);
       }
       req.response
@@ -194,39 +225,64 @@ class GoogleAuth {
     }
 
     final code = await codeCompleter.future.timeout(const Duration(minutes: 5));
+    debugPrint('GoogleAuth desktop got code');
     await server.close();
 
-    final tokenRes = await HttpClient()
-        .postUrl(Uri.parse('https://oauth2.googleapis.com/token'))
-        .then((r) async {
-          r.headers.contentType = ContentType('application', 'x-www-form-urlencoded');
-          final body =
-              'code=${Uri.encodeQueryComponent(code)}'
-              '&client_id=${Uri.encodeQueryComponent(clientId)}'
-              '&client_secret=${Uri.encodeQueryComponent(clientSecret)}'
-              '&redirect_uri=${Uri.encodeQueryComponent(redirectUri)}'
-              '&grant_type=authorization_code'
-              '&code_verifier=${Uri.encodeQueryComponent(verifier)}';
-          r.write(body);
-          return r.close();
-        });
+    final tokenReq = await HttpClient().postUrl(
+      Uri.parse('https://oauth2.googleapis.com/token'),
+    );
+    tokenReq.headers.contentType = ContentType(
+      'application',
+      'x-www-form-urlencoded',
+    );
+    final body =
+        'code=${Uri.encodeQueryComponent(code)}'
+        '&client_id=${Uri.encodeQueryComponent(clientId)}'
+        '&client_secret=${Uri.encodeQueryComponent(clientSecret)}'
+        '&redirect_uri=${Uri.encodeQueryComponent(redirectUri)}'
+        '&grant_type=authorization_code'
+        '&code_verifier=${Uri.encodeQueryComponent(verifier)}';
+    tokenReq.write(body);
+    final tokenRes = await tokenReq.close();
     final tokenBody = await tokenRes.transform(utf8.decoder).join();
+    if (tokenRes.statusCode != 200) {
+      throw GoogleAuthException('Token exchange failed: $tokenBody');
+    }
     final tokenJson = jsonDecode(tokenBody) as Map<String, dynamic>;
     final accessToken = tokenJson['access_token'] as String;
     final refreshToken = tokenJson['refresh_token'] as String?;
     final expiresIn = (tokenJson['expires_in'] as num?)?.toInt() ?? 3600;
+    final idToken = tokenJson['id_token'] as String?;
 
     // Fetch user email.
-    final userRes = await HttpClient()
-        .getUrl(Uri.parse('https://www.googleapis.com/oauth2/v3/userinfo'))
-        .then((r) async {
-          r.headers.set('Authorization', 'Bearer $accessToken');
-          return r.close();
-        });
-    final userBody = await userRes.transform(utf8.decoder).join();
-    final userJson = jsonDecode(userBody) as Map<String, dynamic>;
-    _email = userJson['email'] as String?;
+    String? email;
+    try {
+      final userReq = await HttpClient().getUrl(
+        Uri.parse('https://www.googleapis.com/oauth2/v3/userinfo'),
+      );
+      userReq.headers.set('Authorization', 'Bearer $accessToken');
+      final userRes = await userReq.close();
+      final userBody = await userRes.transform(utf8.decoder).join();
+      if (userRes.statusCode == 200) {
+        final userJson = jsonDecode(userBody) as Map<String, dynamic>;
+        email = userJson['email'] as String?;
+      }
+    } catch (_) {}
+    if (email == null && idToken != null) {
+      final parts = idToken.split('.');
+      if (parts.length == 3) {
+        final payload =
+            jsonDecode(
+                  utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+                )
+                as Map<String, dynamic>;
+        email = payload['email'] as String?;
+      }
+    }
+    _email = email;
     _accessToken = accessToken;
+    debugPrint('GoogleAuth desktop email=$_email');
+    if (email != null) await _storage.saveGoogleEmail(email);
     await _storage.saveGoogleTokens(
       accessToken: accessToken,
       refreshToken: refreshToken,
@@ -252,8 +308,7 @@ class GoogleAuth {
   Future<String?> accessToken() async {
     if (_accessToken != null) {
       final exp = await _storage.googleExpiryMs;
-      if (exp == null ||
-          DateTime.now().toUtc().millisecondsSinceEpoch < exp) {
+      if (exp == null || DateTime.now().toUtc().millisecondsSinceEpoch < exp) {
         return _accessToken;
       }
     }
@@ -275,8 +330,10 @@ class GoogleAuth {
       final res = await HttpClient()
           .postUrl(Uri.parse('https://oauth2.googleapis.com/token'))
           .then((r) async {
-            r.headers.contentType =
-                ContentType('application', 'x-www-form-urlencoded');
+            r.headers.contentType = ContentType(
+              'application',
+              'x-www-form-urlencoded',
+            );
             final body =
                 'client_id=${Uri.encodeQueryComponent(AppConfig.linuxGoogleClientId)}'
                 '&client_secret=${Uri.encodeQueryComponent(AppConfig.linuxGoogleClientSecret)}'
@@ -338,8 +395,10 @@ class GoogleAuth {
   }
 
   Future<void> handleWebAccount(GoogleSignInAccount account) async {
+    debugPrint('handleWebAccount start');
     await _ensureInit();
     _email = account.email;
+    if (_email != null) await _storage.saveGoogleEmail(_email!);
     final authz = await account.authorizationClient.authorizeScopes(
       AppConfig.googleScopes,
     );

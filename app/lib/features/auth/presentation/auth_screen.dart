@@ -13,6 +13,7 @@ import '../../sync/application/sync_providers.dart';
 import '../../sync/data/sync_engine.dart';
 import '../application/auth_providers.dart';
 import '../data/google_auth.dart';
+import '../../../core/config/app_config.dart';
 
 import 'package:google_sign_in_web/web_only.dart'
     if (dart.library.io) 'google_signin_web_stub.dart';
@@ -21,8 +22,13 @@ class AuthScreen extends ConsumerWidget {
   const AuthScreen({super.key});
 
   Future<void> _googleSignIn(BuildContext context, WidgetRef ref) async {
+    debugPrint('AuthScreen._googleSignIn');
     try {
       await ref.read(googleAccountProvider.notifier).signIn();
+      debugPrint('AuthScreen signIn returned');
+      // Sync starts right after sign-in, then auto-sync takes over.
+      await ref.read(syncStatusProvider.notifier).syncNow();
+      await ref.read(googleAutoSyncServiceProvider).start();
     } on GoogleAuthException catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
@@ -253,7 +259,6 @@ class _BackendSectionState extends ConsumerState<_BackendSection> {
   }
 }
 
-
 class _WebGoogleButton extends ConsumerStatefulWidget {
   const _WebGoogleButton({required this.ref});
 
@@ -265,21 +270,40 @@ class _WebGoogleButton extends ConsumerStatefulWidget {
 
 class _WebGoogleButtonState extends ConsumerState<_WebGoogleButton> {
   StreamSubscription<dynamic>? _sub;
+  bool _ready = false;
 
   @override
   void initState() {
     super.initState();
+    unawaited(_init());
+  }
+
+  Future<void> _init() async {
+    await GoogleSignIn.instance.initialize(
+      clientId: AppConfig.webGoogleClientId.isEmpty
+          ? null
+          : AppConfig.webGoogleClientId,
+    );
     _sub = GoogleSignIn.instance.authenticationEvents.listen((event) {
       if (event is GoogleSignInAuthenticationEventSignIn) {
         final account = event.user;
         unawaited(_handle(account));
       }
     });
+    if (mounted) setState(() => _ready = true);
   }
 
   Future<void> _handle(GoogleSignInAccount account) async {
-    await ref.read(googleAuthProvider).handleWebAccount(account);
-    ref.read(googleAccountProvider.notifier).setSignedInEmail(account.email);
+    debugPrint('WebGoogleButton handle account=${account.email}');
+    try {
+      await ref.read(googleAuthProvider).handleWebAccount(account);
+      ref.read(googleAccountProvider.notifier).setSignedInEmail(account.email);
+      await ref.read(syncStatusProvider.notifier).syncNow();
+      await ref.read(googleAutoSyncServiceProvider).start();
+      debugPrint('WebGoogleButton done');
+    } catch (e, st) {
+      debugPrint('WebGoogleButton error: $e\n$st');
+    }
   }
 
   @override
@@ -290,6 +314,7 @@ class _WebGoogleButtonState extends ConsumerState<_WebGoogleButton> {
 
   @override
   Widget build(BuildContext context) {
-    return renderButton();
+    if (!_ready) return const SizedBox(height: 44);
+    return SizedBox(height: 44, child: renderButton());
   }
 }
