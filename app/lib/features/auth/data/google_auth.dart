@@ -325,8 +325,13 @@ class GoogleAuth {
       }
       final refresh = await _storage.googleRefreshToken;
       if (refresh == null || AppConfig.linuxGoogleClientSecret.isEmpty) {
-        return storedAccess;
+        debugPrint(
+          '[sync] desktop token expired and no refresh available '
+          '(hasRefresh=${refresh != null}): re-sign-in required',
+        );
+        return null;
       }
+      debugPrint('[sync] desktop token expired, refreshing');
       final res = await HttpClient()
           .postUrl(Uri.parse('https://oauth2.googleapis.com/token'))
           .then((r) async {
@@ -343,6 +348,12 @@ class GoogleAuth {
             return r.close();
           });
       final body = await res.transform(utf8.decoder).join();
+      if (res.statusCode != 200) {
+        debugPrint(
+          '[sync] desktop token refresh failed status=${res.statusCode}',
+        );
+        return null;
+      }
       final json = jsonDecode(body) as Map<String, dynamic>;
       final newAccess = json['access_token'] as String?;
       final expiresIn = (json['expires_in'] as num?)?.toInt() ?? 3600;

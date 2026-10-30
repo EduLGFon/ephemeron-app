@@ -1,6 +1,7 @@
 // Sync providers: engine, status, manual triggers, auto-sync schedule.
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/app_config.dart';
@@ -41,29 +42,37 @@ class SyncStatusNotifier extends Notifier<SyncStatus> {
   SyncStatus build() => SyncStatus.synced;
 
   Future<void> syncNow() async {
+    debugPrint('[sync] notifier syncNow start');
     state = SyncStatus.syncing;
     final engine = ref.read(syncEngineProvider);
     final auth = ref.read(googleAuthProvider);
     if (!auth.isSignedIn) {
+      debugPrint('[sync] not signed in: offline');
       state = SyncStatus.offline;
       return;
     }
+    debugPrint('[sync] signed in, calling engine');
     await engine.syncNow();
     state = engine.status;
+    debugPrint(
+      '[sync] engine finished status=${engine.status} error=${engine.lastError}',
+    );
     if (engine.status == SyncStatus.synced) {
       unawaited(ref.read(lastGoogleSyncAtProvider.notifier).recordNow());
       // Pulled events land in the events table; rebuild the visible
       // occurrence window so the calendar shows them right away.
       try {
         final window = ref.read(calendarStateProvider);
-        await ref
+        final n = await ref
             .read(occurrenceRepositoryProvider)
             .rebuildWindow(
               windowStartUtc: window.fromUtc,
               windowEndUtc: window.toUtc,
             );
-        ref.invalidate(windowOccurrencesProvider);
-      } catch (_) {
+        debugPrint('[sync] occurrence cache rebuilt rows=$n');
+        ref.invalidate(windowOccurrencesProvider(window));
+      } catch (e) {
+        debugPrint('[sync] occurrence cache rebuild failed: $e');
         // Cache rebuild is best-effort; next navigation rebuilds anyway.
       }
     }
@@ -131,12 +140,17 @@ class GoogleAutoSyncService {
     }
     _timer?.cancel();
     _timer = null;
+    debugPrint('[sync] auto-sync reschedule intervalMin=$intervalMin');
     if (intervalMin <= 0) return;
     _timer = Timer.periodic(Duration(minutes: intervalMin), (_) => _tick());
   }
 
   Future<void> _tick() async {
-    if (!_ref.read(googleAuthProvider).isSignedIn) return;
+    debugPrint('[sync] auto-sync tick');
+    if (!_ref.read(googleAuthProvider).isSignedIn) {
+      debugPrint('[sync] auto-sync tick skipped: signed out');
+      return;
+    }
     await _ref.read(syncStatusProvider.notifier).syncNow();
   }
 

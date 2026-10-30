@@ -4,6 +4,7 @@
 import 'dart:math';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:ephemeron/core/ids/ids.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:ephemeron/data/mappers/google_mappers.dart';
@@ -31,26 +32,43 @@ class SyncEngine {
 
   /// Runs push then pull. Concurrent calls collapse into one run.
   Future<void> syncNow() async {
-    if (_running) return;
+    if (_running) {
+      debugPrint('[sync] syncNow skipped: already running');
+      return;
+    }
     _running = true;
     _status = SyncStatus.syncing;
+    debugPrint('[sync] syncNow start');
     try {
       final client = _clientFactory?.call();
       if (client == null) {
+        debugPrint('[sync] no client (no token): offline');
         _status = SyncStatus.offline;
         return;
       }
-      await _pushOutbox(client);
-      await _syncCalendarList(client);
-      await _syncTaskLists(client);
-      await _pullCalendars(client);
-      await _pullTasks(client);
+      final pushed = await _pushOutbox(client);
+      debugPrint('[sync] push done ops=$pushed');
+      final cals = await _syncCalendarList(client);
+      debugPrint(
+        '[sync] calendar discovery done remote=${cals.$1} new=${cals.$2}',
+      );
+      final lists = await _syncTaskLists(client);
+      debugPrint(
+        '[sync] task-list discovery done remote=${lists.$1} new=${lists.$2}',
+      );
+      final events = await _pullCalendars(client);
+      debugPrint('[sync] calendar pull done events=$events');
+      final tasks = await _pullTasks(client);
+      debugPrint('[sync] tasks pull done tasks=$tasks');
       _status = SyncStatus.synced;
       _lastError = null;
+      debugPrint('[sync] syncNow ok');
     } on GoogleApiException catch (e) {
+      debugPrint('[sync] GoogleApiException status=${e.status}');
       _status = SyncStatus.error;
       _lastError = 'Google ${e.status}';
     } catch (e) {
+      debugPrint('[sync] unexpected error: $e');
       _status = SyncStatus.error;
       _lastError = 'sync failed';
     } finally {
@@ -69,7 +87,7 @@ class SyncEngine {
     return rows.length;
   }
 
-  Future<void> _pushOutbox(GoogleApiClient client) async {
+  Future<int> _pushOutbox(GoogleApiClient client) async {
     final ops =
         await (_db.select(_db.outbox)
               ..where(
@@ -79,6 +97,7 @@ class SyncEngine {
               )
               ..orderBy([(o) => OrderingTerm.asc(o.createdAt)]))
             .get();
+    var done = 0;
     for (final op in ops) {
       // Backend-owned entities (habits, focus) have their own engine and
       // cursors; the Google engine must leave their outbox rows alone.
@@ -86,10 +105,15 @@ class SyncEngine {
       try {
         await _applyOp(client, op);
         await (_db.delete(_db.outbox)..where((o) => o.id.equals(op.id))).go();
+        done++;
       } on GoogleApiException catch (e) {
+        debugPrint(
+          '[sync] push op failed entity=${op.entity} status=${e.status}',
+        );
         await _handleOpError(op, e);
       }
     }
+    return done;
   }
 
   Future<void> _applyOp(GoogleApiClient client, OutboxData op) async {
@@ -294,16 +318,36 @@ class SyncEngine {
   // the first sync after sign-in has something to pull into. Local-only
   // rows are never touched; renamed remotes update in place when clean.
 
-  Future<void> _syncCalendarList(GoogleApiClient client) async {
+  Future<(int, int)> _syncCalendarList(GoogleApiClient client) async {
     final remote = await client.calendarList();
+    debugPrint('[sync] calendarList returned ${remote.length} items');
     final now = _now();
+    var created = 0;
     for (final c in remote) {
       final id = c['id'] as String?;
       if (id == null || c['deleted'] == true) continue;
       final name = (c['summary'] as String?)?.trim();
-      final existing = await (_db.select(
+      var existing = await (_db.select(
         _db.calendars,
       )..where((t) => t.remoteId.equals(id))).getSingleOrNull();
+      // Repair legacy rows created before remoteId was persisted.
+      if (existing == null && name != null && name.isNotEmpty) {
+        existing = await (_db.select(_db.calendars)..where(
+              (t) =>
+                  t.source.equals('google') &
+                  t.remoteId.isNull() &
+                  t.name.equals(name),
+            ))
+            .getSingleOrNull();
+        if (existing != null) {
+          await (_db.update(
+            _db.calendars,
+          )..where((t) => t.id.equals(existing!.id))).write(
+            CalendarsCompanion(remoteId: Value(id), updatedAt: Value(now)),
+          );
+          debugPrint('[sync] repaired legacy calendar remoteId id=${existing.id}');
+        }
+      }
       if (existing == null) {
         await _db
             .into(_db.calendars)
@@ -318,19 +362,23 @@ class SyncEngine {
                 updatedAt: now,
               ),
             );
+        created++;
       } else if (!existing.dirty && name != null && name.isNotEmpty) {
         await (_db.update(
           _db.calendars,
-        )..where((t) => t.id.equals(existing.id))).write(
+        )..where((t) => t.id.equals(existing!.id))).write(
           CalendarsCompanion(name: Value(name), updatedAt: Value(now)),
         );
       }
     }
+    return (remote.length, created);
   }
 
-  Future<void> _syncTaskLists(GoogleApiClient client) async {
+  Future<(int, int)> _syncTaskLists(GoogleApiClient client) async {
     final remote = await client.taskLists();
+    debugPrint('[sync] taskLists returned ${remote.length} items');
     final now = _now();
+    var created = 0;
     for (final l in remote) {
       final id = l['id'] as String?;
       if (id == null) continue;
@@ -350,6 +398,7 @@ class SyncEngine {
                 updatedAt: now,
               ),
             );
+        created++;
       } else if (!existing.dirty && name != null && name.isNotEmpty) {
         await (_db.update(
           _db.taskLists,
@@ -358,11 +407,12 @@ class SyncEngine {
         );
       }
     }
+    return (remote.length, created);
   }
 
   // Pull.
 
-  Future<void> _pullCalendars(GoogleApiClient client) async {
+  Future<int> _pullCalendars(GoogleApiClient client) async {
     final calendars =
         await (_db.select(_db.calendars)..where(
               (c) =>
@@ -371,25 +421,40 @@ class SyncEngine {
                   c.deletedAt.isNull(),
             ))
             .get();
+    debugPrint('[sync] pulling ${calendars.length} google calendars');
+    var total = 0;
     for (final cal in calendars) {
+      debugPrint(
+        '[sync] pulling calendar id=${cal.id} remoteId=${cal.remoteId} '
+        'name=${cal.name} enabled=${cal.enabled}',
+      );
       final token = await _syncValue('cal:${cal.id}:token');
+      final remoteId = cal.remoteId;
+      if (remoteId == null) {
+        debugPrint('[sync] skip calendar with null remoteId');
+        continue;
+      }
       try {
         if (token == null) {
-          await _fullCalendarResync(cal, client, keepDirty: true);
+          total += await _fullCalendarResync(cal, client, keepDirty: true);
         } else {
           final page = await client.eventsList(
-            cal.remoteId ?? cal.id,
+            remoteId,
             syncToken: token,
           );
-          await _mergeEvents(cal, page.items);
+          debugPrint(
+            '[sync] incremental pull got ${page.items.length} items (has remoteId=${cal.remoteId != null})',
+          );
+          total += await _mergeEvents(cal, page.items);
           if (page.nextSyncToken != null) {
             await _setSyncValue('cal:${cal.id}:token', page.nextSyncToken!);
           }
         }
         await _setSyncMeta('cal:${cal.id}', error: null);
       } on GoogleApiException catch (e) {
+        debugPrint('[sync] calendar pull failed status=${e.status}');
         if (e.isGone) {
-          await _fullCalendarResync(cal, client, keepDirty: true);
+          total += await _fullCalendarResync(cal, client, keepDirty: true);
           await _setSyncMeta('cal:${cal.id}', error: null);
         } else {
           await _setSyncMeta('cal:${cal.id}', error: 'Google ${e.status}');
@@ -397,9 +462,10 @@ class SyncEngine {
         }
       }
     }
+    return total;
   }
 
-  Future<void> _fullCalendarResync(
+  Future<int> _fullCalendarResync(
     Calendar cal,
     GoogleApiClient client, {
     required bool keepDirty,
@@ -409,7 +475,10 @@ class SyncEngine {
       timeMin: _iso(_now() - 30 * 86400000),
       timeMax: _iso(_now() + 90 * 86400000),
     );
-    await _db.transaction(() async {
+    debugPrint(
+      '[sync] full resync got ${page.items.length} items (has remoteId=${cal.remoteId != null})',
+    );
+    return _db.transaction(() async {
       // Drop synced rows in the window; keep dirty local rows.
       final local =
           await (_db.select(_db.events)..where(
@@ -418,20 +487,26 @@ class SyncEngine {
               .get();
       for (final e in local) {
         if (e.remoteId != null && !(keepDirty && e.dirty)) {
+          await (_db.delete(_db.occurrenceCache)..where(
+                (o) => o.eventId.equals(e.id),
+              )).go();
           await (_db.delete(_db.events)..where((x) => x.id.equals(e.id))).go();
         }
       }
-      await _mergeEvents(cal, page.items);
+      final n = await _mergeEvents(cal, page.items);
+      debugPrint('[sync] full resync merged $n events');
       if (page.nextSyncToken != null) {
         await _setSyncValue('cal:${cal.id}:token', page.nextSyncToken!);
       }
+      return n;
     });
   }
 
-  Future<void> _mergeEvents(
+  Future<int> _mergeEvents(
     Calendar cal,
     List<Map<String, dynamic>> items,
   ) async {
+    var n = 0;
     for (final g in items) {
       final remoteId = g['id'] as String?;
       if (remoteId == null) continue;
@@ -458,6 +533,7 @@ class SyncEngine {
       if (existing == null) {
         final mapped = eventFromGoogle(g, cal.id, newId());
         await _db.into(_db.events).insert(mapped.companion);
+        n++;
       } else if (!existing.dirty) {
         // Last-writer-wins on shared fields; local-only fields preserved
         // by only writing shared columns.
@@ -470,14 +546,21 @@ class SyncEngine {
             colorId: const Value.absent(),
           ),
         );
+        n++;
       }
     }
+    return n;
   }
 
-  Future<void> _pullTasks(GoogleApiClient client) async {
+  Future<int> _pullTasks(GoogleApiClient client) async {
     final lists = await (_db.select(
       _db.taskLists,
     )..where((l) => l.deletedAt.isNull())).get();
+    debugPrint(
+      '[sync] pulling ${lists.length} task lists '
+      '(${lists.where((l) => l.remoteId != null).length} remote)',
+    );
+    var total = 0;
     for (final list in lists) {
       // Device-only lists have no remote counterpart; skip them instead
       // of querying Google with a local UUID (which 404s and fails sync).
@@ -486,8 +569,9 @@ class SyncEngine {
       final updatedMin = await _syncValue('tasks:${list.id}:updatedMin');
       try {
         final page = await client.tasksList(remoteId, updatedMin: updatedMin);
+        debugPrint('[sync] tasksList got ${page.items.length} items');
         for (final g in page.items) {
-          await _mergeTask(list, g);
+          if (await _mergeTask(list, g)) total++;
         }
         if (page.nextUpdatedMin != null) {
           await _setSyncValue(
@@ -496,20 +580,23 @@ class SyncEngine {
           );
         }
       } on GoogleApiException catch (e) {
+        debugPrint('[sync] tasks pull failed status=${e.status}');
         await _setSyncMeta('tasks:${list.id}', error: 'Google ${e.status}');
       }
     }
+    return total;
   }
 
-  Future<void> _mergeTask(TaskList list, Map<String, dynamic> g) async {
+  Future<bool> _mergeTask(TaskList list, Map<String, dynamic> g) async {
     final remoteId = g['id'] as String?;
-    if (remoteId == null) return;
+    if (remoteId == null) return false;
     final existing = await (_db.select(
       _db.tasks,
     )..where((t) => t.remoteId.equals(remoteId))).getSingleOrNull();
     if (existing == null) {
       final mapped = taskFromGoogle(g, list.id, newId());
       await _db.into(_db.tasks).insert(mapped.companion);
+      return true;
     } else if (!existing.dirty) {
       final mapped = taskFromGoogle(g, list.id, existing.id);
       // Preserve local-only fields: dueTime, priority, tags stay.
@@ -523,7 +610,9 @@ class SyncEngine {
           rrule: Value(existing.rrule),
         ),
       );
+      return true;
     }
+    return false;
   }
 
   Future<String?> _remoteCalendarId(String localId) async {

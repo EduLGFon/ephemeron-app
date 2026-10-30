@@ -121,7 +121,7 @@ class HttpGoogleApiClient implements GoogleApiClient {
     if (timeMax != null) q['timeMax'] = timeMax;
     final r = await _http.get(
       Uri.parse(
-        '${AppConfig.calendarApiBase}/calendars/$calendarId/events',
+        '${AppConfig.calendarApiBase}/calendars/${Uri.encodeComponent(calendarId)}/events',
       ).replace(queryParameters: q),
       headers: await _headers(),
     );
@@ -139,7 +139,7 @@ class HttpGoogleApiClient implements GoogleApiClient {
     Map<String, dynamic> body,
   ) async {
     final r = await _http.post(
-      Uri.parse('${AppConfig.calendarApiBase}/calendars/$calendarId/events'),
+      Uri.parse('${AppConfig.calendarApiBase}/calendars/${Uri.encodeComponent(calendarId)}/events'),
       headers: await _headers(),
       body: jsonEncode(body),
     );
@@ -156,7 +156,7 @@ class HttpGoogleApiClient implements GoogleApiClient {
   }) async {
     final r = await _http.patch(
       Uri.parse(
-        '${AppConfig.calendarApiBase}/calendars/$calendarId/events/$eventId',
+        '${AppConfig.calendarApiBase}/calendars/${Uri.encodeComponent(calendarId)}/events/${Uri.encodeComponent(eventId)}',
       ),
       headers: await _headers(etag: etag),
       body: jsonEncode(body),
@@ -169,7 +169,7 @@ class HttpGoogleApiClient implements GoogleApiClient {
   Future<void> eventDelete(String calendarId, String eventId) async {
     final r = await _http.delete(
       Uri.parse(
-        '${AppConfig.calendarApiBase}/calendars/$calendarId/events/$eventId',
+        '${AppConfig.calendarApiBase}/calendars/${Uri.encodeComponent(calendarId)}/events/${Uri.encodeComponent(eventId)}',
       ),
       headers: await _headers(),
     );
@@ -198,7 +198,7 @@ class HttpGoogleApiClient implements GoogleApiClient {
     if (updatedMin != null) q['updatedMin'] = updatedMin;
     final r = await _http.get(
       Uri.parse(
-        '${AppConfig.tasksApiBase}/lists/$taskListId/tasks',
+        '${AppConfig.tasksApiBase}/lists/${Uri.encodeComponent(taskListId)}/tasks',
       ).replace(queryParameters: q),
       headers: await _headers(),
     );
@@ -216,7 +216,7 @@ class HttpGoogleApiClient implements GoogleApiClient {
     Map<String, dynamic> body,
   ) async {
     final r = await _http.post(
-      Uri.parse('${AppConfig.tasksApiBase}/lists/$taskListId/tasks'),
+      Uri.parse('${AppConfig.tasksApiBase}/lists/${Uri.encodeComponent(taskListId)}/tasks'),
       headers: await _headers(),
       body: jsonEncode(body),
     );
@@ -232,7 +232,7 @@ class HttpGoogleApiClient implements GoogleApiClient {
     String? etag,
   }) async {
     final r = await _http.patch(
-      Uri.parse('${AppConfig.tasksApiBase}/lists/$taskListId/tasks/$taskId'),
+      Uri.parse('${AppConfig.tasksApiBase}/lists/${Uri.encodeComponent(taskListId)}/tasks/${Uri.encodeComponent(taskId)}'),
       headers: await _headers(etag: etag),
       body: jsonEncode(body),
     );
@@ -243,7 +243,7 @@ class HttpGoogleApiClient implements GoogleApiClient {
   @override
   Future<void> taskDelete(String taskListId, String taskId) async {
     final r = await _http.delete(
-      Uri.parse('${AppConfig.tasksApiBase}/lists/$taskListId/tasks/$taskId'),
+      Uri.parse('${AppConfig.tasksApiBase}/lists/${Uri.encodeComponent(taskListId)}/tasks/${Uri.encodeComponent(taskId)}'),
       headers: await _headers(),
     );
     if (r.statusCode != 204 && r.statusCode != 200) _throw(r);
