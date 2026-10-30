@@ -26,20 +26,21 @@ class AlarmReceiver : BroadcastReceiver() {
         AlarmPlugin.fire(context, rc, title, preset)
         if (preset == "constant") {
             val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            val next = PendingIntent.getBroadcast(
-                context, rc,
-                Intent(context, AlarmReceiver::class.java).apply {
+            val count = intent.getIntExtra("repeatCount", 0)
+            if (count < 30) {
+                val repeatIntent = Intent(context, AlarmReceiver::class.java).apply {
                     putExtra("requestCode", rc)
                     putExtra("title", title)
                     putExtra("preset", preset)
-                },
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            val count = intent.getIntExtra("repeatCount", 0)
-            if (count < 30) {
-                next.intent?.putExtra("repeatCount", count + 1)
+                    putExtra("repeatCount", count + 1)
+                }
+                val repeat = PendingIntent.getBroadcast(
+                    context, rc,
+                    repeatIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
                 am.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 60000, next
+                    AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 60000, repeat
                 )
             }
         }

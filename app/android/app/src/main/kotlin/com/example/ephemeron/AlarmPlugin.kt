@@ -188,7 +188,7 @@ object AlarmStore {
             )
             db.execSQL(
                 "UPDATE alarms_index SET fire_at_utc = ?, state = 'scheduled' WHERE request_code = ?",
-                arrayOf(fireAt, requestCode)
+                arrayOf<Any>(fireAt, requestCode)
             )
             db.close()
         } catch (_: Exception) {
@@ -203,7 +203,7 @@ object AlarmStore {
             )
             db.execSQL(
                 "UPDATE alarms_index SET state = ? WHERE request_code = ?",
-                arrayOf(state, requestCode)
+                arrayOf<Any>(state, requestCode)
             )
             db.close()
         } catch (_: Exception) {
