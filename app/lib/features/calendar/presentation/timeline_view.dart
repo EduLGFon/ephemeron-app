@@ -241,13 +241,15 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
                                   ),
                                 ),
                                 for (final o in timed) _eventBlock(o, colW),
-                                CustomPaint(
-                                  size: Size(cons.maxWidth, 24 * hourHeight),
-                                  painter: _NowLinePainter(
-                                    anchor: widget.anchor,
-                                    dayCount: widget.dayCount,
-                                    hourHeight: hourHeight,
-                                    now: DateTime.now(),
+                                IgnorePointer(
+                                  child: CustomPaint(
+                                    size: Size(cons.maxWidth, 24 * hourHeight),
+                                    painter: _NowLinePainter(
+                                      anchor: widget.anchor,
+                                      dayCount: widget.dayCount,
+                                      hourHeight: hourHeight,
+                                      now: DateTime.now(),
+                                    ),
                                   ),
                                 ),
                               ],
