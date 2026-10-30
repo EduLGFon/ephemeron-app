@@ -13,11 +13,12 @@ import 'package:ephemeron/data/remote/google_api_client.dart';
 enum SyncStatus { synced, syncing, offline, error }
 
 class SyncEngine {
-  SyncEngine(this._db, {GoogleApiClient? Function()? clientFactory})
+  SyncEngine(this._db, {GoogleApiClient? Function()? clientFactory, this.account})
     : _clientFactory = clientFactory;
 
   final AppDatabase _db;
   final GoogleApiClient? Function()? _clientFactory;
+  String? account;
   bool _running = false;
   SyncStatus _status = SyncStatus.synced;
   String? _lastError;
@@ -380,6 +381,7 @@ class SyncEngine {
                 remoteId: Value(id),
                 name: (name == null || name.isEmpty) ? id : name,
                 source: const Value('google'),
+                googleAccount: Value(account),
                 readOnly: Value((c['accessRole'] as String?) == 'reader'),
                 createdAt: now,
                 updatedAt: now,

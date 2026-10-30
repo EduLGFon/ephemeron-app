@@ -49,6 +49,7 @@ class AuthScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final accounts = ref.watch(googleAccountsProvider);
     final email = ref.watch(googleAccountProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Account')),
@@ -59,7 +60,7 @@ class AuthScreen extends ConsumerWidget {
             'Google data (Calendar and Tasks) goes directly from this device to Google. It never touches our server.',
           ),
           const SizedBox(height: 16),
-          if (email == null) ...[
+          if (accounts.isEmpty) ...[
             if (kIsWeb)
               _WebGoogleButton(ref: ref)
             else
@@ -70,22 +71,21 @@ class AuthScreen extends ConsumerWidget {
             const SizedBox(height: 8),
             const Text('The app works fully offline without any account.'),
           ] else ...[
-            ListTile(
-              title: Text(email),
-              subtitle: const Text('Connected to Google'),
-            ),
-            OutlinedButton(
-              onPressed: () =>
-                  ref.read(googleAccountProvider.notifier).signOut(),
-              child: const Text('Sign out'),
-            ),
+            for (final a in accounts)
+              ListTile(
+                title: Text(a),
+                subtitle: Text(a == email ? 'Active' : 'Connected to Google'),
+                trailing: IconButton(
+                  icon: const Icon(Icons.logout),
+                  onPressed: () =>
+                      ref.read(googleAccountProvider.notifier).signOut(a),
+                ),
+                onTap: () => ref.read(googleAccountProvider.notifier).setActive(a),
+              ),
             const SizedBox(height: 8),
             FilledButton(
-              onPressed: () async {
-                await ref.read(googleAccountProvider.notifier).signOut();
-                await ref.read(googleAccountProvider.notifier).signIn();
-              },
-              child: const Text('Switch account'),
+              onPressed: () => _googleSignIn(context, ref),
+              child: const Text('Add account'),
             ),
           ],
           const Divider(height: 32),

@@ -15,7 +15,7 @@
 - Backend: periodic auto-sync trigger, export-before-delete flow (JSON backup ships first).
 
 ## Phase 9 candidates (in priority order)
-1. Widgets/shortcuts/share target; desktop/iOS/web parity; multiple Google accounts.
+1. Widgets/shortcuts/share target; desktop/iOS/web parity (multiple Google accounts done).
 
 ## Phase 10 (release hardening)
 - Security review: code-level done (docs/SECURITY_REVIEW.md); Play

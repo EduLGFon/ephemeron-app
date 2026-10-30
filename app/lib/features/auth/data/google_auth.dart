@@ -1,5 +1,5 @@
 // Google sign-in (v7 API on mobile/web): incremental scopes, silent token refresh.
-// Google tokens live in memory + keystore; they never touch our backend.
+// Supports multiple signed-in accounts simultaneously.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -24,31 +24,36 @@ class GoogleAuth {
 
   final SafeSecureStorage _storage;
   bool _initialized = false;
-  String? _email;
-  String? _accessToken;
+  final List<String> _accounts = [];
+  String? _activeEmail;
+  final Map<String, String?> _accessTokens = {};
 
-  String? get email => _email;
-  bool get isSignedIn => _email != null;
+  List<String> get accounts => List.unmodifiable(_accounts);
+  String? get email => _activeEmail;
+  bool get isSignedIn => _activeEmail != null && _accounts.isNotEmpty;
 
-  /// Restores a previous sign-in after restart. Returns the email when
-  /// stored credentials are still usable, null otherwise (and forgets
-  /// dead credentials so the UI shows signed-out).
+  Future<void> setActiveAccount(String email) async {
+    if (_accounts.contains(email)) _activeEmail = email;
+  }
+
   Future<String?> restore() async {
-    final email = await _storage.googleEmail;
-    if (email == null || email.isEmpty) return null;
+    final accs = await _storage.googleAccounts();
+    _accounts
+      ..clear()
+      ..addAll(accs);
+    if (_accounts.isEmpty) return null;
+    _activeEmail = _accounts.first;
     try {
       await _ensureInit();
       final token = await accessToken();
       if (token == null) {
-        await _storage.clearGoogle();
-        return null;
+        // keep accounts; token may refresh later
       }
-      _email = email;
-      debugPrint('GoogleAuth.restore ok email=$_email');
-      return _email;
+      debugPrint('GoogleAuth.restore ok accounts=$_accounts active=$_activeEmail');
+      return _activeEmail;
     } catch (e) {
       debugPrint('GoogleAuth.restore failed: $e');
-      return null;
+      return _activeEmail;
     }
   }
 
@@ -80,7 +85,6 @@ class GoogleAuth {
     }
     if (defaultTargetPlatform == TargetPlatform.linux ||
         defaultTargetPlatform == TargetPlatform.windows) {
-      // Desktop uses loopback OAuth; no google_sign_in init needed.
       _initialized = true;
       return;
     }
@@ -123,8 +127,7 @@ class GoogleAuth {
       }
     }
     if (kIsWeb) {
-      // Web uses the rendered button; signIn is a no-op fallback.
-      return _email;
+      return _activeEmail;
     }
     try {
       final account = await GoogleSignIn.instance.authenticate(
@@ -132,20 +135,26 @@ class GoogleAuth {
             ? AppConfig.googleScopes
             : [AppConfig.googleScopes.first],
       );
-      _email = account.email;
+      final email = account.email;
       final authz = await account.authorizationClient.authorizeScopes(
         _scopes(tasks),
       );
-      _accessToken = authz.accessToken;
-      if (_email != null) await _storage.saveGoogleEmail(_email!);
-      await _storage.saveGoogleTokens(
-        accessToken: _accessToken!,
+      final token = authz.accessToken;
+      if (email.isEmpty) return _activeEmail;
+      if (!_accounts.contains(email)) _accounts.add(email);
+      _activeEmail = email;
+      _accessTokens[email] = token;
+      await _storage.saveGoogleEmail(email);
+      await _storage.saveGoogleTokensFor(
+        account: email,
+        accessToken: token,
         expiryMs: DateTime.now()
             .toUtc()
             .add(const Duration(minutes: 50))
             .millisecondsSinceEpoch,
       );
-      return _email;
+      await _storage.saveGoogleAccounts(_accounts);
+      return _activeEmail;
     } on UnimplementedError {
       throw GoogleAuthException(
         'Google sign-in is not available on this platform. '
@@ -158,11 +167,8 @@ class GoogleAuth {
     final clientId = AppConfig.linuxGoogleClientId;
     final clientSecret = AppConfig.linuxGoogleClientSecret;
     if (clientId.isEmpty) {
-      throw GoogleAuthException(
-        'Google sign-in is not configured for desktop.',
-      );
+      throw GoogleAuthException('Google sign-in is not configured for desktop.');
     }
-    // Find a free loopback port.
     HttpServer? server;
     int port = 0;
     for (var p = 8085; p <= 8095; p++) {
@@ -219,22 +225,17 @@ class GoogleAuth {
     try {
       await Process.run('xdg-open', [authUrl]);
     } catch (_) {
-      // Fallback: print URL.
-      // ignore: avoid_print
-      print('Open this URL to sign in: $authUrl');
+      // ignore
+      debugPrint('Open this URL to sign in: $authUrl');
     }
 
     final code = await codeCompleter.future.timeout(const Duration(minutes: 5));
-    debugPrint('GoogleAuth desktop got code');
     await server.close();
 
     final tokenReq = await HttpClient().postUrl(
       Uri.parse('https://oauth2.googleapis.com/token'),
     );
-    tokenReq.headers.contentType = ContentType(
-      'application',
-      'x-www-form-urlencoded',
-    );
+    tokenReq.headers.contentType = ContentType('application', 'x-www-form-urlencoded');
     final body =
         'code=${Uri.encodeQueryComponent(code)}'
         '&client_id=${Uri.encodeQueryComponent(clientId)}'
@@ -254,7 +255,6 @@ class GoogleAuth {
     final expiresIn = (tokenJson['expires_in'] as num?)?.toInt() ?? 3600;
     final idToken = tokenJson['id_token'] as String?;
 
-    // Fetch user email.
     String? email;
     try {
       final userReq = await HttpClient().getUrl(
@@ -279,11 +279,13 @@ class GoogleAuth {
         email = payload['email'] as String?;
       }
     }
-    _email = email;
-    _accessToken = accessToken;
-    debugPrint('GoogleAuth desktop email=$_email');
-    if (email != null) await _storage.saveGoogleEmail(email);
-    await _storage.saveGoogleTokens(
+    if (email == null) return _activeEmail;
+    if (!_accounts.contains(email)) _accounts.add(email);
+    _activeEmail = email;
+    _accessTokens[email] = accessToken;
+    await _storage.saveGoogleEmail(email);
+    await _storage.saveGoogleTokensFor(
+      account: email,
       accessToken: accessToken,
       refreshToken: refreshToken,
       expiryMs: DateTime.now()
@@ -291,7 +293,8 @@ class GoogleAuth {
           .add(Duration(seconds: expiresIn - 60))
           .millisecondsSinceEpoch,
     );
-    return _email;
+    await _storage.saveGoogleAccounts(_accounts);
+    return _activeEmail;
   }
 
   Future<void> ensureTasksScope() async {
@@ -302,36 +305,36 @@ class GoogleAuth {
     await _ensureInit();
     final authz = await GoogleSignIn.instance.authorizationClient
         .authorizeScopes(AppConfig.googleScopes);
-    _accessToken = authz.accessToken;
+    final token = authz.accessToken;
+    if (_activeEmail != null) _accessTokens[_activeEmail!] = token;
   }
 
   Future<String?> accessToken() async {
-    if (_accessToken != null) {
-      final exp = await _storage.googleExpiryMs;
-      if (exp == null || DateTime.now().toUtc().millisecondsSinceEpoch < exp) {
-        return _accessToken;
+    final account = _activeEmail;
+    if (account == null) return null;
+    final cached = _accessTokens[account];
+    if (cached != null) {
+      final exp = await _storage.googleExpiryMsFor(account);
+      if (exp == null ||
+          DateTime.now().toUtc().millisecondsSinceEpoch < exp) {
+        return cached;
       }
     }
     if (defaultTargetPlatform == TargetPlatform.linux ||
         defaultTargetPlatform == TargetPlatform.windows) {
       await _ensureInit();
-      final storedAccess = await _storage.googleAccessToken;
-      final exp = await _storage.googleExpiryMs;
+      final storedAccess = await _storage.googleAccessTokenFor(account);
+      final exp = await _storage.googleExpiryMsFor(account);
       if (storedAccess != null &&
           (exp == null ||
               DateTime.now().toUtc().millisecondsSinceEpoch < exp)) {
-        _accessToken = storedAccess;
-        return _accessToken;
+        _accessTokens[account] = storedAccess;
+        return storedAccess;
       }
-      final refresh = await _storage.googleRefreshToken;
+      final refresh = await _storage.googleRefreshTokenFor(account);
       if (refresh == null || AppConfig.linuxGoogleClientSecret.isEmpty) {
-        debugPrint(
-          '[sync] desktop token expired and no refresh available '
-          '(hasRefresh=${refresh != null}): re-sign-in required',
-        );
         return null;
       }
-      debugPrint('[sync] desktop token expired, refreshing');
       final res = await HttpClient()
           .postUrl(Uri.parse('https://oauth2.googleapis.com/token'))
           .then((r) async {
@@ -348,18 +351,14 @@ class GoogleAuth {
             return r.close();
           });
       final body = await res.transform(utf8.decoder).join();
-      if (res.statusCode != 200) {
-        debugPrint(
-          '[sync] desktop token refresh failed status=${res.statusCode}',
-        );
-        return null;
-      }
+      if (res.statusCode != 200) return null;
       final json = jsonDecode(body) as Map<String, dynamic>;
       final newAccess = json['access_token'] as String?;
       final expiresIn = (json['expires_in'] as num?)?.toInt() ?? 3600;
       if (newAccess != null) {
-        _accessToken = newAccess;
-        await _storage.saveGoogleTokens(
+        _accessTokens[account] = newAccess;
+        await _storage.saveGoogleTokensFor(
+          account: account,
           accessToken: newAccess,
           expiryMs: DateTime.now()
               .toUtc()
@@ -367,60 +366,85 @@ class GoogleAuth {
               .millisecondsSinceEpoch,
         );
       }
-      return _accessToken;
+      return _accessTokens[account];
     }
     await _ensureInit();
     final authz = await GoogleSignIn.instance.authorizationClient
         .authorizationForScopes(AppConfig.googleScopes);
     if (authz == null) return null;
-    _accessToken = authz.accessToken;
-    await _storage.saveGoogleTokens(
-      accessToken: _accessToken!,
+    _accessTokens[account] = authz.accessToken;
+    await _storage.saveGoogleTokensFor(
+      account: account,
+      accessToken: authz.accessToken,
       expiryMs: DateTime.now()
           .toUtc()
           .add(const Duration(minutes: 50))
           .millisecondsSinceEpoch,
     );
-    return _accessToken;
+    return _accessTokens[account];
   }
 
-  Future<void> signOut() async {
+  Future<void> signOut([String? account]) async {
+    final target = account ?? _activeEmail;
+    if (target == null) return;
     if (defaultTargetPlatform == TargetPlatform.linux ||
         defaultTargetPlatform == TargetPlatform.windows) {
-      _email = null;
-      _accessToken = null;
-      await _storage.clearGoogle();
+      _accessTokens.remove(target);
+      _accounts.remove(target);
+      await _storage.clearGoogleFor(target);
+      final remaining = await _storage.googleAccounts();
+      final updated = remaining.where((a) => a != target).toList();
+      await _storage.saveGoogleAccounts(updated);
+      _accounts
+        ..clear()
+        ..addAll(updated);
+      if (_activeEmail == target) {
+        _activeEmail = _accounts.isEmpty ? null : _accounts.first;
+      }
       _initialized = false;
       return;
     }
     try {
       await GoogleSignIn.instance.signOut();
     } on UnimplementedError {
-      // No-op on platforms without a plugin implementation.
+      // ignore
     } finally {
-      _email = null;
-      _accessToken = null;
-      await _storage.clearGoogle();
+      _accessTokens.remove(target);
+      _accounts.remove(target);
+      await _storage.clearGoogleFor(target);
+      final remaining = await _storage.googleAccounts();
+      final updated = remaining.where((a) => a != target).toList();
+      await _storage.saveGoogleAccounts(updated);
+      _accounts
+        ..clear()
+        ..addAll(updated);
+      if (_activeEmail == target) {
+        _activeEmail = _accounts.isEmpty ? null : _accounts.first;
+      }
       _initialized = false;
     }
   }
 
   Future<void> handleWebAccount(GoogleSignInAccount account) async {
-    debugPrint('handleWebAccount start');
     await _ensureInit();
-    _email = account.email;
-    if (_email != null) await _storage.saveGoogleEmail(_email!);
+    final email = account.email;
+    if (!_accounts.contains(email)) _accounts.add(email);
+    _activeEmail = email;
     final authz = await account.authorizationClient.authorizeScopes(
       AppConfig.googleScopes,
     );
-    _accessToken = authz.accessToken;
-    await _storage.saveGoogleTokens(
-      accessToken: _accessToken!,
+    final token = authz.accessToken;
+    _accessTokens[email] = token;
+    await _storage.saveGoogleEmail(email);
+    await _storage.saveGoogleTokensFor(
+      account: email,
+      accessToken: token,
       expiryMs: DateTime.now()
           .toUtc()
           .add(const Duration(minutes: 50))
           .millisecondsSinceEpoch,
     );
+    await _storage.saveGoogleAccounts(_accounts);
   }
 
   List<String> _scopes(bool tasks) =>

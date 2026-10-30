@@ -44,20 +44,33 @@ class SyncStatusNotifier extends Notifier<SyncStatus> {
   Future<void> syncNow() async {
     debugPrint('[sync] notifier syncNow start');
     state = SyncStatus.syncing;
-    final engine = ref.read(syncEngineProvider);
     final auth = ref.read(googleAuthProvider);
-    if (!auth.isSignedIn) {
+    final accounts = auth.accounts;
+    if (accounts.isEmpty) {
       debugPrint('[sync] not signed in: offline');
       state = SyncStatus.offline;
       return;
     }
-    debugPrint('[sync] signed in, calling engine');
-    await engine.syncNow();
-    state = engine.status;
-    debugPrint(
-      '[sync] engine finished status=${engine.status} error=${engine.lastError}',
-    );
-    if (engine.status == SyncStatus.synced) {
+    SyncStatus last = SyncStatus.synced;
+    for (final acct in accounts) {
+      await auth.setActiveAccount(acct);
+      final engine = SyncEngine(
+        ref.read(appDatabaseProvider),
+        clientFactory: () {
+          try {
+            return HttpGoogleApiClient(accessToken: () => auth.accessToken());
+          } catch (_) {
+            return null;
+          }
+        },
+        account: acct,
+      );
+      debugPrint('[sync] signed in ($acct), calling engine');
+      await engine.syncNow();
+      last = engine.status;
+    }
+    state = last;
+    if (last == SyncStatus.synced) {
       unawaited(ref.read(lastGoogleSyncAtProvider.notifier).recordNow());
       // Pulled events land in the events table; rebuild the visible
       // occurrence window so the calendar shows them right away.
@@ -147,7 +160,7 @@ class GoogleAutoSyncService {
 
   Future<void> _tick() async {
     debugPrint('[sync] auto-sync tick');
-    if (!_ref.read(googleAuthProvider).isSignedIn) {
+    if (_ref.read(googleAuthProvider).accounts.isEmpty) {
       debugPrint('[sync] auto-sync tick skipped: signed out');
       return;
     }

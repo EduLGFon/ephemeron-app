@@ -12,6 +12,11 @@ final googleAccountProvider = NotifierProvider<GoogleAccountNotifier, String?>(
   GoogleAccountNotifier.new,
 );
 
+final googleAccountsProvider =
+    NotifierProvider<GoogleAccountsNotifier, List<String>>(
+  GoogleAccountsNotifier.new,
+);
+
 class GoogleAccountNotifier extends Notifier<String?> {
   @override
   String? build() {
@@ -19,26 +24,38 @@ class GoogleAccountNotifier extends Notifier<String?> {
     return null;
   }
 
-  /// Restores a previous sign-in (tokens + email live in secure storage).
-  /// Called on startup and safe to call again after sign-in.
   Future<void> restore() async {
     try {
       state = await ref.read(googleAuthProvider).restore();
-    } catch (_) {
-      // No stored session: stay signed out.
-    }
+      ref.read(googleAccountsProvider.notifier).refresh();
+    } catch (_) {}
   }
 
   Future<void> signIn({bool tasks = false}) async {
     state = await ref.read(googleAuthProvider).signIn(tasks: tasks);
+    ref.read(googleAccountsProvider.notifier).refresh();
   }
 
-  Future<void> signOut() async {
-    await ref.read(googleAuthProvider).signOut();
-    state = null;
+  Future<void> signOut([String? account]) async {
+    await ref.read(googleAuthProvider).signOut(account);
+    state = ref.read(googleAuthProvider).email;
+    ref.read(googleAccountsProvider.notifier).refresh();
+  }
+
+  Future<void> setActive(String email) async {
+    await ref.read(googleAuthProvider).setActiveAccount(email);
+    state = email;
   }
 
   void setSignedInEmail(String? email) => state = email;
+}
+
+class GoogleAccountsNotifier extends Notifier<List<String>> {
+  @override
+  List<String> build() => const [];
+  void refresh() {
+    state = ref.read(googleAuthProvider).accounts;
+  }
 }
 
 final backendAuthProvider = Provider<BackendAuth>((ref) => BackendAuth());

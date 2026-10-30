@@ -189,6 +189,37 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     final title = _title.text.trim();
     if (title.isEmpty || _calendarId == null) return;
     final repo = ref.read(eventRepositoryProvider);
+    // Conflict hint: warn if overlapping a busy event.
+    if (!_allDay) {
+      final overlaps = await repo.overlappingEvents(
+        calendarId: _calendarId!,
+        startUtc: _start.toUtc(),
+        endUtc: _end.toUtc(),
+        excludeId: widget.event?.id,
+      );
+      if (overlaps.isNotEmpty && mounted) {
+        final proceed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Scheduling conflict'),
+            content: Text(
+              'This overlaps ${overlaps.length} existing event(s). Save anyway?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+        );
+        if (proceed != true) return;
+      }
+    }
     final noteRepo = ref.read(noteRepositoryProvider);
     final settings = await ref.read(settingsRepositoryProvider.future);
     _calendarId ??= settings.defaultCalendarId;

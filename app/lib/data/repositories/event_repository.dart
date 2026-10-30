@@ -452,6 +452,27 @@ class EventRepository {
     );
   }
 
+  /// Returns events in [calendarId] overlapping [startUtc, endUtc).
+  Future<List<Event>> overlappingEvents({
+    required String calendarId,
+    required DateTime startUtc,
+    required DateTime endUtc,
+    String? excludeId,
+  }) async {
+    final rows = await (dbSelect()
+          ..where((e) => e.calendarId.equals(calendarId) & e.deletedAt.isNull()))
+        .get();
+    final s = startUtc.toUtc().millisecondsSinceEpoch;
+    final e = endUtc.toUtc().millisecondsSinceEpoch;
+    return rows.where((ev) {
+      if (excludeId != null && ev.id == excludeId) return false;
+      final es = ev.startUtc;
+      final ee = ev.endUtc ?? ev.startUtc;
+      if (es == null || ee == null) return false;
+      return es < e && s < ee;
+    }).toList();
+  }
+
   Future<void> setCalendarEnabled(String id, bool enabled) async {
     await (_db.update(_db.calendars)..where((c) => c.id.equals(id))).write(
       CalendarsCompanion(enabled: Value(enabled), updatedAt: Value(_now())),
