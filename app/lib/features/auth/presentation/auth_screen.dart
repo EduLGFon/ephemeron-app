@@ -1,14 +1,21 @@
 // Sign-in screen: Google (consent-first, works-without-account) plus
 // backend email account for habits/focus sync. Google data never
 // touches the backend; the backend only stores habits and focus sessions.
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../data/remote/backend_api_client.dart';
 import '../../sync/application/sync_providers.dart';
 import '../../sync/data/sync_engine.dart';
 import '../application/auth_providers.dart';
 import '../data/google_auth.dart';
+
+import 'package:google_sign_in_web/web_only.dart'
+    if (dart.library.io) 'google_signin_web_stub.dart';
 
 class AuthScreen extends ConsumerWidget {
   const AuthScreen({super.key});
@@ -47,10 +54,13 @@ class AuthScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           if (email == null) ...[
-            FilledButton(
-              onPressed: () => _googleSignIn(context, ref),
-              child: const Text('Sign in with Google'),
-            ),
+            if (kIsWeb)
+              _WebGoogleButton(ref: ref)
+            else
+              FilledButton(
+                onPressed: () => _googleSignIn(context, ref),
+                child: const Text('Sign in with Google'),
+              ),
             const SizedBox(height: 8),
             const Text('The app works fully offline without any account.'),
           ] else ...[
@@ -240,5 +250,46 @@ class _BackendSectionState extends ConsumerState<_BackendSection> {
         context,
       ).showSnackBar(SnackBar(content: Text(e.message)));
     }
+  }
+}
+
+
+class _WebGoogleButton extends ConsumerStatefulWidget {
+  const _WebGoogleButton({required this.ref});
+
+  final WidgetRef ref;
+
+  @override
+  ConsumerState<_WebGoogleButton> createState() => _WebGoogleButtonState();
+}
+
+class _WebGoogleButtonState extends ConsumerState<_WebGoogleButton> {
+  StreamSubscription<dynamic>? _sub;
+
+  @override
+  void initState() {
+    super.initState();
+    _sub = GoogleSignIn.instance.authenticationEvents.listen((event) {
+      if (event is GoogleSignInAuthenticationEventSignIn) {
+        final account = event.user;
+        unawaited(_handle(account));
+      }
+    });
+  }
+
+  Future<void> _handle(GoogleSignInAccount account) async {
+    await ref.read(googleAuthProvider).handleWebAccount(account);
+    ref.read(googleAccountProvider.notifier).setSignedInEmail(account.email);
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return renderButton();
   }
 }

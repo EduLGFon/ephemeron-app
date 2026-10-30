@@ -22,6 +22,8 @@ class GoogleAccountNotifier extends Notifier<String?> {
     await ref.read(googleAuthProvider).signOut();
     state = null;
   }
+
+  void setSignedInEmail(String? email) => state = email;
 }
 
 final backendAuthProvider = Provider<BackendAuth>((ref) => BackendAuth());
