@@ -1,8 +1,9 @@
 // N-day / day timeline: hour gutter, day headers, all-day strip,
 // current-time line, tap-empty to create, tap event for details,
 // vertical drag on an event to move it with 15-minute snapping
-// (scope-asked for recurring).
+// (scope-asked for recurring), pinch and Ctrl+= / Ctrl+- zoom.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/time/time.dart';
@@ -24,8 +25,10 @@ class TimelineView extends ConsumerStatefulWidget {
 }
 
 class _TimelineViewState extends ConsumerState<TimelineView> {
-  static const double hourHeight = 56;
+  static const double baseHourHeight = 56;
   static const double gutterWidth = 48;
+  static const double minScale = 0.5;
+  static const double maxScale = 3.0;
 
   late final ScrollController _scroll;
   String? _dragId;
@@ -33,6 +36,15 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
   Map<String, Event> _events = const {};
   String _loadedKey = '';
   bool _didJump = false;
+  double _scale = 1;
+
+  // Active pointers for pinch tracking. Listener-based so pinch never
+  // competes with scrolling, tapping, or event dragging in the arena.
+  final Map<int, Offset> _pointers = {};
+  double? _pinchStartDist;
+  double _pinchBaseScale = 1;
+
+  double get hourHeight => baseHourHeight * _scale;
 
   @override
   void initState() {
@@ -84,6 +96,72 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
     return -1;
   }
 
+  void _applyScale(double next) {
+    next = next.clamp(minScale, maxScale);
+    if (next == _scale) return;
+    final ratio = next / _scale;
+    final offset = _scroll.hasClients ? _scroll.offset : 0.0;
+    setState(() => _scale = next);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scroll.hasClients) return;
+      _scroll.jumpTo(
+        (offset * ratio).clamp(0.0, _scroll.position.maxScrollExtent),
+      );
+    });
+  }
+
+  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (!HardwareKeyboard.instance.isControlPressed) {
+      return KeyEventResult.ignored;
+    }
+    switch (event.logicalKey) {
+      case LogicalKeyboardKey.equal:
+      case LogicalKeyboardKey.add:
+      case LogicalKeyboardKey.numpadAdd:
+        _applyScale(_scale * 1.25);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.minus:
+      case LogicalKeyboardKey.numpadSubtract:
+        _applyScale(_scale / 1.25);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.digit0:
+      case LogicalKeyboardKey.numpad0:
+        _applyScale(1);
+        return KeyEventResult.handled;
+      default:
+        return KeyEventResult.ignored;
+    }
+  }
+
+  double _pointerDist() {
+    final pts = _pointers.values.toList();
+    return (pts[0] - pts[1]).distance;
+  }
+
+  void _onPointerDown(PointerDownEvent e) {
+    _pointers[e.pointer] = e.position;
+    if (_pointers.length == 2) {
+      _pinchStartDist = _pointerDist();
+      _pinchBaseScale = _scale;
+    }
+  }
+
+  void _onPointerMove(PointerMoveEvent e) {
+    if (!_pointers.containsKey(e.pointer)) return;
+    _pointers[e.pointer] = e.position;
+    if (_pointers.length == 2 &&
+        _pinchStartDist != null &&
+        _pinchStartDist! > 0) {
+      _applyScale(_pinchBaseScale * _pointerDist() / _pinchStartDist!);
+    }
+  }
+
+  void _onPointerEnd(PointerEvent e) {
+    _pointers.remove(e.pointer);
+    if (_pointers.length < 2) _pinchStartDist = null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final window = ref.watch(calendarStateProvider);
@@ -105,65 +183,76 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
       }
     }
 
-    return Column(
-      children: [
-        _DayHeader(
-          anchor: widget.anchor,
-          dayCount: widget.dayCount,
-          gutterWidth: gutterWidth,
-        ),
-        if (allDay.isNotEmpty)
-          _AllDayStrip(
-            occs: allDay,
-            anchor: widget.anchor,
-            dayCount: widget.dayCount,
-            events: _events,
-            gutterWidth: gutterWidth,
-            onTap: (id) => showEventDetails(context, id),
-          ),
-        Expanded(
-          child: SingleChildScrollView(
-            controller: _scroll,
-            child: SizedBox(
-              height: 24 * hourHeight,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _HourGutter(hourHeight: hourHeight, width: gutterWidth),
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (ctx, cons) {
-                        final colW = cons.maxWidth / widget.dayCount;
-                        return Stack(
-                          children: [
-                            GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTapUp: (d) => _tapEmpty(d.localPosition, colW),
-                              child: CustomPaint(
-                                size: Size(cons.maxWidth, 24 * hourHeight),
-                                painter: _TimelinePainter(
-                                  anchor: widget.anchor,
-                                  dayCount: widget.dayCount,
-                                  hourHeight: hourHeight,
-                                  now: DateTime.now(),
-                                  primary: Theme.of(
-                                    context,
-                                  ).colorScheme.primary,
+    return Focus(
+      autofocus: true,
+      onKeyEvent: _onKeyEvent,
+      child: Listener(
+        onPointerDown: _onPointerDown,
+        onPointerMove: _onPointerMove,
+        onPointerUp: _onPointerEnd,
+        onPointerCancel: _onPointerEnd,
+        child: Column(
+          children: [
+            _DayHeader(
+              anchor: widget.anchor,
+              dayCount: widget.dayCount,
+              gutterWidth: gutterWidth,
+            ),
+            if (allDay.isNotEmpty)
+              _AllDayStrip(
+                occs: allDay,
+                anchor: widget.anchor,
+                dayCount: widget.dayCount,
+                events: _events,
+                gutterWidth: gutterWidth,
+                onTap: (id) => showEventDetails(context, id),
+              ),
+            Expanded(
+              child: SingleChildScrollView(
+                controller: _scroll,
+                child: SizedBox(
+                  height: 24 * hourHeight,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _HourGutter(hourHeight: hourHeight, width: gutterWidth),
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (ctx, cons) {
+                            final colW = cons.maxWidth / widget.dayCount;
+                            return Stack(
+                              children: [
+                                GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTapUp: (d) =>
+                                      _tapEmpty(d.localPosition, colW),
+                                  child: CustomPaint(
+                                    size: Size(cons.maxWidth, 24 * hourHeight),
+                                    painter: _TimelinePainter(
+                                      anchor: widget.anchor,
+                                      dayCount: widget.dayCount,
+                                      hourHeight: hourHeight,
+                                      now: DateTime.now(),
+                                      primary: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                            for (final o in timed) _eventBlock(o, colW),
-                          ],
-                        );
-                      },
-                    ),
+                                for (final o in timed) _eventBlock(o, colW),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
