@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
@@ -124,8 +125,22 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
           _bodyCtl.addListener(_scheduleSave);
         }
         final counts = countWords(_bodyCtl.text);
-        return Scaffold(
-          appBar: AppBar(
+        return CallbackShortcuts(
+          bindings: {
+            SingleActivator(
+              LogicalKeyboardKey.enter,
+              control: true,
+            ): () {
+              if (!mounted) return;
+              _flush();
+            },
+            SingleActivator(LogicalKeyboardKey.escape): () {
+              if (!mounted) return;
+              Navigator.of(context).maybePop();
+            },
+          },
+          child: Scaffold(
+            appBar: AppBar(
             title: const Text('Note'),
             actions: [
               IconButton(
@@ -193,8 +208,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
               ),
               _LinksSection(noteId: widget.noteId),
             ],
-          ),
-        );
+          ), // Column
+        ), // Scaffold
+      ); // CallbackShortcuts
       },
     );
   }

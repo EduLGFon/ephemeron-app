@@ -1,14 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/platform/system_launcher.dart';
 import '../../features/auth/application/auth_providers.dart';
+import '../../features/calendar/application/calendar_providers.dart';
 import '../../features/settings/application/settings_providers.dart';
 import '../../features/settings/presentation/onboarding_screen.dart';
 import '../../features/sync/application/sync_providers.dart';
 import '../../features/tasks/presentation/quick_add_sheet.dart';
 import 'app_sections.dart';
+
+const List<LogicalKeyboardKey> _digitKeys = <LogicalKeyboardKey>[
+  LogicalKeyboardKey.digit1,
+  LogicalKeyboardKey.digit2,
+  LogicalKeyboardKey.digit3,
+  LogicalKeyboardKey.digit4,
+  LogicalKeyboardKey.digit5,
+  LogicalKeyboardKey.digit6,
+  LogicalKeyboardKey.digit7,
+];
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -87,9 +99,39 @@ class _AppShellState extends ConsumerState<AppShell> {
     final pinned = order.take(5).toList();
     final more = order.skip(5).toList();
 
-    return Scaffold(
-      body: widget.navigationShell,
-      bottomNavigationBar: Padding(
+    final shortcuts = <ShortcutActivator, VoidCallback>{
+      SingleActivator(LogicalKeyboardKey.keyN): () {
+        if (!mounted) return;
+        showQuickAdd(context);
+      },
+      SingleActivator(LogicalKeyboardKey.keyT): () {
+        if (!mounted) return;
+        _onTabSelected(AppSection.calendar.index);
+        try {
+          ref.read(calendarStateProvider.notifier).goToday();
+        } catch (_) {}
+      },
+      SingleActivator(LogicalKeyboardKey.slash): () {
+        if (!mounted) return;
+        context.push('/search');
+      },
+      SingleActivator(LogicalKeyboardKey.escape): () {
+        if (!mounted) return;
+        final nav = Navigator.of(context);
+        if (nav.canPop()) nav.pop();
+      },
+      for (var i = 0; i < AppSection.values.length; i++)
+        SingleActivator(_digitKeys[i]): () {
+          if (!mounted) return;
+          _onTabSelected(i);
+        },
+    };
+
+    return CallbackShortcuts(
+      bindings: shortcuts,
+      child: Scaffold(
+        body: widget.navigationShell,
+        bottomNavigationBar: Padding(
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         child: NavigationBar(
           selectedIndex: pinned.contains(widget.navigationShell.currentIndex)
@@ -115,7 +157,8 @@ class _AppShellState extends ConsumerState<AppShell> {
           ],
         ),
       ),
-    );
+    ), // Scaffold
+  ); // CallbackShortcuts
   }
 
   void _showMore(BuildContext context, List<int> more, List<int> order) {

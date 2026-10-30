@@ -59,16 +59,17 @@ class EphemeronApp extends ConsumerWidget {
       routerConfig: router,
     );
     if (!locked) return app;
-    return _LockGate(child: app);
+    return _LockGate(ref: ref, child: app);
   }
 }
 
 /// Full-screen gate shown when biometric app lock is on. Stays locked
 /// until authentication succeeds; unsupported devices pass through.
 class _LockGate extends StatefulWidget {
-  const _LockGate({required this.child});
+  const _LockGate({required this.ref, required this.child});
 
   final Widget child;
+  final WidgetRef ref;
 
   @override
   State<_LockGate> createState() => _LockGateState();
@@ -87,6 +88,23 @@ class _LockGateState extends State<_LockGate> {
   Future<void> _tryUnlock() async {
     if (_busy || _unlocked || !mounted) return;
     setState(() => _busy = true);
+    // On devices without biometric/device-credential support, the lock cannot
+    // be used: clear the stale setting and pass through.
+    if (!await AppLock.isSupported()) {
+      try {
+        final repo = await widget.ref.read(settingsRepositoryProvider.future);
+        await repo.setBiometricLock(false);
+        widget.ref.invalidate(settingsRepositoryProvider);
+      } catch (_) {
+        // Best-effort cleanup; never block unlock.
+      }
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _unlocked = true;
+      });
+      return;
+    }
     final ok = await AppLock.authenticate();
     if (!mounted) return;
     setState(() {
