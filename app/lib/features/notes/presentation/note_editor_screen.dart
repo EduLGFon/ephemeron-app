@@ -37,9 +37,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
       final id = widget.noteId;
       final title = _titleCtl.text;
       final body = _bodyCtl.text;
-      unawaited(
-        repo.updateNote(id, title: title, body: () => body),
-      );
+      unawaited(repo.updateNote(id, title: title, body: () => body));
     }
     _titleCtl.dispose();
     _bodyCtl.dispose();

@@ -92,12 +92,10 @@ class _Blocks implements md.NodeVisitor {
         }
       }
       final isTask =
-          checkbox != null ||
-          element.attributes['class'] == 'task-list-item';
+          checkbox != null || element.attributes['class'] == 'task-list-item';
       if (isTask) {
         final idx = taskIndex++;
-        final checked =
-            checkbox?.attributes.containsKey('checked') ?? false;
+        final checked = checkbox?.attributes.containsKey('checked') ?? false;
         final label = element.textContent.trim();
         widgets.add(
           CheckboxListTile(
