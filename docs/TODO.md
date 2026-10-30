@@ -16,10 +16,9 @@
 - RSVP/attendees UI.
 - Periodic background sync (needs workmanager); alarm sound/vibration/flashlight
   polish; iOS/desktop variants detail.
-- Note backlinks UI, ZIP export, .md import; image WebP compression (image pkg
-  reserved).
-- Habit/focus: keep-screen-on, DND toggle, OLED black mode, ongoing notification
-  chronometer, CSV stats export, monthly focus screen, focus stats by
+- Note backlinks UI, .md import; image WebP compression (image pkg reserved).
+- Habit/focus: DND toggle, OLED black mode, ongoing notification
+  chronometer, monthly focus screen, focus stats by
   tag/habit/time-of-day.
 - Backend: periodic auto-sync trigger, export-before-delete flow (JSON backup
   ships first).

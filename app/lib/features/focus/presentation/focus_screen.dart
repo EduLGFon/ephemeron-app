@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -15,6 +16,22 @@ import '../application/focus_providers.dart';
 const _focusPresets = [15, 25, 50];
 const _breakPresets = [5, 10, 15];
 
+Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
+  final sessions = ref.read(recentFocusSessionsProvider).value ?? const [];
+  final buf = StringBuffer('start,end,minutes,phase,note\n');
+  for (final s in sessions) {
+    buf.writeln(
+      '${s.startUtc},${s.endUtc ?? ''},${s.endUtc == null ? '' : ((s.endUtc! - s.startUtc) / 60000).floor()},${s.phase ?? ''},${(s.note ?? '').replaceAll(',', ';')}',
+    );
+  }
+  await Clipboard.setData(ClipboardData(text: buf.toString()));
+  if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Focus CSV copied to clipboard')),
+    );
+  }
+}
+
 class FocusScreen extends ConsumerWidget {
   const FocusScreen({super.key});
 
@@ -22,7 +39,16 @@ class FocusScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentAsync = ref.watch(currentFocusSessionProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Focus')),
+      appBar: AppBar(
+        title: const Text('Focus'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download_outlined),
+            tooltip: 'Export CSV',
+            onPressed: () => _exportCsv(context, ref),
+          ),
+        ],
+      ),
       body: currentAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(

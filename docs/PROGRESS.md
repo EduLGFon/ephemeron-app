@@ -78,7 +78,7 @@ Checklist:
 - [x] FTS5 search with highlighted snippets
 - [x] Attachments: content-addressed store + orphan cleanup (picker UI deferred, no file_picker offline)
 - [x] Event-linked notes: add from event details, list in details, overflow notes for >8000 chars
-- [ ] Backlinks UI, biometric lock, ZIP export, .md import (note templates done)
+- [ ] Backlinks UI, biometric lock, .md import (note templates + ZIP export done)
 - [ ] Image compression to WebP (uses original bytes; image pkg added for Phase 9)
 Acceptance: notes usable offline with folders, search, preview. Status: done. Verified: `flutter test` 54 passed, `flutter analyze` clean.
 New deps (pinned exact): markdown 7.3.1 (parser only, custom renderer), image 4.3.0 (reserved for attachment compression). Size check deferred (no Android SDK).
