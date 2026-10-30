@@ -241,6 +241,15 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
                                   ),
                                 ),
                                 for (final o in timed) _eventBlock(o, colW),
+                                CustomPaint(
+                                  size: Size(cons.maxWidth, 24 * hourHeight),
+                                  painter: _NowLinePainter(
+                                    anchor: widget.anchor,
+                                    dayCount: widget.dayCount,
+                                    hourHeight: hourHeight,
+                                    now: DateTime.now(),
+                                  ),
+                                ),
                               ],
                             );
                           },
@@ -646,6 +655,29 @@ class _TimelinePainter extends CustomPainter {
         grid,
       );
     }
+  }
+
+  @override
+  bool shouldRepaint(_TimelinePainter old) =>
+      old.anchor != anchor || old.dayCount != dayCount;
+}
+
+class _NowLinePainter extends CustomPainter {
+  _NowLinePainter({
+    required this.anchor,
+    required this.dayCount,
+    required this.hourHeight,
+    required this.now,
+  });
+
+  final DateTime anchor;
+  final int dayCount;
+  final double hourHeight;
+  final DateTime now;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final colW = size.width / dayCount;
     for (var i = 0; i < dayCount; i++) {
       final day = DateTime(
         anchor.year,
@@ -668,6 +700,6 @@ class _TimelinePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TimelinePainter old) =>
-      old.anchor != anchor || old.dayCount != dayCount;
+  bool shouldRepaint(_NowLinePainter old) =>
+      old.anchor != anchor || old.dayCount != dayCount || old.now != now;
 }

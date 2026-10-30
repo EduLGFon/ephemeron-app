@@ -40,10 +40,11 @@ class _Details extends ConsumerWidget {
           );
         }
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               ListTile(
                 title: Text(
                   e.title,
@@ -109,7 +110,8 @@ class _Details extends ConsumerWidget {
               ),
             ],
           ),
-        );
+        ),
+      );
       },
     );
   }
