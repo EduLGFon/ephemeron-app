@@ -1,11 +1,13 @@
 // Notes screen: nested folders with breadcrumbs, note list with counts,
 // FTS search with snippets, trash, new note / new folder.
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:archive/archive.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../application/notes_providers.dart';
@@ -48,6 +50,11 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
             icon: const Icon(Icons.archive_outlined),
             tooltip: 'Export ZIP',
             onPressed: _exportZip,
+          ),
+          IconButton(
+            icon: const Icon(Icons.upload_file_outlined),
+            tooltip: 'Import .md / .txt',
+            onPressed: _importFiles,
           ),
         ],
       ),
@@ -211,8 +218,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
     );
     if (choice == 'meeting') {
       await _newNote(
-        template:
-            '## Attendees\n\n- \n\n## Agenda\n\n- \n\n## Notes\n\n',
+        template: '## Attendees\n\n- \n\n## Agenda\n\n- \n\n## Notes\n\n',
       );
     } else if (choice == 'blank') {
       await _newNote();
@@ -227,13 +233,53 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
     );
   }
 
+  Future<void> _importFiles() async {
+    try {
+      final files = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['md', 'txt'],
+      );
+      if (files.isEmpty) return;
+      final repo = ref.read(noteRepositoryProvider);
+      var count = 0;
+      for (final f in files) {
+        if (f.path != null) {
+          await repo.importMarkdownFile(f.path!, folderId: _folderId);
+          count++;
+        } else if (f.bytes != null) {
+          final id = await repo.createNote(
+            title: f.name.contains('.')
+                ? f.name.substring(0, f.name.lastIndexOf('.'))
+                : f.name,
+            body: utf8.decode(f.bytes!, allowMalformed: true),
+            folderId: _folderId,
+          );
+          if (id.isNotEmpty) count++;
+        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Imported $count file(s)')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+      }
+    }
+  }
+
   Future<void> _exportZip() async {
     try {
       final notes = ref.read(folderNotesProvider(_folderId)).value ?? const [];
       final archive = Archive();
       for (final n in notes) {
-        final name = (n.title.isEmpty ? 'untitled' : n.title)
-            .replaceAll(RegExp(r'[\\\\/:*?"<>|]'), '_');
+        final name = (n.title.isEmpty ? 'untitled' : n.title).replaceAll(
+          RegExp(r'[\\\\/:*?"<>|]'),
+          '_',
+        );
         final body = n.body ?? '';
         archive.addFile(ArchiveFile('$name.md', body.length, body.codeUnits));
       }
@@ -243,15 +289,15 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
       final file = File('${dir.path}/notes-export.zip');
       await file.writeAsBytes(data);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Exported to ${file.path}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Exported to ${file.path}')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     }
   }

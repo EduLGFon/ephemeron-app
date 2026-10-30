@@ -77,10 +77,7 @@ class BackgroundSync {
       return;
     }
     try {
-      await Workmanager().initialize(
-        backgroundSyncDispatcher,
-        isInDebugMode: false,
-      );
+      await Workmanager().initialize(backgroundSyncDispatcher);
       if (intervalMin <= 0) {
         await Workmanager().cancelByUniqueName(_taskName);
         return;

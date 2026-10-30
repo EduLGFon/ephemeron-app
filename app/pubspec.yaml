@@ -30,6 +30,7 @@ dependencies:
   wakelock_plus: 1.8.0
   archive: 3.6.1
   workmanager: 0.10.10
+  file_picker: 13.3.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

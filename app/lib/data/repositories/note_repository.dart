@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:ephemeron/core/ids/ids.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
+import 'package:image/image.dart' as img;
 
 class NoteSearchHit {
   const NoteSearchHit({required this.note, required this.snippet});
@@ -144,6 +145,7 @@ class NoteRepository {
             updatedAt: now,
           ),
         );
+    await refreshLinks(id);
     return id;
   }
 
@@ -174,6 +176,7 @@ class NoteRepository {
         dirty: const Value(true),
       ),
     );
+    if (body != null || title != null) await refreshLinks(id);
   }
 
   Future<void> setPinned(String id, bool pinned) async {
@@ -319,6 +322,74 @@ class NoteRepository {
     return '$prefix${body.substring(start, end)}$suffix';
   }
 
+  // Backlinks: [[Note title]] references resolved by exact title match.
+  // Rebuilt on every title/body save; unresolvable titles are ignored.
+
+  static final _linkPattern = RegExp(r'\[\[([^\[\]]+)\]\]');
+
+  static List<String> extractLinkedTitles(String? body) {
+    if (body == null || body.isEmpty) return [];
+    final out = <String>[];
+    for (final m in _linkPattern.allMatches(body)) {
+      final title = m.group(1)!.trim();
+      if (title.isNotEmpty && !out.contains(title)) out.add(title);
+    }
+    return out;
+  }
+
+  /// Rebuilds outgoing links for [noteId] from its current body.
+  Future<void> refreshLinks(String noteId) async {
+    final note = await getNote(noteId);
+    if (note == null) return;
+    final titles = extractLinkedTitles(note.body);
+    await _db.transaction(() async {
+      await (_db.delete(
+        _db.noteLinks,
+      )..where((t) => t.fromNoteId.equals(noteId))).go();
+      for (final title in titles) {
+        final target =
+            await (_db.select(_db.notes)
+                  ..where((t) => t.title.equals(title) & t.deletedAt.isNull()))
+                .getSingleOrNull();
+        if (target != null && target.id != noteId) {
+          await _db
+              .into(_db.noteLinks)
+              .insert(
+                NoteLinksCompanion.insert(
+                  fromNoteId: noteId,
+                  toNoteId: target.id,
+                ),
+                mode: InsertMode.insertOrIgnore,
+              );
+        }
+      }
+    });
+  }
+
+  /// Notes linking TO [noteId] (excludes trashed).
+  Future<List<Note>> backlinks(String noteId) async {
+    final rows = await (_db.select(
+      _db.noteLinks,
+    )..where((t) => t.toNoteId.equals(noteId))).get();
+    final ids = rows.map((r) => r.fromNoteId).toSet();
+    if (ids.isEmpty) return [];
+    return (_db.select(
+      _db.notes,
+    )..where((t) => t.id.isIn(ids) & t.deletedAt.isNull())).get();
+  }
+
+  /// Notes that [noteId] links to (excludes trashed).
+  Future<List<Note>> forwardLinks(String noteId) async {
+    final rows = await (_db.select(
+      _db.noteLinks,
+    )..where((t) => t.fromNoteId.equals(noteId))).get();
+    final ids = rows.map((r) => r.toNoteId).toSet();
+    if (ids.isEmpty) return [];
+    return (_db.select(
+      _db.notes,
+    )..where((t) => t.id.isIn(ids) & t.deletedAt.isNull())).get();
+  }
+
   // Attachments (content-addressed; orphan cleanup on demand).
 
   Future<String?> addAttachment({
@@ -330,14 +401,23 @@ class NoteRepository {
     if (dir == null) return null;
     final src = File(sourcePath);
     if (!await src.exists()) return null;
-    final bytes = await src.readAsBytes();
+    var bytes = await src.readAsBytes();
+    var ext = sourcePath.contains('.')
+        ? sourcePath.split('.').last.toLowerCase()
+        : 'bin';
+    // Compress large images: max 1600 px on the long edge, JPG quality 80
+    // (PNG when the image has alpha; the pinned image pkg has no WebP
+    // encoder). Small non-image files are stored as-is.
+    final compressed = _compressImage(bytes);
+    if (compressed != null) {
+      bytes = compressed.bytes;
+      ext = compressed.ext;
+      mime = compressed.mime;
+    }
     var hash = 0;
     for (final b in bytes) {
       hash = ((hash * 31) + b) & 0x7fffffff;
     }
-    final ext = sourcePath.contains('.')
-        ? sourcePath.split('.').last.toLowerCase()
-        : 'bin';
     final dest = File('${dir.path}/$hash.$ext');
     if (!await dest.exists()) {
       await dest.writeAsBytes(bytes, flush: true);
@@ -360,6 +440,18 @@ class NoteRepository {
     return id;
   }
 
+  /// Imports a .md or .txt file as a note. The file name (without
+  /// extension) becomes the title; the whole content becomes the body.
+  Future<String> importMarkdownFile(String path, {String? folderId}) async {
+    final file = File(path);
+    final body = await file.readAsString();
+    final base = path.split(Platform.pathSeparator).last;
+    final title = base.contains('.')
+        ? base.substring(0, base.lastIndexOf('.'))
+        : base;
+    return createNote(title: title, body: body, folderId: folderId);
+  }
+
   Future<void> deleteOrphanAttachments() async {
     final all = await _db.select(_db.attachments).get();
     final ownerIds = <String>{};
@@ -377,4 +469,41 @@ class NoteRepository {
       }
     }
   }
+}
+
+class _Compressed {
+  const _Compressed(this.bytes, this.ext, this.mime);
+  final Uint8List bytes;
+  final String ext;
+  final String mime;
+}
+
+/// Resizes to max 1600 px on the long edge and re-encodes: JPG quality 80
+/// for opaque images, PNG for images with alpha. Returns null when [bytes]
+/// do not decode as an image (caller stores the original file).
+_Compressed? _compressImage(Uint8List bytes) {
+  const maxEdge = 1600;
+  img.Image? decoded;
+  try {
+    decoded = img.decodeImage(bytes);
+  } catch (_) {
+    return null;
+  }
+  if (decoded == null) return null;
+  var image = decoded;
+  final longEdge = image.width > image.height ? image.width : image.height;
+  if (longEdge > maxEdge) {
+    if (image.width >= image.height) {
+      image = img.copyResize(image, width: maxEdge);
+    } else {
+      image = img.copyResize(image, height: maxEdge);
+    }
+  } else if (bytes.length < 200 * 1024) {
+    // Small enough already: skip re-encoding to avoid quality loss.
+    return null;
+  }
+  if (image.hasAlpha) {
+    return _Compressed(img.encodePng(image), 'png', 'image/png');
+  }
+  return _Compressed(img.encodeJpg(image, quality: 80), 'jpg', 'image/jpeg');
 }
