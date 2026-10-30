@@ -28,6 +28,22 @@ Future<void> showEventEditor(
   );
 }
 
+const _googleColorMap = <String, Color>{
+  '1': Color(0xFF7986CB),
+  '2': Color(0xFF33B679),
+  '3': Color(0xFF8E24AA),
+  '4': Color(0xFFE67C73),
+  '5': Color(0xFFF6BF26),
+  '6': Color(0xFF3F51B5),
+  '7': Color(0xFF039BE5),
+  '8': Color(0xFF0B8043),
+  '9': Color(0xFFD50000),
+  '10': Color(0xFF303F9F),
+  '11': Color(0xFF616161),
+};
+
+Color _googleColor(String id) => _googleColorMap[id] ?? Colors.blue;
+
 const _repeatPresets = {
   'Does not repeat': null,
   'Daily': 'FREQ=DAILY',
@@ -52,11 +68,15 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
   late final TextEditingController _title;
   late final TextEditingController _location;
   late final TextEditingController _notes;
+  late final TextEditingController _attendees;
   String? _calendarId;
+  bool _addMeet = false;
   bool _allDay = false;
   late DateTime _start;
   late DateTime _end;
   String? _rrule;
+  String? _colorId;
+  String? _tzId;
 
   @override
   void initState() {
@@ -65,8 +85,12 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     _title = TextEditingController(text: e?.title ?? '');
     _location = TextEditingController(text: e?.location ?? '');
     _notes = TextEditingController(text: e?.notes ?? '');
+    _attendees = TextEditingController();
     _calendarId = e?.calendarId;
     _allDay = e?.isAllDay ?? false;
+    _colorId = e?.colorId;
+    _tzId = e?.tzId;
+    _addMeet = e?.meetUrl != null;
     if (e?.startUtc != null) {
       _start = DateTime.fromMillisecondsSinceEpoch(
         e!.startUtc!,
@@ -92,6 +116,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     _title.dispose();
     _location.dispose();
     _notes.dispose();
+    _attendees.dispose();
     super.dispose();
   }
 
@@ -164,7 +189,9 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
           // SECURITY: store null (floating local time) for device-created
           // events. DateTime.now().timeZoneName yields abbreviations like
           // "-03" that are not IANA ids and crash tz.getLocation lookups.
-          tzId: null,
+          tzId: _tzId,
+          colorId: _colorId,
+          createMeet: _addMeet,
           rrule: _rrule,
           location: _location.text.trim().isEmpty
               ? null
@@ -177,6 +204,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
           final noteId = await noteRepo.ensureOverflowNote(eventId, fullNotes);
           await repo.setNotesOverflow(eventId, noteId);
         }
+        await repo.setAttendees(eventId, _attendees.text.split(','));
       } else {
         await repo.editOccurrence(
           existing.id,
@@ -193,8 +221,12 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
           location: _location.text.trim().isEmpty
               ? null
               : _location.text.trim(),
+          colorId: _colorId,
+          tzId: _tzId,
+          createMeet: _addMeet,
         );
       }
+      await repo.setAttendees(existing!.id, _attendees.text.split(','));
       if (mounted) Navigator.of(context).pop();
       return;
     }
@@ -240,6 +272,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
         rrule: () => _rrule,
         resetExceptions: !keep,
       );
+      await repo.setAttendees(existing.id, _attendees.text.split(','));
       if (mounted) Navigator.of(context).pop();
       return;
     }
@@ -359,32 +392,221 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                 ],
                 onChanged: (v) async {
                   if (v == '__custom__') {
-                    final ctl = TextEditingController(text: _rrule ?? '');
-                    String? error;
-                    final custom = await showDialog<String>(
+                    // Parse existing rrule into builder state.
+                    String freq = 'WEEKLY';
+                    int interval = 1;
+                    final byDay = <String>{};
+                    int? monthDay;
+                    String endMode = 'never';
+                    int count = 10;
+                    DateTime? until;
+                    if (_rrule != null && _rrule!.isNotEmpty) {
+                      try {
+                        final r = RecurrenceRule.parse(_rrule!);
+                        freq = r.freq;
+                        interval = r.interval;
+                        byDay.addAll(r.byDay);
+                        if (r.byMonthDay.isNotEmpty) {
+                          monthDay = r.byMonthDay.first;
+                        }
+                        if (r.count != null) {
+                          endMode = 'count';
+                          count = r.count!;
+                        } else if (r.untilUtc != null || r.untilDate != null) {
+                          endMode = 'until';
+                          if (r.untilUtc != null) {
+                            until = r.untilUtc;
+                          } else if (r.untilDate != null) {
+                            final p = r.untilDate!.split('-');
+                            until = DateTime(
+                              int.parse(p[0]),
+                              int.parse(p[1]),
+                              int.parse(p[2]),
+                            );
+                          }
+                        }
+                      } catch (_) {}
+                    }
+                    final result = await showDialog<String>(
                       context: context,
                       builder: (ctx) => StatefulBuilder(
                         builder: (ctx, setSt) => AlertDialog(
-                          title: const Text('Custom RRULE'),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              TextField(
-                                controller: ctl,
-                                autofocus: true,
-                                decoration: InputDecoration(
-                                  hintText: 'FREQ=WEEKLY;BYDAY=MO,WE',
-                                  errorText: error,
+                          title: const Text('Custom repeat'),
+                          content: SingleChildScrollView(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                DropdownButtonFormField<String>(
+                                  initialValue: freq,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Frequency',
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'DAILY',
+                                      child: Text('Daily'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'WEEKLY',
+                                      child: Text('Weekly'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'MONTHLY',
+                                      child: Text('Monthly'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'YEARLY',
+                                      child: Text('Yearly'),
+                                    ),
+                                  ],
+                                  onChanged: (x) => setSt(() => freq = x!),
                                 ),
-                              ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Examples: FREQ=DAILY;INTERVAL=2, '
-                                'FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=10, '
-                                'FREQ=MONTHLY;BYMONTHDAY=15;UNTIL=20261231',
-                                style: TextStyle(fontSize: 12),
-                              ),
-                            ],
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    const Text('Every'),
+                                    const SizedBox(width: 8),
+                                    SizedBox(
+                                      width: 60,
+                                      child: TextField(
+                                        controller: TextEditingController(
+                                          text: interval.toString(),
+                                        ),
+                                        keyboardType: TextInputType.number,
+                                        onChanged: (t) =>
+                                            interval = int.tryParse(t) ?? 1,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      freq == 'DAILY'
+                                          ? 'day(s)'
+                                          : freq == 'WEEKLY'
+                                          ? 'week(s)'
+                                          : freq == 'MONTHLY'
+                                          ? 'month(s)'
+                                          : 'year(s)',
+                                    ),
+                                  ],
+                                ),
+                                if (freq == 'WEEKLY') ...[
+                                  const SizedBox(height: 8),
+                                  const Text('On days'),
+                                  Wrap(
+                                    spacing: 4,
+                                    children: [
+                                      for (final d in const [
+                                        'MO',
+                                        'TU',
+                                        'WE',
+                                        'TH',
+                                        'FR',
+                                        'SA',
+                                        'SU',
+                                      ])
+                                        FilterChip(
+                                          label: Text(d),
+                                          selected: byDay.contains(d),
+                                          onSelected: (sel) => setSt(() {
+                                            if (sel) {
+                                              byDay.add(d);
+                                            } else {
+                                              byDay.remove(d);
+                                            }
+                                          }),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                                if (freq == 'MONTHLY') ...[
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      const Text('Day of month:'),
+                                      const SizedBox(width: 8),
+                                      SizedBox(
+                                        width: 60,
+                                        child: TextField(
+                                          controller: TextEditingController(
+                                            text: (monthDay ?? 1).toString(),
+                                          ),
+                                          keyboardType: TextInputType.number,
+                                          onChanged: (t) => monthDay =
+                                              int.tryParse(t),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const Text('(-1 = last day)'),
+                                    ],
+                                  ),
+                                ],
+                                const SizedBox(height: 8),
+                                DropdownButtonFormField<String>(
+                                  initialValue: endMode,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Ends',
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'never',
+                                      child: Text('Never'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'count',
+                                      child: Text('After N times'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'until',
+                                      child: Text('On date'),
+                                    ),
+                                  ],
+                                  onChanged: (x) =>
+                                      setSt(() => endMode = x!),
+                                ),
+                                if (endMode == 'count') ...[
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      const Text('Times:'),
+                                      const SizedBox(width: 8),
+                                      SizedBox(
+                                        width: 60,
+                                        child: TextField(
+                                          controller: TextEditingController(
+                                            text: count.toString(),
+                                          ),
+                                          keyboardType: TextInputType.number,
+                                          onChanged: (t) =>
+                                              count = int.tryParse(t) ?? count,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                if (endMode == 'until') ...[
+                                  const SizedBox(height: 8),
+                                  OutlinedButton(
+                                    onPressed: () async {
+                                      final picked = await showDatePicker(
+                                        context: ctx,
+                                        initialDate: until ?? DateTime.now(),
+                                        firstDate: DateTime(2000),
+                                        lastDate: DateTime(2100),
+                                      );
+                                      if (picked != null) {
+                                        setSt(() => until = picked);
+                                      }
+                                    },
+                                    child: Text(
+                                      until == null
+                                          ? 'Pick date'
+                                          : '${until!.year}-${until!.month.toString().padLeft(2, '0')}-${until!.day.toString().padLeft(2, '0')}',
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                           actions: [
                             TextButton(
@@ -393,17 +615,24 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                             ),
                             FilledButton(
                               onPressed: () {
-                                final text = ctl.text.trim();
-                                if (text.isEmpty) {
-                                  Navigator.of(ctx).pop(text);
-                                  return;
+                                final parts = <String>['FREQ=$freq'];
+                                if (interval > 1) {
+                                  parts.add('INTERVAL=$interval');
                                 }
-                                try {
-                                  RecurrenceRule.parse(text);
-                                  Navigator.of(ctx).pop(text);
-                                } catch (_) {
-                                  setSt(() => error = 'Invalid RRULE');
+                                if (freq == 'WEEKLY' && byDay.isNotEmpty) {
+                                  parts.add('BYDAY=${byDay.join(',')}');
                                 }
+                                if (freq == 'MONTHLY' && monthDay != null) {
+                                  parts.add('BYMONTHDAY=$monthDay');
+                                }
+                                if (endMode == 'count') {
+                                  parts.add('COUNT=$count');
+                                } else if (endMode == 'until' && until != null) {
+                                  parts.add(
+                                    'UNTIL=${until!.toUtc().toIso8601String().replaceAll(RegExp(r'[-:]'), '').split('.').first}Z',
+                                  );
+                                }
+                                Navigator.of(ctx).pop(parts.join(';'));
                               },
                               child: const Text('OK'),
                             ),
@@ -411,13 +640,110 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                         ),
                       ),
                     );
-                    if (custom != null) {
-                      setState(() => _rrule = custom.isEmpty ? null : custom);
+                    if (result != null) {
+                      setState(() => _rrule = result.isEmpty ? null : result);
                     }
                   } else {
                     setState(() => _rrule = v);
                   }
                 },
+              ),
+              const SizedBox(height: 8),
+              Consumer(
+                builder: (ctx, ref, _) {
+                  final cals = ref.watch(calendarsProvider);
+                  return cals.maybeWhen(
+                    data: (list) => DropdownButtonFormField<String?>(
+                      initialValue: _calendarId,
+                      decoration: const InputDecoration(
+                        labelText: 'Calendar',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [
+                        for (final c in list)
+                          DropdownMenuItem(value: c.id, child: Text(c.name)),
+                      ],
+                      onChanged: (v) => setState(() => _calendarId = v),
+                    ),
+                    orElse: () => const SizedBox.shrink(),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                title: const Text('Add Google Meet'),
+                value: _addMeet,
+                onChanged: (v) => setState(() => _addMeet = v),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _attendees,
+                decoration: const InputDecoration(
+                  labelText: 'Invitees (comma-separated emails)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text('Color'),
+              Wrap(
+                spacing: 8,
+                children: [
+                  for (final c in const [
+                    null,
+                    '1',
+                    '2',
+                    '3',
+                    '4',
+                    '5',
+                    '6',
+                    '7',
+                    '8',
+                    '9',
+                    '10',
+                    '11',
+                  ])
+                    GestureDetector(
+                      onTap: () => setState(() => _colorId = c),
+                      child: CircleAvatar(
+                        radius: 14,
+                        backgroundColor: c == null
+                            ? Theme.of(context).colorScheme.primary
+                            : _googleColor(c),
+                        child: _colorId == c
+                            ? const Icon(Icons.check, size: 16, color: Colors.white)
+                            : null,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String?>(
+                initialValue: _tzId,
+                decoration: const InputDecoration(
+                  labelText: 'Timezone',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: null, child: Text('Floating (local)')),
+                  DropdownMenuItem(value: 'UTC', child: Text('UTC')),
+                  DropdownMenuItem(
+                    value: 'America/Sao_Paulo',
+                    child: Text('America/Sao_Paulo'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'America/New_York',
+                    child: Text('America/New_York'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Europe/London',
+                    child: Text('Europe/London'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Asia/Tokyo',
+                    child: Text('Asia/Tokyo'),
+                  ),
+                ],
+                onChanged: (v) => setState(() => _tzId = v),
               ),
               const SizedBox(height: 8),
               TextField(

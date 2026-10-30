@@ -42,6 +42,8 @@ class Events extends Table {
   TextColumn get status => text().withDefault(const Constant('confirmed'))();
   TextColumn get colorId => text().nullable()();
   TextColumn get meetUrl => text().nullable()();
+  BoolColumn get createMeet =>
+      boolean().withDefault(const Constant(false))();
   TextColumn get reminders => text().nullable()(); // json
   TextColumn get alarmPreset => text().nullable()();
   TextColumn get visibility => text().nullable()();

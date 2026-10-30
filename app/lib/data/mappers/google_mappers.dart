@@ -107,6 +107,13 @@ Map<String, dynamic> eventToGoogle(Event e) {
         if ((e.endTzId ?? e.tzId) != null) 'timeZone': e.endTzId ?? e.tzId,
       },
     if (e.colorId != null) 'colorId': e.colorId,
+    if (e.createMeet)
+      'conferenceData': {
+        'createRequest': {
+          'requestId': e.id,
+          'conferenceSolutionKey': {'type': 'hangoutsMeet'},
+        },
+      },
     if (e.rrule != null && e.rrule!.isNotEmpty)
       'recurrence': ['RRULE:${e.rrule}'],
   };

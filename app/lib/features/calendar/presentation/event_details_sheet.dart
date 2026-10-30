@@ -62,6 +62,7 @@ class _Details extends ConsumerWidget {
                   leading: const Icon(Icons.notes_outlined),
                   title: Text(e.notes!),
                 ),
+              _Attendees(eventId: e.id),
               _LinkedNotes(eventId: e.id),
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -112,6 +113,34 @@ class _Details extends ConsumerWidget {
           ),
         ),
       );
+      },
+    );
+  }
+}
+
+class _Attendees extends ConsumerWidget {
+  const _Attendees({required this.eventId});
+
+  final String eventId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return FutureBuilder<List<EventAttendee>>(
+      future: ref.read(eventRepositoryProvider).attendeesOf(eventId),
+      builder: (ctx, snap) {
+        final atts = snap.data ?? const [];
+        if (atts.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final a in atts)
+              ListTile(
+                leading: const Icon(Icons.person_outline),
+                title: Text(a.email),
+                trailing: Text(a.rsvp ?? ''),
+              ),
+          ],
+        );
       },
     );
   }

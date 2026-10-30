@@ -43,6 +43,7 @@ class EventRepository {
     String? location,
     String? notes,
     String? colorId,
+    bool createMeet = false,
   }) async {
     final id = newId();
     final now = _now();
@@ -63,6 +64,7 @@ class EventRepository {
             location: Value(location),
             notes: Value(notes),
             colorId: Value(colorId),
+            createMeet: Value(createMeet),
             createdAt: now,
             updatedAt: now,
           ),
@@ -165,6 +167,9 @@ class EventRepository {
     DateTime? startUtc,
     DateTime? endUtc,
     String? location,
+    String? colorId,
+    String? tzId,
+    bool? createMeet,
     String? Function()? rrule,
     bool resetExceptions = false,
   }) async {
@@ -184,6 +189,9 @@ class EventRepository {
                 ? const Value.absent()
                 : Value(endUtc.toUtc().millisecondsSinceEpoch),
             location: location == null ? const Value.absent() : Value(location),
+            colorId: colorId == null ? const Value.absent() : Value(colorId),
+            tzId: tzId == null ? const Value.absent() : Value(tzId),
+            createMeet: createMeet == null ? const Value.absent() : Value(createMeet),
           ),
         );
         await _enqueue(masterId, 'update');
@@ -211,6 +219,11 @@ class EventRepository {
                 ? const Value.absent()
                 : Value(endUtc.toUtc().millisecondsSinceEpoch),
             location: location == null ? const Value.absent() : Value(location),
+            colorId: colorId == null ? const Value.absent() : Value(colorId),
+            tzId: tzId == null ? const Value.absent() : Value(tzId),
+            createMeet: createMeet == null
+                ? const Value.absent()
+                : Value(createMeet),
             rrule: rrule == null ? const Value.absent() : Value(rrule()),
             updatedAt: Value(_now()),
             dirty: const Value(true),
@@ -378,6 +391,33 @@ class EventRepository {
     return (_db.select(
       _db.calendars,
     )..orderBy([(c) => OrderingTerm.asc(c.name)])).watch();
+  }
+
+  Future<void> setAttendees(String eventId, List<String> emails) async {
+    await _db.transaction(() async {
+      await (_db.delete(
+        _db.eventAttendees,
+      )..where((a) => a.eventId.equals(eventId))).go();
+      for (final email in emails) {
+        final trimmed = email.trim();
+        if (trimmed.isEmpty) continue;
+        await _db
+            .into(_db.eventAttendees)
+            .insert(
+              EventAttendeesCompanion.insert(
+                id: newId(),
+                eventId: eventId,
+                email: trimmed,
+              ),
+            );
+      }
+    });
+  }
+
+  Future<List<EventAttendee>> attendeesOf(String eventId) {
+    return (_db.select(
+      _db.eventAttendees,
+    )..where((a) => a.eventId.equals(eventId))).get();
   }
 
   Future<String> createCalendar(

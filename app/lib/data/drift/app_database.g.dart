@@ -916,6 +916,21 @@ class $EventsTable extends Events with TableInfo<$EventsTable, Event> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _createMeetMeta = const VerificationMeta(
+    'createMeet',
+  );
+  @override
+  late final GeneratedColumn<bool> createMeet = GeneratedColumn<bool>(
+    'create_meet',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("create_meet" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _remindersMeta = const VerificationMeta(
     'reminders',
   );
@@ -1049,6 +1064,7 @@ class $EventsTable extends Events with TableInfo<$EventsTable, Event> {
     status,
     colorId,
     meetUrl,
+    createMeet,
     reminders,
     alarmPreset,
     visibility,
@@ -1194,6 +1210,12 @@ class $EventsTable extends Events with TableInfo<$EventsTable, Event> {
       context.handle(
         _meetUrlMeta,
         meetUrl.isAcceptableOrUnknown(data['meet_url']!, _meetUrlMeta),
+      );
+    }
+    if (data.containsKey('create_meet')) {
+      context.handle(
+        _createMeetMeta,
+        createMeet.isAcceptableOrUnknown(data['create_meet']!, _createMeetMeta),
       );
     }
     if (data.containsKey('reminders')) {
@@ -1351,6 +1373,10 @@ class $EventsTable extends Events with TableInfo<$EventsTable, Event> {
         DriftSqlType.string,
         data['${effectivePrefix}meet_url'],
       ),
+      createMeet: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}create_meet'],
+      )!,
       reminders: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}reminders'],
@@ -1420,6 +1446,7 @@ class Event extends DataClass implements Insertable<Event> {
   final String status;
   final String? colorId;
   final String? meetUrl;
+  final bool createMeet;
   final String? reminders;
   final String? alarmPreset;
   final String? visibility;
@@ -1450,6 +1477,7 @@ class Event extends DataClass implements Insertable<Event> {
     required this.status,
     this.colorId,
     this.meetUrl,
+    required this.createMeet,
     this.reminders,
     this.alarmPreset,
     this.visibility,
@@ -1511,6 +1539,7 @@ class Event extends DataClass implements Insertable<Event> {
     if (!nullToAbsent || meetUrl != null) {
       map['meet_url'] = Variable<String>(meetUrl);
     }
+    map['create_meet'] = Variable<bool>(createMeet);
     if (!nullToAbsent || reminders != null) {
       map['reminders'] = Variable<String>(reminders);
     }
@@ -1585,6 +1614,7 @@ class Event extends DataClass implements Insertable<Event> {
       meetUrl: meetUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(meetUrl),
+      createMeet: Value(createMeet),
       reminders: reminders == null && nullToAbsent
           ? const Value.absent()
           : Value(reminders),
@@ -1641,6 +1671,7 @@ class Event extends DataClass implements Insertable<Event> {
       status: serializer.fromJson<String>(json['status']),
       colorId: serializer.fromJson<String?>(json['colorId']),
       meetUrl: serializer.fromJson<String?>(json['meetUrl']),
+      createMeet: serializer.fromJson<bool>(json['createMeet']),
       reminders: serializer.fromJson<String?>(json['reminders']),
       alarmPreset: serializer.fromJson<String?>(json['alarmPreset']),
       visibility: serializer.fromJson<String?>(json['visibility']),
@@ -1676,6 +1707,7 @@ class Event extends DataClass implements Insertable<Event> {
       'status': serializer.toJson<String>(status),
       'colorId': serializer.toJson<String?>(colorId),
       'meetUrl': serializer.toJson<String?>(meetUrl),
+      'createMeet': serializer.toJson<bool>(createMeet),
       'reminders': serializer.toJson<String?>(reminders),
       'alarmPreset': serializer.toJson<String?>(alarmPreset),
       'visibility': serializer.toJson<String?>(visibility),
@@ -1709,6 +1741,7 @@ class Event extends DataClass implements Insertable<Event> {
     String? status,
     Value<String?> colorId = const Value.absent(),
     Value<String?> meetUrl = const Value.absent(),
+    bool? createMeet,
     Value<String?> reminders = const Value.absent(),
     Value<String?> alarmPreset = const Value.absent(),
     Value<String?> visibility = const Value.absent(),
@@ -1745,6 +1778,7 @@ class Event extends DataClass implements Insertable<Event> {
     status: status ?? this.status,
     colorId: colorId.present ? colorId.value : this.colorId,
     meetUrl: meetUrl.present ? meetUrl.value : this.meetUrl,
+    createMeet: createMeet ?? this.createMeet,
     reminders: reminders.present ? reminders.value : this.reminders,
     alarmPreset: alarmPreset.present ? alarmPreset.value : this.alarmPreset,
     visibility: visibility.present ? visibility.value : this.visibility,
@@ -1785,6 +1819,9 @@ class Event extends DataClass implements Insertable<Event> {
       status: data.status.present ? data.status.value : this.status,
       colorId: data.colorId.present ? data.colorId.value : this.colorId,
       meetUrl: data.meetUrl.present ? data.meetUrl.value : this.meetUrl,
+      createMeet: data.createMeet.present
+          ? data.createMeet.value
+          : this.createMeet,
       reminders: data.reminders.present ? data.reminders.value : this.reminders,
       alarmPreset: data.alarmPreset.present
           ? data.alarmPreset.value
@@ -1828,6 +1865,7 @@ class Event extends DataClass implements Insertable<Event> {
           ..write('status: $status, ')
           ..write('colorId: $colorId, ')
           ..write('meetUrl: $meetUrl, ')
+          ..write('createMeet: $createMeet, ')
           ..write('reminders: $reminders, ')
           ..write('alarmPreset: $alarmPreset, ')
           ..write('visibility: $visibility, ')
@@ -1863,6 +1901,7 @@ class Event extends DataClass implements Insertable<Event> {
     status,
     colorId,
     meetUrl,
+    createMeet,
     reminders,
     alarmPreset,
     visibility,
@@ -1897,6 +1936,7 @@ class Event extends DataClass implements Insertable<Event> {
           other.status == this.status &&
           other.colorId == this.colorId &&
           other.meetUrl == this.meetUrl &&
+          other.createMeet == this.createMeet &&
           other.reminders == this.reminders &&
           other.alarmPreset == this.alarmPreset &&
           other.visibility == this.visibility &&
@@ -1929,6 +1969,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
   final Value<String> status;
   final Value<String?> colorId;
   final Value<String?> meetUrl;
+  final Value<bool> createMeet;
   final Value<String?> reminders;
   final Value<String?> alarmPreset;
   final Value<String?> visibility;
@@ -1960,6 +2001,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
     this.status = const Value.absent(),
     this.colorId = const Value.absent(),
     this.meetUrl = const Value.absent(),
+    this.createMeet = const Value.absent(),
     this.reminders = const Value.absent(),
     this.alarmPreset = const Value.absent(),
     this.visibility = const Value.absent(),
@@ -1992,6 +2034,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
     this.status = const Value.absent(),
     this.colorId = const Value.absent(),
     this.meetUrl = const Value.absent(),
+    this.createMeet = const Value.absent(),
     this.reminders = const Value.absent(),
     this.alarmPreset = const Value.absent(),
     this.visibility = const Value.absent(),
@@ -2027,6 +2070,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
     Expression<String>? status,
     Expression<String>? colorId,
     Expression<String>? meetUrl,
+    Expression<bool>? createMeet,
     Expression<String>? reminders,
     Expression<String>? alarmPreset,
     Expression<String>? visibility,
@@ -2060,6 +2104,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
       if (status != null) 'status': status,
       if (colorId != null) 'color_id': colorId,
       if (meetUrl != null) 'meet_url': meetUrl,
+      if (createMeet != null) 'create_meet': createMeet,
       if (reminders != null) 'reminders': reminders,
       if (alarmPreset != null) 'alarm_preset': alarmPreset,
       if (visibility != null) 'visibility': visibility,
@@ -2094,6 +2139,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
     Value<String>? status,
     Value<String?>? colorId,
     Value<String?>? meetUrl,
+    Value<bool>? createMeet,
     Value<String?>? reminders,
     Value<String?>? alarmPreset,
     Value<String?>? visibility,
@@ -2126,6 +2172,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
       status: status ?? this.status,
       colorId: colorId ?? this.colorId,
       meetUrl: meetUrl ?? this.meetUrl,
+      createMeet: createMeet ?? this.createMeet,
       reminders: reminders ?? this.reminders,
       alarmPreset: alarmPreset ?? this.alarmPreset,
       visibility: visibility ?? this.visibility,
@@ -2202,6 +2249,9 @@ class EventsCompanion extends UpdateCompanion<Event> {
     if (meetUrl.present) {
       map['meet_url'] = Variable<String>(meetUrl.value);
     }
+    if (createMeet.present) {
+      map['create_meet'] = Variable<bool>(createMeet.value);
+    }
     if (reminders.present) {
       map['reminders'] = Variable<String>(reminders.value);
     }
@@ -2260,6 +2310,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
           ..write('status: $status, ')
           ..write('colorId: $colorId, ')
           ..write('meetUrl: $meetUrl, ')
+          ..write('createMeet: $createMeet, ')
           ..write('reminders: $reminders, ')
           ..write('alarmPreset: $alarmPreset, ')
           ..write('visibility: $visibility, ')
@@ -13744,6 +13795,7 @@ typedef $$EventsTableCreateCompanionBuilder =
       Value<String> status,
       Value<String?> colorId,
       Value<String?> meetUrl,
+      Value<bool> createMeet,
       Value<String?> reminders,
       Value<String?> alarmPreset,
       Value<String?> visibility,
@@ -13777,6 +13829,7 @@ typedef $$EventsTableUpdateCompanionBuilder =
       Value<String> status,
       Value<String?> colorId,
       Value<String?> meetUrl,
+      Value<bool> createMeet,
       Value<String?> reminders,
       Value<String?> alarmPreset,
       Value<String?> visibility,
@@ -13946,6 +13999,11 @@ class $$EventsTableFilterComposer
 
   ColumnFilters<String> get meetUrl => $composableBuilder(
     column: $table.meetUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get createMeet => $composableBuilder(
+    column: $table.createMeet,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14172,6 +14230,11 @@ class $$EventsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get createMeet => $composableBuilder(
+    column: $table.createMeet,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get reminders => $composableBuilder(
     column: $table.reminders,
     builder: (column) => ColumnOrderings(column),
@@ -14314,6 +14377,11 @@ class $$EventsTableAnnotationComposer
 
   GeneratedColumn<String> get meetUrl =>
       $composableBuilder(column: $table.meetUrl, builder: (column) => column);
+
+  GeneratedColumn<bool> get createMeet => $composableBuilder(
+    column: $table.createMeet,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get reminders =>
       $composableBuilder(column: $table.reminders, builder: (column) => column);
@@ -14478,6 +14546,7 @@ class $$EventsTableTableManager
                 Value<String> status = const Value.absent(),
                 Value<String?> colorId = const Value.absent(),
                 Value<String?> meetUrl = const Value.absent(),
+                Value<bool> createMeet = const Value.absent(),
                 Value<String?> reminders = const Value.absent(),
                 Value<String?> alarmPreset = const Value.absent(),
                 Value<String?> visibility = const Value.absent(),
@@ -14509,6 +14578,7 @@ class $$EventsTableTableManager
                 status: status,
                 colorId: colorId,
                 meetUrl: meetUrl,
+                createMeet: createMeet,
                 reminders: reminders,
                 alarmPreset: alarmPreset,
                 visibility: visibility,
@@ -14542,6 +14612,7 @@ class $$EventsTableTableManager
                 Value<String> status = const Value.absent(),
                 Value<String?> colorId = const Value.absent(),
                 Value<String?> meetUrl = const Value.absent(),
+                Value<bool> createMeet = const Value.absent(),
                 Value<String?> reminders = const Value.absent(),
                 Value<String?> alarmPreset = const Value.absent(),
                 Value<String?> visibility = const Value.absent(),
@@ -14573,6 +14644,7 @@ class $$EventsTableTableManager
                 status: status,
                 colorId: colorId,
                 meetUrl: meetUrl,
+                createMeet: createMeet,
                 reminders: reminders,
                 alarmPreset: alarmPreset,
                 visibility: visibility,

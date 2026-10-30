@@ -79,6 +79,14 @@ class AuthScreen extends ConsumerWidget {
                   ref.read(googleAccountProvider.notifier).signOut(),
               child: const Text('Sign out'),
             ),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: () async {
+                await ref.read(googleAccountProvider.notifier).signOut();
+                await ref.read(googleAccountProvider.notifier).signIn();
+              },
+              child: const Text('Switch account'),
+            ),
           ],
           const Divider(height: 32),
           const _BackendSection(),

@@ -131,7 +131,14 @@ class SyncEngine {
         return;
       }
       if (e.remoteId == null) {
-        final created = await client.eventInsert(calId, eventToGoogle(e));
+        final body = eventToGoogle(e);
+        final atts = await (_db.select(
+          _db.eventAttendees,
+        )..where((a) => a.eventId.equals(e.id))).get();
+        if (atts.isNotEmpty) {
+          body['attendees'] = atts.map((a) => {'email': a.email}).toList();
+        }
+        final created = await client.eventInsert(calId, body);
         await (_db.update(_db.events)..where((t) => t.id.equals(e.id))).write(
           EventsCompanion(
             remoteId: Value(created['id'] as String?),
@@ -141,10 +148,17 @@ class SyncEngine {
         );
       } else {
         try {
+          final body = eventToGoogle(e);
+          final atts = await (_db.select(
+            _db.eventAttendees,
+          )..where((a) => a.eventId.equals(e.id))).get();
+          if (atts.isNotEmpty) {
+            body['attendees'] = atts.map((a) => {'email': a.email}).toList();
+          }
           final updated = await client.eventPatch(
             calId,
             e.remoteId!,
-            eventToGoogle(e),
+            body,
             etag: e.remoteEtag,
           );
           await (_db.update(_db.events)..where((t) => t.id.equals(e.id))).write(
@@ -530,9 +544,11 @@ class SyncEngine {
         }
         continue;
       }
+      late String localId;
       if (existing == null) {
         final mapped = eventFromGoogle(g, cal.id, newId());
         await _db.into(_db.events).insert(mapped.companion);
+        localId = mapped.companion.id.value;
         n++;
       } else if (!existing.dirty) {
         // Last-writer-wins on shared fields; local-only fields preserved
@@ -545,10 +561,47 @@ class SyncEngine {
             alarmPreset: const Value.absent(),
           ),
         );
+        localId = existing.id;
         n++;
+      } else {
+        localId = existing.id;
       }
+      final hangout = g['hangoutLink'] as String?;
+      if (hangout != null) {
+        await (_db.update(
+          _db.events,
+        )..where((e) => e.id.equals(localId))).write(
+          EventsCompanion(meetUrl: Value(hangout)),
+        );
+      }
+      await _mergeAttendees(localId, g);
     }
     return n;
+  }
+
+  Future<void> _mergeAttendees(String eventId, Map<String, dynamic> g) async {
+    final atts = g['attendees'] as List?;
+    if (atts == null) return;
+    await _db.transaction(() async {
+      await (_db.delete(
+        _db.eventAttendees,
+      )..where((a) => a.eventId.equals(eventId))).go();
+      for (final a in atts) {
+        final m = a as Map<String, dynamic>;
+        final email = m['email'] as String?;
+        if (email == null || email.isEmpty) continue;
+        await _db
+            .into(_db.eventAttendees)
+            .insert(
+              EventAttendeesCompanion.insert(
+                id: newId(),
+                eventId: eventId,
+                email: email,
+                rsvp: Value(m['responseStatus'] as String?),
+              ),
+            );
+      }
+    });
   }
 
   Future<int> _pullTasks(GoogleApiClient client) async {
