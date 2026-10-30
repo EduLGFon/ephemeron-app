@@ -304,7 +304,20 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
       endUtc: _allDay ? null : _end.toUtc(),
       rrule: scope == EditScope.single ? null : () => _rrule,
     );
-    if (mounted) Navigator.of(context).pop();
+    if (mounted) {
+      try {
+        final window = ref.read(calendarStateProvider);
+        await ref
+            .read(occurrenceRepositoryProvider)
+            .rebuildWindow(
+              windowStartUtc: window.fromUtc,
+              windowEndUtc: window.toUtc,
+            );
+      } catch (_) {
+        // Best-effort; next navigation rebuilds.
+      }
+      if (mounted) Navigator.of(context).pop();
+    }
   }
 
   @override

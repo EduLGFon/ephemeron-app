@@ -1,5 +1,6 @@
 // Event details sheet: view, edit, delete with scope, duplicate.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -62,7 +63,13 @@ class _Details extends ConsumerWidget {
                 ListTile(
                   leading: const Icon(Icons.videocam_outlined),
                   title: Text(e.meetUrl!),
-                  subtitle: const Text('Google Meet'),
+                  subtitle: const Text('Google Meet (tap to copy)'),
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: e.meetUrl!));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Meet link copied')),
+                    );
+                  },
                 ),
               if (e.notes != null && e.notes!.isNotEmpty)
                 ListTile(
