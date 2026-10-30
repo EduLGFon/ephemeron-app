@@ -385,6 +385,22 @@ class SyncEngine {
         );
       }
     }
+    // Remove duplicate google calendars left by earlier (buggy) runs.
+    final all = await (_db.select(
+      _db.calendars,
+    )..where((c) => c.source.equals('google'))).get();
+    final seen = <String>{};
+    for (final c in all) {
+      final key = c.remoteId;
+      if (key == null) continue;
+      if (seen.contains(key)) {
+        await (_db.delete(
+          _db.calendars,
+        )..where((x) => x.id.equals(c.id))).go();
+      } else {
+        seen.add(key);
+      }
+    }
     return (remote.length, created);
   }
 

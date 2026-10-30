@@ -44,6 +44,25 @@ const _googleColorMap = <String, Color>{
 
 Color _googleColor(String id) => _googleColorMap[id] ?? Colors.blue;
 
+String _summarizeRrule(String rrule) {
+  try {
+    final r = RecurrenceRule.parse(rrule);
+    final freq = r.freq[0] + r.freq.substring(1).toLowerCase();
+    final interval = r.interval > 1 ? ' every ${r.interval}' : '';
+    final days = r.byDay.isNotEmpty ? ' on ${r.byDay.join(', ')}' : '';
+    final end = r.count != null
+        ? ' for ${r.count} times'
+        : r.untilUtc != null
+        ? ' until ${r.untilUtc!.toLocal().toString().split(' ').first}'
+        : r.untilDate != null
+        ? ' until ${r.untilDate}'
+        : '';
+    return '$freq$interval$days$end';
+  } catch (_) {
+    return rrule;
+  }
+}
+
 const _repeatPresets = {
   'Does not repeat': null,
   'Daily': 'FREQ=DAILY',
@@ -385,9 +404,13 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                 items: [
                   for (final e in _repeatPresets.entries)
                     DropdownMenuItem(value: e.value, child: Text(e.key)),
-                  const DropdownMenuItem(
+                  DropdownMenuItem(
                     value: '__custom__',
-                    child: Text('Custom RRULE'),
+                    child: Text(
+                      _rrule == null
+                          ? 'Custom'
+                          : 'Custom: ${_summarizeRrule(_rrule!)}',
+                    ),
                   ),
                 ],
                 onChanged: (v) async {
@@ -646,27 +669,6 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                   } else {
                     setState(() => _rrule = v);
                   }
-                },
-              ),
-              const SizedBox(height: 8),
-              Consumer(
-                builder: (ctx, ref, _) {
-                  final cals = ref.watch(calendarsProvider);
-                  return cals.maybeWhen(
-                    data: (list) => DropdownButtonFormField<String?>(
-                      initialValue: _calendarId,
-                      decoration: const InputDecoration(
-                        labelText: 'Calendar',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: [
-                        for (final c in list)
-                          DropdownMenuItem(value: c.id, child: Text(c.name)),
-                      ],
-                      onChanged: (v) => setState(() => _calendarId = v),
-                    ),
-                    orElse: () => const SizedBox.shrink(),
-                  );
                 },
               ),
               const SizedBox(height: 8),
