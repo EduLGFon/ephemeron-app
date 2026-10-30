@@ -1,7 +1,11 @@
 // Notes screen: nested folders with breadcrumbs, note list with counts,
 // FTS search with snippets, trash, new note / new folder.
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:archive/archive.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../application/notes_providers.dart';
@@ -39,6 +43,11 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const _TrashScreen()),
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.archive_outlined),
+            tooltip: 'Export ZIP',
+            onPressed: _exportZip,
           ),
         ],
       ),
@@ -151,7 +160,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
           const SizedBox(height: 8),
           FloatingActionButton(
             heroTag: 'new-note',
-            onPressed: _newNote,
+            onPressed: _newFromTemplate,
             child: const Icon(Icons.add),
           ),
         ],
@@ -170,14 +179,44 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
     return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis);
   }
 
-  Future<void> _newNote() async {
+  Future<void> _newNote({String template = ''}) async {
     final repo = ref.read(noteRepositoryProvider);
     final id = await repo.createNote(
-      title: '',
+      title: template.isEmpty ? '' : 'Meeting notes',
+      body: template.isEmpty ? null : template,
       folderId: _folderId,
       linkedEventId: widget.linkedEventId,
     );
     if (mounted) _openById(id);
+  }
+
+  Future<void> _newFromTemplate() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('Blank'),
+              onTap: () => Navigator.of(ctx).pop('blank'),
+            ),
+            ListTile(
+              title: const Text('Meeting notes'),
+              onTap: () => Navigator.of(ctx).pop('meeting'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == 'meeting') {
+      await _newNote(
+        template:
+            '## Attendees\n\n- \n\n## Agenda\n\n- \n\n## Notes\n\n',
+      );
+    } else if (choice == 'blank') {
+      await _newNote();
+    }
   }
 
   void _openNote(Note n) => _openById(n.id);
@@ -186,6 +225,35 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
     Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => NoteEditorScreen(noteId: id)),
     );
+  }
+
+  Future<void> _exportZip() async {
+    try {
+      final notes = ref.read(folderNotesProvider(_folderId)).value ?? const [];
+      final archive = Archive();
+      for (final n in notes) {
+        final name = (n.title.isEmpty ? 'untitled' : n.title)
+            .replaceAll(RegExp(r'[\\\\/:*?"<>|]'), '_');
+        final body = n.body ?? '';
+        archive.addFile(ArchiveFile('$name.md', body.length, body.codeUnits));
+      }
+      final data = ZipEncoder().encode(archive);
+      if (data == null) return;
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/notes-export.zip');
+      await file.writeAsBytes(data);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Exported to ${file.path}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _newFolder() async {

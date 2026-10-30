@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../../../domain/habits/date_key.dart';
@@ -207,6 +208,7 @@ class _RunningViewState extends ConsumerState<_RunningView> {
   @override
   void initState() {
     super.initState();
+    WakelockPlus.enable();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -215,6 +217,7 @@ class _RunningViewState extends ConsumerState<_RunningView> {
   @override
   void dispose() {
     _ticker?.cancel();
+    WakelockPlus.disable();
     super.dispose();
   }
 

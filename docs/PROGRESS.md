@@ -25,7 +25,7 @@ Checklist:
 - [x] Task/list/tag/smart-list repository with outbox rows, trash, restore, purge, subtasks
 - [x] Tasks UI: lists filter, overdue + reschedule-all, swipe complete/delete, editor, trash, completed, matrix
 - [x] Undo snackbars (6 s delete; complete; reopen from completed)
-- [ ] UI for move-between-lists undo, smart-list builder screen (repo supports filters; builder deferred to Phase 9 polish)
+- [ ] UI for move-between-lists undo (smart-list builder screen done)
 Acceptance: full local task flow offline with undo. Status: done. Verified: `flutter test` 32 passed, `flutter analyze` clean.
 Note: parallel owner commit 1928290 restructured task screens; integrated on top.
 
@@ -78,7 +78,7 @@ Checklist:
 - [x] FTS5 search with highlighted snippets
 - [x] Attachments: content-addressed store + orphan cleanup (picker UI deferred, no file_picker offline)
 - [x] Event-linked notes: add from event details, list in details, overflow notes for >8000 chars
-- [ ] Backlinks UI, note templates, biometric lock, ZIP export, .md import (deferred to Phase 9)
+- [ ] Backlinks UI, biometric lock, ZIP export, .md import (note templates done)
 - [ ] Image compression to WebP (uses original bytes; image pkg added for Phase 9)
 Acceptance: notes usable offline with folders, search, preview. Status: done. Verified: `flutter test` 54 passed, `flutter analyze` clean.
 New deps (pinned exact): markdown 7.3.1 (parser only, custom renderer), image 4.3.0 (reserved for attachment compression). Size check deferred (no Android SDK).

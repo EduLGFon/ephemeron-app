@@ -66,6 +66,11 @@ class TasksScreen extends ConsumerWidget {
                     label: const Text('+ List'),
                     onPressed: () => _addList(context, ref),
                   ),
+                  const SizedBox(width: 8),
+                  ActionChip(
+                    label: const Text('+ Smart list'),
+                    onPressed: () => _addSmartList(context, ref),
+                  ),
                 ],
               ),
             ),
@@ -125,6 +130,49 @@ class TasksScreen extends ConsumerWidget {
     return '${n.year.toString().padLeft(4, '0')}-'
         '${n.month.toString().padLeft(2, '0')}-'
         '${n.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _addSmartList(BuildContext context, WidgetRef ref) async {
+    final nameCtrl = TextEditingController();
+    bool showCompleted = false;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('New smart list'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: 'Name'),
+              ),
+              CheckboxListTile(
+                value: showCompleted,
+                onChanged: (v) => setState(() => showCompleted = v ?? false),
+                title: const Text('Include completed'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Create'),
+            ),
+          ],
+        ),
+      ),
+    );
+    final name = nameCtrl.text.trim();
+    if (ok == true && name.isNotEmpty) {
+      await ref.read(taskRepositoryProvider).createSmartList(name, {
+        'showCompleted': showCompleted,
+      });
+    }
   }
 
   Future<void> _addList(BuildContext context, WidgetRef ref) async {
