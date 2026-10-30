@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../settings/application/settings_providers.dart';
 import '../application/calendar_providers.dart';
 import '../../../data/drift/app_database.dart';
+import '../../../data/services/device_calendar_import_service.dart';
 
 List<MapEntry<String, List<Calendar>>> _groupCalendars(List<Calendar> cals) {
   final map = <String, List<Calendar>>{};
@@ -51,6 +52,11 @@ class CalendarSettingsScreen extends ConsumerWidget {
                   leading: const Icon(Icons.add),
                   title: const Text('Add local calendar'),
                   onTap: () => _addCalendar(context, ref),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.download_outlined),
+                  title: const Text('Import from device calendars'),
+                  onTap: () => _importDeviceCalendars(context, ref),
                 ),
               ],
             ),
@@ -100,6 +106,114 @@ class CalendarSettingsScreen extends ConsumerWidget {
   Future<int> _weekStart(WidgetRef ref) async {
     final repo = await ref.read(settingsRepositoryProvider.future);
     return repo.weekStart;
+  }
+
+  Future<void> _importDeviceCalendars(BuildContext context, WidgetRef ref) async {
+    final service = DeviceCalendarImportService(ref.read(eventRepositoryProvider));
+    if (!service.isSupported) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Device calendars not supported here')),
+        );
+      }
+      return;
+    }
+    final granted = await service.requestPermission();
+    if (granted == 0) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Calendar permission denied')),
+        );
+      }
+      return;
+    }
+    final deviceCals = await service.listCalendars();
+    if (deviceCals.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No device calendars found')),
+        );
+      }
+      return;
+    }
+    final appCals =
+        (await ref.read(eventRepositoryProvider).watchCalendars().first)
+            .where((c) => c.source == 'device')
+            .toList();
+    if (appCals.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Create a local calendar first')),
+        );
+      }
+      return;
+    }
+    if (!context.mounted) return;
+    String targetId = appCals.first.id;
+    final selected = <String>{};
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Import device calendars'),
+          content: SizedBox(
+            width: 400,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    initialValue: targetId,
+                    items: [
+                      for (final c in appCals)
+                        DropdownMenuItem(value: c.id, child: Text(c.name)),
+                    ],
+                    onChanged: (v) => setState(() => targetId = v ?? targetId),
+                    decoration: const InputDecoration(labelText: 'Target calendar'),
+                  ),
+                  const SizedBox(height: 8),
+                  for (final dc in deviceCals)
+                    CheckboxListTile(
+                      value: selected.contains(dc.id),
+                      onChanged: (v) => setState(() {
+                        if (v == true) {
+                          selected.add(dc.id);
+                        } else {
+                          selected.remove(dc.id);
+                        }
+                      }),
+                      title: Text(dc.name),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Import'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true || selected.isEmpty) return;
+    int total = 0;
+    for (final id in selected) {
+      total += await service.importCalendar(
+        deviceCalendarId: id,
+        targetCalendarId: targetId,
+      );
+    }
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Imported $total events')),
+      );
+    }
   }
 
   Future<void> _addCalendar(BuildContext context, WidgetRef ref) async {

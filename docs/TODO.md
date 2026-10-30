@@ -8,18 +8,14 @@
 
 ## Deferred feature work (see PROGRESS.md for phase status)
 - Smart-list builder UI; move-between-lists undo snackbar.
-- Device-calendar import, RSVP/attendees UI, Meet links, conflict hints.
+- RSVP/attendees UI, conflict hints (Meet links + device-calendar import done).
 - Periodic background sync (needs workmanager); alarm sound/vibration/flashlight polish; iOS/desktop variants detail.
 - Note backlinks UI, templates, biometric lock, ZIP export, .md import; image WebP compression (image pkg reserved).
 - Habit/focus: keep-screen-on, DND toggle, OLED black mode, ongoing notification chronometer, CSV stats export, monthly focus screen, focus stats by tag/habit/time-of-day.
 - Backend: periodic auto-sync trigger, export-before-delete flow (JSON backup ships first).
 
 ## Phase 9 candidates (in priority order)
-1. JSON backup + restore (unblocks export-before-delete).
-2. Global search across entities.
-3. Onboarding (permissions at moment of need).
-4. Localization scaffolding (ARB EN/PT), accessibility pass.
-5. Widgets/shortcuts/share target; desktop/iOS/web parity; multiple Google accounts.
+1. Widgets/shortcuts/share target; desktop/iOS/web parity; multiple Google accounts.
 
 ## Phase 10 (release hardening)
 - Security review: code-level done (docs/SECURITY_REVIEW.md); Play

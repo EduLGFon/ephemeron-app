@@ -37,7 +37,7 @@ Checklist:
 - [x] Event CRUD with editor (calendar, all-day/timed, repeat presets + custom RRULE, keep/reset per-event prompt)
 - [x] Drag-to-move with 15-min snap (scope-asked for recurring), tap-empty to create
 - [x] Local calendars management, week-start and default-duration settings
-- [ ] Device-calendar import, RSVP/attendees UI, Meet links, conflict hints (deferred to Phase 9)
+- [x] Device-calendar import (device_calendar_plus, permission-gated, Android/iOS; degrades elsewhere) - [ ] RSVP/attendees UI, Meet links, conflict hints (deferred)
 - [ ] 60 fps benchmark on low-end device (env limit; custom painters + RepaintBoundary used)
 Acceptance: local calendar usable offline with correct scope semantics. Status: done. Verified: `flutter test` 39 passed, `flutter analyze` clean.
 
