@@ -10,7 +10,9 @@ Future<void> enqueueOutbox(
   required String entityId,
   required String op,
 }) {
-  return db.into(db.outbox).insert(
+  return db
+      .into(db.outbox)
+      .insert(
         OutboxCompanion.insert(
           id: newId(),
           entity: entity,

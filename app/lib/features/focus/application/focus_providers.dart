@@ -1,3 +1,4 @@
+import 'package:ephemeron/core/time/time.dart';
 // Riverpod providers for focus. UI reads only from Drift streams;
 // the running session is a Future invalidated on start/finish.
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,7 +28,7 @@ final focusTodayMinutesProvider = FutureProvider<int>((ref) {
   final now = DateTime.now().toUtc();
   return ref
       .watch(focusRepositoryProvider)
-      .totalMinutes(_dayStartUtc(now), now.millisecondsSinceEpoch + 60000);
+      .totalMinutes(_dayStartUtc(now), now.millisecondsSinceEpoch + msPerMinute);
 });
 
 /// Minutes per day for the last 7 days, oldest first.
@@ -38,7 +39,7 @@ final focusWeekMinutesProvider = FutureProvider<List<int>>((ref) async {
   for (var i = 6; i >= 0; i--) {
     final day = now.subtract(Duration(days: i));
     final start = _dayStartUtc(day);
-    out.add(await repo.totalMinutes(start, start + 86400000));
+    out.add(await repo.totalMinutes(start, start + msPerDay));
   }
   return out;
 });
@@ -65,7 +66,7 @@ final focusMonthMinutesProvider = FutureProvider.family<List<int>, DateTime>((
     if (clampedEnd <= start) continue;
     // Attribute clipped minutes to the start day (simple, documented).
     final day = DateTime.fromMillisecondsSinceEpoch(start, isUtc: true).day;
-    out[day - 1] += ((clampedEnd - start) / 60000).floor();
+    out[day - 1] += ((clampedEnd - start) / msPerMinute).floor();
   }
   return out;
 });
@@ -79,14 +80,14 @@ Future<List<(String, int)>> _groupMinutes(
   String fallback,
 ) async {
   final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-  final from = now - 30 * 86400000;
+  final from = now - 30 * msPerDay;
   final sessions = await repo.sessionsInRange(from, now);
   final totals = <String, int>{};
   for (final s in sessions) {
     final end = s.endUtc ?? now;
     if (end <= s.startUtc) continue;
     final key = keyOf(s) ?? fallback;
-    totals[key] = (totals[key] ?? 0) + ((end - s.startUtc) / 60000).floor();
+    totals[key] = (totals[key] ?? 0) + ((end - s.startUtc) / msPerMinute).floor();
   }
   final rows = [
     for (final e in totals.entries) (labels[e.key] ?? e.key, e.value),
@@ -119,7 +120,7 @@ final focusStatsByTimeOfDayProvider = FutureProvider<List<(String, int)>>((
 ) async {
   final repo = ref.watch(focusRepositoryProvider);
   final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-  final sessions = await repo.sessionsInRange(now - 30 * 86400000, now);
+  final sessions = await repo.sessionsInRange(now - 30 * msPerDay, now);
   final totals = <String, int>{
     'Morning': 0,
     'Afternoon': 0,
@@ -137,7 +138,7 @@ final focusStatsByTimeOfDayProvider = FutureProvider<List<(String, int)>>((
         : hour >= 18 && hour < 23
         ? 'Evening'
         : 'Night';
-    totals[bucket] = totals[bucket]! + ((end - s.startUtc) / 60000).floor();
+    totals[bucket] = totals[bucket]! + ((end - s.startUtc) / msPerMinute).floor();
   }
   return totals.entries.map((e) => (e.key, e.value)).toList();
 });

@@ -299,7 +299,7 @@ class EventRepository {
   /// when only the first occurrence remains.
   Future<void> _truncateMaster(Event master, int cutMs) async {
     final until = master.isAllDay
-        ? _dateOf(cutMs - 86400000)
+        ? _dateOf(cutMs - msPerDay)
         : _untilUtc(cutMs - 1000);
     final base = _stripCount(master.rrule ?? '');
     final rrule = base.isEmpty ? '' : '$base;UNTIL=$until';

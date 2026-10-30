@@ -1,3 +1,4 @@
+import 'package:ephemeron/core/time/time.dart';
 // Focus screen: timestamp-based timer (elapsed computed per frame
 // while visible), one native end alarm, stats, session history.
 import 'dart:async';
@@ -24,7 +25,7 @@ Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
   final buf = StringBuffer('start,end,minutes,phase,note\n');
   for (final s in sessions) {
     buf.writeln(
-      '${s.startUtc},${s.endUtc ?? ''},${s.endUtc == null ? '' : ((s.endUtc! - s.startUtc) / 60000).floor()},${s.phase ?? ''},${(s.note ?? '').replaceAll(',', ';')}',
+      '${s.startUtc},${s.endUtc ?? ''},${s.endUtc == null ? '' : ((s.endUtc! - s.startUtc) / msPerMinute).floor()},${s.phase ?? ''},${(s.note ?? '').replaceAll(',', ';')}',
     );
   }
   await Clipboard.setData(ClipboardData(text: buf.toString()));
@@ -277,12 +278,12 @@ class _RunningViewState extends ConsumerState<_RunningView> {
       valueListenable: _now,
       builder: (context, now, _) {
         final target = widget.session.targetEndUtc;
-        final elapsedMin = ((now - widget.session.startUtc) / 60000).floor();
+        final elapsedMin = ((now - widget.session.startUtc) / msPerMinute).floor();
         final remainingMs = target == null ? 0 : target - now;
         final finished = target != null && remainingMs <= 0;
         final remaining = finished
             ? '00:00'
-            : '${(remainingMs ~/ 60000).toString().padLeft(2, '0')}:${((remainingMs % 60000) ~/ 1000).toString().padLeft(2, '0')}';
+            : '${(remainingMs ~/ msPerMinute).toString().padLeft(2, '0')}:${((remainingMs % msPerMinute) ~/ 1000).toString().padLeft(2, '0')}';
         return Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -340,7 +341,7 @@ class _RunningViewState extends ConsumerState<_RunningView> {
     );
   }
 
-  bool _isAbandoned(int now) => now - widget.session.startUtc > 12 * 3600000;
+  bool _isAbandoned(int now) => now - widget.session.startUtc > 12 * msPerHour;
 
   Future<void> _finish(
     BuildContext context,
@@ -490,7 +491,7 @@ class _SessionTile extends StatelessWidget {
           ).toLocal();
     final min = end == null
         ? null
-        : ((session.endUtc! - session.startUtc) / 60000).floor();
+        : ((session.endUtc! - session.startUtc) / msPerMinute).floor();
     return ListTile(
       dense: true,
       title: Text(

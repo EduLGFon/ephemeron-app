@@ -2,6 +2,7 @@
 // window from occurrence_cache plus timed tasks.
 import 'package:drift/drift.dart';
 import 'package:ephemeron/core/ids/ids.dart';
+import 'package:ephemeron/core/time/time.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:ephemeron/domain/alarms/alarm_window.dart';
 
@@ -39,7 +40,7 @@ class AlarmRepository {
           AlarmCandidate(
             sourceType: 'event',
             sourceId: '${e.id}@${o.startUtc}',
-            fireAtUtcMs: o.startUtc - off * 60000,
+            fireAtUtcMs: o.startUtc - off * msPerMinute,
             preset: preset,
           ),
         );
@@ -150,7 +151,7 @@ class AlarmRepository {
 
   Future<void> snoozeRequest(int requestCode, {int minutes = 10}) async {
     final fireAt =
-        DateTime.now().toUtc().millisecondsSinceEpoch + minutes * 60000;
+        DateTime.now().toUtc().millisecondsSinceEpoch + minutes * msPerMinute;
     await (_db.update(
       _db.alarmsIndex,
     )..where((a) => a.requestCode.equals(requestCode))).write(

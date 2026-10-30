@@ -9,3 +9,7 @@ String dateKey(DateTime local) =>
 int epochMs(DateTime utc) => utc.toUtc().millisecondsSinceEpoch;
 
 int nowMs() => DateTime.now().toUtc().millisecondsSinceEpoch;
+
+const int msPerMinute = 60000;
+const int msPerHour = 3600000;
+const int msPerDay = 86400000;

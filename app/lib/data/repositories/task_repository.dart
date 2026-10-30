@@ -136,11 +136,9 @@ class TaskRepository {
         .watch();
   }
 
-  String _like(String query) =>
-      '%${sanitizeSearch(query)}%';
+  String _like(String query) => '%${sanitizeSearch(query)}%';
 
-  bool _blank(String query) =>
-      sanitizeSearch(query).trim().isEmpty;
+  bool _blank(String query) => sanitizeSearch(query).trim().isEmpty;
 
   /// Global-search hits: open and completed tasks, newest first.
   Future<List<Task>> searchTasks(String query, {int limit = 20}) async {

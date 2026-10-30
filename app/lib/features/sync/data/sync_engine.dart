@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:ephemeron/core/ids/ids.dart';
+import 'package:ephemeron/core/time/time.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:ephemeron/data/mappers/google_mappers.dart';
 import 'package:ephemeron/data/remote/google_api_client.dart';
@@ -176,8 +177,8 @@ class SyncEngine {
             // Re-fetch series etag and re-apply intent, not blind overwrite.
             final page = await client.eventsList(
               calId,
-              timeMin: _iso(_now() - 30 * 86400000),
-              timeMax: _iso(_now() + 90 * 86400000),
+              timeMin: _iso(_now() - 30 * msPerDay),
+              timeMax: _iso(_now() + 90 * msPerDay),
             );
             final remote = page.items
                 .where((m) => m['id'] == e.remoteId)
@@ -529,8 +530,8 @@ class SyncEngine {
   }) async {
     final page = await client.eventsList(
       cal.remoteId ?? cal.id,
-      timeMin: _iso(_now() - 30 * 86400000),
-      timeMax: _iso(_now() + 90 * 86400000),
+      timeMin: _iso(_now() - 30 * msPerDay),
+      timeMax: _iso(_now() + 90 * msPerDay),
     );
     debugPrint(
       '[sync] full resync got ${page.items.length} items (has remoteId=${cal.remoteId != null})',

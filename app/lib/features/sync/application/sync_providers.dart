@@ -152,7 +152,8 @@ class GoogleAutoSyncService {
       final repo = await _ref.read(settingsRepositoryProvider.future);
       intervalMin = repo.syncIntervalMin;
       final lowBattery = await PowerSavingManager.instance.isLowBattery;
-      final savePower = repo.powerSavingMode == PowerSavingMode.on ||
+      final savePower =
+          repo.powerSavingMode == PowerSavingMode.on ||
           (repo.powerSavingMode == PowerSavingMode.auto && lowBattery);
       // Battery-aware: halve frequency when power saving is active.
       if (savePower && intervalMin > 0) {
@@ -254,7 +255,8 @@ class BackendAutoSyncService {
       final repo = await _ref.read(settingsRepositoryProvider.future);
       intervalMin = repo.backendSyncIntervalMin;
       final lowBattery = await PowerSavingManager.instance.isLowBattery;
-      final savePower = repo.powerSavingMode == PowerSavingMode.on ||
+      final savePower =
+          repo.powerSavingMode == PowerSavingMode.on ||
           (repo.powerSavingMode == PowerSavingMode.auto && lowBattery);
       if (savePower && intervalMin > 0) {
         intervalMin = intervalMin * 2;

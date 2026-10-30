@@ -1,3 +1,4 @@
+import 'package:ephemeron/core/time/time.dart';
 // Rolling alarm window (PLAN 7.1): keep the next 48 h plus the next N
 // future alarms registered. Pure Dart; the native module mirrors this.
 class AlarmCandidate {
@@ -38,7 +39,7 @@ List<PlannedAlarm> planAlarmWindow(
   int horizonHours = 48,
   int maxFuture = 60,
 }) {
-  final horizonMs = nowUtcMs + horizonHours * 3600000;
+  final horizonMs = nowUtcMs + horizonHours * msPerHour;
   final future = candidates.where((c) => c.fireAtUtcMs > nowUtcMs).toList()
     ..sort((a, b) => a.fireAtUtcMs.compareTo(b.fireAtUtcMs));
   final inHorizon = future.where((c) => c.fireAtUtcMs <= horizonMs).toList();

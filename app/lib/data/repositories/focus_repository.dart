@@ -3,6 +3,7 @@
 // survives app kill, reboot and sleep.
 import 'package:drift/drift.dart';
 import 'package:ephemeron/core/ids/ids.dart';
+import 'package:ephemeron/core/time/time.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
 
 class FocusRepository {
@@ -27,7 +28,7 @@ class FocusRepository {
             taskId: Value(taskId),
             habitId: Value(habitId),
             startUtc: now,
-            targetEndUtc: Value(now + durationMin * 60000),
+            targetEndUtc: Value(now + durationMin * msPerMinute),
             phase: Value(phase),
             createdAt: now,
             updatedAt: now,
@@ -63,7 +64,7 @@ class FocusRepository {
         updatedAt: Value(end),
       ),
     );
-    return ((end - s.startUtc) / 60000).floor().clamp(0, 1 << 30);
+    return ((end - s.startUtc) / msPerMinute).floor().clamp(0, 1 << 30);
   }
 
   /// Deletes a session without credit (discard).
@@ -78,7 +79,7 @@ class FocusRepository {
     for (final r in rows) {
       final end = r.endUtc ?? toUtc;
       if (end > r.startUtc) {
-        total += ((end - r.startUtc) / 60000).floor();
+        total += ((end - r.startUtc) / msPerMinute).floor();
       }
     }
     return total;

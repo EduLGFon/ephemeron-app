@@ -457,18 +457,19 @@ class _TrashScreen extends ConsumerWidget {
           if (notes.isEmpty) {
             return const Center(child: Text('Trash is empty'));
           }
-          return ListView(
-            children: [
-              for (final n in notes)
-                ListTile(
-                  title: Text(n.title),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.restore),
-                    onPressed: () =>
-                        ref.read(noteRepositoryProvider).restoreNote(n.id),
-                  ),
+          return ListView.builder(
+            itemCount: notes.length,
+            itemBuilder: (context, i) {
+              final n = notes[i];
+              return ListTile(
+                title: Text(n.title),
+                trailing: IconButton(
+                  icon: const Icon(Icons.restore),
+                  onPressed: () =>
+                      ref.read(noteRepositoryProvider).restoreNote(n.id),
                 ),
-            ],
+              );
+            },
           );
         },
       ),
