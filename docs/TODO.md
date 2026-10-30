@@ -16,7 +16,7 @@
 
 ## Deep research remediation (partial)
 
-Completed in this pass: privacy debugPrint cleanup, import order fix, O(N^2) overdue split, agenda FutureBuilder removal, Google API pagination, shared Google color map, unused file removal, formatting, focus timer ValueNotifier.
+Completed in this pass: privacy debugPrint cleanup, import order fix, O(N^2) overdue split, agenda FutureBuilder removal, Google API pagination, shared Google color map, unused file removal, formatting, focus timer ValueNotifier, RepaintBoundary on timeline painters, power-saving interval adjustment, ARB metadata parity, tap-target sizing, sync title theme color, settings error retry state, markdown link handling.
 
 Remaining (not yet fixed):
 - ValueNotifier for sync title ticker; RepaintBoundary additions; ListView.builder conversions.

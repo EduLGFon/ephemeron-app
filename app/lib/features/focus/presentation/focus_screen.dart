@@ -288,54 +288,54 @@ class _RunningViewState extends ConsumerState<_RunningView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-          if (_isAbandoned(now))
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(
-                  'Recovered after app restart. Finishing keeps $elapsedMin min.',
+              if (_isAbandoned(now))
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      'Recovered after app restart. Finishing keeps $elapsedMin min.',
+                    ),
+                  ),
+                ),
+              if (finished)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      'Time is up - $elapsedMin min elapsed.',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 24),
+              Center(
+                child: Semantics(
+                  label: 'Focus time remaining: $remaining',
+                  child: Text(
+                    remaining,
+                    style: Theme.of(context).textTheme.displayLarge,
+                  ),
                 ),
               ),
-            ),
-          if (finished)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
+              Center(
                 child: Text(
-                  'Time is up - $elapsedMin min elapsed.',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  '${widget.session.phase ?? 'focus'} - $elapsedMin min elapsed',
                 ),
               ),
-            ),
-          const SizedBox(height: 24),
-          Center(
-            child: Semantics(
-              label: 'Focus time remaining: $remaining',
-              child: Text(
-                remaining,
-                style: Theme.of(context).textTheme.displayLarge,
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: () => _finish(context, ref, elapsedMin),
+                icon: const Icon(Icons.stop),
+                label: Text(finished ? 'Complete' : 'Finish'),
               ),
-            ),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: () => _discard(context, ref),
+                child: const Text('Discard session'),
+              ),
+            ],
           ),
-          Center(
-            child: Text(
-              '${widget.session.phase ?? 'focus'} - $elapsedMin min elapsed',
-            ),
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: () => _finish(context, ref, elapsedMin),
-            icon: const Icon(Icons.stop),
-            label: Text(finished ? 'Complete' : 'Finish'),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: () => _discard(context, ref),
-            child: const Text('Discard session'),
-          ),
-        ],
-      ),
-    );
+        );
       },
     );
   }

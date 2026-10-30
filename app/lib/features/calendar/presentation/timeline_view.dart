@@ -230,7 +230,10 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
                                       _tapEmpty(d.localPosition, colW),
                                   child: RepaintBoundary(
                                     child: CustomPaint(
-                                      size: Size(cons.maxWidth, 24 * hourHeight),
+                                      size: Size(
+                                        cons.maxWidth,
+                                        24 * hourHeight,
+                                      ),
                                       painter: _TimelinePainter(
                                         anchor: widget.anchor,
                                         dayCount: widget.dayCount,
@@ -247,7 +250,10 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
                                 IgnorePointer(
                                   child: RepaintBoundary(
                                     child: CustomPaint(
-                                      size: Size(cons.maxWidth, 24 * hourHeight),
+                                      size: Size(
+                                        cons.maxWidth,
+                                        24 * hourHeight,
+                                      ),
                                       painter: _NowLinePainter(
                                         anchor: widget.anchor,
                                         dayCount: widget.dayCount,

@@ -172,7 +172,18 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
 
   Future<void> _save() async {
     final title = _title.text.trim();
-    if (title.isEmpty || _calendarId == null) return;
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Title is required.')),
+      );
+      return;
+    }
+    if (_calendarId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a calendar.')),
+      );
+      return;
+    }
     final repo = ref.read(eventRepositoryProvider);
     // Conflict hint: warn if overlapping a busy event.
     if (!_allDay) {

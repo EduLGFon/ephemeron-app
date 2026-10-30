@@ -133,9 +133,7 @@ class HttpGoogleApiClient implements GoogleApiClient {
       );
       if (r.statusCode != 200) _throw(r);
       final body = jsonDecode(r.body) as Map<String, dynamic>;
-      all.addAll(
-        ((body['items'] as List?) ?? []).cast<Map<String, dynamic>>(),
-      );
+      all.addAll(((body['items'] as List?) ?? []).cast<Map<String, dynamic>>());
       pageToken = body['nextPageToken'] as String?;
       if (body['nextSyncToken'] != null) {
         nextSyncToken = body['nextSyncToken'] as String;
@@ -223,9 +221,7 @@ class HttpGoogleApiClient implements GoogleApiClient {
       );
       if (r.statusCode != 200) _throw(r);
       final body = jsonDecode(r.body) as Map<String, dynamic>;
-      all.addAll(
-        ((body['items'] as List?) ?? []).cast<Map<String, dynamic>>(),
-      );
+      all.addAll(((body['items'] as List?) ?? []).cast<Map<String, dynamic>>());
       pageToken = body['nextPageToken'] as String?;
       pages++;
     } while (pageToken != null && pages < 50);

@@ -57,7 +57,6 @@ class AgendaView extends ConsumerWidget {
       },
     );
   }
-
 }
 
 String agendaDayKey(DateTime d) => dateKey(d);
