@@ -11,6 +11,7 @@ import '../../sync/application/sync_providers.dart';
 import '../application/settings_providers.dart';
 import '../data/backup_service.dart';
 import '../data/settings_repository.dart';
+import '../../../core/security/app_lock.dart';
 import '../../../core/theme/theme_tokens.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -178,13 +179,23 @@ class SettingsScreen extends ConsumerWidget {
               onChanged: (v) => _mutate(ref, (r) => r.setHaptics(v)),
             ),
             const _SectionHeader('Security'),
-            SwitchListTile(
-              title: const Text('Biometric app lock'),
-              subtitle: const Text(
-                'Require unlock on startup. Unsupported devices skip the lock.',
-              ),
-              value: repo.biometricLock,
-              onChanged: (v) => _mutate(ref, (r) => r.setBiometricLock(v)),
+            FutureBuilder<bool>(
+              future: AppLock.isSupported(),
+              builder: (context, snap) {
+                final supported = snap.data ?? false;
+                return SwitchListTile(
+                  title: const Text('Biometric app lock'),
+                  subtitle: Text(
+                    supported
+                        ? 'Require unlock on startup. Unsupported devices skip the lock.'
+                        : 'Not available on this device.',
+                  ),
+                  value: supported && repo.biometricLock,
+                  onChanged: supported
+                      ? (v) => _mutate(ref, (r) => r.setBiometricLock(v))
+                      : null,
+                );
+              },
             ),
             const _SectionHeader('Navigation'),
             ListTile(
