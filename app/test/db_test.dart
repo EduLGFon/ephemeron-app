@@ -34,9 +34,9 @@ void main() {
     await db.close();
   });
 
-  test('schema version is 3', () async {
+  test('schema version is 4', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
-    expect(db.schemaVersion, 3);
+    expect(db.schemaVersion, 4);
     await db.close();
   });
 }

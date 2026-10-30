@@ -17,7 +17,8 @@ class Calendars extends Table {
   IntColumn get deletedAt => integer().nullable()();
   BoolColumn get dirty => boolean().withDefault(const Constant(false))();
   TextColumn get remoteEtag => text().nullable()();
-
+  TextColumn get googleAccount => text().nullable()();
+ 
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -96,7 +97,8 @@ class TaskLists extends Table {
   IntColumn get deletedAt => integer().nullable()();
   BoolColumn get dirty => boolean().withDefault(const Constant(false))();
   TextColumn get remoteEtag => text().nullable()();
-
+  TextColumn get googleAccount => text().nullable()();
+ 
   @override
   Set<Column> get primaryKey => {id};
 }
