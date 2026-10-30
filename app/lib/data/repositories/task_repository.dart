@@ -5,6 +5,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 import 'package:ephemeron/core/ids/ids.dart';
+import 'package:ephemeron/core/search/sanitize.dart';
 import 'package:ephemeron/core/time/time.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:ephemeron/data/repositories/outbox_helper.dart';
@@ -136,10 +137,10 @@ class TaskRepository {
   }
 
   String _like(String query) =>
-      '%${query.replaceAll('%', '').replaceAll('_', '')}%';
+      '%${sanitizeSearch(query)}%';
 
   bool _blank(String query) =>
-      query.replaceAll('%', '').replaceAll('_', '').trim().isEmpty;
+      sanitizeSearch(query).trim().isEmpty;
 
   /// Global-search hits: open and completed tasks, newest first.
   Future<List<Task>> searchTasks(String query, {int limit = 20}) async {

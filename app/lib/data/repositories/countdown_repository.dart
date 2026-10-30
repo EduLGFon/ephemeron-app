@@ -1,12 +1,14 @@
 // Countdowns. Local-first.
 import 'package:drift/drift.dart';
 import 'package:ephemeron/core/ids/ids.dart';
+import 'package:ephemeron/core/search/sanitize.dart';
+import 'package:ephemeron/core/time/time.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
 
 class CountdownRepository {
   CountdownRepository(this._db);
   final AppDatabase _db;
-  int _now() => DateTime.now().toUtc().millisecondsSinceEpoch;
+  int _now() => nowMs();
 
   Future<String> createCountdown({
     required String title,
@@ -53,7 +55,7 @@ class CountdownRepository {
   }) async {
     final q = query.trim();
     if (q.isEmpty) return [];
-    final stripped = q.replaceAll('%', '').replaceAll('_', '').trim();
+    final stripped = sanitizeSearch(q);
     if (stripped.isEmpty) return [];
     final like = '%$stripped%';
     return (_db.select(_db.countdowns)

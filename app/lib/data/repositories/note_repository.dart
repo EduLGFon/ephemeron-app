@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:ephemeron/core/ids/ids.dart';
+import 'package:ephemeron/core/search/sanitize.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:image/image.dart' as img;
 
@@ -291,7 +292,7 @@ class NoteRepository {
   Future<List<NoteSearchHit>> searchNotes(String query) async {
     final q = query.trim();
     if (q.isEmpty) return [];
-    final stripped = q.replaceAll('%', '').replaceAll('_', '').trim();
+    final stripped = sanitizeSearch(q);
     if (stripped.isEmpty) return [];
     final like = '%$stripped%';
     final rows =

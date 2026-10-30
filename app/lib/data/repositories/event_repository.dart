@@ -3,6 +3,7 @@
 // UI reads occurrences via OccurrenceRepository streams.
 import 'package:drift/drift.dart';
 import 'package:ephemeron/core/ids/ids.dart';
+import 'package:ephemeron/core/search/sanitize.dart';
 import 'package:ephemeron/core/time/time.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:ephemeron/data/repositories/outbox_helper.dart';
@@ -82,7 +83,7 @@ class EventRepository {
   Future<List<Event>> searchEvents(String query, {int limit = 20}) async {
     final q = query.trim();
     if (q.isEmpty) return [];
-    final stripped = q.replaceAll('%', '').replaceAll('_', '').trim();
+    final stripped = sanitizeSearch(q);
     if (stripped.isEmpty) return [];
     final like = '%$stripped%';
     return (dbSelect()
