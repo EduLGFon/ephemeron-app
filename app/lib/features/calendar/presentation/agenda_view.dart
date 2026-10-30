@@ -48,7 +48,7 @@ class AgendaView extends ConsumerWidget {
                 FutureBuilder<Event?>(
                   future: _event(ref, o.eventId),
                   builder: (ctx, snap) {
-                    final t = snap.data?.title ?? '…';
+                    final t = o.title ?? snap.data?.title ?? '…';
                     final s = DateTime.fromMillisecondsSinceEpoch(o.startUtc);
                     return ListTile(
                       title: Text(t),
