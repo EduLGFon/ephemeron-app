@@ -78,7 +78,11 @@ class _QuadrantCard extends StatelessWidget {
         title: Text('$title (${tasks.length})'),
         initiallyExpanded: title == 'Do first',
         children: [
-          if (tasks.isEmpty) const ListTile(title: Text('Empty')),
+          if (tasks.isEmpty)
+            const ListTile(
+              leading: Icon(Icons.inbox_outlined),
+              title: Text('Empty'),
+            ),
           for (final t in tasks)
             ListTile(
               title: Text(t.title),

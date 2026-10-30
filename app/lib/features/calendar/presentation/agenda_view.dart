@@ -30,7 +30,16 @@ class AgendaView extends ConsumerWidget {
       ),
       data: (occs) {
         if (occs.isEmpty) {
-          return const Center(child: Text('Nothing scheduled'));
+          return const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.event_busy_outlined, size: 48),
+                SizedBox(height: 8),
+                Text('Nothing scheduled'),
+              ],
+            ),
+          );
         }
         final byDay = <String, List<OccurrenceCacheData>>{};
         for (final o in occs) {

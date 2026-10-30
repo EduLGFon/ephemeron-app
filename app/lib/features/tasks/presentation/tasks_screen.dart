@@ -454,7 +454,16 @@ class _CompletedScreen extends ConsumerWidget {
         error: (e, _) => const Center(child: Text('Could not load.')),
         data: (tasks) {
           if (tasks.isEmpty) {
-            return const Center(child: Text('Nothing completed yet'));
+            return const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle_outline, size: 48),
+                  SizedBox(height: 8),
+                  Text('Nothing completed yet'),
+                ],
+              ),
+            );
           }
           return ListView(
             children: [
