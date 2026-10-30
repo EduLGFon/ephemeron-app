@@ -1,6 +1,7 @@
-// N-day / day timeline: custom painter, current-time line, tap-empty
-// to create, tap event for details, vertical drag to move with
-// 15-minute snapping (scope-asked for recurring).
+// N-day / day timeline: hour gutter, day headers, all-day strip,
+// current-time line, tap-empty to create, tap event for details,
+// vertical drag on an event to move it with 15-minute snapping
+// (scope-asked for recurring).
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,6 +9,7 @@ import '../../../core/time/time.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/event_repository.dart';
 import '../application/calendar_providers.dart';
+import 'event_details_sheet.dart';
 import 'event_editor_sheet.dart';
 import 'scope_sheet.dart';
 
@@ -23,12 +25,63 @@ class TimelineView extends ConsumerStatefulWidget {
 
 class _TimelineViewState extends ConsumerState<TimelineView> {
   static const double hourHeight = 56;
+  static const double gutterWidth = 48;
+
+  late final ScrollController _scroll;
   String? _dragId;
   double _dragDy = 0;
+  Map<String, Event> _events = const {};
+  String _loadedKey = '';
+  bool _didJump = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll = ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeJump());
+  }
+
+  @override
+  void didUpdateWidget(TimelineView old) {
+    super.didUpdateWidget(old);
+    if (old.anchor != widget.anchor || old.dayCount != widget.dayCount) {
+      _didJump = false;
+      _dragId = null;
+      _dragDy = 0;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeJump());
+    }
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   DateTime _dayStart(int i) {
     final a = widget.anchor;
     return DateTime(a.year, a.month, a.day).add(Duration(days: i));
+  }
+
+  void _maybeJump() {
+    if (_didJump || !_scroll.hasClients) return;
+    _didJump = true;
+    final now = DateTime.now();
+    final todayIdx = _todayIndex(now);
+    // Scroll to current time when today is visible, else to 8am.
+    final hour = todayIdx >= 0 ? now.hour + now.minute / 60.0 : 8.0;
+    final y = (hour - 1).clamp(0.0, 23.0) * hourHeight;
+    _scroll.jumpTo(y.clamp(0.0, _scroll.position.maxScrollExtent));
+  }
+
+  int _todayIndex(DateTime now) {
+    for (var i = 0; i < widget.dayCount; i++) {
+      final d = _dayStart(i);
+      if (d.year == now.year && d.month == now.month && d.day == now.day) {
+        return i;
+      }
+    }
+    return -1;
   }
 
   @override
@@ -39,48 +92,158 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
       data: (v) => v,
       orElse: () => const <OccurrenceCacheData>[],
     );
-    final width = MediaQuery.of(context).size.width - 48;
-    final colW = width / widget.dayCount;
-    return SingleChildScrollView(
-      child: SizedBox(
-        height: 24 * hourHeight,
-        child: Row(
-          children: [
-            SizedBox(
-              width: 48,
-              child: CustomPaint(
-                painter: _HoursPainter(hourHeight: hourHeight),
-              ),
-            ),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (ctx, cons) {
-                  return GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTapUp: (d) => _tapEmpty(d.localPosition, colW),
-                    onVerticalDragStart: (d) =>
-                        _dragStart(d.localPosition, occs, colW),
-                    onVerticalDragUpdate: (d) =>
-                        setState(() => _dragDy += d.delta.dy),
-                    onVerticalDragEnd: (_) => _dragEnd(occs, colW),
-                    child: CustomPaint(
-                      size: Size(cons.maxWidth, 24 * hourHeight),
-                      painter: _TimelinePainter(
-                        occs: occs,
-                        anchor: widget.anchor,
-                        dayCount: widget.dayCount,
-                        hourHeight: hourHeight,
-                        now: DateTime.now(),
-                        dragId: _dragId,
-                        dragDy: _dragDy,
-                        primary: Theme.of(context).colorScheme.primary,
-                      ),
+    _maybeLoadEvents(occs);
+
+    final timed = <OccurrenceCacheData>[];
+    final allDay = <OccurrenceCacheData>[];
+    for (final o in occs) {
+      if (!_isVisibleDay(o.dayKey)) continue;
+      if (_isAllDay(o)) {
+        allDay.add(o);
+      } else {
+        timed.add(o);
+      }
+    }
+
+    return Column(
+      children: [
+        _DayHeader(
+          anchor: widget.anchor,
+          dayCount: widget.dayCount,
+          gutterWidth: gutterWidth,
+        ),
+        if (allDay.isNotEmpty)
+          _AllDayStrip(
+            occs: allDay,
+            anchor: widget.anchor,
+            dayCount: widget.dayCount,
+            events: _events,
+            gutterWidth: gutterWidth,
+            onTap: (id) => showEventDetails(context, id),
+          ),
+        Expanded(
+          child: SingleChildScrollView(
+            controller: _scroll,
+            child: SizedBox(
+              height: 24 * hourHeight,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _HourGutter(hourHeight: hourHeight, width: gutterWidth),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (ctx, cons) {
+                        final colW = cons.maxWidth / widget.dayCount;
+                        return Stack(
+                          children: [
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTapUp: (d) => _tapEmpty(d.localPosition, colW),
+                              child: CustomPaint(
+                                size: Size(cons.maxWidth, 24 * hourHeight),
+                                painter: _TimelinePainter(
+                                  anchor: widget.anchor,
+                                  dayCount: widget.dayCount,
+                                  hourHeight: hourHeight,
+                                  now: DateTime.now(),
+                                  primary: Theme.of(
+                                    context,
+                                  ).colorScheme.primary,
+                                ),
+                              ),
+                            ),
+                            for (final o in timed) _eventBlock(o, colW),
+                          ],
+                        );
+                      },
                     ),
-                  );
-                },
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  bool _isVisibleDay(String dayKeyValue) {
+    for (var i = 0; i < widget.dayCount; i++) {
+      if (dateKey(_dayStart(i)) == dayKeyValue) return true;
+    }
+    return false;
+  }
+
+  bool _isAllDay(OccurrenceCacheData o) {
+    final e = _events[o.eventId];
+    if (e != null) return e.isAllDay;
+    return (o.endUtc - o.startUtc) >= const Duration(hours: 23).inMilliseconds;
+  }
+
+  void _maybeLoadEvents(List<OccurrenceCacheData> occs) {
+    final ids = {for (final o in occs) o.eventId}.toList()..sort();
+    final key = ids.join(',');
+    if (key == _loadedKey) return;
+    _loadedKey = key;
+    if (ids.isEmpty) {
+      _events = const {};
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final repo = ref.read(eventRepositoryProvider);
+      final rows = await (repo.dbSelect()..where((e) => e.id.isIn(ids))).get();
+      if (!mounted) return;
+      setState(() => _events = {for (final e in rows) e.id: e});
+    });
+  }
+
+  Widget _eventBlock(OccurrenceCacheData o, double colW) {
+    final s = DateTime.fromMillisecondsSinceEpoch(o.startUtc);
+    final e = DateTime.fromMillisecondsSinceEpoch(o.endUtc);
+    var dayIdx = 0;
+    for (var i = 0; i < widget.dayCount; i++) {
+      if (dateKey(_dayStart(i)) == o.dayKey) {
+        dayIdx = i;
+        break;
+      }
+    }
+    var y0 = (s.hour * 60 + s.minute + s.second / 60) / 60 * hourHeight;
+    var y1 = (e.hour * 60 + e.minute + e.second / 60) / 60 * hourHeight;
+    if (y1 - y0 < 20) y1 = y0 + 20;
+    if (o.eventId == _dragId) {
+      y0 += _dragDy;
+      y1 += _dragDy;
+    }
+    final title = _events[o.eventId]?.title ?? '…';
+    return Positioned(
+      left: dayIdx * colW + 2,
+      top: y0,
+      width: colW - 4,
+      height: y1 - y0,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => showEventDetails(context, o.eventId),
+        onVerticalDragStart: (_) => setState(() {
+          _dragId = o.eventId;
+          _dragDy = 0;
+        }),
+        onVerticalDragUpdate: (d) => setState(() => _dragDy += d.delta.dy),
+        onVerticalDragEnd: (_) => _dragEnd(),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            title,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onPrimary,
+            ),
+          ),
         ),
       ),
     );
@@ -92,71 +255,48 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
     showEventEditor(context, initialDay: _dayStart(dayIdx), initialHour: hour);
   }
 
-  void _dragStart(Offset pos, List<OccurrenceCacheData> occs, double colW) {
-    final dayIdx = (pos.dx / colW).floor().clamp(0, widget.dayCount - 1);
-    final day = _dayStart(dayIdx);
-    final tappedMin = (pos.dy / hourHeight * 60).round();
-    for (final o in occs) {
-      if (o.dayKey != dateKey(day)) continue;
-      final s = DateTime.fromMillisecondsSinceEpoch(o.startUtc);
-      final e = DateTime.fromMillisecondsSinceEpoch(o.endUtc);
-      final sMin = s.hour * 60 + s.minute;
-      final eMin = e.hour * 60 + e.minute;
-      if (tappedMin >= sMin && tappedMin <= eMin) {
-        setState(() {
-          _dragId = o.eventId;
-          _dragDy = 0;
-        });
-        return;
-      }
-    }
-  }
-
-  Future<void> _dragEnd(List<OccurrenceCacheData> occs, double colW) async {
+  Future<void> _dragEnd() async {
     final id = _dragId;
+    final dy = _dragDy;
+    setState(() {
+      _dragId = null;
+      _dragDy = 0;
+    });
     if (id == null) return;
-    setState(() => _dragId = null);
-    final snapMin = (_dragDy / hourHeight * 60).round();
+    final snapMin = (dy / hourHeight * 60).round();
     final snapped = (snapMin / 15).round() * 15;
     if (snapped == 0) return;
     final repo = ref.read(eventRepositoryProvider);
     final master = await (repo.dbSelect()..where((e) => e.id.equals(id)))
         .getSingleOrNull();
     if (master == null || !mounted) return;
+    if (master.isAllDay || master.startUtc == null) return;
+    final orig = DateTime.fromMillisecondsSinceEpoch(
+      master.startUtc!,
+      isUtc: true,
+    );
+    final newStart = orig.add(Duration(minutes: snapped));
+    final newEnd = DateTime.fromMillisecondsSinceEpoch(
+      master.endUtc ?? master.startUtc!,
+      isUtc: true,
+    ).add(Duration(minutes: snapped));
     if (master.rrule != null && master.rrule!.isNotEmpty) {
       final scope = await showScopeSheet(context);
       if (scope == null || !mounted) return;
-      final orig = master.startUtc == null
-          ? DateTime.now().toUtc()
-          : DateTime.fromMillisecondsSinceEpoch(master.startUtc!, isUtc: true);
       await repo.editOccurrence(
         id,
         orig,
         scope: scope,
-        startUtc: orig.add(Duration(minutes: snapped)),
-        endUtc: DateTime.fromMillisecondsSinceEpoch(
-          master.endUtc ?? orig.millisecondsSinceEpoch,
-          isUtc: true,
-        ).add(Duration(minutes: snapped)),
+        startUtc: newStart,
+        endUtc: newEnd,
       );
     } else {
       await repo.editOccurrence(
         id,
-        master.startUtc == null
-            ? DateTime.now().toUtc()
-            : DateTime.fromMillisecondsSinceEpoch(
-                master.startUtc!,
-                isUtc: true,
-              ),
+        orig,
         scope: EditScope.all,
-        startUtc: DateTime.fromMillisecondsSinceEpoch(
-          master.startUtc!,
-          isUtc: true,
-        ).add(Duration(minutes: snapped)),
-        endUtc: DateTime.fromMillisecondsSinceEpoch(
-          master.endUtc ?? master.startUtc!,
-          isUtc: true,
-        ).add(Duration(minutes: snapped)),
+        startUtc: newStart,
+        endUtc: newEnd,
       );
     }
     if (mounted) {
@@ -167,46 +307,190 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
   }
 }
 
-class _HoursPainter extends CustomPainter {
-  _HoursPainter({required this.hourHeight});
+class _HourGutter extends StatelessWidget {
+  const _HourGutter({required this.hourHeight, required this.width});
+
   final double hourHeight;
+  final double width;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final tp = TextPainter(textDirection: TextDirection.ltr);
-    for (var h = 0; h < 24; h++) {
-      tp.text = TextSpan(
-        text: '${h.toString().padLeft(2, '0')}:00',
-        style: const TextStyle(fontSize: 10, color: Colors.grey),
-      );
-      tp.layout();
-      tp.paint(canvas, Offset(4, h * hourHeight - 6));
-    }
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: 24 * hourHeight,
+      child: Stack(
+        children: [
+          for (var h = 0; h < 24; h++)
+            Positioned(
+              top: h * hourHeight - 7,
+              right: 4,
+              child: Text(
+                '${h.toString().padLeft(2, '0')}:00',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ),
+        ],
+      ),
+    );
   }
-
-  @override
-  bool shouldRepaint(_) => false;
 }
 
-class _TimelinePainter extends CustomPainter {
-  _TimelinePainter({
+class _DayHeader extends StatelessWidget {
+  const _DayHeader({
+    required this.anchor,
+    required this.dayCount,
+    required this.gutterWidth,
+  });
+
+  final DateTime anchor;
+  final int dayCount;
+  final double gutterWidth;
+
+  static const _wd = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    return Row(
+      children: [
+        SizedBox(width: gutterWidth),
+        for (var i = 0; i < dayCount; i++)
+          Expanded(child: _dayCell(context, i, now)),
+      ],
+    );
+  }
+
+  Widget _dayCell(BuildContext context, int i, DateTime now) {
+    final day = DateTime(
+      anchor.year,
+      anchor.month,
+      anchor.day,
+    ).add(Duration(days: i));
+    final isToday =
+        day.year == now.year && day.month == now.month && day.day == now.day;
+    final color = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _wd[(day.weekday - 1) % 7],
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: isToday
+                ? BoxDecoration(color: color.primary, shape: BoxShape.circle)
+                : null,
+            child: Text(
+              '${day.day}',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: isToday ? color.onPrimary : null,
+                fontWeight: isToday ? FontWeight.bold : null,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AllDayStrip extends StatelessWidget {
+  const _AllDayStrip({
     required this.occs,
     required this.anchor,
     required this.dayCount,
-    required this.hourHeight,
-    required this.now,
-    required this.dragId,
-    required this.dragDy,
-    required this.primary,
+    required this.events,
+    required this.gutterWidth,
+    required this.onTap,
   });
 
   final List<OccurrenceCacheData> occs;
   final DateTime anchor;
   final int dayCount;
+  final Map<String, Event> events;
+  final double gutterWidth;
+  final ValueChanged<String> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: gutterWidth,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'All-day',
+              textAlign: TextAlign.right,
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          ),
+        ),
+        for (var i = 0; i < dayCount; i++) Expanded(child: _dayChips(i)),
+      ],
+    );
+  }
+
+  Widget _dayChips(int i) {
+    final day = DateTime(
+      anchor.year,
+      anchor.month,
+      anchor.day,
+    ).add(Duration(days: i));
+    final key = dateKey(day);
+    final mine = occs.where((o) => o.dayKey == key).take(3).toList();
+    if (mine.isEmpty) return const SizedBox(height: 8);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final o in mine)
+          Builder(
+            builder: (ctx) => Padding(
+              padding: const EdgeInsets.fromLTRB(2, 2, 2, 0),
+              child: InkWell(
+                onTap: () => onTap(o.eventId),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    events[o.eventId]?.title ?? 'All-day',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(ctx).textTheme.labelSmall,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _TimelinePainter extends CustomPainter {
+  _TimelinePainter({
+    required this.anchor,
+    required this.dayCount,
+    required this.hourHeight,
+    required this.now,
+    required this.primary,
+  });
+
+  final DateTime anchor;
+  final int dayCount;
   final double hourHeight;
   final DateTime now;
-  final String? dragId;
-  final double dragDy;
   final Color primary;
 
   @override
@@ -233,50 +517,22 @@ class _TimelinePainter extends CustomPainter {
         anchor.month,
         anchor.day,
       ).add(Duration(days: i));
-      if (_isToday(day)) {
+      if (day.year == now.year &&
+          day.month == now.month &&
+          day.day == now.day) {
         final y = (now.hour * 60 + now.minute) / 60 * hourHeight;
         canvas.drawLine(
           Offset(i * colW, y),
           Offset((i + 1) * colW, y),
-          Paint()..color = Colors.red,
+          Paint()
+            ..color = Colors.red
+            ..strokeWidth = 2,
         );
       }
     }
-    final block = Paint()..color = primary.withValues(alpha: 0.85);
-    for (final o in occs) {
-      final s = DateTime.fromMillisecondsSinceEpoch(o.startUtc);
-      final e = DateTime.fromMillisecondsSinceEpoch(o.endUtc);
-      for (var i = 0; i < dayCount; i++) {
-        final day = DateTime(
-          anchor.year,
-          anchor.month,
-          anchor.day,
-        ).add(Duration(days: i));
-        if (o.dayKey != dateKey(day)) continue;
-        var y0 = (s.hour * 60 + s.minute) / 60 * hourHeight;
-        var y1 = (e.hour * 60 + e.minute) / 60 * hourHeight;
-        if (y1 - y0 < 20) y1 = y0 + 20;
-        if (o.eventId == dragId) {
-          y0 += dragDy;
-          y1 += dragDy;
-        }
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromLTWH(i * colW + 2, y0, colW - 4, y1 - y0),
-            const Radius.circular(4),
-          ),
-          block,
-        );
-      }
-    }
-  }
-
-  bool _isToday(DateTime d) {
-    final n = DateTime.now();
-    return d.year == n.year && d.month == n.month && d.day == n.day;
   }
 
   @override
   bool shouldRepaint(_TimelinePainter old) =>
-      old.occs != occs || old.dragDy != dragDy || old.dragId != dragId;
+      old.anchor != anchor || old.dayCount != dayCount;
 }

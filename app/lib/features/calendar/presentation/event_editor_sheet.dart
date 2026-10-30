@@ -160,7 +160,10 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
           endUtc: _allDay ? null : _end.toUtc(),
           startDate: _allDay ? _fmtDate(_start) : null,
           allDay: _allDay,
-          tzId: _allDay ? null : DateTime.now().timeZoneName,
+          // SECURITY: store null (floating local time) for device-created
+          // events. DateTime.now().timeZoneName yields abbreviations like
+          // "-03" that are not IANA ids and crash tz.getLocation lookups.
+          tzId: null,
           rrule: _rrule,
           location: _location.text.trim().isEmpty
               ? null

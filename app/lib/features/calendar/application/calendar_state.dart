@@ -9,6 +9,17 @@ class CalendarWindow {
   final CalendarViewKind view;
   final int dayCount;
 
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CalendarWindow &&
+          other.anchor == anchor &&
+          other.view == view &&
+          other.dayCount == dayCount;
+
+  @override
+  int get hashCode => Object.hash(anchor, view, dayCount);
+
   DateTime get fromUtc {
     final a = DateTime.utc(anchor.year, anchor.month, anchor.day);
     switch (view) {

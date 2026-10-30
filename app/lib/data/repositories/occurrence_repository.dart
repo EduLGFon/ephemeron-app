@@ -263,16 +263,26 @@ class OccurrenceRepository {
   }
 
   String _dayKey(int utcMs, String? tzId) {
-    if (tzId == null || tzId == 'UTC') {
+    if (tzId == null) {
+      // Floating local event: group by device-local date so the timeline
+      // (which renders local wall time) shows it on the expected day.
+      return dateKey(DateTime.fromMillisecondsSinceEpoch(utcMs));
+    }
+    if (tzId == 'UTC') {
       return dateKey(DateTime.fromMillisecondsSinceEpoch(utcMs, isUtc: true));
     }
-    final loc = tz.getLocation(tzId);
-    return dateKey(
-      tz.TZDateTime.from(
-        DateTime.fromMillisecondsSinceEpoch(utcMs, isUtc: true),
-        loc,
-      ),
-    );
+    try {
+      final loc = tz.getLocation(tzId);
+      return dateKey(
+        tz.TZDateTime.from(
+          DateTime.fromMillisecondsSinceEpoch(utcMs, isUtc: true),
+          loc,
+        ),
+      );
+    } catch (_) {
+      // Non-IANA abbreviations (e.g. "-03") must not crash the rebuild.
+      return dateKey(DateTime.fromMillisecondsSinceEpoch(utcMs));
+    }
   }
 
   DateTime _parseDate(String ymd) {

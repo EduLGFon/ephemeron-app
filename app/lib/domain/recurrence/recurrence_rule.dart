@@ -141,6 +141,18 @@ void _ensureTz() {
   _tzReady = true;
 }
 
+/// IANA lookup that never throws: unknown abbreviations (for example
+/// `DateTime.now().timeZoneName` values like "-03") fall back to UTC
+/// instead of crashing occurrence expansion.
+tz.Location _safeLocation(String? tzId) {
+  if (tzId == null || tzId == 'UTC') return tz.UTC;
+  try {
+    return tz.getLocation(tzId);
+  } catch (_) {
+    return tz.UTC;
+  }
+}
+
 List<DateTime> expandOccurrences({
   required DateTime startUtc,
   required String rrule,
@@ -154,7 +166,7 @@ List<DateTime> expandOccurrences({
   int cap = 1000,
 }) {
   _ensureTz();
-  final loc = (tzId == null || tzId == 'UTC') ? tz.UTC : tz.getLocation(tzId);
+  final loc = _safeLocation(tzId);
   final start = tz.TZDateTime.from(startUtc.toUtc(), loc);
   final rule = RecurrenceRule.parse(rrule, allDay: allDay);
   final wkstDart = _weekdayFromWkst(rule.wkst);
