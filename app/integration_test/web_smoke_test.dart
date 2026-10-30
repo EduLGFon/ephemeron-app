@@ -12,9 +12,7 @@ void main() {
   testWidgets('web smoke: onboard, open every tab, sign in to backend', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      const ProviderScope(child: EphemeronApp()),
-    );
+    await tester.pumpWidget(const ProviderScope(child: EphemeronApp()));
     await tester.pumpAndSettle();
 
     // Onboarding (fresh profile): skip straight through.

@@ -28,9 +28,15 @@ class SafeSecureStorage {
   }) async {
     await _storage.write(key: _a(account, 'accessToken'), value: accessToken);
     if (refreshToken != null) {
-      await _storage.write(key: _a(account, 'refreshToken'), value: refreshToken);
+      await _storage.write(
+        key: _a(account, 'refreshToken'),
+        value: refreshToken,
+      );
     }
-    await _storage.write(key: _a(account, 'expiryMs'), value: expiryMs.toString());
+    await _storage.write(
+      key: _a(account, 'expiryMs'),
+      value: expiryMs.toString(),
+    );
   }
 
   Future<String?> googleAccessTokenFor(String account) =>
@@ -112,7 +118,8 @@ class SafeSecureStorage {
   }
 
   Future<String?> get backendAccessToken => _storage.read(key: _kBackendAccess);
-  Future<String?> get backendRefreshToken => _storage.read(key: _kBackendRefresh);
+  Future<String?> get backendRefreshToken =>
+      _storage.read(key: _kBackendRefresh);
   Future<void> saveBackendRefresh(String token) =>
       _storage.write(key: _kBackendRefresh, value: token);
 

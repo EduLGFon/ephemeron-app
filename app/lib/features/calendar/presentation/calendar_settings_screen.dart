@@ -108,8 +108,13 @@ class CalendarSettingsScreen extends ConsumerWidget {
     return repo.weekStart;
   }
 
-  Future<void> _importDeviceCalendars(BuildContext context, WidgetRef ref) async {
-    final service = DeviceCalendarImportService(ref.read(eventRepositoryProvider));
+  Future<void> _importDeviceCalendars(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final service = DeviceCalendarImportService(
+      ref.read(eventRepositoryProvider),
+    );
     if (!service.isSupported) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -169,7 +174,9 @@ class CalendarSettingsScreen extends ConsumerWidget {
                         DropdownMenuItem(value: c.id, child: Text(c.name)),
                     ],
                     onChanged: (v) => setState(() => targetId = v ?? targetId),
-                    decoration: const InputDecoration(labelText: 'Target calendar'),
+                    decoration: const InputDecoration(
+                      labelText: 'Target calendar',
+                    ),
                   ),
                   const SizedBox(height: 8),
                   for (final dc in deviceCals)
@@ -210,9 +217,9 @@ class CalendarSettingsScreen extends ConsumerWidget {
       );
     }
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Imported $total events')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Imported $total events')));
     }
   }
 

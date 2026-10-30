@@ -97,6 +97,11 @@ class SettingsRepository {
   Future<void> setBackendSyncIntervalMin(int v) =>
       _prefs.setInt(_kBackendSyncInterval, v);
 
+  /// Optional biometric app lock (PLAN 8.4). Gate only, no datasegregation change.
+  static const _kBiometricLock = 'security.biometricLock';
+  bool get biometricLock => _prefs.getBool(_kBiometricLock) ?? false;
+  Future<void> setBiometricLock(bool v) => _prefs.setBool(_kBiometricLock, v);
+
   /// Last successful Google sync, for title freshness + scheduling.
   static const _kLastGoogleSync = 'sync.lastGoogleSyncAtMs';
   DateTime? get lastGoogleSyncAt {

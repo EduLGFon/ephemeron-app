@@ -55,4 +55,16 @@ void main() {
       greaterThanOrEqualTo(0),
     );
   });
+
+  test('sessionsInRange returns finished sessions in window', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final repo = FocusRepository(db);
+    final id = await repo.startSession(durationMin: 25, phase: 'focus');
+    await repo.finishSession(id);
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    final rows = await repo.sessionsInRange(now - 3600000, now + 60000);
+    expect(rows.map((s) => s.id), contains(id));
+    expect(await repo.totalMinutes(now - 3600000, now + 60000), isNot(0));
+  });
 }

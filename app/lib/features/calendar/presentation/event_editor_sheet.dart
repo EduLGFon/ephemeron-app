@@ -381,10 +381,12 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                 data: (cals) {
                   final groups = <String, List<Calendar>>{};
                   for (final c in cals) {
-                    groups.putIfAbsent(
-                      c.source == 'google' ? 'Google' : 'Device',
-                      () => [],
-                    ).add(c);
+                    groups
+                        .putIfAbsent(
+                          c.source == 'google' ? 'Google' : 'Device',
+                          () => [],
+                        )
+                        .add(c);
                   }
                   final items = <DropdownMenuItem<String?>>[];
                   for (final entry in groups.entries) {
@@ -625,8 +627,8 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                                             text: (monthDay ?? 1).toString(),
                                           ),
                                           keyboardType: TextInputType.number,
-                                          onChanged: (t) => monthDay =
-                                              int.tryParse(t),
+                                          onChanged: (t) =>
+                                              monthDay = int.tryParse(t),
                                         ),
                                       ),
                                       const SizedBox(width: 8),
@@ -654,8 +656,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                                       child: Text('On date'),
                                     ),
                                   ],
-                                  onChanged: (x) =>
-                                      setSt(() => endMode = x!),
+                                  onChanged: (x) => setSt(() => endMode = x!),
                                 ),
                                 if (endMode == 'count') ...[
                                   const SizedBox(height: 8),
@@ -720,7 +721,8 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                                 }
                                 if (endMode == 'count') {
                                   parts.add('COUNT=$count');
-                                } else if (endMode == 'until' && until != null) {
+                                } else if (endMode == 'until' &&
+                                    until != null) {
                                   parts.add(
                                     'UNTIL=${until!.toUtc().toIso8601String().replaceAll(RegExp(r'[-:]'), '').split('.').first}Z',
                                   );
@@ -782,7 +784,11 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                             ? Theme.of(context).colorScheme.primary
                             : _googleColor(c),
                         child: _colorId == c
-                            ? const Icon(Icons.check, size: 16, color: Colors.white)
+                            ? const Icon(
+                                Icons.check,
+                                size: 16,
+                                color: Colors.white,
+                              )
                             : null,
                       ),
                     ),
@@ -796,7 +802,10 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                   border: OutlineInputBorder(),
                 ),
                 items: const [
-                  DropdownMenuItem(value: null, child: Text('Floating (local)')),
+                  DropdownMenuItem(
+                    value: null,
+                    child: Text('Floating (local)'),
+                  ),
                   DropdownMenuItem(value: 'UTC', child: Text('UTC')),
                   DropdownMenuItem(
                     value: 'America/Sao_Paulo',

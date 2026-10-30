@@ -246,12 +246,13 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
         if (f.path != null) {
           await repo.importMarkdownFile(f.path!, folderId: _folderId);
           count++;
-        } else if (f.bytes != null) {
+        } else {
+          final bytes = await f.readAsBytes();
           final id = await repo.createNote(
             title: f.name.contains('.')
                 ? f.name.substring(0, f.name.lastIndexOf('.'))
                 : f.name,
-            body: utf8.decode(f.bytes!, allowMalformed: true),
+            body: utf8.decode(bytes, allowMalformed: true),
             folderId: _folderId,
           );
           if (id.isNotEmpty) count++;

@@ -6,16 +6,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/parsing/quick_add_parser.dart';
 import '../application/tasks_providers.dart';
 
-Future<void> showQuickAdd(BuildContext context) {
+Future<void> showQuickAdd(BuildContext context, {String? initialText}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    builder: (_) => const _QuickAddSheet(),
+    builder: (_) => _QuickAddSheet(initialText: initialText),
   );
 }
 
 class _QuickAddSheet extends ConsumerStatefulWidget {
-  const _QuickAddSheet();
+  const _QuickAddSheet({this.initialText});
+
+  final String? initialText;
 
   @override
   ConsumerState<_QuickAddSheet> createState() => _QuickAddSheetState();
@@ -24,6 +26,16 @@ class _QuickAddSheet extends ConsumerStatefulWidget {
 class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
   final _controller = TextEditingController();
   QuickAddParsed? _parsed;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialText;
+    if (initial != null && initial.isNotEmpty) {
+      _controller.text = initial;
+      _parsed = parseQuickAdd(initial);
+    }
+  }
 
   @override
   void dispose() {

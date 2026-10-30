@@ -218,7 +218,9 @@ class HttpGoogleApiClient implements GoogleApiClient {
     Map<String, dynamic> body,
   ) async {
     final r = await _http.post(
-      Uri.parse('${AppConfig.tasksApiBase}/lists/${Uri.encodeComponent(taskListId)}/tasks'),
+      Uri.parse(
+        '${AppConfig.tasksApiBase}/lists/${Uri.encodeComponent(taskListId)}/tasks',
+      ),
       headers: await _headers(),
       body: jsonEncode(body),
     );
@@ -234,7 +236,9 @@ class HttpGoogleApiClient implements GoogleApiClient {
     String? etag,
   }) async {
     final r = await _http.patch(
-      Uri.parse('${AppConfig.tasksApiBase}/lists/${Uri.encodeComponent(taskListId)}/tasks/${Uri.encodeComponent(taskId)}'),
+      Uri.parse(
+        '${AppConfig.tasksApiBase}/lists/${Uri.encodeComponent(taskListId)}/tasks/${Uri.encodeComponent(taskId)}',
+      ),
       headers: await _headers(etag: etag),
       body: jsonEncode(body),
     );
@@ -245,7 +249,9 @@ class HttpGoogleApiClient implements GoogleApiClient {
   @override
   Future<void> taskDelete(String taskListId, String taskId) async {
     final r = await _http.delete(
-      Uri.parse('${AppConfig.tasksApiBase}/lists/${Uri.encodeComponent(taskListId)}/tasks/${Uri.encodeComponent(taskId)}'),
+      Uri.parse(
+        '${AppConfig.tasksApiBase}/lists/${Uri.encodeComponent(taskListId)}/tasks/${Uri.encodeComponent(taskId)}',
+      ),
       headers: await _headers(),
     );
     if (r.statusCode != 204 && r.statusCode != 200) _throw(r);

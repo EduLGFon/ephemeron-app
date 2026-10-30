@@ -177,6 +177,15 @@ class SettingsScreen extends ConsumerWidget {
               value: repo.haptics,
               onChanged: (v) => _mutate(ref, (r) => r.setHaptics(v)),
             ),
+            const _SectionHeader('Security'),
+            SwitchListTile(
+              title: const Text('Biometric app lock'),
+              subtitle: const Text(
+                'Require unlock on startup. Unsupported devices skip the lock.',
+              ),
+              value: repo.biometricLock,
+              onChanged: (v) => _mutate(ref, (r) => r.setBiometricLock(v)),
+            ),
             const _SectionHeader('Navigation'),
             ListTile(
               title: const Text('Reorder sections'),

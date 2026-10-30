@@ -88,4 +88,22 @@ void main() {
     final prev = await repo.moveTasks([parent], l2);
     expect(prev[parent], l1);
   });
+
+  test('move undo restores previous list', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final repo = TaskRepository(db);
+    final l1 = await repo.createList('A');
+    final l2 = await repo.createList('B');
+    final t = await repo.createTask(title: 'T', listId: l1);
+    final prev = await repo.moveTasks([t], l2);
+    expect(prev[t], l1);
+    for (final e in prev.entries) {
+      await repo.moveTasks([e.key], e.value);
+    }
+    final row = await (db.select(
+      db.tasks,
+    )..where((x) => x.id.equals(t))).getSingle();
+    expect(row.listId, l1);
+  });
 }

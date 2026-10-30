@@ -220,7 +220,7 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
                         child: LayoutBuilder(
                           builder: (ctx, cons) {
                             final colW = cons.maxWidth / widget.dayCount;
-                          _lastColW = colW;
+                            _lastColW = colW;
                             return Stack(
                               children: [
                                 GestureDetector(
@@ -340,8 +340,8 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
         onLongPressMoveUpdate: (d) {
           if (_dragId != o.eventId) return;
           final dayDelta = (d.offsetFromOrigin.dx / _lastColW).round();
-          final snap = (d.offsetFromOrigin.dy / hourHeight * 60 / 15)
-                  .round() *
+          final snap =
+              (d.offsetFromOrigin.dy / hourHeight * 60 / 15).round() *
               15 /
               60 *
               hourHeight;

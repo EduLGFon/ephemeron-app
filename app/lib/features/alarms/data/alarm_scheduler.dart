@@ -25,6 +25,7 @@ class AlarmScheduler {
     required int fireAtUtcMs,
     required bool useAlarmClock,
     required String title,
+    String preset = 'medium',
     String? sourceType,
     String? sourceId,
   }) async {
@@ -37,6 +38,7 @@ class AlarmScheduler {
       'fireAtUtcMs': fireAtUtcMs,
       'useAlarmClock': useAlarmClock,
       'title': title,
+      'preset': preset,
       'sourceType': sourceType,
       'sourceId': sourceId,
     });

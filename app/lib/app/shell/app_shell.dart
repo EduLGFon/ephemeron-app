@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/platform/system_launcher.dart';
 import '../../features/auth/application/auth_providers.dart';
 import '../../features/settings/application/settings_providers.dart';
 import '../../features/settings/presentation/onboarding_screen.dart';
 import '../../features/sync/application/sync_providers.dart';
+import '../../features/tasks/presentation/quick_add_sheet.dart';
 import 'app_sections.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -24,6 +26,33 @@ class _AppShellState extends ConsumerState<AppShell> {
     _restoreLastTab();
     // Restart the persisted auto-sync schedule on every launch.
     Future.microtask(() => ref.read(googleAutoSyncServiceProvider).start());
+    Future.microtask(
+      () => ref.read(backendAutoSyncServiceProvider).reschedule(),
+    );
+    // Handle Android share-target text and launcher shortcuts once the
+    // first frame is up (needs a BuildContext for sheets/navigation).
+    WidgetsBinding.instance.addPostFrameCallback((_) => _handleIntents());
+  }
+
+  /// Opens quick add prefilled with shared text, or jumps to the tab
+  /// requested by a launcher shortcut. No-ops on other platforms.
+  Future<void> _handleIntents() async {
+    if (!mounted) return;
+    final shared = await SystemLauncher.consumeSharedText();
+    if (shared != null && shared.trim().isNotEmpty && mounted) {
+      await showQuickAdd(context, initialText: shared.trim());
+    }
+    if (!mounted) return;
+    final action = await SystemLauncher.consumeLaunchAction();
+    if (action == null || !mounted) return;
+    switch (action) {
+      case 'new_task':
+        await showQuickAdd(context);
+      case 'new_event':
+        _onTabSelected(AppSection.calendar.index);
+      case 'start_focus':
+        _onTabSelected(AppSection.focus.index);
+    }
   }
 
   Future<void> _restoreLastTab() async {

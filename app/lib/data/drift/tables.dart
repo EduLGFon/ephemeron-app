@@ -18,7 +18,7 @@ class Calendars extends Table {
   BoolColumn get dirty => boolean().withDefault(const Constant(false))();
   TextColumn get remoteEtag => text().nullable()();
   TextColumn get googleAccount => text().nullable()();
- 
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -43,8 +43,7 @@ class Events extends Table {
   TextColumn get status => text().withDefault(const Constant('confirmed'))();
   TextColumn get colorId => text().nullable()();
   TextColumn get meetUrl => text().nullable()();
-  BoolColumn get createMeet =>
-      boolean().withDefault(const Constant(false))();
+  BoolColumn get createMeet => boolean().withDefault(const Constant(false))();
   TextColumn get reminders => text().nullable()(); // json
   TextColumn get alarmPreset => text().nullable()();
   TextColumn get visibility => text().nullable()();
@@ -98,7 +97,7 @@ class TaskLists extends Table {
   BoolColumn get dirty => boolean().withDefault(const Constant(false))();
   TextColumn get remoteEtag => text().nullable()();
   TextColumn get googleAccount => text().nullable()();
- 
+
   @override
   Set<Column> get primaryKey => {id};
 }

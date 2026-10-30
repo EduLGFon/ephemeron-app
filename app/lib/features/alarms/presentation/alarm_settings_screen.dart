@@ -24,6 +24,22 @@ class AlarmSettingsScreen extends ConsumerWidget {
         ),
       );
     }
+    if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Alarms')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'iOS allows at most 64 pending notifications; the app keeps the same rolling window capped at 60. '
+              'No full-screen ring screen is possible on iOS: alerts arrive as time-sensitive notifications. '
+              'Strong alerts use the time-sensitive interruption level.',
+            ),
+          ),
+        ),
+      );
+    }
     if (kIsWeb) {
       return Scaffold(
         appBar: AppBar(title: const Text('Alarms')),

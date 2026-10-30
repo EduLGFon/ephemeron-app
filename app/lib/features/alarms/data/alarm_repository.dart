@@ -94,6 +94,7 @@ class AlarmRepository {
           fireAtUtcMs: p.fireAtUtcMs,
           useAlarmClock: needsAlarmClock(p.preset),
           title: p.sourceId,
+          preset: p.preset,
           sourceType: p.sourceType,
           sourceId: p.sourceId,
         );

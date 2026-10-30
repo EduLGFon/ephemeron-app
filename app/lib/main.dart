@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/router/app_router.dart';
+import 'core/security/app_lock.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_tokens.dart';
 import 'features/settings/application/settings_providers.dart';
@@ -37,8 +38,9 @@ class EphemeronApp extends ConsumerWidget {
 
     final router = ref.watch(appRouterProvider);
     final localeCode = repo?.localeCode ?? 'system';
+    final locked = repo?.biometricLock ?? false;
 
-    return MaterialApp.router(
+    final app = MaterialApp.router(
       title: 'Ephemeron',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(
@@ -55,6 +57,66 @@ class EphemeronApp extends ConsumerWidget {
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: router,
+    );
+    if (!locked) return app;
+    return _LockGate(child: app);
+  }
+}
+
+/// Full-screen gate shown when biometric app lock is on. Stays locked
+/// until authentication succeeds; unsupported devices pass through.
+class _LockGate extends StatefulWidget {
+  const _LockGate({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_LockGate> createState() => _LockGateState();
+}
+
+class _LockGateState extends State<_LockGate> {
+  bool _unlocked = false;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _tryUnlock());
+  }
+
+  Future<void> _tryUnlock() async {
+    if (_busy || _unlocked || !mounted) return;
+    setState(() => _busy = true);
+    final ok = await AppLock.authenticate();
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _unlocked = ok;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_unlocked) return widget.child;
+    return MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock_outline, size: 48),
+              const SizedBox(height: 12),
+              const Text('Ephemeron is locked'),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: _busy ? null : _tryUnlock,
+                icon: const Icon(Icons.fingerprint),
+                label: Text(_busy ? 'Waiting...' : 'Unlock'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

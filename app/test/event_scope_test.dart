@@ -166,4 +166,20 @@ void main() {
     expect(m.title, 'Renamed');
     expect(await _count(db), 1);
   });
+
+  test('rsvp updates attendee and queues sync', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final repo = EventRepository(db, OccurrenceRepository(db));
+    final cal = await repo.createCalendar('C');
+    final e = await repo.createEvent(calendarId: cal, title: 'M');
+    await repo.setAttendees(e, ['me@example.com']);
+    final atts = await repo.attendeesOf(e);
+    expect(atts, hasLength(1));
+    await repo.setRsvp(atts.first.id, 'accepted');
+    final updated = await repo.attendeesOf(e);
+    expect(updated.first.rsvp, 'accepted');
+    final outbox = await db.select(db.outbox).get();
+    expect(outbox, isNotEmpty);
+  });
 }

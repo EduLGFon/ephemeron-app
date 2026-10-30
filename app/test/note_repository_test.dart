@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:ephemeron/data/repositories/note_repository.dart';
@@ -77,5 +79,38 @@ void main() {
     await repo.createNote(title: 'Plain');
     final linked = await repo.notesForEvent('ev1');
     expect(linked.map((n) => n.title), ['Prep']);
+  });
+
+  test('backlinks resolve [[Title]] and list incoming links', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final repo = NoteRepository(db, attachmentDir: null);
+    final a = await repo.createNote(title: 'Alpha');
+    final b = await repo.createNote(
+      title: 'Beta',
+      body: 'see [[Alpha]] and [[Missing]]',
+    );
+    expect(await repo.backlinks(a), hasLength(1));
+    expect((await repo.backlinks(a)).first.id, b);
+    expect(await repo.forwardLinks(b), hasLength(1));
+    // Missing titles are ignored, not stored.
+    expect(await repo.backlinks(b), isEmpty);
+    // Renaming away drops the link.
+    await repo.updateNote(b, body: () => 'no links');
+    expect(await repo.backlinks(a), isEmpty);
+  });
+
+  test('md import uses file name as title', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final repo = NoteRepository(db, attachmentDir: null);
+    final dir = await Directory.systemTemp.createTemp('ephemeron-test');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/ideas.md');
+    await file.writeAsString('# Hello\nbody text');
+    final id = await repo.importMarkdownFile(file.path);
+    final note = await repo.getNote(id);
+    expect(note!.title, 'ideas');
+    expect(note.body, contains('Hello'));
   });
 }
