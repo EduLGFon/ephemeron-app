@@ -15,6 +15,35 @@ import '../../../core/theme/theme_tokens.dart';
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
+  Future<void> _mutate(
+    WidgetRef ref,
+    Future<void> Function(SettingsRepository repo) fn,
+  ) async {
+    final repo = await ref.read(settingsRepositoryProvider.future);
+    await fn(repo);
+    ref.invalidate(settingsRepositoryProvider);
+  }
+
+  Future<void> _setHex(
+    BuildContext context,
+    WidgetRef ref,
+    bool primary,
+    String raw,
+  ) async {
+    final v = raw.trim();
+    if (v.isEmpty) return;
+    if (!isValidHex(v)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid hex like #RRGGBB.')),
+      );
+      return;
+    }
+    await _mutate(
+      ref,
+      (r) => primary ? r.setPrimaryColorHex(v) : r.setBackgroundColorHex(v),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncRepo = ref.watch(settingsRepositoryProvider);
@@ -60,7 +89,8 @@ class SettingsScreen extends ConsumerWidget {
                 children: [
                   for (final c in primaryPresets)
                     GestureDetector(
-                      onTap: () => repo.setPrimaryColorHex(_hex(c)),
+                      onTap: () =>
+                          _mutate(ref, (r) => r.setPrimaryColorHex(_hex(c))),
                       child: CircleAvatar(backgroundColor: c, radius: 14),
                     ),
                 ],
@@ -73,7 +103,8 @@ class SettingsScreen extends ConsumerWidget {
                 children: [
                   for (final c in backgroundPresets)
                     GestureDetector(
-                      onTap: () => repo.setBackgroundColorHex(_hex(c)),
+                      onTap: () =>
+                          _mutate(ref, (r) => r.setBackgroundColorHex(_hex(c))),
                       child: CircleAvatar(backgroundColor: c, radius: 14),
                     ),
                 ],
@@ -89,7 +120,7 @@ class SettingsScreen extends ConsumerWidget {
                   DropdownMenuItem(value: 'amoled', child: Text('AMOLED')),
                 ],
                 onChanged: (v) {
-                  if (v != null) repo.setBrightness(v);
+                  if (v != null) _mutate(ref, (r) => r.setBrightness(v));
                 },
               ),
             ),
@@ -99,11 +130,7 @@ class SettingsScreen extends ConsumerWidget {
                 width: 120,
                 child: TextField(
                   decoration: const InputDecoration(hintText: '#RRGGBB'),
-                  onSubmitted: (v) {
-                    if (v.trim().isNotEmpty) {
-                      repo.setPrimaryColorHex(v.trim());
-                    }
-                  },
+                  onSubmitted: (v) => _setHex(context, ref, true, v),
                 ),
               ),
             ),
@@ -113,11 +140,7 @@ class SettingsScreen extends ConsumerWidget {
                 width: 120,
                 child: TextField(
                   decoration: const InputDecoration(hintText: '#RRGGBB'),
-                  onSubmitted: (v) {
-                    if (v.trim().isNotEmpty) {
-                      repo.setBackgroundColorHex(v.trim());
-                    }
-                  },
+                  onSubmitted: (v) => _setHex(context, ref, false, v),
                 ),
               ),
             ),
@@ -133,8 +156,11 @@ class SettingsScreen extends ConsumerWidget {
                 ],
                 onChanged: (v) {
                   if (v != null) {
-                    repo.setPowerSavingMode(
-                      PowerSavingMode.values.firstWhere((e) => e.name == v),
+                    _mutate(
+                      ref,
+                      (r) => r.setPowerSavingMode(
+                        PowerSavingMode.values.firstWhere((e) => e.name == v),
+                      ),
                     );
                   }
                 },
@@ -143,12 +169,12 @@ class SettingsScreen extends ConsumerWidget {
             SwitchListTile(
               title: const Text('Reduce animations'),
               value: repo.reduceAnimations,
-              onChanged: repo.setReduceAnimations,
+              onChanged: (v) => _mutate(ref, (r) => r.setReduceAnimations(v)),
             ),
             SwitchListTile(
               title: const Text('Haptics'),
               value: repo.haptics,
-              onChanged: repo.setHaptics,
+              onChanged: (v) => _mutate(ref, (r) => r.setHaptics(v)),
             ),
             const _SectionHeader('Navigation'),
             ListTile(
@@ -212,6 +238,7 @@ class SettingsScreen extends ConsumerWidget {
                   child: FilledButton(
                     onPressed: () async {
                       await repo.setNavOrder(current);
+                      ref.invalidate(settingsRepositoryProvider);
                       if (ctx.mounted) Navigator.of(ctx).pop();
                     },
                     child: const Text('Save'),

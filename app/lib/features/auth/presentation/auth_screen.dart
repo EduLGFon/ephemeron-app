@@ -21,6 +21,16 @@ class AuthScreen extends ConsumerWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Google sign-in is not available on this platform. '
+            'The app works fully offline without an account.',
+          ),
+        ),
+      );
     }
   }
 

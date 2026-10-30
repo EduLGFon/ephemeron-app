@@ -30,5 +30,15 @@ Color parseHex(String hex) {
   var h = hex.trim();
   if (h.startsWith('#')) h = h.substring(1);
   if (h.length == 6) h = 'FF$h';
-  return Color(int.parse(h, radix: 16));
+  final v = int.tryParse(h, radix: 16);
+  if (v == null) return primaryPresets.first;
+  return Color(v);
+}
+
+/// Null when [hex] is not a valid #RRGGBB or #AARRGGBB value.
+bool isValidHex(String hex) {
+  var h = hex.trim();
+  if (h.startsWith('#')) h = h.substring(1);
+  if (h.length != 6 && h.length != 8) return false;
+  return int.tryParse(h, radix: 16) != null;
 }

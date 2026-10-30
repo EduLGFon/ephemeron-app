@@ -27,47 +27,76 @@ class GoogleAuth {
 
   Future<void> _ensureInit() async {
     if (_initialized) return;
-    // The web plugin asserts a non-null client ID at sign-in time. Fail
+    // Desktop platforms have no google_sign_in implementation; fail
     // early with a message the UI can show instead of crashing.
     if (kIsWeb && AppConfig.webGoogleClientId.isEmpty) {
       throw GoogleAuthException(
         'Google sign-in is not configured for this web build.',
       );
     }
-    await GoogleSignIn.instance.initialize(
-      clientId: defaultTargetPlatform == TargetPlatform.android
-          ? (AppConfig.androidGoogleClientId.isEmpty
-                ? null
-                : AppConfig.androidGoogleClientId)
-          : (AppConfig.webGoogleClientId.isEmpty
-                ? null
-                : AppConfig.webGoogleClientId),
-    );
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.linux ||
+            defaultTargetPlatform == TargetPlatform.windows)) {
+      throw GoogleAuthException(
+        'Google sign-in is not supported on this desktop build yet. '
+        'The app works fully offline without an account.',
+      );
+    }
+    try {
+      await GoogleSignIn.instance.initialize(
+        clientId: defaultTargetPlatform == TargetPlatform.android
+            ? (AppConfig.androidGoogleClientId.isEmpty
+                  ? null
+                  : AppConfig.androidGoogleClientId)
+            : (AppConfig.webGoogleClientId.isEmpty
+                  ? null
+                  : AppConfig.webGoogleClientId),
+      );
+    } on UnimplementedError {
+      throw GoogleAuthException(
+        'Google sign-in is not available on this platform. '
+        'The app works fully offline without an account.',
+      );
+    }
     _initialized = true;
   }
 
   /// Signs in requesting only Calendar; Tasks scope is added when the user
   /// turns on Tasks sync (incremental authorization).
   Future<String?> signIn({bool tasks = false}) async {
-    await _ensureInit();
-    final account = await GoogleSignIn.instance.authenticate(
-      scopeHint: tasks
-          ? AppConfig.googleScopes
-          : [AppConfig.googleScopes.first],
-    );
-    _email = account.email;
-    final authz = await account.authorizationClient.authorizeScopes(
-      _scopes(tasks),
-    );
-    _accessToken = authz.accessToken;
-    await _storage.saveGoogleTokens(
-      accessToken: _accessToken!,
-      expiryMs: DateTime.now()
-          .toUtc()
-          .add(const Duration(minutes: 50))
-          .millisecondsSinceEpoch,
-    );
-    return _email;
+    try {
+      await _ensureInit();
+    } on UnimplementedError {
+      throw GoogleAuthException(
+        'Google sign-in is not available on this platform. '
+        'The app works fully offline without an account.',
+      );
+    }
+    try {
+      final account = await GoogleSignIn.instance.authenticate(
+        scopeHint: tasks
+            ? AppConfig.googleScopes
+            : [AppConfig.googleScopes.first],
+      );
+      _email = account.email;
+      final authz = await account.authorizationClient.authorizeScopes(
+        _scopes(tasks),
+      );
+      _accessToken = authz.accessToken;
+      await _storage.saveGoogleTokens(
+        accessToken: _accessToken!,
+        expiryMs: DateTime.now()
+            .toUtc()
+            .add(const Duration(minutes: 50))
+            .millisecondsSinceEpoch,
+      );
+      return _email;
+    } on UnimplementedError {
+      throw GoogleAuthException(
+        'Google sign-in is not available on this platform. '
+        'The app works fully offline without an account.',
+      );
+    }
   }
 
   Future<void> ensureTasksScope() async {
@@ -101,10 +130,16 @@ class GoogleAuth {
   }
 
   Future<void> signOut() async {
-    await GoogleSignIn.instance.signOut();
-    _email = null;
-    _accessToken = null;
-    await _storage.clearGoogle();
+    try {
+      await GoogleSignIn.instance.signOut();
+    } on UnimplementedError {
+      // No-op on platforms without a plugin implementation.
+    } finally {
+      _email = null;
+      _accessToken = null;
+      await _storage.clearGoogle();
+      _initialized = false;
+    }
   }
 
   List<String> _scopes(bool tasks) =>

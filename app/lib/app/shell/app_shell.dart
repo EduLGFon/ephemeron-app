@@ -145,6 +145,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                         settingsRepositoryProvider.future,
                       );
                       await repo.setNavOrder(current);
+                      ref.invalidate(settingsRepositoryProvider);
                       if (ctx.mounted) Navigator.of(ctx).pop();
                     },
                     child: const Text('Save'),
