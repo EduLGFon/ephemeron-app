@@ -1,4 +1,4 @@
-package com.example.ephemeron
+package com.spotnik.ephemeron
 
 import android.app.AlarmManager
 import android.app.PendingIntent
@@ -50,8 +50,8 @@ class AlarmReceiver : BroadcastReceiver() {
 /** Snooze and Done actions work without launching the app. */
 class AlarmActionReceiver : BroadcastReceiver() {
     companion object {
-        const val ACTION_SNOOZE = "com.example.ephemeron.SNOOZE"
-        const val ACTION_DONE = "com.example.ephemeron.DONE"
+        const val ACTION_SNOOZE = "com.spotnik.ephemeron.SNOOZE"
+        const val ACTION_DONE = "com.spotnik.ephemeron.DONE"
         const val SNOOZE_MINUTES = 10
     }
 

@@ -1,4 +1,4 @@
-package com.example.ephemeron
+package com.spotnik.ephemeron
 
 import android.app.AlarmManager
 import android.app.NotificationChannel
@@ -34,10 +34,18 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
                     NotificationChannel("alarm_$p", "Alarm $p", importance).apply {
                         if (p == "strong" || p == "constant") {
                             lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+                            enableVibration(true)
+                            vibrationPattern = longArrayOf(0, 400, 200, 400, 200, 800)
                         }
                     }
                 )
             }
+            nm.createNotificationChannel(
+                NotificationChannel(
+                    "focus_ongoing", "Focus timer",
+                    NotificationManager.IMPORTANCE_LOW,
+                )
+            )
         }
 
         fun fire(context: Context, requestCode: Int, title: String, preset: String) {
@@ -69,12 +77,19 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             val presetName = preset.ifEmpty { "medium" }
+            val defaults = when (presetName) {
+                "light" -> 0
+                "medium" -> NotificationCompat.DEFAULT_SOUND
+                else -> NotificationCompat.DEFAULT_SOUND or NotificationCompat.DEFAULT_VIBRATE
+            }
             val notification = NotificationCompat.Builder(context, "alarm_$presetName")
                 .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
                 .setContentTitle(title)
                 .setContentText("Alarm")
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setDefaults(defaults)
                 .setFullScreenIntent(contentIntent, true)
                 .setAutoCancel(false)
                 .setOngoing(true)

@@ -191,7 +191,9 @@ class EventRepository {
             location: location == null ? const Value.absent() : Value(location),
             colorId: colorId == null ? const Value.absent() : Value(colorId),
             tzId: tzId == null ? const Value.absent() : Value(tzId),
-            createMeet: createMeet == null ? const Value.absent() : Value(createMeet),
+            createMeet: createMeet == null
+                ? const Value.absent()
+                : Value(createMeet),
           ),
         );
         await _enqueue(masterId, 'update');
@@ -420,6 +422,32 @@ class EventRepository {
     )..where((a) => a.eventId.equals(eventId))).get();
   }
 
+  /// Sets the RSVP status of one attendee row and queues a sync update.
+  /// Accepted values: accepted, tentative, declined.
+  Future<void> setRsvp(String attendeeId, String rsvp) async {
+    assert(
+      rsvp == 'accepted' || rsvp == 'tentative' || rsvp == 'declined',
+      'invalid rsvp',
+    );
+    String? eventId;
+    await _db.transaction(() async {
+      final row = await (_db.select(
+        _db.eventAttendees,
+      )..where((a) => a.id.equals(attendeeId))).getSingleOrNull();
+      if (row == null) return;
+      eventId = row.eventId;
+      await (_db.update(_db.eventAttendees)
+            ..where((a) => a.id.equals(attendeeId)))
+          .write(EventAttendeesCompanion(rsvp: Value(rsvp)));
+      await (_db.update(
+        _db.events,
+      )..where((e) => e.id.equals(row.eventId))).write(
+        EventsCompanion(updatedAt: Value(_now()), dirty: const Value(true)),
+      );
+    });
+    if (eventId != null) await _enqueue(eventId!, 'update');
+  }
+
   Future<String> createCalendar(
     String name, {
     String source = 'device',
@@ -459,9 +487,11 @@ class EventRepository {
     required DateTime endUtc,
     String? excludeId,
   }) async {
-    final rows = await (dbSelect()
-          ..where((e) => e.calendarId.equals(calendarId) & e.deletedAt.isNull()))
-        .get();
+    final rows =
+        await (dbSelect()..where(
+              (e) => e.calendarId.equals(calendarId) & e.deletedAt.isNull(),
+            ))
+            .get();
     final s = startUtc.toUtc().millisecondsSinceEpoch;
     final e = endUtc.toUtc().millisecondsSinceEpoch;
     return rows.where((ev) {

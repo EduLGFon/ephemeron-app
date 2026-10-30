@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/platform/system_launcher.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/event_repository.dart';
 import '../../notes/application/notes_providers.dart';
@@ -47,86 +48,108 @@ class _Details extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-              ListTile(
-                title: Text(
-                  e.title,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                subtitle: Text(_when(e)),
-              ),
-              if (e.location != null && e.location!.isNotEmpty)
                 ListTile(
-                  leading: const Icon(Icons.place_outlined),
-                  title: Text(e.location!),
+                  title: Text(
+                    e.title,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  subtitle: Text(_when(e)),
                 ),
-              if (e.meetUrl != null && e.meetUrl!.isNotEmpty)
-                ListTile(
-                  leading: const Icon(Icons.videocam_outlined),
-                  title: Text(e.meetUrl!),
-                  subtitle: const Text('Google Meet (tap to copy)'),
-                  onTap: () {
-                    Clipboard.setData(ClipboardData(text: e.meetUrl!));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Meet link copied')),
-                    );
-                  },
-                ),
-              if (e.notes != null && e.notes!.isNotEmpty)
-                ListTile(
-                  leading: const Icon(Icons.notes_outlined),
-                  title: Text(e.notes!),
-                ),
-              _Attendees(eventId: e.id),
-              _LinkedNotes(eventId: e.id),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          showEventEditor(context, event: e);
-                        },
-                        child: const Text('Edit'),
-                      ),
+                if (e.location != null && e.location!.isNotEmpty)
+                  ListTile(
+                    leading: const Icon(Icons.place_outlined),
+                    title: Text(e.location!),
+                  ),
+                if (e.meetUrl != null && e.meetUrl!.isNotEmpty)
+                  ListTile(
+                    leading: const Icon(Icons.videocam_outlined),
+                    title: Text(e.meetUrl!),
+                    subtitle: const Text('Google Meet'),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.open_in_new),
+                      tooltip: 'Join meeting',
+                      onPressed: () async {
+                        final ok = await SystemLauncher.openUrl(e.meetUrl!);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              ok
+                                  ? 'Opening meeting'
+                                  : 'Join not supported here - link copied',
+                            ),
+                          ),
+                        );
+                        if (!ok) {
+                          await Clipboard.setData(
+                            ClipboardData(text: e.meetUrl!),
+                          );
+                        }
+                      },
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => _delete(context, ref, e),
-                        child: const Text('Delete'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final noteRepo = ref.read(noteRepositoryProvider);
-                    final id = await noteRepo.createNote(
-                      title: 'Notes for ${e.title}',
-                      linkedEventId: e.id,
-                    );
-                    if (context.mounted) {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => NoteEditorScreen(noteId: id),
-                        ),
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: e.meetUrl!));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Meet link copied')),
                       );
-                    }
-                  },
-                  icon: const Icon(Icons.note_add_outlined),
-                  label: const Text('Add note'),
+                    },
+                  ),
+                if (e.notes != null && e.notes!.isNotEmpty)
+                  ListTile(
+                    leading: const Icon(Icons.notes_outlined),
+                    title: Text(e.notes!),
+                  ),
+                _Attendees(eventId: e.id),
+                _LinkedNotes(eventId: e.id),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            showEventEditor(context, event: e);
+                          },
+                          child: const Text('Edit'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => _delete(context, ref, e),
+                          child: const Text('Delete'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final noteRepo = ref.read(noteRepositoryProvider);
+                      final id = await noteRepo.createNote(
+                        title: 'Notes for ${e.title}',
+                        linkedEventId: e.id,
+                      );
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => NoteEditorScreen(noteId: id),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.note_add_outlined),
+                    label: const Text('Add note'),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      );
+        );
       },
     );
   }
@@ -144,6 +167,7 @@ class _Attendees extends ConsumerWidget {
       builder: (ctx, snap) {
         final atts = snap.data ?? const [];
         if (atts.isEmpty) return const SizedBox.shrink();
+        final self = atts.where((a) => a.isSelf).firstOrNull ?? atts.first;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -153,10 +177,44 @@ class _Attendees extends ConsumerWidget {
                 title: Text(a.email),
                 trailing: Text(a.rsvp ?? ''),
               ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Wrap(
+                spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  const Text('My response:'),
+                  for (final (value, label) in const [
+                    ('accepted', 'Yes'),
+                    ('tentative', 'Maybe'),
+                    ('declined', 'No'),
+                  ])
+                    ChoiceChip(
+                      label: Text(label),
+                      selected: (self.rsvp ?? '') == value,
+                      onSelected: (_) => _respond(ctx, ref, self, value),
+                    ),
+                ],
+              ),
+            ),
           ],
         );
       },
     );
+  }
+
+  Future<void> _respond(
+    BuildContext context,
+    WidgetRef ref,
+    EventAttendee self,
+    String rsvp,
+  ) async {
+    await ref.read(eventRepositoryProvider).setRsvp(self.id, rsvp);
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('RSVP: $rsvp')));
+    }
   }
 }
 
@@ -199,7 +257,10 @@ String _when(Event e) {
   final s = e.startUtc == null
       ? '?'
       : DateFormat.yMMMd().add_Hm().format(
-          DateTime.fromMillisecondsSinceEpoch(e.startUtc!, isUtc: true).toLocal(),
+          DateTime.fromMillisecondsSinceEpoch(
+            e.startUtc!,
+            isUtc: true,
+          ).toLocal(),
         );
   final en = e.endUtc == null
       ? ''

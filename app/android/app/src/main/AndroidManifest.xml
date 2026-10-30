@@ -8,6 +8,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <application
         android:label="ephemeron"
         android:name="${applicationName}"
@@ -31,9 +32,22 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
@@ -56,8 +70,8 @@
             android:name=".AlarmActionReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.example.ephemeron.SNOOZE" />
-                <action android:name="com.example.ephemeron.DONE" />
+                <action android:name="com.spotnik.ephemeron.SNOOZE" />
+                <action android:name="com.spotnik.ephemeron.DONE" />
             </intent-filter>
         </receiver>
     </application>
