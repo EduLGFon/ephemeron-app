@@ -1,28 +1,19 @@
 // Habits, sections, logs. Local-first; habits sync via backend changesets.
 import 'package:drift/drift.dart';
 import 'package:ephemeron/core/ids/ids.dart';
+import 'package:ephemeron/core/time/time.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
+import 'package:ephemeron/data/repositories/outbox_helper.dart';
 import 'package:ephemeron/domain/habits/date_key.dart';
 import 'package:ephemeron/domain/habits/streaks.dart';
 
 class HabitRepository {
   HabitRepository(this._db);
   final AppDatabase _db;
-  int _now() => DateTime.now().toUtc().millisecondsSinceEpoch;
+  int _now() => nowMs();
 
-  Future<void> _enqueue(String entity, String entityId, String op) {
-    return _db
-        .into(_db.outbox)
-        .insert(
-          OutboxCompanion.insert(
-            id: newId(),
-            entity: entity,
-            entityId: entityId,
-            op: op,
-            createdAt: _now(),
-          ),
-        );
-  }
+  Future<void> _enqueue(String entity, String entityId, String op) =>
+      enqueueOutbox(_db, entity: entity, entityId: entityId, op: op);
 
   Future<String> createSection(String name) async {
     final id = newId();

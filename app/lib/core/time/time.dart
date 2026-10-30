@@ -7,3 +7,5 @@ String dateKey(DateTime local) =>
     '${local.day.toString().padLeft(2, '0')}';
 
 int epochMs(DateTime utc) => utc.toUtc().millisecondsSinceEpoch;
+
+int nowMs() => DateTime.now().toUtc().millisecondsSinceEpoch;

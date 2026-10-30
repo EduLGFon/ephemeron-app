@@ -3,7 +3,9 @@
 // UI reads occurrences via OccurrenceRepository streams.
 import 'package:drift/drift.dart';
 import 'package:ephemeron/core/ids/ids.dart';
+import 'package:ephemeron/core/time/time.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
+import 'package:ephemeron/data/repositories/outbox_helper.dart';
 import 'package:ephemeron/data/repositories/occurrence_repository.dart';
 
 enum EditScope { single, following, all }
@@ -14,21 +16,10 @@ class EventRepository {
   final AppDatabase _db;
   final OccurrenceRepository _occ;
 
-  int _now() => DateTime.now().toUtc().millisecondsSinceEpoch;
+  int _now() => nowMs();
 
-  Future<void> _enqueue(String entityId, String op) {
-    return _db
-        .into(_db.outbox)
-        .insert(
-          OutboxCompanion.insert(
-            id: newId(),
-            entity: 'event',
-            entityId: entityId,
-            op: op,
-            createdAt: _now(),
-          ),
-        );
-  }
+  Future<void> _enqueue(String entityId, String op) =>
+      enqueueOutbox(_db, entity: 'event', entityId: entityId, op: op);
 
   Future<String> createEvent({
     required String calendarId,
