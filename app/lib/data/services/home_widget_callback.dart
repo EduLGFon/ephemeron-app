@@ -7,27 +7,30 @@ import 'package:home_widget/home_widget.dart';
 @pragma('vm:entry-point')
 Future<void> homeWidgetBackgroundCallback(Uri? uri) async {
   if (uri == null) return;
+  AppDatabase? db;
   try {
-    final db = AppDatabase();
-    try {
-      final segments = uri.pathSegments;
-      if (segments.length >= 3 && segments[0] == 'toggle') {
-        final kind = segments[1];
-        final id = segments[2];
-        if (kind == 'task') {
-          final repo = TaskRepository(db);
-          await repo.completeTask(id);
-        } else if (kind == 'habit') {
-          final repo = HabitRepository(db);
-          await repo.logDone(id, habitDateKey(DateTime.now()));        }
+    db = AppDatabase();
+    final segments = uri.pathSegments;
+    if (segments.length >= 3 && segments[0] == 'toggle') {
+      final kind = segments[1];
+      final id = segments[2];
+      if (kind == 'task') {
+        final repo = TaskRepository(db);
+        await repo.completeTask(id);
+      } else if (kind == 'habit') {
+        final repo = HabitRepository(db);
+        await repo.logDone(id, habitDateKey(DateTime.now()));
       }
-      await HomeWidget.saveWidgetData<String>('sync_status_title', 'Updated');
-      await HomeWidget.updateWidget(
-        androidName: 'SyncStatusWidgetProvider',
-        qualifiedAndroidName: 'com.spotnik.ephemeron.SyncStatusWidgetProvider',
-      );
-    } finally {
-      await db.close();
     }
-  } catch (_) {}
+    await HomeWidget.saveWidgetData<String>('sync_status_title', 'Updated');
+    await HomeWidget.updateWidget(
+      androidName: 'SyncStatusWidgetProvider',
+      qualifiedAndroidName: 'com.spotnik.ephemeron.SyncStatusWidgetProvider',
+    );
+  } catch (_) {
+  } finally {
+    try {
+      await db?.close();
+    } catch (_) {}
+  }
 }
