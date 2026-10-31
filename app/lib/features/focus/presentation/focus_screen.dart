@@ -118,9 +118,10 @@ class _StartViewState extends ConsumerState<_StartView> {
     final todayAsync = ref.watch(focusTodayMinutesProvider);
     final weekAsync = ref.watch(focusWeekMinutesProvider);
     final recentAsync = ref.watch(recentFocusSessionsProvider);
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
+    return RepaintBoundary(
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
         SegmentedButton<bool>(
           segments: const [
             ButtonSegment(value: false, label: Text('Focus')),
@@ -211,6 +212,7 @@ class _StartViewState extends ConsumerState<_StartView> {
           orElse: () => const SizedBox.shrink(),
         ),
       ],
+      ),
     );
   }
 
