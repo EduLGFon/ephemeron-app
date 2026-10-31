@@ -34,30 +34,32 @@ class MatrixScreen extends ConsumerWidget {
             groups[classifyTask(priority: t.priority, dueDate: due, now: now)]!
                 .add(t);
           }
-          return ListView(
-            padding: const EdgeInsets.all(12),
-            children: [
-              _QuadrantCard(
-                title: 'Do first',
-                tasks: groups[EisenhowerQuadrant.doFirst]!,
-              ),
-              _QuadrantCard(
-                title: 'Schedule',
-                tasks: groups[EisenhowerQuadrant.schedule]!,
-              ),
-              _QuadrantCard(
-                title: 'Delegate',
-                tasks: groups[EisenhowerQuadrant.delegate]!,
-              ),
-              _QuadrantCard(
-                title: 'Eliminate',
-                tasks: groups[EisenhowerQuadrant.eliminate]!,
-              ),
-              _QuadrantCard(
-                title: 'Unclassified',
-                tasks: groups[EisenhowerQuadrant.unclassified]!,
-              ),
-            ],
+          return RepaintBoundary(
+            child: ListView(
+              padding: const EdgeInsets.all(12),
+              children: [
+                _QuadrantCard(
+                  title: 'Do first',
+                  tasks: groups[EisenhowerQuadrant.doFirst]!,
+                ),
+                _QuadrantCard(
+                  title: 'Schedule',
+                  tasks: groups[EisenhowerQuadrant.schedule]!,
+                ),
+                _QuadrantCard(
+                  title: 'Delegate',
+                  tasks: groups[EisenhowerQuadrant.delegate]!,
+                ),
+                _QuadrantCard(
+                  title: 'Eliminate',
+                  tasks: groups[EisenhowerQuadrant.eliminate]!,
+                ),
+                _QuadrantCard(
+                  title: 'Unclassified',
+                  tasks: groups[EisenhowerQuadrant.unclassified]!,
+                ),
+              ],
+            ),
           );
         },
       ),

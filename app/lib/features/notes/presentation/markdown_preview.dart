@@ -28,9 +28,11 @@ class MarkdownPreview extends StatelessWidget {
     if (blocks.widgets.isEmpty) {
       return const Text('Nothing to preview');
     }
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: blocks.widgets,
+    return RepaintBoundary(
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: blocks.widgets,
+      ),
     );
   }
 }

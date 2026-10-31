@@ -57,21 +57,23 @@ class CountdownsScreen extends ConsumerWidget {
           dated.sort((a, b) => a.days.compareTo(b.days));
           final upcoming = dated.where((d) => d.days >= 0).toList();
           final passed = dated.where((d) => d.days < 0).toList();
-          return ListView(
-            children: [
-              if (upcoming.isNotEmpty) ...[
-                const _GroupHeader(title: 'Upcoming'),
-                for (final d in upcoming) _CountdownTile(entry: d),
+          return RepaintBoundary(
+            child: ListView(
+              children: [
+                if (upcoming.isNotEmpty) ...[
+                  const _GroupHeader(title: 'Upcoming'),
+                  for (final d in upcoming) _CountdownTile(entry: d),
+                ],
+                if (passed.isNotEmpty) ...[
+                  const _GroupHeader(title: 'Passed'),
+                  for (final d in passed) _CountdownTile(entry: d),
+                ],
+                if (undated.isNotEmpty) ...[
+                  const _GroupHeader(title: 'No date'),
+                  for (final c in undated) _UndatedTile(countdown: c),
+                ],
               ],
-              if (passed.isNotEmpty) ...[
-                const _GroupHeader(title: 'Passed'),
-                for (final d in passed) _CountdownTile(entry: d),
-              ],
-              if (undated.isNotEmpty) ...[
-                const _GroupHeader(title: 'No date'),
-                for (final c in undated) _UndatedTile(countdown: c),
-              ],
-            ],
+            ),
           );
         },
       ),

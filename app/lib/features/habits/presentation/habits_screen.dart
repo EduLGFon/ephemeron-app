@@ -126,19 +126,21 @@ class _HabitList extends StatelessWidget {
         (k) => k != null && !sections.any((s) => s.id == k),
       ),
     ];
-    return ListView(
-      children: [
-        for (final key in orderedKeys) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Text(
-              sectionName(key),
-              style: Theme.of(context).textTheme.titleSmall,
+    return RepaintBoundary(
+      child: ListView(
+        children: [
+          for (final key in orderedKeys) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(
+                sectionName(key),
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
             ),
-          ),
-          for (final h in bySection[key]!) _HabitTile(habit: h),
+            for (final h in bySection[key]!) _HabitTile(habit: h),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

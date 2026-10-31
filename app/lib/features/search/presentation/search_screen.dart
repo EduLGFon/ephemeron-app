@@ -96,8 +96,9 @@ class _Results extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ListView(
-      children: [
+    return RepaintBoundary(
+      child: ListView(
+        children: [
         if (_show(scope, SearchScope.tasks))
           _Group<Task>(
             title: l.searchTasks,
@@ -155,6 +156,7 @@ class _Results extends ConsumerWidget {
                 ListTile(leading: const Icon(Icons.tag), title: Text(t.name)),
           ),
       ],
+      ),
     );
   }
 }

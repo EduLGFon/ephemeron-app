@@ -81,8 +81,9 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                   if (folders.isEmpty && notes.isEmpty) {
                     return _EmptyState(onAdd: () => _newNote());
                   }
-                  return ListView(
-                    children: [
+                  return RepaintBoundary(
+                    child: ListView(
+                      children: [
                       for (final f in folders)
                         ListTile(
                           leading: const Icon(Icons.folder_outlined),
@@ -149,7 +150,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                           ),
                         ),
                     ],
-                  );
+                  ),
+                );
                 },
               ),
             ),
@@ -423,19 +425,21 @@ class _SearchResults extends StatelessWidget {
       appBar: AppBar(title: Text('Results for "$query"')),
       body: hits.isEmpty
           ? const Center(child: Text('No matches'))
-          : ListView(
-              children: [
-                for (final h in hits)
-                  ListTile(
-                    title: Text((h.note as Note).title),
-                    subtitle: Text(
-                      (h.snippet as String)
-                          .replaceAll('<b>', '')
-                          .replaceAll('</b>', ''),
+          : RepaintBoundary(
+              child: ListView(
+                children: [
+                  for (final h in hits)
+                    ListTile(
+                      title: Text((h.note as Note).title),
+                      subtitle: Text(
+                        (h.snippet as String)
+                            .replaceAll('<b>', '')
+                            .replaceAll('</b>', ''),
+                      ),
+                      onTap: () => onOpen((h.note as Note).id),
                     ),
-                    onTap: () => onOpen((h.note as Note).id),
-                  ),
-              ],
+                ],
+              ),
             ),
     );
   }
