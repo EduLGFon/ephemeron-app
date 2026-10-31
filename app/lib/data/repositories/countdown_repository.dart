@@ -8,7 +8,6 @@ import 'package:ephemeron/data/drift/app_database.dart';
 class CountdownRepository {
   CountdownRepository(this._db);
   final AppDatabase _db;
-  int _now() => nowMs();
 
   Future<String> createCountdown({
     required String title,
@@ -21,7 +20,7 @@ class CountdownRepository {
     int? alertTimeMin,
   }) async {
     final id = newId();
-    final now = _now();
+    final now = nowMs();
     await _db
         .into(_db.countdowns)
         .insert(
@@ -84,7 +83,7 @@ class CountdownRepository {
             : Value(yearlyRepeat),
         showAge: showAge == null ? const Value.absent() : Value(showAge),
         notes: notes == null ? const Value.absent() : Value(notes()),
-        updatedAt: Value(_now()),
+        updatedAt: Value(nowMs()),
       ),
     );
   }
@@ -93,14 +92,14 @@ class CountdownRepository {
     await (_db.update(_db.countdowns)..where((c) => c.id.equals(id))).write(
       CountdownsCompanion(
         deletedAt: const Value(null),
-        updatedAt: Value(_now()),
+        updatedAt: Value(nowMs()),
       ),
     );
   }
 
   Future<void> deleteCountdown(String id) async {
     await (_db.update(_db.countdowns)..where((c) => c.id.equals(id))).write(
-      CountdownsCompanion(deletedAt: Value(_now()), updatedAt: Value(_now())),
+      CountdownsCompanion(deletedAt: Value(nowMs()), updatedAt: Value(nowMs())),
     );
   }
 }

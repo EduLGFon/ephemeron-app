@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:ephemeron/core/ids/ids.dart';
 import 'package:ephemeron/core/search/sanitize.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
+import 'package:ephemeron/core/time/time.dart';
 import 'package:image/image.dart' as img;
 
 class NoteSearchHit {
@@ -20,8 +21,6 @@ class NoteRepository {
 
   final AppDatabase _db;
   final Directory? _attachmentDir;
-
-  int _now() => DateTime.now().toUtc().millisecondsSinceEpoch;
 
   // Folders.
 
@@ -52,7 +51,7 @@ class NoteRepository {
 
   Future<String> createFolder(String name, {String? parentId}) async {
     final id = newId();
-    final now = _now();
+    final now = nowMs();
     await _db
         .into(_db.folders)
         .insert(
@@ -90,7 +89,7 @@ class NoteRepository {
       if (crumbs.any((f) => f.id == folderId)) return;
     }
     await (_db.update(_db.folders)..where((t) => t.id.equals(folderId))).write(
-      FoldersCompanion(parentId: Value(newParentId), updatedAt: Value(_now())),
+      FoldersCompanion(parentId: Value(newParentId), updatedAt: Value(nowMs())),
     );
   }
 
@@ -107,7 +106,7 @@ class NoteRepository {
       )..where((t) => t.parentId.equals(folderId))).write(
         FoldersCompanion(
           parentId: Value(folder.parentId),
-          updatedAt: Value(_now()),
+          updatedAt: Value(nowMs()),
         ),
       );
       await (_db.update(
@@ -115,7 +114,7 @@ class NoteRepository {
       )..where((t) => t.folderId.equals(folderId))).write(
         NotesCompanion(
           folderId: Value(folder.parentId),
-          updatedAt: Value(_now()),
+          updatedAt: Value(nowMs()),
           dirty: const Value(true),
         ),
       );
@@ -132,7 +131,7 @@ class NoteRepository {
     String? linkedEventId,
   }) async {
     final id = newId();
-    final now = _now();
+    final now = nowMs();
     await _db
         .into(_db.notes)
         .insert(
@@ -173,7 +172,7 @@ class NoteRepository {
         title: title == null ? const Value.absent() : Value(title),
         body: body == null ? const Value.absent() : Value(body()),
         folderId: folderId == null ? const Value.absent() : Value(folderId()),
-        updatedAt: Value(_now()),
+        updatedAt: Value(nowMs()),
         dirty: const Value(true),
       ),
     );
@@ -184,7 +183,7 @@ class NoteRepository {
     await (_db.update(_db.notes)..where((t) => t.id.equals(id))).write(
       NotesCompanion(
         pinned: Value(pinned),
-        updatedAt: Value(_now()),
+        updatedAt: Value(nowMs()),
         dirty: const Value(true),
       ),
     );
@@ -204,8 +203,8 @@ class NoteRepository {
   Future<void> trashNote(String id) async {
     await (_db.update(_db.notes)..where((t) => t.id.equals(id))).write(
       NotesCompanion(
-        deletedAt: Value(_now()),
-        updatedAt: Value(_now()),
+        deletedAt: Value(nowMs()),
+        updatedAt: Value(nowMs()),
         dirty: const Value(true),
       ),
     );
@@ -215,7 +214,7 @@ class NoteRepository {
     await (_db.update(_db.notes)..where((t) => t.id.equals(id))).write(
       NotesCompanion(
         deletedAt: const Value(null),
-        updatedAt: Value(_now()),
+        updatedAt: Value(nowMs()),
         dirty: const Value(true),
       ),
     );
@@ -435,7 +434,7 @@ class NoteRepository {
             mime: Value(mime),
             size: Value(bytes.length),
             hash: Value(hash.toString()),
-            createdAt: _now(),
+            createdAt: nowMs(),
           ),
         );
     return id;

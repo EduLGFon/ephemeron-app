@@ -2,6 +2,7 @@
 // default duration.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../settings/application/settings_providers.dart';
 import '../application/calendar_providers.dart';
@@ -69,18 +70,18 @@ class CalendarSettingsScreen extends ConsumerWidget {
               future: _weekStart(ref),
               builder: (ctx, snap) => DropdownButton<int>(
                 value: snap.data ?? DateTime.monday,
-                items: const [
+                items: [
                   DropdownMenuItem(
                     value: DateTime.monday,
-                    child: Text('Monday'),
+                    child: Text(DateFormat.EEEE().format(DateTime(2024, 1, 1))),
                   ),
                   DropdownMenuItem(
                     value: DateTime.sunday,
-                    child: Text('Sunday'),
+                    child: Text(DateFormat.EEEE().format(DateTime(2024, 1, 7))),
                   ),
                   DropdownMenuItem(
                     value: DateTime.saturday,
-                    child: Text('Saturday'),
+                    child: Text(DateFormat.EEEE().format(DateTime(2024, 1, 6))),
                   ),
                 ],
                 onChanged: (v) async {

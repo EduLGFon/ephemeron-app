@@ -11,14 +11,13 @@ import 'package:ephemeron/domain/habits/streaks.dart';
 class HabitRepository {
   HabitRepository(this._db);
   final AppDatabase _db;
-  int _now() => nowMs();
 
   Future<void> _enqueue(String entity, String entityId, String op) =>
       enqueueOutbox(_db, entity: entity, entityId: entityId, op: op);
 
   Future<String> createSection(String name) async {
     final id = newId();
-    final now = _now();
+    final now = nowMs();
     await _db
         .into(_db.habitSections)
         .insert(
@@ -55,7 +54,7 @@ class HabitRepository {
     String? alarmPreset,
   }) async {
     final id = newId();
-    final now = _now();
+    final now = nowMs();
     await _db
         .into(_db.habits)
         .insert(
@@ -109,7 +108,7 @@ class HabitRepository {
     await (_db.update(_db.habits)..where((h) => h.id.equals(id))).write(
       HabitsCompanion(
         archived: Value(archived),
-        updatedAt: Value(_now()),
+        updatedAt: Value(nowMs()),
         dirty: const Value(true),
       ),
     );
@@ -182,7 +181,7 @@ class HabitRepository {
         alarmPreset: alarmPreset == null
             ? const Value.absent()
             : Value(alarmPreset()),
-        updatedAt: Value(_now()),
+        updatedAt: Value(nowMs()),
         dirty: const Value(true),
       ),
     );
@@ -207,8 +206,8 @@ class HabitRepository {
               dayKey: dayKey,
               amount: Value(amount ?? 0),
               done: const Value(true),
-              createdAt: _now(),
-              updatedAt: _now(),
+              createdAt: nowMs(),
+              updatedAt: nowMs(),
             ),
           );
     } else {
@@ -221,7 +220,7 @@ class HabitRepository {
           amount: amount == null
               ? const Value.absent()
               : Value(existing.amount + amount),
-          updatedAt: Value(_now()),
+          updatedAt: Value(nowMs()),
         ),
       );
     }
@@ -240,15 +239,15 @@ class HabitRepository {
               habitId: habitId,
               dayKey: dayKey,
               skipped: Value(skipped),
-              createdAt: _now(),
-              updatedAt: _now(),
+              createdAt: nowMs(),
+              updatedAt: nowMs(),
             ),
           );
     } else {
       await (_db.update(
         _db.habitLogs,
       )..where((l) => l.id.equals(existing.id))).write(
-        HabitLogsCompanion(skipped: Value(skipped), updatedAt: Value(_now())),
+        HabitLogsCompanion(skipped: Value(skipped), updatedAt: Value(nowMs())),
       );
     }
     await _touchHabit(habitId);
@@ -271,8 +270,8 @@ class HabitRepository {
               dayKey: dayKey,
               amount: Value(amount),
               done: Value(done),
-              createdAt: _now(),
-              updatedAt: _now(),
+              createdAt: nowMs(),
+              updatedAt: nowMs(),
             ),
           );
     } else {
@@ -282,7 +281,7 @@ class HabitRepository {
         HabitLogsCompanion(
           amount: Value(amount),
           done: Value(done),
-          updatedAt: Value(_now()),
+          updatedAt: Value(nowMs()),
         ),
       );
     }
@@ -291,7 +290,7 @@ class HabitRepository {
 
   Future<void> _touchHabit(String habitId) async {
     await (_db.update(_db.habits)..where((h) => h.id.equals(habitId))).write(
-      HabitsCompanion(updatedAt: Value(_now()), dirty: const Value(true)),
+      HabitsCompanion(updatedAt: Value(nowMs()), dirty: const Value(true)),
     );
   }
 

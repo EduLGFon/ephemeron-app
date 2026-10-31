@@ -17,8 +17,6 @@ class EventRepository {
   final AppDatabase _db;
   final OccurrenceRepository _occ;
 
-  int _now() => nowMs();
-
   Future<void> _enqueue(String entityId, String op) =>
       enqueueOutbox(_db, entity: 'event', entityId: entityId, op: op);
 
@@ -38,7 +36,7 @@ class EventRepository {
     bool createMeet = false,
   }) async {
     final id = newId();
-    final now = _now();
+    final now = nowMs();
     await _db
         .into(_db.events)
         .insert(
@@ -131,7 +129,7 @@ class EventRepository {
 
   /// Soft-deletes a master and its exceptions in one transaction.
   Future<void> deleteEvent(String masterId) async {
-    final now = _now();
+    final now = nowMs();
     await _db.transaction(() async {
       for (final id in [
         masterId,
@@ -219,7 +217,7 @@ class EventRepository {
                 ? const Value.absent()
                 : Value(createMeet),
             rrule: rrule == null ? const Value.absent() : Value(rrule()),
-            updatedAt: Value(_now()),
+            updatedAt: Value(nowMs()),
             dirty: const Value(true),
           ),
         );
@@ -229,8 +227,8 @@ class EventRepository {
               _db.events,
             )..where((e) => e.id.equals(ex.id))).write(
               EventsCompanion(
-                deletedAt: Value(_now()),
-                updatedAt: Value(_now()),
+                deletedAt: Value(nowMs()),
+                updatedAt: Value(nowMs()),
               ),
             );
           }
@@ -253,7 +251,7 @@ class EventRepository {
                   e.deletedAt.isNull(),
             ))
             .getSingleOrNull();
-    final now = _now();
+    final now = nowMs();
     if (existing == null) {
       await _db
           .into(_db.events)
@@ -306,14 +304,14 @@ class EventRepository {
     await (_db.update(_db.events)..where((e) => e.id.equals(master.id))).write(
       EventsCompanion(
         rrule: Value(rrule.isEmpty ? null : rrule),
-        updatedAt: Value(_now()),
+        updatedAt: Value(nowMs()),
         dirty: const Value(true),
       ),
     );
     for (final ex in await exceptionsOf(master.id)) {
       if ((ex.originalStart ?? 0) >= cutMs) {
         await (_db.update(_db.events)..where((e) => e.id.equals(ex.id))).write(
-          EventsCompanion(deletedAt: Value(_now()), updatedAt: Value(_now())),
+          EventsCompanion(deletedAt: Value(nowMs()), updatedAt: Value(nowMs())),
         );
       }
     }
@@ -336,7 +334,7 @@ class EventRepository {
     final newEnd =
         endUtc?.toUtc().millisecondsSinceEpoch ?? (newStart + durationMs);
     final id = newId();
-    final now = _now();
+    final now = nowMs();
     await _db
         .into(_db.events)
         .insert(
@@ -434,7 +432,7 @@ class EventRepository {
       await (_db.update(
         _db.events,
       )..where((e) => e.id.equals(row.eventId))).write(
-        EventsCompanion(updatedAt: Value(_now()), dirty: const Value(true)),
+        EventsCompanion(updatedAt: Value(nowMs()), dirty: const Value(true)),
       );
     });
     if (eventId != null) await _enqueue(eventId!, 'update');
@@ -446,7 +444,7 @@ class EventRepository {
     String? color,
   }) async {
     final id = newId();
-    final now = _now();
+    final now = nowMs();
     await _db
         .into(_db.calendars)
         .insert(
@@ -466,7 +464,7 @@ class EventRepository {
     await (_db.update(_db.events)..where((e) => e.id.equals(eventId))).write(
       EventsCompanion(
         notesOverflowNoteId: Value(noteId),
-        updatedAt: Value(_now()),
+        updatedAt: Value(nowMs()),
         dirty: const Value(true),
       ),
     );
@@ -497,7 +495,7 @@ class EventRepository {
 
   Future<void> setCalendarEnabled(String id, bool enabled) async {
     await (_db.update(_db.calendars)..where((c) => c.id.equals(id))).write(
-      CalendarsCompanion(enabled: Value(enabled), updatedAt: Value(_now())),
+      CalendarsCompanion(enabled: Value(enabled), updatedAt: Value(nowMs())),
     );
   }
 

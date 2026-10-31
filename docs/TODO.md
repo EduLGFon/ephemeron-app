@@ -33,3 +33,12 @@ Remaining (not yet fixed):
   declaration, backup rules, release-build verification are owner checks.
 - Privacy policy: draft done (docs/PRIVACY.md EN/PT); needs lawyer sign-off.
 - Store assets, staged rollout: owner.
+
+## Dependency update (2026-10-30)
+
+- Updated archive 3.6.1->4.5.2, battery_plus 6.2.3->7.1.2,
+  device_calendar_plus 0.7.1->0.12.0, go_router 18.1.1->18.1.2,
+  image 4.3.0->4.12.0 and transitive deps; regenerated Drift code.
+- wakelock_plus left at 1.8.0 (latest 1.8.2 unreachable): upstream conflict
+  between wakelock_plus >=1.8.1 (dbus ^0.8.0) and battery_plus 7.1.2
+  (upower 0.7.0 -> dbus ^0.7.0). Revisit when either package relaxes.

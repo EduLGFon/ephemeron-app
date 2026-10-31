@@ -1,6 +1,7 @@
 // Habit editor bottom sheet: create and edit.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../../../domain/habits/date_key.dart';
@@ -267,15 +268,10 @@ class _WeekdayPicker extends StatelessWidget {
   final void Function(int mask) onChanged;
 
   static const _labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  static const _names = [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday',
-  ];
+  static List<String> get _names => List.generate(
+    7,
+    (i) => DateFormat.EEEE().format(DateTime(2024, 1, 1 + i)),
+  );
 
   @override
   Widget build(BuildContext context) {

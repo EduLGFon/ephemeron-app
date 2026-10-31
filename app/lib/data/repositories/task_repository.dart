@@ -16,8 +16,6 @@ class TaskRepository {
 
   final AppDatabase _db;
 
-  int _now() => nowMs();
-
   Future<void> _enqueue(String entity, String entityId, String op) =>
       enqueueOutbox(_db, entity: entity, entityId: entityId, op: op);
 
@@ -25,7 +23,7 @@ class TaskRepository {
 
   Future<String> createList(String name, {String? color}) async {
     final id = newId();
-    final now = _now();
+    final now = nowMs();
     await _db
         .into(_db.taskLists)
         .insert(
@@ -74,7 +72,7 @@ class TaskRepository {
     List<String> tags = const [],
   }) async {
     final id = newId();
-    final now = _now();
+    final now = nowMs();
     var list = listId;
     list ??= await _defaultListId();
     await _db
@@ -224,7 +222,7 @@ class TaskRepository {
         pinned: pinned == null ? const Value.absent() : Value(pinned),
         wontDo: wontDo == null ? const Value.absent() : Value(wontDo),
         sortOrder: sortOrder == null ? const Value.absent() : Value(sortOrder),
-        updatedAt: Value(_now()),
+        updatedAt: Value(nowMs()),
         dirty: const Value(true),
       ),
     );
@@ -240,7 +238,7 @@ class TaskRepository {
       await (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(
         TasksCompanion(
           completedAt: Value(completedMs),
-          updatedAt: Value(_now()),
+          updatedAt: Value(nowMs()),
           dirty: const Value(true),
         ),
       );
@@ -288,7 +286,7 @@ class TaskRepository {
     await (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(
       TasksCompanion(
         completedAt: const Value(null),
-        updatedAt: Value(_now()),
+        updatedAt: Value(nowMs()),
         dirty: const Value(true),
       ),
     );
@@ -333,7 +331,7 @@ class TaskRepository {
 
   /// Soft-deletes; returns ids for undo snackbars.
   Future<List<String>> softDeleteTasks(List<String> ids) async {
-    final now = _now();
+    final now = nowMs();
     await (_db.update(_db.tasks)..where((t) => t.id.isIn(ids))).write(
       TasksCompanion(
         deletedAt: Value(now),
@@ -351,7 +349,7 @@ class TaskRepository {
     await (_db.update(_db.tasks)..where((t) => t.id.isIn(ids))).write(
       TasksCompanion(
         deletedAt: const Value(null),
-        updatedAt: Value(_now()),
+        updatedAt: Value(nowMs()),
         dirty: const Value(true),
       ),
     );
@@ -375,7 +373,7 @@ class TaskRepository {
         await (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(
           TasksCompanion(
             listId: Value(listId),
-            updatedAt: Value(_now()),
+            updatedAt: Value(nowMs()),
             dirty: const Value(true),
           ),
         );
@@ -425,7 +423,7 @@ class TaskRepository {
     )..where((g) => g.name.equals(clean))).getSingleOrNull();
     if (existing != null) return existing.id;
     final id = newId();
-    final now = _now();
+    final now = nowMs();
     await _db
         .into(_db.tags)
         .insert(
@@ -465,7 +463,7 @@ class TaskRepository {
             .insert(TaskTagsCompanion.insert(taskId: taskId, tagId: tagId));
       }
       await (_db.update(_db.tasks)..where((t) => t.id.equals(taskId))).write(
-        TasksCompanion(updatedAt: Value(_now())),
+        TasksCompanion(updatedAt: Value(nowMs())),
       );
     });
     await _enqueue('task', taskId, 'update');
@@ -478,7 +476,7 @@ class TaskRepository {
     Map<String, Object?> filter,
   ) async {
     final id = newId();
-    final now = _now();
+    final now = nowMs();
     await _db
         .into(_db.smartLists)
         .insert(

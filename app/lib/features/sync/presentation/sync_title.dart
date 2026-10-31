@@ -19,6 +19,7 @@ class SyncTitle extends ConsumerStatefulWidget {
 }
 
 class _SyncTitleState extends ConsumerState<SyncTitle> {
+  final ValueNotifier<int> _tick = ValueNotifier<int>(0);
   Timer? _ticker;
 
   @override
@@ -26,34 +27,42 @@ class _SyncTitleState extends ConsumerState<SyncTitle> {
     super.initState();
     // Refresh the freshness color without waiting for provider changes.
     _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (mounted) setState(() {});
+      _tick.value++;
     });
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
+    _tick.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final lastSync = ref.watch(lastGoogleSyncAtProvider);
-    final status = ref.watch(syncStatusProvider);
-    final fresh =
-        lastSync != null &&
-        DateTime.now().toUtc().difference(lastSync) <
-            const Duration(minutes: 30);
-    final color = (fresh || status == SyncStatus.syncing)
-        ? Theme.of(context).colorScheme.primary
-        : Theme.of(context).colorScheme.outline;
-    return InkWell(
-      onTap: () =>
-          ref.read(googleAutoSyncServiceProvider).syncNowAndReschedule(),
-      child: Text(
-        widget.text,
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(color: color),
-      ),
+    return ValueListenableBuilder<int>(
+      valueListenable: _tick,
+      builder: (context, _, child) {
+        final lastSync = ref.watch(lastGoogleSyncAtProvider);
+        final status = ref.watch(syncStatusProvider);
+        final fresh =
+            lastSync != null &&
+            DateTime.now().toUtc().difference(lastSync) <
+                const Duration(minutes: 30);
+        final color = (fresh || status == SyncStatus.syncing)
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.outline;
+        return InkWell(
+          onTap: () =>
+              ref.read(googleAutoSyncServiceProvider).syncNowAndReschedule(),
+          child: Text(
+            widget.text,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(color: color),
+          ),
+        );
+      },
     );
   }
 }
