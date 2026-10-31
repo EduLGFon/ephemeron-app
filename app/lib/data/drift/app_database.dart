@@ -38,7 +38,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -57,6 +57,12 @@ class AppDatabase extends _$AppDatabase {
       if (from < 4) {
         await m.addColumn(calendars, calendars.googleAccount);
         await m.addColumn(taskLists, taskLists.googleAccount);
+      }
+      if (from < 5) {
+        await m.addColumn(countdowns, countdowns.alarmPreset);
+        await m.addColumn(alarmsIndex, alarmsIndex.kind);
+        await m.addColumn(alarmsIndex, alarmsIndex.title);
+        await m.addColumn(alarmsIndex, alarmsIndex.preset);
       }
     },
     beforeOpen: (details) async {

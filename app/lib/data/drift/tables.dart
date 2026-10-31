@@ -233,6 +233,7 @@ class Countdowns extends Table {
   TextColumn get notes => text().nullable()();
   IntColumn get alertOffsetDays => integer().nullable()();
   IntColumn get alertTimeMin => integer().nullable()();
+  TextColumn get alarmPreset => text().nullable()();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
   IntColumn get deletedAt => integer().nullable()();
@@ -320,6 +321,10 @@ class AlarmsIndex extends Table {
   IntColumn get presetStep => integer().nullable()();
   IntColumn get requestCode => integer().nullable()();
   TextColumn get state => text().withDefault(const Constant('scheduled'))();
+  // v5: kind is reminder|alarm, preset is AlarmPreset.id, title is display.
+  TextColumn get kind => text().withDefault(const Constant('alarm'))();
+  TextColumn get title => text().nullable()();
+  TextColumn get preset => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
