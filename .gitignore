@@ -38,5 +38,9 @@ test
 *.sqlite-*
 ephemeron_db*
 
+*.log
 # Compile-time credentials config
 secrets.json
+env/android.json
+env/linux.json
+env/web.json
