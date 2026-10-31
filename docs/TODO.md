@@ -9,11 +9,6 @@
 - Home-screen widgets (Agenda, Next event, Habits today, Focus timer)
 - Flashlight blink and MediaPlayer-on-alarm-stream sound; notification defaults
   ship instead.
-- Alarms follow-up: native Android file (app/android/.../AlarmPlugin.kt,
-  AlarmReceiver.kt) is gitignored as platform scaffolding, so the 3-preset
-  native rewrite (normalizePreset, reminder vs full-screen, full_long x30
-  repeat) lives only in the working tree and is lost on `flutter create`
-  regen. Either un-ignore the two alarm files or re-apply after regen.
 - Alarms follow-up: task custom reminder offsets (currently at-time only),
   focus-session end alarm, iOS Critical Alerts entitlement request.
 - Alarm migration test v4->v5 (countdowns.alarm_preset, alarms_index

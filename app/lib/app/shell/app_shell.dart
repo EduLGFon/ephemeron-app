@@ -36,6 +36,8 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
+  Map<ShortcutActivator, VoidCallback> _shortcuts = const <ShortcutActivator, VoidCallback>{};
+
   @override
   void initState() {
     super.initState();
@@ -92,6 +94,15 @@ class _AppShellState extends ConsumerState<AppShell> {
     widget.navigationShell.goBranch(branchIndex);
     final repo = await ref.read(settingsRepositoryProvider.future);
     await repo.setLastTabIndex(branchIndex);
+  }
+
+  bool _isEditingText() {
+    final node = FocusManager.instance.primaryFocus;
+    final ctx = node?.context;
+    if (ctx == null) return false;
+    if (ctx.widget is EditableText) return true;
+    if (ctx.findAncestorWidgetOfExactType<EditableText>() != null) return true;
+    return false;
   }
 
   @override
@@ -165,9 +176,8 @@ class _AppShellState extends ConsumerState<AppShell> {
         },
     };
 
-    return CallbackShortcuts(
-      bindings: shortcuts,
-      child: AlarmListener(
+    _shortcuts = shortcuts;
+    return AlarmListener(
         child: Scaffold(
           body: widget.navigationShell,
           bottomNavigationBar: Padding(
@@ -199,7 +209,6 @@ class _AppShellState extends ConsumerState<AppShell> {
           ),
         ),
       ), // AlarmListener
-    ); // CallbackShortcuts
   }
 
   void _showMore(BuildContext context, List<int> more, List<int> order) {
