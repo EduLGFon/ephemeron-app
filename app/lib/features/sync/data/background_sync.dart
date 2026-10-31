@@ -13,12 +13,112 @@ import '../../../core/config/app_config.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../data/remote/backend_sync_api.dart';
 import '../../../data/remote/google_api_client.dart';
+import '../../../data/repositories/countdown_repository.dart';
+import '../../../data/repositories/focus_repository.dart';
+import '../../../data/repositories/habit_repository.dart';
+import '../../../data/repositories/note_repository.dart';
 import '../../../data/repositories/task_repository.dart';
-import '../../auth/data/backend_auth.dart';import '../../auth/data/google_auth.dart';
+import '../../auth/data/backend_auth.dart';
+import '../../auth/data/google_auth.dart';
 import '../data/backend_sync_engine.dart';
 import '../data/sync_engine.dart';
 
 const _taskName = 'ephemeron-periodic-sync';
+
+/// Pushes real widget payloads from a headless DB handle (no Riverpod).
+/// Best-effort: every step is guarded so sync never fails because of widgets.
+Future<void> _pushHeadlessWidgets(AppDatabase db) async {
+  Future<void> push(
+    String prefix,
+    String provider,
+    String title,
+    String body,
+  ) async {
+    try {
+      await HomeWidget.saveWidgetData<String>('${prefix}_title', title);
+      await HomeWidget.saveWidgetData<String>('${prefix}_body', body);
+      await HomeWidget.updateWidget(
+        androidName: provider,
+        qualifiedAndroidName: 'com.spotnik.ephemeron.$provider',
+      );
+    } catch (_) {}
+  }
+
+  try {
+    final tasks = await TaskRepository(db).watchOpen().first;
+    final titles = tasks.take(5).map((t) => t.title).toList();
+    await push(
+      'pending_tasks',
+      'PendingTasksWidgetProvider',
+      'Pending tasks',
+      titles.isEmpty ? 'No pending tasks.' : titles.join('\n'),
+    );
+    try {
+      final items = tasks
+          .take(5)
+          .map((t) => '{"id":"${t.id}","title":"${t.title.replaceAll('"', '')}"}')
+          .join(',');
+      await HomeWidget.saveWidgetData<String>(
+        'pending_tasks_collection_items',
+        '[$items]',
+      );
+      await HomeWidget.saveWidgetData<String>(
+        'pending_tasks_collection_title',
+        'Pending tasks',
+      );
+      await HomeWidget.updateWidget(
+        androidName: 'PendingTasksCollectionProvider',
+        qualifiedAndroidName:
+            'com.spotnik.ephemeron.PendingTasksCollectionProvider',
+      );
+    } catch (_) {}
+  } catch (_) {}
+  try {
+    final habits =
+        await HabitRepository(db).watchHabits(archived: false).first;
+    await push(
+      'habits_today',
+      'HabitsTodayWidgetProvider',
+      'Habits today',
+      habits.isEmpty ? 'No habits.' : '${habits.length} habits tracked',
+    );
+  } catch (_) {}
+  try {
+    final countdowns = await CountdownRepository(db).watchCountdowns().first;
+    if (countdowns.isNotEmpty) {
+      final next = countdowns.first;
+      final target = DateTime.tryParse(next.targetDate ?? '') ?? DateTime.now();
+      final days = target.difference(DateTime.now()).inDays;
+      await push(
+        'countdown',
+        'CountdownWidgetProvider',
+        next.title,
+        '$days days remaining',
+      );
+    }
+  } catch (_) {}
+  try {
+    final notes = await NoteRepository(db).watchNotesInFolder(null).first;
+    if (notes.isNotEmpty) {
+      final body = notes.first.body ?? '';
+      await push(
+        'one_note',
+        'OneNoteWidgetProvider',
+        notes.first.title,
+        body.length > 120 ? body.substring(0, 120) : body,
+      );
+    }
+  } catch (_) {}
+  try {
+    final session = await FocusRepository(db).currentSession();
+    await push(
+      'focus_timer',
+      'FocusTimerWidgetProvider',
+      session == null ? 'Focus' : 'Focusing',
+      session == null ? 'No active session.' : 'Session running',
+    );
+  } catch (_) {}
+}
 
 @pragma('vm:entry-point')
 void backgroundSyncDispatcher() {
@@ -57,22 +157,7 @@ void backgroundSyncDispatcher() {
           await backend.syncNow();
         }
         try {
-          final taskRepo = TaskRepository(db);
-          final tasks = await taskRepo.watchOpen().first;
-          final titles = tasks.take(5).map((t) => t.title).toList();
-          await HomeWidget.saveWidgetData<String>(
-            'pending_tasks_title',
-            'Pending tasks',
-          );
-          await HomeWidget.saveWidgetData<String>(
-            'pending_tasks_body',
-            titles.isEmpty ? 'No pending tasks.' : titles.join('\\n'),
-          );
-          await HomeWidget.updateWidget(
-            androidName: 'PendingTasksWidgetProvider',
-            qualifiedAndroidName:
-                'com.spotnik.ephemeron.PendingTasksWidgetProvider',
-          );
+          await _pushHeadlessWidgets(db);
           await HomeWidget.saveWidgetData<String>('sync_status_title', 'Synced');
           await HomeWidget.saveWidgetData<String>(
             'sync_status_body',

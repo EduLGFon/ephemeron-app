@@ -16,6 +16,17 @@ class ToggleRequest {
 ToggleRequest? parseToggleUri(Uri? uri) {
   if (uri == null) return null;
   final segments = uri.pathSegments;
+  // Form 1 (used by the widgets): ephemeron://toggle/<kind>/<id>
+  // (host == 'toggle', path == /<kind>/<id>).
+  if (uri.host == 'toggle' && segments.length >= 2) {
+    final kind = segments[0];
+    final id = segments[1];
+    if ((kind == 'task' || kind == 'habit') && id.isNotEmpty) {
+      return ToggleRequest(kind, id);
+    }
+    return null;
+  }
+  // Form 2 (path-based): ephemeron:///toggle/<kind>/<id>.
   if (segments.length >= 3 && segments[0] == 'toggle') {
     final kind = segments[1];
     final id = segments[2];

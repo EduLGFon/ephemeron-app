@@ -386,7 +386,6 @@ class HomeWidgetDataBinder {
       }
     } catch (_) {}
   }
-}
 
   /// Derives every remaining widget type from real app data so no pinned
   /// widget shows a generic placeholder. Toggles are only meaningful for
