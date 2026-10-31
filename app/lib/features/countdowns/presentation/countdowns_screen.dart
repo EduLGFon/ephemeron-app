@@ -1,6 +1,8 @@
 // Countdowns screen: upcoming/passed groups, relative distances,
 // editor, delete with undo.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/ui/empty_state.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
@@ -32,7 +34,14 @@ class CountdownsScreen extends ConsumerWidget {
           ),
         ),
         data: (countdowns) {
-          if (countdowns.isEmpty) return const _EmptyState();
+          if (countdowns.isEmpty) {
+            return EmptyState(
+              icon: Icons.hourglass_bottom_outlined,
+              title: 'No countdowns yet.',
+              actionLabel: 'Add countdown',
+              onAction: () => showCountdownEditor(context),
+            );
+          }
           final today = DateTime.now();
           final dated = <({Countdown c, DateTime next, int days})>[];
           final undated = <Countdown>[];
@@ -184,28 +193,3 @@ class _UndatedTile extends ConsumerWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.hourglass_bottom_outlined, size: 48),
-          const SizedBox(height: 12),
-          Text(
-            'No countdowns yet.',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          FilledButton(
-            onPressed: () => showCountdownEditor(context),
-            child: const Text('Add countdown'),
-          ),
-        ],
-      ),
-    );
-  }
-}

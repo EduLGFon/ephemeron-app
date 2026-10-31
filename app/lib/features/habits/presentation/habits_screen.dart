@@ -1,6 +1,8 @@
 // Habits screen: 7-day navigator, sections, one-tap logging,
 // skip, streaks, archive with undo.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/ui/empty_state.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -47,7 +49,12 @@ class HabitsScreen extends ConsumerWidget {
               ),
               data: (habits) {
                 if (habits.isEmpty) {
-                  return _EmptyState(archived: archived);
+                  return EmptyState(
+                    icon: Icons.repeat_outlined,
+                    title: archived ? 'No archived habits.' : 'No habits yet.',
+                    actionLabel: archived ? null : 'Add habit',
+                    onAction: archived ? null : () => showHabitEditor(context),
+                  );
                 }
                 return sectionsAsync.maybeWhen(
                   data: (sections) =>
@@ -265,35 +272,6 @@ class _HabitTile extends ConsumerWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.archived});
-
-  final bool archived;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.repeat_outlined, size: 48),
-          const SizedBox(height: 12),
-          Text(
-            archived ? 'No archived habits.' : 'No habits yet.',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          if (!archived) ...[
-            const SizedBox(height: 8),
-            FilledButton(
-              onPressed: () => showHabitEditor(context),
-              child: const Text('Add habit'),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
 
 class _ErrorState extends StatelessWidget {
   const _ErrorState({required this.onRetry});

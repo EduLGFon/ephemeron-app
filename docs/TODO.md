@@ -15,8 +15,7 @@
 Remaining (not yet fixed):
 
 - Split files >300 lines and functions >40 lines (optional cleanup).
-- Dialog boilerplate, empty-state widget, and padding deduplication (optional
-  cleanup).
+- Dialog boilerplate deduplication (optional cleanup).
 - Auth screen email/password validation.
 
 ## Phase 10 (release hardening, owner checks)

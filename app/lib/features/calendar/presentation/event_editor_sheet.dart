@@ -1,6 +1,8 @@
 // Event editor: title, calendar, all-day/timed, timezone note,
 // repeat presets, location, notes. Recurring edits ask scope.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/ui/sheet_padding.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
@@ -352,12 +354,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     final calsAsync = ref.watch(calendarsProvider);
     return SafeArea(
       child: Padding(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-        ),
+        padding: sheetPadding(context),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,

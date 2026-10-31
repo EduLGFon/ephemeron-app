@@ -6,6 +6,8 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/ui/empty_state.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -79,7 +81,12 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                 ),
                 data: (notes) {
                   if (folders.isEmpty && notes.isEmpty) {
-                    return _EmptyState(onAdd: () => _newNote());
+                    return EmptyState(
+                      icon: Icons.note_outlined,
+                      title: 'No notes here',
+                      actionLabel: 'New note',
+                      onAction: () => _newNote(),
+                    );
                   }
                   final items = <Widget>[];
                   for (final f in folders) {
@@ -487,27 +494,6 @@ class _TrashScreen extends ConsumerWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onAdd});
-
-  final VoidCallback onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.note_outlined, size: 48),
-          const SizedBox(height: 12),
-          const Text('No notes here'),
-          const SizedBox(height: 8),
-          FilledButton(onPressed: onAdd, child: const Text('New note')),
-        ],
-      ),
-    );
-  }
-}
 
 class _ErrorState extends StatelessWidget {
   const _ErrorState({required this.message, required this.onRetry});

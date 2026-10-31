@@ -1,6 +1,8 @@
 // Tasks screen: list filter, overdue section, swipe actions with undo,
 // trash, completed view, quick add FAB.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/ui/empty_state.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
@@ -85,7 +87,12 @@ class TasksScreen extends ConsumerWidget {
               ),
               data: (tasks) {
                 if (tasks.isEmpty) {
-                  return _EmptyState(onAdd: () => showQuickAdd(context));
+                  return EmptyState(
+                    icon: Icons.checklist_outlined,
+                    title: 'No tasks here',
+                    actionLabel: 'Add a task',
+                    onAction: () => showQuickAdd(context),
+                  );
                 }
                 final today = _today();
                 final overdue = tasks
@@ -400,27 +407,6 @@ class _MoveButtons extends ConsumerWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onAdd});
-
-  final VoidCallback onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.checklist_outlined, size: 48),
-          const SizedBox(height: 12),
-          const Text('No tasks here'),
-          const SizedBox(height: 8),
-          FilledButton(onPressed: onAdd, child: const Text('Add a task')),
-        ],
-      ),
-    );
-  }
-}
 
 class _ErrorState extends StatelessWidget {
   const _ErrorState({required this.message, required this.onRetry});

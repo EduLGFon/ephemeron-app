@@ -1,5 +1,7 @@
 // Task create/edit sheet with list, priority, due chips, tags, subtasks.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/ui/sheet_padding.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
@@ -108,12 +110,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
     final listsAsync = ref.watch(taskListsProvider);
     return SafeArea(
       child: Padding(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-        ),
+        padding: sheetPadding(context),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,

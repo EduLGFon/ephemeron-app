@@ -1,6 +1,8 @@
 // Quick-add bottom sheet: one field with shorthand and NLP parsing,
 // live preview chips, save and save-and-add-another.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/ui/sheet_padding.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/parsing/quick_add_parser.dart';
@@ -91,12 +93,7 @@ class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
     final p = _parsed;
     return SafeArea(
       child: Padding(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-        ),
+        padding: sheetPadding(context),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
