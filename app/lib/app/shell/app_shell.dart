@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/platform/system_launcher.dart';
+import '../../features/alarms/application/alarm_providers.dart';
+import '../../features/alarms/data/fallback_alarm_engine.dart';
 import '../../features/auth/application/auth_providers.dart';
 import '../../features/calendar/application/calendar_providers.dart';
 import '../../features/calendar/application/calendar_state.dart';
@@ -43,6 +45,12 @@ class _AppShellState extends ConsumerState<AppShell> {
     Future.microtask(
       () => ref.read(backendAutoSyncServiceProvider).reschedule(),
     );
+    // Rebuild the alarm window on every app open (rolling 48 h + 60).
+    Future.microtask(() async {
+      try {
+        await ref.read(alarmRepositoryProvider).rebuildWindow();
+      } catch (_) {}
+    });
     // Handle Android share-target text and launcher shortcuts once the
     // first frame is up (needs a BuildContext for sheets/navigation).
     WidgetsBinding.instance.addPostFrameCallback((_) => _handleIntents());
@@ -159,35 +167,38 @@ class _AppShellState extends ConsumerState<AppShell> {
 
     return CallbackShortcuts(
       bindings: shortcuts,
-      child: Scaffold(
-        body: widget.navigationShell,
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          child: NavigationBar(
-            selectedIndex: pinned.contains(widget.navigationShell.currentIndex)
-                ? pinned.indexOf(widget.navigationShell.currentIndex)
-                : 5,
-            onDestinationSelected: (i) {
-              if (i < 5) {
-                _onTabSelected(pinned[i]);
-              } else {
-                _showMore(context, more, order);
-              }
-            },
-            destinations: [
-              for (final idx in pinned)
-                NavigationDestination(
-                  icon: Icon(AppSection.values[idx].icon),
-                  label: AppSection.values[idx].title,
+      child: AlarmListener(
+        child: Scaffold(
+          body: widget.navigationShell,
+          bottomNavigationBar: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: NavigationBar(
+              selectedIndex:
+                  pinned.contains(widget.navigationShell.currentIndex)
+                  ? pinned.indexOf(widget.navigationShell.currentIndex)
+                  : 5,
+              onDestinationSelected: (i) {
+                if (i < 5) {
+                  _onTabSelected(pinned[i]);
+                } else {
+                  _showMore(context, more, order);
+                }
+              },
+              destinations: [
+                for (final idx in pinned)
+                  NavigationDestination(
+                    icon: Icon(AppSection.values[idx].icon),
+                    label: AppSection.values[idx].title,
+                  ),
+                const NavigationDestination(
+                  icon: Icon(Icons.more_horiz),
+                  label: 'More',
                 ),
-              const NavigationDestination(
-                icon: Icon(Icons.more_horiz),
-                label: 'More',
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ), // Scaffold
+      ), // AlarmListener
     ); // CallbackShortcuts
   }
 

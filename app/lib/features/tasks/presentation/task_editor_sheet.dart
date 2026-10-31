@@ -5,6 +5,7 @@ import 'package:ephemeron/core/ui/sheet_padding.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
+import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../application/tasks_providers.dart';
 
 Future<void> showTaskEditor(
@@ -36,7 +37,9 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
   String? _listId;
   int _priority = 0;
   String? _dueDate;
+  int? _dueTime;
   bool _pinned = false;
+  String? _alarmPreset;
 
   @override
   void initState() {
@@ -48,7 +51,9 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
     _listId = t?.listId;
     _priority = t?.priority ?? 0;
     _dueDate = t?.dueDate;
+    _dueTime = t?.dueTime;
     _pinned = t?.pinned ?? false;
+    _alarmPreset = t?.alarmPreset;
   }
 
   @override
@@ -84,9 +89,11 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         priority: _priority,
         dueDate: _dueDate,
+        dueTime: _dueTime,
         pinned: _pinned,
         parentId: widget.parentId,
         tags: tagNames,
+        alarmPreset: _alarmPreset,
       );
     } else {
       await repo.updateTask(
@@ -95,8 +102,10 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         priority: _priority,
         dueDate: () => _dueDate,
+        dueTime: () => _dueTime,
         listId: _listId,
         pinned: _pinned,
+        alarmPreset: () => _alarmPreset,
       );
       if (tagNames.isNotEmpty) {
         await repo.setTaskTags(existing.id, tagNames);
@@ -201,6 +210,49 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
                 ),
               ),
               const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _dueTime == null
+                          ? 'No time (9:00 reminder)'
+                          : 'Time ${_pad(_dueTime! ~/ 60)}:${_pad(_dueTime! % 60)}',
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      final t = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay(
+                          hour: (_dueTime ?? 540) ~/ 60,
+                          minute: (_dueTime ?? 540) % 60,
+                        ),
+                      );
+                      if (t != null) {
+                        setState(() => _dueTime = t.hour * 60 + t.minute);
+                      }
+                    },
+                    child: const Text('Set time'),
+                  ),
+                  if (_dueTime != null)
+                    IconButton(
+                      icon: const Icon(Icons.clear),
+                      tooltip: 'Clear time',
+                      onPressed: () => setState(() => _dueTime = null),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              AlarmPresetPicker(
+                value: _alarmPreset,
+                onChanged: (v) => setState(() => _alarmPreset = v),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Tasks always notify at the due time. The alarm adds a stronger alert.',
+                style: TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 8),
               SwitchListTile(
                 value: _pinned,
                 onChanged: (v) => setState(() => _pinned = v),
@@ -227,6 +279,8 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
       onSelected: (_) => setState(() => _dueDate = selected ? null : value),
     );
   }
+
+  String _pad(int v) => v.toString().padLeft(2, '0');
 
   DateTime _nextWeekday(DateTime now, int weekday) {
     var d = DateTime(now.year, now.month, now.day + 1);

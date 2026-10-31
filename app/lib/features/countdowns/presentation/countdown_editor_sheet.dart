@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
+import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../application/countdowns_providers.dart';
 
 Future<void> showCountdownEditor(BuildContext context, {Countdown? countdown}) {
@@ -29,6 +30,10 @@ class _CountdownEditorSheetState extends ConsumerState<_CountdownEditorSheet> {
   DateTime? _date;
   bool _yearlyRepeat = false;
   bool _showAge = false;
+  int _alertOffsetDays = 3;
+  int _alertHour = 9;
+  int _alertMinute = 0;
+  String? _alarmPreset;
 
   @override
   void initState() {
@@ -39,6 +44,11 @@ class _CountdownEditorSheetState extends ConsumerState<_CountdownEditorSheet> {
     _date = _parseDate(c?.targetDate);
     _yearlyRepeat = c?.yearlyRepeat ?? false;
     _showAge = c?.showAge ?? false;
+    _alertOffsetDays = c?.alertOffsetDays ?? 3;
+    final tm = c?.alertTimeMin ?? 540;
+    _alertHour = tm ~/ 60;
+    _alertMinute = tm % 60;
+    _alarmPreset = c?.alarmPreset;
   }
 
   @override
@@ -99,6 +109,43 @@ class _CountdownEditorSheetState extends ConsumerState<_CountdownEditorSheet> {
               decoration: const InputDecoration(labelText: 'Notes (optional)'),
               maxLines: 2,
             ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Notify $_alertOffsetDays day(s) before + on the day at '
+                    '${_alertHour.toString().padLeft(2, '0')}:'
+                    '${_alertMinute.toString().padLeft(2, '0')}',
+                  ),
+                ),
+                TextButton(
+                  onPressed: _pickAlertTime,
+                  child: const Text('Time'),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                const Text('Days before:'),
+                const SizedBox(width: 8),
+                DropdownButton<int>(
+                  value: _alertOffsetDays,
+                  items: const [
+                    DropdownMenuItem(value: 0, child: Text('On day only')),
+                    DropdownMenuItem(value: 1, child: Text('1 day')),
+                    DropdownMenuItem(value: 3, child: Text('3 days')),
+                    DropdownMenuItem(value: 7, child: Text('7 days')),
+                  ],
+                  onChanged: (v) => setState(() => _alertOffsetDays = v ?? 3),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            AlarmPresetPicker(
+              value: _alarmPreset,
+              onChanged: (v) => setState(() => _alarmPreset = v),
+            ),
             const SizedBox(height: 12),
             FilledButton(onPressed: _save, child: const Text('Save')),
           ],
@@ -116,6 +163,19 @@ class _CountdownEditorSheetState extends ConsumerState<_CountdownEditorSheet> {
       lastDate: DateTime(2100),
     );
     if (d != null) setState(() => _date = d);
+  }
+
+  Future<void> _pickAlertTime() async {
+    final t = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: _alertHour, minute: _alertMinute),
+    );
+    if (t != null) {
+      setState(() {
+        _alertHour = t.hour;
+        _alertMinute = t.minute;
+      });
+    }
   }
 
   Future<void> _save() async {
@@ -140,6 +200,9 @@ class _CountdownEditorSheetState extends ConsumerState<_CountdownEditorSheet> {
         yearlyRepeat: _yearlyRepeat,
         showAge: _showAge,
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+        alertOffsetDays: _alertOffsetDays,
+        alertTimeMin: _alertHour * 60 + _alertMinute,
+        alarmPreset: _alarmPreset,
       );
     } else {
       await repo.updateCountdown(
@@ -149,6 +212,9 @@ class _CountdownEditorSheetState extends ConsumerState<_CountdownEditorSheet> {
         yearlyRepeat: _yearlyRepeat,
         showAge: _showAge,
         notes: () => _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+        alertOffsetDays: () => _alertOffsetDays,
+        alertTimeMin: () => _alertHour * 60 + _alertMinute,
+        alarmPreset: () => _alarmPreset,
       );
     }
     if (mounted) Navigator.of(context).pop();

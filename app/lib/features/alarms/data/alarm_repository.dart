@@ -367,8 +367,7 @@ class AlarmRepository {
   }
 
   Stream<List<AlarmsIndexData>> watchUpcoming({int limit = 20}) {
-    final now = _now();
-    return ((_db.select(_db.alarmsIndex)
+    return (_db.select(_db.alarmsIndex)
           ..where((a) => a.state.equals('scheduled'))
           ..orderBy([(a) => OrderingTerm.asc(a.fireAtUtc)])
           ..limit(limit))

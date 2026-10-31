@@ -24,7 +24,7 @@ bool get isFallbackPlatform =>
 Future<void> playAlarmBeep(AlarmPreset preset) async {
   try {
     if (preset == AlarmPreset.fullScreenLong) {
-      await SystemSound.play(SystemSoundType.alarm);
+      await SystemSound.play(SystemSoundType.alert);
       HapticFeedback.vibrate();
     } else {
       await SystemSound.play(SystemSoundType.alert);

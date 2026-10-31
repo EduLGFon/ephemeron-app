@@ -63,7 +63,7 @@ extension AlarmPresetInfo on AlarmPreset {
   /// Long preset repeats every minute, capped at 30 minutes.
   int get maxRepeats => this == AlarmPreset.fullScreenLong ? 30 : 0;
 
-  String get channelId => 'alarm_${id}';
+  String get channelId => 'alarm_$id';
 }
 
 /// Parses a stored preset string (current or legacy) to [AlarmPreset].

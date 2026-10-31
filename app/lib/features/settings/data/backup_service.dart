@@ -396,6 +396,7 @@ class BackupService {
         notes: Value(_optStr(m, 'notes')),
         alertOffsetDays: Value(_optInt(m, 'alertOffsetDays')),
         alertTimeMin: Value(_optInt(m, 'alertTimeMin')),
+        alarmPreset: Value(_optStr(m, 'alarmPreset')),
         createdAt: _reqInt(m, 'createdAt'),
         updatedAt: _reqInt(m, 'updatedAt'),
         deletedAt: Value(_optInt(m, 'deletedAt')),

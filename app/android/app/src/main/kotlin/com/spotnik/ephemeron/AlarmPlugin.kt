@@ -17,6 +17,21 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
     companion object {
         const val CHANNEL = "ephemeron/alarms"
 
+        /** Current preset ids: notification, full_short, full_long.
+         * Legacy ids (light/medium/strong/constant/habit/focus) still map. */
+        fun normalizePreset(raw: String): String {
+            return when (raw) {
+                "notification", "full_short", "full_long" -> raw
+                "light", "habit", "focus" -> "notification"
+                "medium", "strong" -> "full_short"
+                "constant" -> "full_long"
+                else -> "notification"
+            }
+        }
+
+        fun usesFullScreen(preset: String): Boolean =
+            normalizePreset(preset) != "notification"
+
         fun registerWith(engine: FlutterEngine, context: Context) {
             val channel = MethodChannel(engine.dartExecutor.binaryMessenger, CHANNEL)
             channel.setMethodCallHandler(AlarmPlugin(context))
@@ -24,18 +39,24 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
 
         fun notifyChannels(context: Context) {
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val presets = listOf("light", "medium", "strong", "constant", "habit", "focus")
+            val presets = listOf(
+                "notification", "full_short", "full_long",
+                "light", "medium", "strong", "constant", "habit", "focus"
+            )
             for (p in presets) {
-                val importance = when (p) {
-                    "light", "medium" -> NotificationManager.IMPORTANCE_DEFAULT
+                val norm = normalizePreset(p)
+                val importance = when (norm) {
+                    "notification" -> NotificationManager.IMPORTANCE_DEFAULT
                     else -> NotificationManager.IMPORTANCE_HIGH
                 }
                 nm.createNotificationChannel(
                     NotificationChannel("alarm_$p", "Alarm $p", importance).apply {
-                        if (p == "strong" || p == "constant") {
+                        if (norm == "full_long") {
                             lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
                             enableVibration(true)
-                            vibrationPattern = longArrayOf(0, 400, 200, 400, 200, 800)
+                            vibrationPattern = longArrayOf(0, 500, 250, 500, 250, 1000)
+                        } else if (norm == "full_short") {
+                            lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
                         }
                     }
                 )
@@ -48,8 +69,9 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
             )
         }
 
-        fun fire(context: Context, requestCode: Int, title: String, preset: String) {
+        fun fire(context: Context, requestCode: Int, title: String, preset: String, body: String = "", kind: String = "alarm", fullScreen: Boolean = true) {
             notifyChannels(context)
+            val norm = normalizePreset(preset)
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val contentIntent = PendingIntent.getActivity(
                 context, requestCode,
@@ -76,27 +98,44 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
                 },
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            val presetName = preset.ifEmpty { "medium" }
-            val defaults = when (presetName) {
-                "light" -> 0
-                "medium" -> NotificationCompat.DEFAULT_SOUND
+            val isReminder = kind == "reminder"
+            // Reminders and the notification preset never use full-screen:
+            // plain notification with short sound. Full-screen presets use
+            // fullScreenIntent; Android shows a heads-up notification instead
+            // while the phone is in use.
+            val wantFullScreen = !isReminder && fullScreen && usesFullScreen(norm)
+            val defaults = when {
+                isReminder || norm == "notification" -> NotificationCompat.DEFAULT_SOUND
+                norm == "full_short" -> NotificationCompat.DEFAULT_SOUND or NotificationCompat.DEFAULT_VIBRATE
                 else -> NotificationCompat.DEFAULT_SOUND or NotificationCompat.DEFAULT_VIBRATE
             }
-            val notification = NotificationCompat.Builder(context, "alarm_$presetName")
+            val text = when {
+                body.isNotEmpty() -> body
+                isReminder -> "Reminder"
+                norm == "full_long" -> "Alarm - long sound"
+                norm == "full_short" -> "Alarm"
+                else -> "Notification"
+            }
+            val builder = NotificationCompat.Builder(context, "alarm_$norm")
                 .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
                 .setContentTitle(title)
-                .setContentText("Alarm")
-                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setContentText(text)
+                .setPriority(
+                    if (wantFullScreen) NotificationCompat.PRIORITY_MAX
+                    else NotificationCompat.PRIORITY_HIGH
+                )
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setDefaults(defaults)
-                .setFullScreenIntent(contentIntent, true)
-                .setAutoCancel(false)
-                .setOngoing(true)
+                .setContentIntent(contentIntent)
+                .setAutoCancel(!wantFullScreen)
+                .setOngoing(wantFullScreen)
                 .addAction(android.R.drawable.ic_menu_recent_history, "Snooze 10 min", snoozeIntent)
                 .addAction(android.R.drawable.ic_menu_agenda, "Done", doneIntent)
-                .build()
-            nm.notify(requestCode, notification)
+            if (wantFullScreen) {
+                builder.setFullScreenIntent(contentIntent, true)
+            }
+            nm.notify(requestCode, builder.build())
             AlarmStore.markState(context, requestCode, "fired")
         }
     }
@@ -110,8 +149,12 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
                     ?: return result.error("ARG", "no time", null)
                 val useClock = call.argument<Boolean>("useAlarmClock") ?: false
                 val title = call.argument<String>("title") ?: "Alarm"
-                val preset = call.argument<String>("preset") ?: "medium"
-                schedule(rc, at, useClock, title, preset)
+                val body = call.argument<String>("body") ?: ""
+                val preset = call.argument<String>("preset") ?: "notification"
+                val kind = call.argument<String>("kind") ?: "alarm"
+                val fullScreen = call.argument<Boolean>("fullScreen")
+                    ?: usesFullScreen(preset)
+                schedule(rc, at, useClock, title, preset, body, kind, fullScreen)
                 result.success(null)
             }
             "cancel" -> {
@@ -150,7 +193,7 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
         }
     }
 
-    private fun schedule(rc: Int, at: Long, useClock: Boolean, title: String, preset: String) {
+    private fun schedule(rc: Int, at: Long, useClock: Boolean, title: String, preset: String, body: String = "", kind: String = "alarm", fullScreen: Boolean = true) {
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = PendingIntent.getBroadcast(
             context, rc,
@@ -158,6 +201,9 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
                 putExtra("requestCode", rc)
                 putExtra("title", title)
                 putExtra("preset", preset)
+                putExtra("body", body)
+                putExtra("kind", kind)
+                putExtra("fullScreen", fullScreen)
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

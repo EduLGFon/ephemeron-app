@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../../../domain/habits/date_key.dart';
+import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../application/habits_providers.dart';
 
 Future<void> showHabitEditor(BuildContext context, {Habit? habit}) {
@@ -37,6 +38,7 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
   int _intervalDays = 2;
   late String _startDate;
   String? _reminderTime;
+  String? _alarmPreset;
 
   @override
   void initState() {
@@ -54,6 +56,7 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
     _intervalDays = h?.intervalDays ?? 2;
     _startDate = h?.startDate ?? habitDateKey(DateTime.now());
     _reminderTime = h?.reminderTime;
+    _alarmPreset = h?.alarmPreset;
   }
 
   @override
@@ -180,6 +183,17 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
                   ),
               ],
             ),
+            const SizedBox(height: 8),
+            AlarmPresetPicker(
+              value: _alarmPreset,
+              onChanged: (v) => setState(() => _alarmPreset = v),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Reminder notifies daily. The alarm adds a stronger alert '
+              'and is skipped when already done today.',
+              style: TextStyle(fontSize: 12),
+            ),
             const SizedBox(height: 12),
             FilledButton(onPressed: _save, child: const Text('Save')),
           ],
@@ -241,6 +255,7 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
         unit: _unit.text.trim().isEmpty ? null : _unit.text.trim(),
         startDate: _startDate,
         reminderTime: _reminderTime,
+        alarmPreset: _alarmPreset,
       );
     } else {
       await repo.updateHabit(
@@ -255,6 +270,7 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
         unit: () => _unit.text.trim().isEmpty ? null : _unit.text.trim(),
         startDate: _startDate,
         reminderTime: () => _reminderTime,
+        alarmPreset: () => _alarmPreset,
       );
     }
     if (mounted) Navigator.of(context).pop();
