@@ -13,7 +13,7 @@ import '../../features/settings/application/settings_providers.dart';
 import '../../features/settings/presentation/onboarding_screen.dart';
 import '../../features/sync/application/sync_providers.dart';
 import '../../features/tasks/presentation/quick_add_sheet.dart';
-import 'app_sections.dart';
+import '../../data/services/home_widget_data_binder.dart';import 'app_sections.dart';
 import 'more_sheet.dart';
 
 const List<LogicalKeyboardKey> _digitKeys = <LogicalKeyboardKey>[
@@ -54,7 +54,12 @@ class _AppShellState extends ConsumerState<AppShell> {
         await ref.read(alarmRepositoryProvider).rebuildWindow();
       } catch (_) {}
     });
-    // Handle Android share-target text and launcher shortcuts once the
+    // Refresh home-screen widgets from current app data.
+    Future.microtask(() async {
+      try {
+        await ref.read(homeWidgetDataBinderProvider).refreshAll();
+      } catch (_) {}
+    });    // Handle Android share-target text and launcher shortcuts once the
     // first frame is up (needs a BuildContext for sheets/navigation).
     WidgetsBinding.instance.addPostFrameCallback((_) => _handleIntents());
   }
