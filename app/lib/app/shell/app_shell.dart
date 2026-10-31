@@ -13,8 +13,11 @@ import '../../features/settings/application/settings_providers.dart';
 import '../../features/settings/presentation/onboarding_screen.dart';
 import '../../features/sync/application/sync_providers.dart';
 import '../../features/tasks/presentation/quick_add_sheet.dart';
-import '../../data/services/home_widget_data_binder.dart';import 'app_sections.dart';
-import 'more_sheet.dart';
+import '../../data/services/home_widget_data_binder.dart';
+import 'app_sections.dart';
+import '../../features/tasks/application/tasks_providers.dart';
+import '../../features/habits/application/habits_providers.dart';
+import '../../features/countdowns/application/countdowns_providers.dart';import 'more_sheet.dart';
 
 const List<LogicalKeyboardKey> _digitKeys = <LogicalKeyboardKey>[
   LogicalKeyboardKey.digit1,
@@ -59,7 +62,29 @@ class _AppShellState extends ConsumerState<AppShell> {
       try {
         await ref.read(homeWidgetDataBinderProvider).refreshAll();
       } catch (_) {}
-    });    // Handle Android share-target text and launcher shortcuts once the
+    });
+    ref.listen(openTasksProvider(null), (prev, next) {
+      Future.microtask(() async {
+        try {
+          await ref.read(homeWidgetDataBinderProvider).refreshAll();
+        } catch (_) {}
+      });
+    });
+    ref.listen(habitsProvider(false), (prev, next) {
+      Future.microtask(() async {
+        try {
+          await ref.read(homeWidgetDataBinderProvider).refreshAll();
+        } catch (_) {}
+      });
+    });
+    ref.listen(countdownsProvider, (prev, next) {
+      Future.microtask(() async {
+        try {
+          await ref.read(homeWidgetDataBinderProvider).refreshAll();
+        } catch (_) {}
+      });
+    });
+    // Handle Android share-target text and launcher shortcuts once the
     // first frame is up (needs a BuildContext for sheets/navigation).
     WidgetsBinding.instance.addPostFrameCallback((_) => _handleIntents());
   }

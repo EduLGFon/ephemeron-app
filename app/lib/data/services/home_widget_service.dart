@@ -112,17 +112,18 @@ class HomeWidgetService {
   Future<void> updateCollection({
     required String keyPrefix,
     required String provider,
-    required List<String> items,
+    required List<Map<String, String>> items,
     String? title,
   }) async {
     if (title != null) {
       await HomeWidget.saveWidgetData<String>('${keyPrefix}_title', title);
     }
-    await HomeWidget.saveWidgetData<String>(
-      '${keyPrefix}_items',
-      '[${items.map((e) => '"${e.replaceAll('"', '\\"')}"').join(',')}]',
-    );
-    await HomeWidget.updateWidget(
+    final json = items
+        .map((e) =>
+            '{"id":"${(e['id'] ?? '').replaceAll('"', '\\"')}","title":"${(e['title'] ?? '').replaceAll('"', '\\"')}"}')
+        .join(',');
+    final wrapped = '[$json]';
+    await HomeWidget.saveWidgetData<String>('${keyPrefix}_items', wrapped);    await HomeWidget.updateWidget(
       androidName: provider,
       qualifiedAndroidName: 'com.spotnik.ephemeron.$provider',
     );

@@ -45,7 +45,10 @@ class HomeWidgetDataBinder {
         keyPrefix: 'pending_tasks_collection',
         provider: 'PendingTasksCollectionProvider',
         title: 'Pending tasks',
-        items: titles,
+        items: tasks
+            .take(5)
+            .map((t) => {'id': t.id, 'title': t.title})
+            .toList(),
       );
     } catch (_) {}
   }
@@ -73,7 +76,7 @@ class HomeWidgetDataBinder {
         keyPrefix: 'all_countdowns_collection',
         provider: 'CountdownsCollectionProvider',
         title: 'Countdowns',
-        items: items.map((c) => c.title).toList(),
+        items: items.map((c) => {'id': c.id, 'title': c.title}).toList(),
       );
     } catch (_) {}
   }
@@ -93,7 +96,6 @@ class HomeWidgetDataBinder {
     try {
       final repo = ref.read(noteRepositoryProvider);
       final notes = await repo.watchNotesInFolder(null).first;
-      final titles = notes.take(5).map((n) => n.title).toList();
       if (notes.isNotEmpty) {
         await _svc.update(
           keyPrefix: 'one_note',
@@ -107,7 +109,10 @@ class HomeWidgetDataBinder {
         keyPrefix: 'recent_notes_collection',
         provider: 'RecentNotesCollectionProvider',
         title: 'Recent notes',
-        items: titles,
+        items: notes
+            .take(5)
+            .map((n) => {'id': n.id, 'title': n.title})
+            .toList(),
       );
     } catch (_) {}
   }
