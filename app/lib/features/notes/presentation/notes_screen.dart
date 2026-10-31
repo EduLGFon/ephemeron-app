@@ -285,7 +285,6 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
         archive.addFile(ArchiveFile('$name.md', body.length, body.codeUnits));
       }
       final data = ZipEncoder().encode(archive);
-      if (data == null) return;
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/notes-export.zip');
       await file.writeAsBytes(data);
