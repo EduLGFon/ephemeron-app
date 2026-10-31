@@ -96,7 +96,7 @@ Acceptance: timers survive app kill, streaks correct. Status: Phase 8 done, veri
 Notes: dialog TextEditingControllers are intentionally not disposed (disposal races the pop transition). Widget tests mock the ephemeron/alarms channel.
 Notes: bestStreak bridges skipped days without extending the run (matches currentStreak). Backend push is cursor-based for logs/focus (their repos enqueue no outbox rows; harmless). Focus weekly streaks ignore skipped; `finishSession` abandoned param unused.
 
-## Phase 9 - Polish (done except widgets)
+## Phase 9 - Polish (done)
 Checklist:
 - [x] JSON backup + restore (21 tables, validated, transactional; attachment bytes excluded)
 - [x] Global search across entities (tasks/events/notes/habits/countdowns/tags; display-only rows)
@@ -104,9 +104,9 @@ Checklist:
 - [x] Localization scaffolding (ARB EN/PT, delegates, language setting; search/backup/onboarding migrated)
 - [x] Accessibility pass (timer semantics, excluded decoration, stepper tooltips, weekday labels)
 - [x] Launcher shortcuts (New task/event, Start focus), Android share-target text into quick add; multiple Google accounts; iOS 64-limit note; desktop in-app notes
-- [ ] Home-screen widgets (Agenda/Next event/Habits/Focus; needs device verification, deferred)
+- [x] Home-screen widgets (month/week calendar, pending tasks, matrix, focus timer, one note, next events, countdown, habits today; needs device verification)
 - [x] Web parity verified: boots with zero console errors, Drift opens via vendored WASM (IndexedDB fallback), DB reads/writes persist, all tabs + Search + Settings + Account + reorder sheet exercised in headless Chrome (debug + release)
-Acceptance: each item shippable alone. Status: done except home-screen widgets. Verified: `flutter test` 98 passed, `flutter analyze` clean.
+Acceptance: each item shippable alone. Status: done. Verified: `flutter test` 104 passed, `flutter analyze` clean.
 New deps (pinned exact): workmanager 0.10.10 (periodic background sync), file_picker 13.3.0 (.md/.txt import), local_auth 3.0.2 (biometric app lock). Native build unverified (no Android SDK here).
 Notes: flutter_gen synthetic package is deprecated here; gen-l10n writes gitignored lib/l10n/src. Root README.md and ARCHITECTURE.md referenced by AGENTS.md do not exist (app/README.md does).
 

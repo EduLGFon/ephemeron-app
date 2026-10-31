@@ -6,7 +6,6 @@
 
 ## Open work
 
-- Home-screen widgets (Agenda, Next event, Habits today, Focus timer)
 - Flashlight blink and MediaPlayer-on-alarm-stream sound; notification defaults
   ship instead.
 - Alarms follow-up: done. Task custom reminder offsets (per-task JSON,

@@ -30,6 +30,7 @@ dependencies:
   wakelock_plus: 1.8.0
   archive: ^4.5.2
   workmanager: 0.10.10
+  home_widget: ^0.7.0
   file_picker: 13.3.0
   local_auth: 3.0.2
   battery_plus: ^7.1.2
