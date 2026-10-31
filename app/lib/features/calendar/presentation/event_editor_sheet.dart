@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/event_repository.dart';
+import '../../../domain/alarms/reminder.dart';
+import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../../settings/application/settings_providers.dart';
 import '../../notes/application/notes_providers.dart';
 import '../application/calendar_providers.dart';
@@ -83,6 +85,8 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
   String? _rrule;
   String? _colorId;
   String? _tzId;
+  List<int> _reminders = [10];
+  String? _alarmPreset;
 
   @override
   void initState() {
@@ -97,6 +101,8 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     _colorId = e?.colorId;
     _tzId = e?.tzId;
     _addMeet = e?.meetUrl != null;
+    _reminders = parseReminderOffsets(e?.reminders, allDay: e?.isAllDay ?? false);
+    _alarmPreset = e?.alarmPreset;
     if (e?.startUtc != null) {
       _start = DateTime.fromMillisecondsSinceEpoch(
         e!.startUtc!,
@@ -247,6 +253,8 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
           notes: fullNotes != null && fullNotes.length > 8000
               ? '${fullNotes.substring(0, 8000)}\n(continued in Ephemeron)'
               : fullNotes,
+          reminders: encodeReminderOffsets(_reminders),
+          alarmPreset: _alarmPreset,
         );
         if (fullNotes != null && fullNotes.length > 8000) {
           final noteId = await noteRepo.ensureOverflowNote(eventId, fullNotes);
@@ -272,6 +280,8 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
           colorId: _colorId,
           tzId: _tzId,
           createMeet: _addMeet,
+          reminders: () => encodeReminderOffsets(_reminders),
+          alarmPreset: () => _alarmPreset,
         );
       }
       await repo.setAttendees(existing!.id, _attendees.text.split(','));
@@ -837,6 +847,16 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
+              ),
+              const SizedBox(height: 8),
+              ReminderPicker(
+                offsets: _reminders,
+                onChanged: (v) => setState(() => _reminders = v),
+              ),
+              const SizedBox(height: 8),
+              AlarmPresetPicker(
+                value: _alarmPreset,
+                onChanged: (v) => setState(() => _alarmPreset = v),
               ),
               const SizedBox(height: 12),
               FilledButton(

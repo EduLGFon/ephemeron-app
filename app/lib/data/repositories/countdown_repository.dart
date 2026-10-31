@@ -18,6 +18,7 @@ class CountdownRepository {
     String? type,
     int? alertOffsetDays,
     int? alertTimeMin,
+    String? alarmPreset,
   }) async {
     final id = newId();
     final now = nowMs();
@@ -34,6 +35,7 @@ class CountdownRepository {
             notes: Value(notes),
             alertOffsetDays: Value(alertOffsetDays),
             alertTimeMin: Value(alertTimeMin),
+            alarmPreset: Value(alarmPreset),
             createdAt: now,
             updatedAt: now,
           ),
@@ -71,6 +73,9 @@ class CountdownRepository {
     bool? yearlyRepeat,
     bool? showAge,
     String? Function()? notes,
+    int? Function()? alertOffsetDays,
+    int? Function()? alertTimeMin,
+    String? Function()? alarmPreset,
   }) async {
     await (_db.update(_db.countdowns)..where((c) => c.id.equals(id))).write(
       CountdownsCompanion(
@@ -83,6 +88,15 @@ class CountdownRepository {
             : Value(yearlyRepeat),
         showAge: showAge == null ? const Value.absent() : Value(showAge),
         notes: notes == null ? const Value.absent() : Value(notes()),
+        alertOffsetDays: alertOffsetDays == null
+            ? const Value.absent()
+            : Value(alertOffsetDays()),
+        alertTimeMin: alertTimeMin == null
+            ? const Value.absent()
+            : Value(alertTimeMin()),
+        alarmPreset: alarmPreset == null
+            ? const Value.absent()
+            : Value(alarmPreset()),
         updatedAt: Value(nowMs()),
       ),
     );

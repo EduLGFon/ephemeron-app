@@ -34,6 +34,8 @@ class EventRepository {
     String? notes,
     String? colorId,
     bool createMeet = false,
+    String? reminders,
+    String? alarmPreset,
   }) async {
     final id = newId();
     final now = nowMs();
@@ -55,6 +57,8 @@ class EventRepository {
             notes: Value(notes),
             colorId: Value(colorId),
             createMeet: Value(createMeet),
+            reminders: Value(reminders),
+            alarmPreset: Value(alarmPreset),
             createdAt: now,
             updatedAt: now,
           ),
@@ -162,6 +166,8 @@ class EventRepository {
     bool? createMeet,
     String? Function()? rrule,
     bool resetExceptions = false,
+    String? Function()? reminders,
+    String? Function()? alarmPreset,
   }) async {
     final master = await _master(masterId);
     final cutMs = originalStartUtc.toUtc().millisecondsSinceEpoch;
@@ -217,6 +223,12 @@ class EventRepository {
                 ? const Value.absent()
                 : Value(createMeet),
             rrule: rrule == null ? const Value.absent() : Value(rrule()),
+            reminders: reminders == null
+                ? const Value.absent()
+                : Value(reminders()),
+            alarmPreset: alarmPreset == null
+                ? const Value.absent()
+                : Value(alarmPreset()),
             updatedAt: Value(nowMs()),
             dirty: const Value(true),
           ),

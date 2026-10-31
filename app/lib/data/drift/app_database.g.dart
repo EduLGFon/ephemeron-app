@@ -8526,6 +8526,17 @@ class $CountdownsTable extends Countdowns
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _alarmPresetMeta = const VerificationMeta(
+    'alarmPreset',
+  );
+  @override
+  late final GeneratedColumn<String> alarmPreset = GeneratedColumn<String>(
+    'alarm_preset',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -8571,6 +8582,7 @@ class $CountdownsTable extends Countdowns
     notes,
     alertOffsetDays,
     alertTimeMin,
+    alarmPreset,
     createdAt,
     updatedAt,
     deletedAt,
@@ -8657,6 +8669,15 @@ class $CountdownsTable extends Countdowns
         ),
       );
     }
+    if (data.containsKey('alarm_preset')) {
+      context.handle(
+        _alarmPresetMeta,
+        alarmPreset.isAcceptableOrUnknown(
+          data['alarm_preset']!,
+          _alarmPresetMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -8728,6 +8749,10 @@ class $CountdownsTable extends Countdowns
         DriftSqlType.int,
         data['${effectivePrefix}alert_time_min'],
       ),
+      alarmPreset: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}alarm_preset'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
@@ -8760,6 +8785,7 @@ class Countdown extends DataClass implements Insertable<Countdown> {
   final String? notes;
   final int? alertOffsetDays;
   final int? alertTimeMin;
+  final String? alarmPreset;
   final int createdAt;
   final int updatedAt;
   final int? deletedAt;
@@ -8774,6 +8800,7 @@ class Countdown extends DataClass implements Insertable<Countdown> {
     this.notes,
     this.alertOffsetDays,
     this.alertTimeMin,
+    this.alarmPreset,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -8802,6 +8829,9 @@ class Countdown extends DataClass implements Insertable<Countdown> {
     }
     if (!nullToAbsent || alertTimeMin != null) {
       map['alert_time_min'] = Variable<int>(alertTimeMin);
+    }
+    if (!nullToAbsent || alarmPreset != null) {
+      map['alarm_preset'] = Variable<String>(alarmPreset);
     }
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
@@ -8833,6 +8863,9 @@ class Countdown extends DataClass implements Insertable<Countdown> {
       alertTimeMin: alertTimeMin == null && nullToAbsent
           ? const Value.absent()
           : Value(alertTimeMin),
+      alarmPreset: alarmPreset == null && nullToAbsent
+          ? const Value.absent()
+          : Value(alarmPreset),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -8857,6 +8890,7 @@ class Countdown extends DataClass implements Insertable<Countdown> {
       notes: serializer.fromJson<String?>(json['notes']),
       alertOffsetDays: serializer.fromJson<int?>(json['alertOffsetDays']),
       alertTimeMin: serializer.fromJson<int?>(json['alertTimeMin']),
+      alarmPreset: serializer.fromJson<String?>(json['alarmPreset']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
@@ -8876,6 +8910,7 @@ class Countdown extends DataClass implements Insertable<Countdown> {
       'notes': serializer.toJson<String?>(notes),
       'alertOffsetDays': serializer.toJson<int?>(alertOffsetDays),
       'alertTimeMin': serializer.toJson<int?>(alertTimeMin),
+      'alarmPreset': serializer.toJson<String?>(alarmPreset),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
       'deletedAt': serializer.toJson<int?>(deletedAt),
@@ -8893,6 +8928,7 @@ class Countdown extends DataClass implements Insertable<Countdown> {
     Value<String?> notes = const Value.absent(),
     Value<int?> alertOffsetDays = const Value.absent(),
     Value<int?> alertTimeMin = const Value.absent(),
+    Value<String?> alarmPreset = const Value.absent(),
     int? createdAt,
     int? updatedAt,
     Value<int?> deletedAt = const Value.absent(),
@@ -8909,6 +8945,7 @@ class Countdown extends DataClass implements Insertable<Countdown> {
         ? alertOffsetDays.value
         : this.alertOffsetDays,
     alertTimeMin: alertTimeMin.present ? alertTimeMin.value : this.alertTimeMin,
+    alarmPreset: alarmPreset.present ? alarmPreset.value : this.alarmPreset,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -8933,6 +8970,9 @@ class Countdown extends DataClass implements Insertable<Countdown> {
       alertTimeMin: data.alertTimeMin.present
           ? data.alertTimeMin.value
           : this.alertTimeMin,
+      alarmPreset: data.alarmPreset.present
+          ? data.alarmPreset.value
+          : this.alarmPreset,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -8952,6 +8992,7 @@ class Countdown extends DataClass implements Insertable<Countdown> {
           ..write('notes: $notes, ')
           ..write('alertOffsetDays: $alertOffsetDays, ')
           ..write('alertTimeMin: $alertTimeMin, ')
+          ..write('alarmPreset: $alarmPreset, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt')
@@ -8971,6 +9012,7 @@ class Countdown extends DataClass implements Insertable<Countdown> {
     notes,
     alertOffsetDays,
     alertTimeMin,
+    alarmPreset,
     createdAt,
     updatedAt,
     deletedAt,
@@ -8989,6 +9031,7 @@ class Countdown extends DataClass implements Insertable<Countdown> {
           other.notes == this.notes &&
           other.alertOffsetDays == this.alertOffsetDays &&
           other.alertTimeMin == this.alertTimeMin &&
+          other.alarmPreset == this.alarmPreset &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt);
@@ -9005,6 +9048,7 @@ class CountdownsCompanion extends UpdateCompanion<Countdown> {
   final Value<String?> notes;
   final Value<int?> alertOffsetDays;
   final Value<int?> alertTimeMin;
+  final Value<String?> alarmPreset;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   final Value<int?> deletedAt;
@@ -9020,6 +9064,7 @@ class CountdownsCompanion extends UpdateCompanion<Countdown> {
     this.notes = const Value.absent(),
     this.alertOffsetDays = const Value.absent(),
     this.alertTimeMin = const Value.absent(),
+    this.alarmPreset = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -9036,6 +9081,7 @@ class CountdownsCompanion extends UpdateCompanion<Countdown> {
     this.notes = const Value.absent(),
     this.alertOffsetDays = const Value.absent(),
     this.alertTimeMin = const Value.absent(),
+    this.alarmPreset = const Value.absent(),
     required int createdAt,
     required int updatedAt,
     this.deletedAt = const Value.absent(),
@@ -9055,6 +9101,7 @@ class CountdownsCompanion extends UpdateCompanion<Countdown> {
     Expression<String>? notes,
     Expression<int>? alertOffsetDays,
     Expression<int>? alertTimeMin,
+    Expression<String>? alarmPreset,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
     Expression<int>? deletedAt,
@@ -9071,6 +9118,7 @@ class CountdownsCompanion extends UpdateCompanion<Countdown> {
       if (notes != null) 'notes': notes,
       if (alertOffsetDays != null) 'alert_offset_days': alertOffsetDays,
       if (alertTimeMin != null) 'alert_time_min': alertTimeMin,
+      if (alarmPreset != null) 'alarm_preset': alarmPreset,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -9089,6 +9137,7 @@ class CountdownsCompanion extends UpdateCompanion<Countdown> {
     Value<String?>? notes,
     Value<int?>? alertOffsetDays,
     Value<int?>? alertTimeMin,
+    Value<String?>? alarmPreset,
     Value<int>? createdAt,
     Value<int>? updatedAt,
     Value<int?>? deletedAt,
@@ -9105,6 +9154,7 @@ class CountdownsCompanion extends UpdateCompanion<Countdown> {
       notes: notes ?? this.notes,
       alertOffsetDays: alertOffsetDays ?? this.alertOffsetDays,
       alertTimeMin: alertTimeMin ?? this.alertTimeMin,
+      alarmPreset: alarmPreset ?? this.alarmPreset,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -9145,6 +9195,9 @@ class CountdownsCompanion extends UpdateCompanion<Countdown> {
     if (alertTimeMin.present) {
       map['alert_time_min'] = Variable<int>(alertTimeMin.value);
     }
+    if (alarmPreset.present) {
+      map['alarm_preset'] = Variable<String>(alarmPreset.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -9173,6 +9226,7 @@ class CountdownsCompanion extends UpdateCompanion<Countdown> {
           ..write('notes: $notes, ')
           ..write('alertOffsetDays: $alertOffsetDays, ')
           ..write('alertTimeMin: $alertTimeMin, ')
+          ..write('alarmPreset: $alarmPreset, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -11767,6 +11821,34 @@ class $AlarmsIndexTable extends AlarmsIndex
     requiredDuringInsert: false,
     defaultValue: const Constant('scheduled'),
   );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('alarm'),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _presetMeta = const VerificationMeta('preset');
+  @override
+  late final GeneratedColumn<String> preset = GeneratedColumn<String>(
+    'preset',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -11776,6 +11858,9 @@ class $AlarmsIndexTable extends AlarmsIndex
     presetStep,
     requestCode,
     state,
+    kind,
+    title,
+    preset,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -11839,6 +11924,24 @@ class $AlarmsIndexTable extends AlarmsIndex
         state.isAcceptableOrUnknown(data['state']!, _stateMeta),
       );
     }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    }
+    if (data.containsKey('preset')) {
+      context.handle(
+        _presetMeta,
+        preset.isAcceptableOrUnknown(data['preset']!, _presetMeta),
+      );
+    }
     return context;
   }
 
@@ -11876,6 +11979,18 @@ class $AlarmsIndexTable extends AlarmsIndex
         DriftSqlType.string,
         data['${effectivePrefix}state'],
       )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      ),
+      preset: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}preset'],
+      ),
     );
   }
 
@@ -11893,6 +12008,9 @@ class AlarmsIndexData extends DataClass implements Insertable<AlarmsIndexData> {
   final int? presetStep;
   final int? requestCode;
   final String state;
+  final String kind;
+  final String? title;
+  final String? preset;
   const AlarmsIndexData({
     required this.id,
     required this.sourceType,
@@ -11901,6 +12019,9 @@ class AlarmsIndexData extends DataClass implements Insertable<AlarmsIndexData> {
     this.presetStep,
     this.requestCode,
     required this.state,
+    required this.kind,
+    this.title,
+    this.preset,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -11916,6 +12037,13 @@ class AlarmsIndexData extends DataClass implements Insertable<AlarmsIndexData> {
       map['request_code'] = Variable<int>(requestCode);
     }
     map['state'] = Variable<String>(state);
+    map['kind'] = Variable<String>(kind);
+    if (!nullToAbsent || title != null) {
+      map['title'] = Variable<String>(title);
+    }
+    if (!nullToAbsent || preset != null) {
+      map['preset'] = Variable<String>(preset);
+    }
     return map;
   }
 
@@ -11932,6 +12060,13 @@ class AlarmsIndexData extends DataClass implements Insertable<AlarmsIndexData> {
           ? const Value.absent()
           : Value(requestCode),
       state: Value(state),
+      kind: Value(kind),
+      title: title == null && nullToAbsent
+          ? const Value.absent()
+          : Value(title),
+      preset: preset == null && nullToAbsent
+          ? const Value.absent()
+          : Value(preset),
     );
   }
 
@@ -11948,6 +12083,9 @@ class AlarmsIndexData extends DataClass implements Insertable<AlarmsIndexData> {
       presetStep: serializer.fromJson<int?>(json['presetStep']),
       requestCode: serializer.fromJson<int?>(json['requestCode']),
       state: serializer.fromJson<String>(json['state']),
+      kind: serializer.fromJson<String>(json['kind']),
+      title: serializer.fromJson<String?>(json['title']),
+      preset: serializer.fromJson<String?>(json['preset']),
     );
   }
   @override
@@ -11961,6 +12099,9 @@ class AlarmsIndexData extends DataClass implements Insertable<AlarmsIndexData> {
       'presetStep': serializer.toJson<int?>(presetStep),
       'requestCode': serializer.toJson<int?>(requestCode),
       'state': serializer.toJson<String>(state),
+      'kind': serializer.toJson<String>(kind),
+      'title': serializer.toJson<String?>(title),
+      'preset': serializer.toJson<String?>(preset),
     };
   }
 
@@ -11972,6 +12113,9 @@ class AlarmsIndexData extends DataClass implements Insertable<AlarmsIndexData> {
     Value<int?> presetStep = const Value.absent(),
     Value<int?> requestCode = const Value.absent(),
     String? state,
+    String? kind,
+    Value<String?> title = const Value.absent(),
+    Value<String?> preset = const Value.absent(),
   }) => AlarmsIndexData(
     id: id ?? this.id,
     sourceType: sourceType ?? this.sourceType,
@@ -11980,6 +12124,9 @@ class AlarmsIndexData extends DataClass implements Insertable<AlarmsIndexData> {
     presetStep: presetStep.present ? presetStep.value : this.presetStep,
     requestCode: requestCode.present ? requestCode.value : this.requestCode,
     state: state ?? this.state,
+    kind: kind ?? this.kind,
+    title: title.present ? title.value : this.title,
+    preset: preset.present ? preset.value : this.preset,
   );
   AlarmsIndexData copyWithCompanion(AlarmsIndexCompanion data) {
     return AlarmsIndexData(
@@ -11996,6 +12143,9 @@ class AlarmsIndexData extends DataClass implements Insertable<AlarmsIndexData> {
           ? data.requestCode.value
           : this.requestCode,
       state: data.state.present ? data.state.value : this.state,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      title: data.title.present ? data.title.value : this.title,
+      preset: data.preset.present ? data.preset.value : this.preset,
     );
   }
 
@@ -12008,7 +12158,10 @@ class AlarmsIndexData extends DataClass implements Insertable<AlarmsIndexData> {
           ..write('fireAtUtc: $fireAtUtc, ')
           ..write('presetStep: $presetStep, ')
           ..write('requestCode: $requestCode, ')
-          ..write('state: $state')
+          ..write('state: $state, ')
+          ..write('kind: $kind, ')
+          ..write('title: $title, ')
+          ..write('preset: $preset')
           ..write(')'))
         .toString();
   }
@@ -12022,6 +12175,9 @@ class AlarmsIndexData extends DataClass implements Insertable<AlarmsIndexData> {
     presetStep,
     requestCode,
     state,
+    kind,
+    title,
+    preset,
   );
   @override
   bool operator ==(Object other) =>
@@ -12033,7 +12189,10 @@ class AlarmsIndexData extends DataClass implements Insertable<AlarmsIndexData> {
           other.fireAtUtc == this.fireAtUtc &&
           other.presetStep == this.presetStep &&
           other.requestCode == this.requestCode &&
-          other.state == this.state);
+          other.state == this.state &&
+          other.kind == this.kind &&
+          other.title == this.title &&
+          other.preset == this.preset);
 }
 
 class AlarmsIndexCompanion extends UpdateCompanion<AlarmsIndexData> {
@@ -12044,6 +12203,9 @@ class AlarmsIndexCompanion extends UpdateCompanion<AlarmsIndexData> {
   final Value<int?> presetStep;
   final Value<int?> requestCode;
   final Value<String> state;
+  final Value<String> kind;
+  final Value<String?> title;
+  final Value<String?> preset;
   final Value<int> rowid;
   const AlarmsIndexCompanion({
     this.id = const Value.absent(),
@@ -12053,6 +12215,9 @@ class AlarmsIndexCompanion extends UpdateCompanion<AlarmsIndexData> {
     this.presetStep = const Value.absent(),
     this.requestCode = const Value.absent(),
     this.state = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.title = const Value.absent(),
+    this.preset = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   AlarmsIndexCompanion.insert({
@@ -12063,6 +12228,9 @@ class AlarmsIndexCompanion extends UpdateCompanion<AlarmsIndexData> {
     this.presetStep = const Value.absent(),
     this.requestCode = const Value.absent(),
     this.state = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.title = const Value.absent(),
+    this.preset = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        sourceType = Value(sourceType),
@@ -12076,6 +12244,9 @@ class AlarmsIndexCompanion extends UpdateCompanion<AlarmsIndexData> {
     Expression<int>? presetStep,
     Expression<int>? requestCode,
     Expression<String>? state,
+    Expression<String>? kind,
+    Expression<String>? title,
+    Expression<String>? preset,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -12086,6 +12257,9 @@ class AlarmsIndexCompanion extends UpdateCompanion<AlarmsIndexData> {
       if (presetStep != null) 'preset_step': presetStep,
       if (requestCode != null) 'request_code': requestCode,
       if (state != null) 'state': state,
+      if (kind != null) 'kind': kind,
+      if (title != null) 'title': title,
+      if (preset != null) 'preset': preset,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -12098,6 +12272,9 @@ class AlarmsIndexCompanion extends UpdateCompanion<AlarmsIndexData> {
     Value<int?>? presetStep,
     Value<int?>? requestCode,
     Value<String>? state,
+    Value<String>? kind,
+    Value<String?>? title,
+    Value<String?>? preset,
     Value<int>? rowid,
   }) {
     return AlarmsIndexCompanion(
@@ -12108,6 +12285,9 @@ class AlarmsIndexCompanion extends UpdateCompanion<AlarmsIndexData> {
       presetStep: presetStep ?? this.presetStep,
       requestCode: requestCode ?? this.requestCode,
       state: state ?? this.state,
+      kind: kind ?? this.kind,
+      title: title ?? this.title,
+      preset: preset ?? this.preset,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -12136,6 +12316,15 @@ class AlarmsIndexCompanion extends UpdateCompanion<AlarmsIndexData> {
     if (state.present) {
       map['state'] = Variable<String>(state.value);
     }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (preset.present) {
+      map['preset'] = Variable<String>(preset.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -12152,6 +12341,9 @@ class AlarmsIndexCompanion extends UpdateCompanion<AlarmsIndexData> {
           ..write('presetStep: $presetStep, ')
           ..write('requestCode: $requestCode, ')
           ..write('state: $state, ')
+          ..write('kind: $kind, ')
+          ..write('title: $title, ')
+          ..write('preset: $preset, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -19214,6 +19406,7 @@ typedef $$CountdownsTableCreateCompanionBuilder =
       Value<String?> notes,
       Value<int?> alertOffsetDays,
       Value<int?> alertTimeMin,
+      Value<String?> alarmPreset,
       required int createdAt,
       required int updatedAt,
       Value<int?> deletedAt,
@@ -19231,6 +19424,7 @@ typedef $$CountdownsTableUpdateCompanionBuilder =
       Value<String?> notes,
       Value<int?> alertOffsetDays,
       Value<int?> alertTimeMin,
+      Value<String?> alarmPreset,
       Value<int> createdAt,
       Value<int> updatedAt,
       Value<int?> deletedAt,
@@ -19293,6 +19487,11 @@ class $$CountdownsTableFilterComposer
 
   ColumnFilters<int> get alertTimeMin => $composableBuilder(
     column: $table.alertTimeMin,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get alarmPreset => $composableBuilder(
+    column: $table.alarmPreset,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -19371,6 +19570,11 @@ class $$CountdownsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get alarmPreset => $composableBuilder(
+    column: $table.alarmPreset,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -19434,6 +19638,11 @@ class $$CountdownsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get alarmPreset => $composableBuilder(
+    column: $table.alarmPreset,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -19485,6 +19694,7 @@ class $$CountdownsTableTableManager
                 Value<String?> notes = const Value.absent(),
                 Value<int?> alertOffsetDays = const Value.absent(),
                 Value<int?> alertTimeMin = const Value.absent(),
+                Value<String?> alarmPreset = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
                 Value<int?> deletedAt = const Value.absent(),
@@ -19500,6 +19710,7 @@ class $$CountdownsTableTableManager
                 notes: notes,
                 alertOffsetDays: alertOffsetDays,
                 alertTimeMin: alertTimeMin,
+                alarmPreset: alarmPreset,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -19517,6 +19728,7 @@ class $$CountdownsTableTableManager
                 Value<String?> notes = const Value.absent(),
                 Value<int?> alertOffsetDays = const Value.absent(),
                 Value<int?> alertTimeMin = const Value.absent(),
+                Value<String?> alarmPreset = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
                 Value<int?> deletedAt = const Value.absent(),
@@ -19532,6 +19744,7 @@ class $$CountdownsTableTableManager
                 notes: notes,
                 alertOffsetDays: alertOffsetDays,
                 alertTimeMin: alertTimeMin,
+                alarmPreset: alarmPreset,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -21583,6 +21796,9 @@ typedef $$AlarmsIndexTableCreateCompanionBuilder =
       Value<int?> presetStep,
       Value<int?> requestCode,
       Value<String> state,
+      Value<String> kind,
+      Value<String?> title,
+      Value<String?> preset,
       Value<int> rowid,
     });
 typedef $$AlarmsIndexTableUpdateCompanionBuilder =
@@ -21594,6 +21810,9 @@ typedef $$AlarmsIndexTableUpdateCompanionBuilder =
       Value<int?> presetStep,
       Value<int?> requestCode,
       Value<String> state,
+      Value<String> kind,
+      Value<String?> title,
+      Value<String?> preset,
       Value<int> rowid,
     });
 
@@ -21638,6 +21857,21 @@ class $$AlarmsIndexTableFilterComposer
 
   ColumnFilters<String> get state => $composableBuilder(
     column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get preset => $composableBuilder(
+    column: $table.preset,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -21685,6 +21919,21 @@ class $$AlarmsIndexTableOrderingComposer
     column: $table.state,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get preset => $composableBuilder(
+    column: $table.preset,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AlarmsIndexTableAnnotationComposer
@@ -21722,6 +21971,15 @@ class $$AlarmsIndexTableAnnotationComposer
 
   GeneratedColumn<String> get state =>
       $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get preset =>
+      $composableBuilder(column: $table.preset, builder: (column) => column);
 }
 
 class $$AlarmsIndexTableTableManager
@@ -21762,6 +22020,9 @@ class $$AlarmsIndexTableTableManager
                 Value<int?> presetStep = const Value.absent(),
                 Value<int?> requestCode = const Value.absent(),
                 Value<String> state = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String?> title = const Value.absent(),
+                Value<String?> preset = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AlarmsIndexCompanion(
                 id: id,
@@ -21771,6 +22032,9 @@ class $$AlarmsIndexTableTableManager
                 presetStep: presetStep,
                 requestCode: requestCode,
                 state: state,
+                kind: kind,
+                title: title,
+                preset: preset,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -21782,6 +22046,9 @@ class $$AlarmsIndexTableTableManager
                 Value<int?> presetStep = const Value.absent(),
                 Value<int?> requestCode = const Value.absent(),
                 Value<String> state = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String?> title = const Value.absent(),
+                Value<String?> preset = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AlarmsIndexCompanion.insert(
                 id: id,
@@ -21791,6 +22058,9 @@ class $$AlarmsIndexTableTableManager
                 presetStep: presetStep,
                 requestCode: requestCode,
                 state: state,
+                kind: kind,
+                title: title,
+                preset: preset,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

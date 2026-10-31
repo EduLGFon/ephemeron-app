@@ -70,6 +70,7 @@ class TaskRepository {
     String? parentId,
     bool pinned = false,
     List<String> tags = const [],
+    String? alarmPreset,
   }) async {
     final id = newId();
     final now = nowMs();
@@ -91,6 +92,7 @@ class TaskRepository {
             repeatMode: Value(repeatMode ?? 'from_due_date'),
             parentId: Value(parentId),
             pinned: Value(pinned),
+            alarmPreset: Value(alarmPreset),
             createdAt: now,
             updatedAt: now,
           ),
@@ -206,6 +208,7 @@ class TaskRepository {
     bool? pinned,
     bool? wontDo,
     int? sortOrder,
+    String? Function()? alarmPreset,
   }) async {
     await (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(
       TasksCompanion(
@@ -222,6 +225,9 @@ class TaskRepository {
         pinned: pinned == null ? const Value.absent() : Value(pinned),
         wontDo: wontDo == null ? const Value.absent() : Value(wontDo),
         sortOrder: sortOrder == null ? const Value.absent() : Value(sortOrder),
+        alarmPreset: alarmPreset == null
+            ? const Value.absent()
+            : Value(alarmPreset()),
         updatedAt: Value(nowMs()),
         dirty: const Value(true),
       ),
