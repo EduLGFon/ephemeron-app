@@ -79,12 +79,6 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
         await ref.read(homeWidgetDataBinderProvider).refreshAll();
       } catch (_) {}
     });
-    ref.listenManual(openTasksProvider(null), (prev, next) => _scheduleWidgetRefresh());
-    ref.listenManual(habitsProvider(false), (prev, next) => _scheduleWidgetRefresh());
-    ref.listenManual(countdownsProvider, (prev, next) => _scheduleWidgetRefresh());
-    ref.listenManual(folderNotesProvider(null), (prev, next) => _scheduleWidgetRefresh());
-    ref.listenManual(currentFocusSessionProvider, (prev, next) => _scheduleWidgetRefresh());
-    ref.listenManual(upcomingAlarmsProvider, (prev, next) => _scheduleWidgetRefresh());
     // Handle Android share-target text and launcher shortcuts once the
     // first frame is up (needs a BuildContext for sheets/navigation).
     WidgetsBinding.instance.addPostFrameCallback((_) => _handleIntents());
@@ -191,6 +185,14 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
 
   @override
   Widget build(BuildContext context) {
+    // Widget refresh triggers: resubscribed on rebuild, previous
+    // subscriptions are cancelled automatically by Riverpod.
+    ref.listen(openTasksProvider(null), (prev, next) => _scheduleWidgetRefresh());
+    ref.listen(habitsProvider(false), (prev, next) => _scheduleWidgetRefresh());
+    ref.listen(countdownsProvider, (prev, next) => _scheduleWidgetRefresh());
+    ref.listen(folderNotesProvider(null), (prev, next) => _scheduleWidgetRefresh());
+    ref.listen(currentFocusSessionProvider, (prev, next) => _scheduleWidgetRefresh());
+    ref.listen(upcomingAlarmsProvider, (prev, next) => _scheduleWidgetRefresh());
     final orderAsync = ref.watch(settingsRepositoryProvider);
     final onboarded = orderAsync.maybeWhen(
       data: (r) => r.onboarded,
