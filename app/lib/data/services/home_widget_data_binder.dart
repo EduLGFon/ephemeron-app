@@ -1,12 +1,20 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../domain/habits/date_key.dart';
+import '../../../core/power/power_saving_manager.dart';
 import '../../../features/tasks/application/tasks_providers.dart';
 import '../../../features/countdowns/application/countdowns_providers.dart';
 import '../../../features/habits/application/habits_providers.dart';
 import '../../../features/notes/application/notes_providers.dart';
 import '../../../features/focus/application/focus_providers.dart';
 import '../../../features/calendar/application/calendar_providers.dart';
-import '../../../features/alarms/application/alarm_providers.dart';import 'home_widget_service.dart';
+import '../../../features/alarms/application/alarm_providers.dart';
+import 'home_widget_service.dart';
+import 'widget_config_store.dart';
+import 'widget_image_service.dart';
 
 class HomeWidgetDataBinder {
   HomeWidgetDataBinder(this.ref);
@@ -32,8 +40,11 @@ class HomeWidgetDataBinder {
       _refreshDailySummary(),
       _refreshSyncStatus(),
       _refreshExtras(),
-      _refreshDerived(),
     ]);
+    // Derived last so it can skip keys with dedicated real data.
+    await _refreshDerived();
+    // Images need a Flutter engine: foreground only, best-effort.
+    await _refreshImages();
     // Fill any widget type that has no dedicated wiring yet so pinned
     // widgets are never blank.
     for (final w in homeWidgets) {
@@ -56,10 +67,20 @@ class HomeWidgetDataBinder {
     } catch (_) {}
   }
 
+  Future<String?> _config(String provider) async {
+    try {
+      final store = await ref.read(widgetConfigStoreProvider.future);
+      return store.get(provider);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _refreshTasks() async {
     try {
       final repo = ref.read(taskRepositoryProvider);
-      final tasks = await repo.watchOpen().first;
+      final listId = await _config('PendingTasksWidgetProvider');
+      final tasks = await repo.watchOpen(listId: listId).first;
       final titles = tasks.take(5).map((t) => t.title).toList();
       await _svc.update(
         keyPrefix: 'pending_tasks',
@@ -85,7 +106,14 @@ class HomeWidgetDataBinder {
   Future<void> _refreshCountdowns() async {
     try {
       final repo = ref.read(countdownRepositoryProvider);
-      final items = await repo.watchCountdowns().first;
+      final all = await repo.watchCountdowns().first;
+      final pinnedId = await _config('CountdownWidgetProvider');
+      final items = pinnedId == null
+          ? all
+          : ([
+              ...all.where((c) => c.id == pinnedId),
+              ...all.where((c) => c.id != pinnedId),
+            ]);
       if (items.isEmpty) {
         await _svc.updateByPrefix(
           keyPrefix: 'countdown',
@@ -136,14 +164,19 @@ class HomeWidgetDataBinder {
     try {
       final repo = ref.read(noteRepositoryProvider);
       final notes = await repo.watchNotesInFolder(null).first;
-      if (notes.isNotEmpty) {
+      final pinnedId = await _config('OneNoteWidgetProvider') ??
+          await _config('PinnedNoteWidgetProvider');
+      final shown = pinnedId == null
+          ? (notes.isEmpty ? null : notes.first)
+          : await repo.getNote(pinnedId);
+      if (shown != null) {
         await _svc.update(
           keyPrefix: 'one_note',
           provider: 'OneNoteWidgetProvider',
-          title: notes.first.title,
-          body: (notes.first.body?.length ?? 0) > 120
-              ? notes.first.body!.substring(0, 120)
-              : notes.first.body ?? '',        );
+          title: shown.title,
+          body: (shown.body?.length ?? 0) > 120
+              ? shown.body!.substring(0, 120)
+              : shown.body ?? '',        );
       _mark('one_note');
       }
       await _svc.updateCollection(
@@ -202,7 +235,8 @@ class HomeWidgetDataBinder {
   Future<void> _refreshMatrix() async {
     try {
       final repo = ref.read(taskRepositoryProvider);
-      final tasks = await repo.watchOpen().first;
+      final listId = await _config('MatrixWidgetProvider');
+      final tasks = await repo.watchOpen(listId: listId).first;
       final counts = <String, int>{};
       for (final t in tasks) {
         counts[t.priority.toString()] = (counts[t.priority.toString()] ?? 0) + 1;
@@ -210,9 +244,18 @@ class HomeWidgetDataBinder {
       await _svc.updateByPrefix(
         keyPrefix: 'matrix',
         title: 'Matrix',
-        body: 'Open tasks: ${tasks.length}',
+        body: counts.entries.map((e) => 'P${e.key}: ${e.value}').join(' '),
       );
       _mark('matrix');
+      final matrixListId = listId;
+      if (matrixListId == null) {
+        await _svc.updateByPrefix(
+          keyPrefix: 'matrix_counts',
+          title: 'Matrix',
+          body: counts.entries.map((e) => 'P${e.key}: ${e.value}').join(' '),
+        );
+        _mark('matrix_counts');
+      }
     } catch (_) {}
   }
 
@@ -432,19 +475,96 @@ class HomeWidgetDataBinder {
       }
       final matrixBody = counts.entries.map((e) => 'P${e.key}: ${e.value}').join(' ');
 
-      var subtaskBody = 'No subtasks.';
-      if (tasks.isNotEmpty) {
+      // Tag-bound widget: filter open tasks by the configured tag name.
+      var tagLabel = 'Tags';
+      var tagTitles = titles;
+      final tagName = await _config('TagTasksWidgetProvider');
+      if (tagName != null) {
+        tagLabel = '#$tagName';
         try {
-          final subs = await taskRepo.watchSubtasks(tasks.first.id).first;
-          final done = subs.where((s) => s.completedAt != null).length;
-          subtaskBody = '${tasks.first.title}: $done/${subs.length} done';
+          final tags = await taskRepo.watchTags().first;
+          final match = tags.where((g) => g.name == tagName).toList();
+          if (match.isNotEmpty) {
+            final withTag = <String>[];
+            for (final t in tasks.take(20)) {
+              final ids = await taskRepo.taskTagIds(t.id);
+              if (ids.contains(match.first.id)) withTag.add(t.title);
+            }
+            tagTitles = withTag.take(5).toList();
+          }
+        } catch (_) {}
+      }
+
+      // Smart-list widget: evaluate the bound smart list filter.
+      var smartBody = 'Open: ${tasks.length}, due today: ${dueToday.length}';
+      final smartId = await _config('SmartListWidgetProvider');
+      if (smartId != null) {
+        try {
+          final smartLists = await taskRepo.watchSmartLists().first;
+          final match = smartLists.where((s) => s.id == smartId).toList();
+          if (match.isNotEmpty) {
+            final rows = await taskRepo.evalSmartList(
+              Map<String, Object?>.from(
+                jsonDecode(match.first.filterJson) as Map,
+              ),
+            );
+            smartBody = '${match.first.name}: ${rows.length} tasks';
+          }
+        } catch (_) {}
+      }
+
+      var subtaskBody = 'No subtasks.';
+      final subtaskParentId =
+          await _config('SubtaskProgressWidgetProvider');
+      final subtaskParent = subtaskParentId != null
+          ? tasks.where((t) => t.id == subtaskParentId).toList()
+          : tasks;
+      if (subtaskParent.isNotEmpty) {
+        try {
+          final progress =
+              await taskRepo.subtaskProgress(subtaskParent.first.id);
+          subtaskBody =
+              '${subtaskParent.first.title}: ${progress[0]}/${progress[1]} done';
         } catch (_) {}
       }
 
       var streakBody = 'No habits.';
-      if (habits.isNotEmpty) {
-        streakBody = '${habits.length} habits tracked';
+      final streakHabitId = await _config('HabitStreakWidgetProvider');
+      final streakHabit = streakHabitId != null
+          ? habits.where((h) => h.id == streakHabitId).toList()
+          : habits;
+      if (streakHabit.isNotEmpty) {
+        try {
+          final today = habitDateKey(DateTime.now());
+          final log =
+              await habitRepo.logFor(streakHabit.first.id, today);
+          streakBody =
+              '${streakHabit.first.name}: ${log != null ? 'done today' : 'not done today'}';
+        } catch (_) {
+          streakBody = '${streakHabit.first.name} tracked';
+        }
       }
+
+      var pinnedTitle = notes.isEmpty ? 'Note' : notes.first.title;
+      var pinnedBody = notes.isEmpty ? 'No notes.' : noteTitles.join('\n');
+      final pinnedNoteId = await _config('PinnedNoteWidgetProvider') ??
+          await _config('OneNoteWidgetProvider');
+      if (pinnedNoteId != null) {
+        try {
+          final n = await noteRepo.getNote(pinnedNoteId);
+          if (n != null) {
+            pinnedTitle = n.title;
+            pinnedBody = n.body ?? '';
+          }
+        } catch (_) {}
+      }
+
+      var powerBody = 'Battery-aware sync on';
+      try {
+        final low =
+            await PowerSavingManager.instance.isLowBattery;
+        powerBody = low ? 'Low battery, sync slowed' : 'OK';
+      } catch (_) {}
 
       var daysSinceBody = 'No past dates.';
       final past = countdowns.where((c) {
@@ -475,12 +595,12 @@ class HomeWidgetDataBinder {
           'body': occTitles.isEmpty ? 'No events.' : occTitles.join('\n'),
         },
         'smart_list': {
-          'title': 'Today',
-          'body': 'Open: ${tasks.length}, due today: ${dueToday.length}',
+          'title': 'Smart list',
+          'body': smartBody,
         },
         'tag_tasks': {
-          'title': 'Tags',
-          'body': titles.isEmpty ? 'No tasks.' : titles.join('\n'),
+          'title': tagLabel,
+          'body': tagTitles.isEmpty ? 'No tasks.' : tagTitles.join('\n'),
         },
         'subtask_progress': {'title': 'Subtasks', 'body': subtaskBody},
         'matrix_counts': {
@@ -492,8 +612,8 @@ class HomeWidgetDataBinder {
         'habit_heatmap': {'title': 'Heatmap', 'body': streakBody},
         'pomodoro': {'title': 'Focus', 'body': '$focusMin min (24h)'},
         'pinned_note': {
-          'title': notes.isEmpty ? 'Note' : notes.first.title,
-          'body': notes.isEmpty ? 'No notes.' : noteTitles.join('\n'),
+          'title': pinnedTitle,
+          'body': pinnedBody,
         },
         'recent_notes': {
           'title': 'Notes',
@@ -524,11 +644,17 @@ class HomeWidgetDataBinder {
         },
         'power_status': {
           'title': 'Battery',
-          'body': 'Battery-aware sync on',
+          'body': powerBody,
         },
-        'vacation_status': {'title': 'Vacation', 'body': 'Off'},
+        // No vacation feature exists in the app; report honestly instead of
+        // implying live state.
+        'vacation_status': {
+          'title': 'Vacation',
+          'body': 'Not available in this version',
+        },
       };
       for (final e in derived.entries) {
+        if (_touched.contains(e.key)) continue;
         try {
           await _svc.updateByPrefix(
             keyPrefix: e.key,
@@ -539,6 +665,132 @@ class HomeWidgetDataBinder {
         } catch (_) {}
       }
     } catch (_) {}
+  }
+
+  /// Renders image widgets only when a matching widget is pinned (when the
+  /// platform reports installed widgets) and at most every 15 minutes per
+  /// image. Falls back to the throttle when the installed list is
+  /// unavailable so images still refresh on platforms without the API.
+  Future<void> _refreshImages() async {
+    final images = WidgetImageService();
+    Set<String>? installed;
+    try {
+      final all = await HomeWidget.getInstalledWidgets();
+      installed = {for (final w in all) w.androidClassName ?? ''};
+    } catch (_) {}
+    bool want(String provider) {
+      if (installed == null) return true;
+      return installed.contains(provider);
+    }
+
+    Future<bool> due(String key) async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final last = prefs.getInt('widget_image_last_$key');
+        final ok = WidgetImageService.shouldRender(
+          lastMs: last,
+          nowMs: DateTime.now().millisecondsSinceEpoch,
+        );
+        if (ok) {
+          await prefs.setInt(
+            'widget_image_last_$key',
+            DateTime.now().millisecondsSinceEpoch,
+          );
+        }
+        return ok;
+      } catch (_) {
+        return true;
+      }
+    }
+
+    if (want('MonthCalendarWidgetProvider') &&
+        await due('month_calendar')) {
+    try {
+      final now = DateTime.now();
+      final from = DateTime(now.year, now.month, 1);
+      final to = DateTime(now.year, now.month + 1, 0);
+      final occs = await ref
+          .read(occurrenceRepositoryProvider)
+          .watchWindow(from, to)
+          .first;
+      final days = <int>{};
+      for (final o in occs) {
+        final start = DateTime.fromMillisecondsSinceEpoch(o.startUtc);
+        if (start.year == now.year && start.month == now.month) {
+          days.add(start.day);
+        }
+      }
+      final path = await images.renderMonthGrid(
+        year: now.year,
+        month: now.month,
+        eventDays: days,
+        today: now.day,
+      );
+      if (path != null) {
+        await _svc.updateByPrefix(
+          keyPrefix: 'month_calendar',
+          title: 'Calendar',
+          body: days.isEmpty ? 'No events.' : '${days.length} days',
+          imagePath: path,
+        );
+      }
+    } catch (_) {}
+    }
+    if (want('HabitHeatmapWidgetProvider') &&
+        await due('habit_heatmap')) {
+    try {
+      final repo = ref.read(habitRepositoryProvider);
+      final habits = await repo.watchHabits(archived: false).first;
+      if (habits.isNotEmpty) {
+        final logs = await repo.watchLogs(habits.first.id).first;
+        final done = {
+          for (final l in logs)
+            if (l.done) l.dayKey,
+        };
+        final path = await images.renderHeatmap(
+          done: done,
+          end: DateTime.now(),
+        );
+        if (path != null) {
+          await _svc.updateByPrefix(
+            keyPrefix: 'habit_heatmap',
+            title: 'Heatmap',
+            body: habits.first.name,
+            imagePath: path,
+          );
+        }
+      }
+    } catch (_) {}
+    }
+    if (want('WeeklyChartWidgetProvider') &&
+        await due('weekly_chart')) {
+    try {
+      final repo = ref.read(focusRepositoryProvider);
+      final now = DateTime.now();
+      final start =
+          DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
+      final minutes = <int>[];
+      for (var i = 0; i < 7; i++) {
+        final day = start.add(Duration(days: i));
+        final next = day.add(const Duration(days: 1));
+        minutes.add(
+          await repo.totalMinutes(
+            day.millisecondsSinceEpoch,
+            next.millisecondsSinceEpoch,
+          ),
+        );
+      }
+      final path = await images.renderWeekBars(minutes: minutes);
+      if (path != null) {
+        await _svc.updateByPrefix(
+          keyPrefix: 'weekly_chart',
+          title: 'Week',
+          body: 'Focus ${minutes.reduce((a, b) => a + b)} min',
+          imagePath: path,
+        );
+      }
+    } catch (_) {}
+    }
   }
 }
 

@@ -2,6 +2,7 @@
 // background sync and by the widget toggle callback so a tap is reflected
 // without opening the app. No Riverpod: everything runs off [db] directly.
 import 'package:home_widget/home_widget.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../drift/app_database.dart';
 import '../repositories/countdown_repository.dart';
@@ -27,7 +28,19 @@ Future<void> _push(
 }
 
 /// Re-reads open tasks and pushes task widgets. Honors an optional
-/// list-id filter stored under widget_config_<provider>.
+/// list-id filter.
+/// Reads a widget binding (list/note/countdown/tag/habit id) stored by the
+/// settings screen. Null when unconfigured.
+Future<String?> readWidgetBinding(String provider) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final v = prefs.getString('widget_config_$provider');
+    return (v == null || v.isEmpty) ? null : v;
+  } catch (_) {
+    return null;
+  }
+}
+
 Future<void> pushTaskWidgets(AppDatabase db, {String? listId}) async {
   try {
     final tasks =
@@ -95,9 +108,15 @@ Future<void> pushHabitWidgets(AppDatabase db) async {
   } catch (_) {}
 }
 
-Future<void> pushCountdownWidgets(AppDatabase db) async {
+Future<void> pushCountdownWidgets(AppDatabase db, {String? pinnedId}) async {
   try {
-    final items = await CountdownRepository(db).watchCountdowns().first;
+    final all = await CountdownRepository(db).watchCountdowns().first;
+    final items = pinnedId == null
+        ? all
+        : ([
+            ...all.where((c) => c.id == pinnedId),
+            ...all.where((c) => c.id != pinnedId),
+          ]);
     if (items.isEmpty) return;
     final next = items.first;
     final target = DateTime.tryParse(next.targetDate ?? '') ?? DateTime.now();
@@ -111,9 +130,23 @@ Future<void> pushCountdownWidgets(AppDatabase db) async {
   } catch (_) {}
 }
 
-Future<void> pushNoteWidgets(AppDatabase db) async {
+Future<void> pushNoteWidgets(AppDatabase db, {String? noteId}) async {
   try {
-    final notes = await NoteRepository(db).watchNotesInFolder(null).first;
+    final repo = NoteRepository(db);
+    if (noteId != null) {
+      final note = await repo.getNote(noteId);
+      if (note != null) {
+        final body = note.body ?? '';
+        await _push(
+          'one_note',
+          'OneNoteWidgetProvider',
+          note.title,
+          body.length > 120 ? body.substring(0, 120) : body,
+        );
+        return;
+      }
+    }
+    final notes = await repo.watchNotesInFolder(null).first;
     if (notes.isEmpty) return;
     final body = notes.first.body ?? '';
     await _push(
@@ -138,13 +171,17 @@ Future<void> pushFocusWidgets(AppDatabase db) async {
 }
 
 /// Pushes every widget type a headless isolate can compute: tasks, habits,
-// countdowns, notes, focus, plus today's agenda from the occurrence cache
-// and derived summaries. Mirrors the foreground binder's key names.
+/// countdowns, notes, focus, plus today's agenda from the occurrence cache
+/// and derived summaries. Mirrors the foreground binder's key names.
 Future<void> pushAllHeadlessWidgets(AppDatabase db) async {
-  await pushTaskWidgets(db);
+  final listId = await readWidgetBinding('PendingTasksWidgetProvider');
+  final noteId = await readWidgetBinding('OneNoteWidgetProvider') ??
+      await readWidgetBinding('PinnedNoteWidgetProvider');
+  final countdownId = await readWidgetBinding('CountdownWidgetProvider');
+  await pushTaskWidgets(db, listId: listId);
   await pushHabitWidgets(db);
-  await pushCountdownWidgets(db);
-  await pushNoteWidgets(db);
+  await pushCountdownWidgets(db, pinnedId: countdownId);
+  await pushNoteWidgets(db, noteId: noteId);
   await pushFocusWidgets(db);
   try {
     final now = DateTime.now();

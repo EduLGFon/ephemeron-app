@@ -79,6 +79,16 @@ class SystemLauncher {
     }
   }
 
+  /// Home-widget tap action (new_task/search). Once.
+  static Future<String?> consumeWidgetAction() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return null;
+    try {
+      return await _channel.invokeMethod<String>('getWidgetAction');
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Launcher-shortcut action (new_task/new_event/start_focus). Once.
   static Future<String?> consumeLaunchAction() async {
     if (defaultTargetPlatform != TargetPlatform.android) return null;

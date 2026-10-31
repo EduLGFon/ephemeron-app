@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'package:flutter/material.dart';import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -17,7 +18,10 @@ import '../../data/services/home_widget_data_binder.dart';
 import 'app_sections.dart';
 import '../../features/tasks/application/tasks_providers.dart';
 import '../../features/habits/application/habits_providers.dart';
-import '../../features/countdowns/application/countdowns_providers.dart';import 'more_sheet.dart';
+import '../../features/countdowns/application/countdowns_providers.dart';
+import '../../features/notes/application/notes_providers.dart';
+import '../../features/focus/application/focus_providers.dart';
+import 'more_sheet.dart';
 
 const List<LogicalKeyboardKey> _digitKeys = <LogicalKeyboardKey>[
   LogicalKeyboardKey.digit1,
@@ -74,6 +78,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     ref.listen(openTasksProvider(null), (prev, next) => _scheduleWidgetRefresh());
     ref.listen(habitsProvider(false), (prev, next) => _scheduleWidgetRefresh());
     ref.listen(countdownsProvider, (prev, next) => _scheduleWidgetRefresh());
+    ref.listen(folderNotesProvider(null), (prev, next) => _scheduleWidgetRefresh());
+    ref.listen(currentFocusSessionProvider, (prev, next) => _scheduleWidgetRefresh());
+    ref.listen(upcomingAlarmsProvider, (prev, next) => _scheduleWidgetRefresh());
     // Handle Android share-target text and launcher shortcuts once the
     // first frame is up (needs a BuildContext for sheets/navigation).
     WidgetsBinding.instance.addPostFrameCallback((_) => _handleIntents());
@@ -86,8 +93,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     super.dispose();
   }
 
-  /// Opens quick add prefilled with shared text, or jumps to the tab
-  /// requested by a launcher shortcut. No-ops on other platforms.
+  /// Opens quick add prefilled with shared text, jumps to the tab
+  /// requested by a launcher shortcut, or routes a home-widget tap.
+  /// No-ops on other platforms.
   Future<void> _handleIntents() async {
     if (!mounted) return;
     final shared = await SystemLauncher.consumeSharedText();
@@ -96,14 +104,24 @@ class _AppShellState extends ConsumerState<AppShell> {
     }
     if (!mounted) return;
     final action = await SystemLauncher.consumeLaunchAction();
-    if (action == null || !mounted) return;
-    switch (action) {
+    if (action != null && mounted) {
+      switch (action) {
+        case 'new_task':
+          await showQuickAdd(context);
+        case 'new_event':
+          _onTabSelected(AppSection.calendar.index);
+        case 'start_focus':
+          _onTabSelected(AppSection.focus.index);
+      }
+    }
+    if (!mounted) return;
+    final widgetAction = await SystemLauncher.consumeWidgetAction();
+    if (widgetAction == null || !mounted) return;
+    switch (widgetAction) {
       case 'new_task':
         await showQuickAdd(context);
-      case 'new_event':
-        _onTabSelected(AppSection.calendar.index);
-      case 'start_focus':
-        _onTabSelected(AppSection.focus.index);
+      case 'search':
+        GoRouter.of(context).push('/search');
     }
   }
 
