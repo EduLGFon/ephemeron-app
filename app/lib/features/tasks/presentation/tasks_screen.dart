@@ -98,23 +98,24 @@ class TasksScreen extends ConsumerWidget {
                 final rest = tasks
                     .where((t) => !overdueIds.contains(t.id))
                     .toList();
+                final items = <Widget>[];
+                if (overdue.isNotEmpty) {
+                  items.add(
+                    ListTile(
+                      title: Text('Overdue (${overdue.length})'),
+                      trailing: TextButton(
+                        onPressed: () => _rescheduleAll(context, ref, overdue),
+                        child: const Text('Reschedule to today'),
+                      ),
+                    ),
+                  );
+                  items.addAll(overdue.map((t) => _TaskTile(task: t, overdue: true)));
+                }
+                items.addAll(rest.map((t) => _TaskTile(task: t)));
                 return RepaintBoundary(
-                  child: ListView(
-                    children: [
-                      if (overdue.isNotEmpty) ...[
-                        ListTile(
-                          title: Text('Overdue (${overdue.length})'),
-                          trailing: TextButton(
-                            onPressed: () =>
-                                _rescheduleAll(context, ref, overdue),
-                            child: const Text('Reschedule to today'),
-                          ),
-                        ),
-                        for (final t in overdue)
-                          _TaskTile(task: t, overdue: true),
-                      ],
-                      for (final t in rest) _TaskTile(task: t),
-                    ],
+                  child: ListView.builder(
+                    itemCount: items.length,
+                    itemBuilder: (_, i) => items[i],
                   ),
                 );
               },
@@ -468,21 +469,22 @@ class _CompletedScreen extends ConsumerWidget {
             );
           }
           return RepaintBoundary(
-            child: ListView(
-              children: [
-                for (final t in tasks)
-                  ListTile(
-                    leading: const Icon(Icons.check_circle_outline),
-                    title: Text(t.title),
-                    subtitle: t.dueDate == null ? null : Text(t.dueDate!),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.undo),
-                      tooltip: 'Reopen',
-                      onPressed: () =>
-                          ref.read(taskRepositoryProvider).uncompleteTask(t.id),
-                    ),
+            child: ListView.builder(
+              itemCount: tasks.length,
+              itemBuilder: (context, i) {
+                final t = tasks[i];
+                return ListTile(
+                  leading: const Icon(Icons.check_circle_outline),
+                  title: Text(t.title),
+                  subtitle: t.dueDate == null ? null : Text(t.dueDate!),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.undo),
+                    tooltip: 'Reopen',
+                    onPressed: () =>
+                        ref.read(taskRepositoryProvider).uncompleteTask(t.id),
                   ),
-              ],
+                );
+              },
             ),
           );
         },

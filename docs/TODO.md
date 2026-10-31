@@ -14,7 +14,6 @@
 
 Remaining (not yet fixed):
 
-- ListView.builder conversions for remaining mixed/static lists.
 - Split files >300 lines and functions >40 lines (optional cleanup).
 - Dialog boilerplate, empty-state widget, and padding deduplication (optional
   cleanup).

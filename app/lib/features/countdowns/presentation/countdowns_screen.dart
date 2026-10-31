@@ -57,22 +57,23 @@ class CountdownsScreen extends ConsumerWidget {
           dated.sort((a, b) => a.days.compareTo(b.days));
           final upcoming = dated.where((d) => d.days >= 0).toList();
           final passed = dated.where((d) => d.days < 0).toList();
+          final items = <Widget>[];
+          if (upcoming.isNotEmpty) {
+            items.add(const _GroupHeader(title: 'Upcoming'));
+            items.addAll(upcoming.map((d) => _CountdownTile(entry: d)));
+          }
+          if (passed.isNotEmpty) {
+            items.add(const _GroupHeader(title: 'Passed'));
+            items.addAll(passed.map((d) => _CountdownTile(entry: d)));
+          }
+          if (undated.isNotEmpty) {
+            items.add(const _GroupHeader(title: 'No date'));
+            items.addAll(undated.map((c) => _UndatedTile(countdown: c)));
+          }
           return RepaintBoundary(
-            child: ListView(
-              children: [
-                if (upcoming.isNotEmpty) ...[
-                  const _GroupHeader(title: 'Upcoming'),
-                  for (final d in upcoming) _CountdownTile(entry: d),
-                ],
-                if (passed.isNotEmpty) ...[
-                  const _GroupHeader(title: 'Passed'),
-                  for (final d in passed) _CountdownTile(entry: d),
-                ],
-                if (undated.isNotEmpty) ...[
-                  const _GroupHeader(title: 'No date'),
-                  for (final c in undated) _UndatedTile(countdown: c),
-                ],
-              ],
+            child: ListView.builder(
+              itemCount: items.length,
+              itemBuilder: (_, i) => items[i],
             ),
           );
         },

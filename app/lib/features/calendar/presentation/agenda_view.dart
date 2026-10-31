@@ -46,25 +46,31 @@ class AgendaView extends ConsumerWidget {
           byDay.putIfAbsent(o.dayKey, () => []).add(o);
         }
         final days = byDay.keys.toList()..sort();
-        return RepaintBoundary(
-          child: ListView(
-            children: [
-            for (final d in days) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: Text(d, style: Theme.of(context).textTheme.titleSmall),
-              ),
-              for (final o in byDay[d]!)
-                ListTile(
-                  title: Text(o.title ?? '…'),
-                  trailing: Text(
-                    '${DateTime.fromMillisecondsSinceEpoch(o.startUtc).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(o.startUtc).minute.toString().padLeft(2, '0')}',
-                  ),
+        final items = <Widget>[];
+        for (final d in days) {
+          items.add(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(d, style: Theme.of(context).textTheme.titleSmall),
+            ),
+          );
+          for (final o in byDay[d]!) {
+            items.add(
+              ListTile(
+                title: Text(o.title ?? '…'),
+                trailing: Text(
+                  '${DateTime.fromMillisecondsSinceEpoch(o.startUtc).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(o.startUtc).minute.toString().padLeft(2, '0')}',
                 ),
-            ],
-          ],
-        ),
-      );
+              ),
+            );
+          }
+        }
+        return RepaintBoundary(
+          child: ListView.builder(
+            itemCount: items.length,
+            itemBuilder: (_, i) => items[i],
+          ),
+        );
       },
     );
   }

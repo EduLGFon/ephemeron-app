@@ -96,66 +96,85 @@ class _Results extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final items = <Widget>[];
+    if (_show(scope, SearchScope.tasks)) {
+      items.add(
+        _Group<Task>(
+          title: l.searchTasks,
+          async: ref.watch(searchTasksProvider),
+          tile: (t) => ListTile(
+            leading: const Icon(Icons.checklist_outlined),
+            title: Text(t.title),
+            subtitle: t.dueDate == null ? null : Text(t.dueDate!),
+          ),
+        ),
+      );
+    }
+    if (_show(scope, SearchScope.events)) {
+      items.add(
+        _Group<Event>(
+          title: l.searchEvents,
+          async: ref.watch(searchEventsProvider),
+          tile: (e) => ListTile(
+            leading: const Icon(Icons.calendar_month_outlined),
+            title: Text(e.title.isEmpty ? '(no title)' : e.title),
+            subtitle: e.location == null ? null : Text(e.location!),
+          ),
+        ),
+      );
+    }
+    if (_show(scope, SearchScope.notes)) {
+      items.add(
+        _Group<NoteSearchHit>(
+          title: l.searchNotes,
+          async: ref.watch(searchNotesProvider),
+          tile: (h) => ListTile(
+            leading: const Icon(Icons.note_outlined),
+            title: Text(h.note.title.isEmpty ? '(no title)' : h.note.title),
+            subtitle: Text(h.snippet, maxLines: 2),
+          ),
+        ),
+      );
+    }
+    if (_show(scope, SearchScope.habits)) {
+      items.add(
+        _Group<Habit>(
+          title: l.searchHabits,
+          async: ref.watch(searchHabitsProvider),
+          tile: (h) => ListTile(
+            leading: const Icon(Icons.repeat_outlined),
+            title: Text(h.name),
+          ),
+        ),
+      );
+    }
+    if (_show(scope, SearchScope.countdowns)) {
+      items.add(
+        _Group<Countdown>(
+          title: l.searchCountdowns,
+          async: ref.watch(searchCountdownsProvider),
+          tile: (c) => ListTile(
+            leading: const Icon(Icons.hourglass_bottom_outlined),
+            title: Text(c.title),
+            subtitle: c.targetDate == null ? null : Text(c.targetDate!),
+          ),
+        ),
+      );
+    }
+    if (_show(scope, SearchScope.tags)) {
+      items.add(
+        _Group<Tag>(
+          title: l.searchTags,
+          async: ref.watch(searchTagsProvider),
+          tile: (t) =>
+              ListTile(leading: const Icon(Icons.tag), title: Text(t.name)),
+        ),
+      );
+    }
     return RepaintBoundary(
-      child: ListView(
-        children: [
-        if (_show(scope, SearchScope.tasks))
-          _Group<Task>(
-            title: l.searchTasks,
-            async: ref.watch(searchTasksProvider),
-            tile: (t) => ListTile(
-              leading: const Icon(Icons.checklist_outlined),
-              title: Text(t.title),
-              subtitle: t.dueDate == null ? null : Text(t.dueDate!),
-            ),
-          ),
-        if (_show(scope, SearchScope.events))
-          _Group<Event>(
-            title: l.searchEvents,
-            async: ref.watch(searchEventsProvider),
-            tile: (e) => ListTile(
-              leading: const Icon(Icons.calendar_month_outlined),
-              title: Text(e.title.isEmpty ? '(no title)' : e.title),
-              subtitle: e.location == null ? null : Text(e.location!),
-            ),
-          ),
-        if (_show(scope, SearchScope.notes))
-          _Group<NoteSearchHit>(
-            title: l.searchNotes,
-            async: ref.watch(searchNotesProvider),
-            tile: (h) => ListTile(
-              leading: const Icon(Icons.note_outlined),
-              title: Text(h.note.title.isEmpty ? '(no title)' : h.note.title),
-              subtitle: Text(h.snippet, maxLines: 2),
-            ),
-          ),
-        if (_show(scope, SearchScope.habits))
-          _Group<Habit>(
-            title: l.searchHabits,
-            async: ref.watch(searchHabitsProvider),
-            tile: (h) => ListTile(
-              leading: const Icon(Icons.repeat_outlined),
-              title: Text(h.name),
-            ),
-          ),
-        if (_show(scope, SearchScope.countdowns))
-          _Group<Countdown>(
-            title: l.searchCountdowns,
-            async: ref.watch(searchCountdownsProvider),
-            tile: (c) => ListTile(
-              leading: const Icon(Icons.hourglass_bottom_outlined),
-              title: Text(c.title),
-              subtitle: c.targetDate == null ? null : Text(c.targetDate!),
-            ),
-          ),
-        if (_show(scope, SearchScope.tags))
-          _Group<Tag>(
-            title: l.searchTags,
-            async: ref.watch(searchTagsProvider),
-            tile: (t) =>
-                ListTile(leading: const Icon(Icons.tag), title: Text(t.name)),
-          ),
-      ],
+      child: ListView.builder(
+        itemCount: items.length,
+        itemBuilder: (_, i) => items[i],
       ),
     );
   }

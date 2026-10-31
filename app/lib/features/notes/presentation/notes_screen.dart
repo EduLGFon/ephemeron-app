@@ -81,77 +81,84 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                   if (folders.isEmpty && notes.isEmpty) {
                     return _EmptyState(onAdd: () => _newNote());
                   }
-                  return RepaintBoundary(
-                    child: ListView(
-                      children: [
-                      for (final f in folders)
-                        ListTile(
-                          leading: const Icon(Icons.folder_outlined),
-                          title: Text(f.name),
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (v) {
-                              if (v == 'delete') {
-                                ref
-                                    .read(noteRepositoryProvider)
-                                    .deleteFolder(f.id);
-                              }
-                            },
-                            itemBuilder: (_) => const [
-                              PopupMenuItem(
-                                value: 'delete',
-                                child: Text('Delete folder'),
-                              ),
-                            ],
-                          ),
-                          onTap: () => setState(() => _folderId = f.id),
-                        ),
-                      for (final n in notes)
-                        Dismissible(
-                          key: ValueKey(n.id),
-                          direction: DismissDirection.endToStart,
-                          background: Container(
-                            color: Colors.red,
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: 16),
-                            child: const Icon(
-                              Icons.delete,
-                              color: Colors.white,
-                            ),
-                          ),
-                          confirmDismiss: (_) async {
-                            await ref
-                                .read(noteRepositoryProvider)
-                                .trashNote(n.id);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Trashed "${n.title}"'),
-                                  duration: const Duration(seconds: 6),
-                                  action: SnackBarAction(
-                                    label: 'Undo',
-                                    onPressed: () => ref
-                                        .read(noteRepositoryProvider)
-                                        .restoreNote(n.id),
-                                  ),
-                                ),
-                              );
+                  final items = <Widget>[];
+                  for (final f in folders) {
+                    items.add(
+                      ListTile(
+                        leading: const Icon(Icons.folder_outlined),
+                        title: Text(f.name),
+                        trailing: PopupMenuButton<String>(
+                          onSelected: (v) {
+                            if (v == 'delete') {
+                              ref
+                                  .read(noteRepositoryProvider)
+                                  .deleteFolder(f.id);
                             }
-                            return false;
                           },
-                          child: ListTile(
-                            leading: n.pinned
-                                ? const Icon(Icons.push_pin, size: 18)
-                                : null,
-                            title: Text(
-                              n.title.isEmpty ? '(untitled)' : n.title,
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Delete folder'),
                             ),
-                            subtitle: _subtitle(n),
-                            onTap: () => _openNote(n),
+                          ],
+                        ),
+                        onTap: () => setState(() => _folderId = f.id),
+                      ),
+                    );
+                  }
+                  for (final n in notes) {
+                    items.add(
+                      Dismissible(
+                        key: ValueKey(n.id),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          color: Colors.red,
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 16),
+                          child: const Icon(
+                            Icons.delete,
+                            color: Colors.white,
                           ),
                         ),
-                    ],
-                  ),
-                );
+                        confirmDismiss: (_) async {
+                          await ref
+                              .read(noteRepositoryProvider)
+                              .trashNote(n.id);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Trashed "${n.title}"'),
+                                duration: const Duration(seconds: 6),
+                                action: SnackBarAction(
+                                  label: 'Undo',
+                                  onPressed: () => ref
+                                      .read(noteRepositoryProvider)
+                                      .restoreNote(n.id),
+                                ),
+                              ),
+                            );
+                          }
+                          return false;
+                        },
+                        child: ListTile(
+                          leading: n.pinned
+                              ? const Icon(Icons.push_pin, size: 18)
+                              : null,
+                          title: Text(
+                            n.title.isEmpty ? '(untitled)' : n.title,
+                          ),
+                          subtitle: _subtitle(n),
+                          onTap: () => _openNote(n),
+                        ),
+                      ),
+                    );
+                  }
+                  return RepaintBoundary(
+                    child: ListView.builder(
+                      itemCount: items.length,
+                      itemBuilder: (_, i) => items[i],
+                    ),
+                  );
                 },
               ),
             ),
