@@ -14,8 +14,7 @@
 
 Remaining (not yet fixed):
 
-- Split files >300 lines and functions >50 lines.
-- Auth screen email/password validation.
+- Split files >300 lines and functions >50 lines (optional cleanup).
 
 ## Phase 10 (release hardening, owner checks)
 

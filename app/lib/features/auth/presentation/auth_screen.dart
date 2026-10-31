@@ -111,6 +111,8 @@ class _BackendSectionState extends ConsumerState<_BackendSection> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   String? _error;
+  String? _emailError;
+  String? _passwordError;
   bool _busy = false;
 
   @override
@@ -145,16 +147,26 @@ class _BackendSectionState extends ConsumerState<_BackendSection> {
         if (backendEmail == null) ...[
           TextField(
             controller: _email,
-            decoration: const InputDecoration(labelText: 'Email'),
+            decoration: InputDecoration(
+              labelText: 'Email',
+              errorText: _emailError,
+            ),
             keyboardType: TextInputType.emailAddress,
+            onChanged: (_) {
+              if (_emailError != null) setState(() => _emailError = null);
+            },
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _password,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Password (8+ characters)',
+              errorText: _passwordError,
             ),
             obscureText: true,
+            onChanged: (_) {
+              if (_passwordError != null) setState(() => _passwordError = null);
+            },
           ),
           if (_error != null) ...[
             const SizedBox(height: 8),
@@ -218,9 +230,28 @@ class _BackendSectionState extends ConsumerState<_BackendSection> {
   }
 
   Future<void> _submit({required bool login}) async {
+    final email = _email.text.trim();
+    final password = _password.text;
+    String? emailErr;
+    String? passErr;
+    if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
+      emailErr = 'Enter a valid email';
+    }
+    if (password.length < 8) {
+      passErr = 'Password must be at least 8 characters';
+    }
+    if (emailErr != null || passErr != null) {
+      setState(() {
+        _emailError = emailErr;
+        _passwordError = passErr;
+      });
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
+      _emailError = null;
+      _passwordError = null;
     });
     try {
       final notifier = ref.read(backendAccountProvider.notifier);
