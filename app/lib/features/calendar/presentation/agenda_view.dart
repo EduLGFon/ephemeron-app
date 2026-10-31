@@ -46,8 +46,9 @@ class AgendaView extends ConsumerWidget {
           byDay.putIfAbsent(o.dayKey, () => []).add(o);
         }
         final days = byDay.keys.toList()..sort();
-        return ListView(
-          children: [
+        return RepaintBoundary(
+          child: ListView(
+            children: [
             for (final d in days) ...[
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -62,7 +63,8 @@ class AgendaView extends ConsumerWidget {
                 ),
             ],
           ],
-        );
+        ),
+      );
       },
     );
   }
