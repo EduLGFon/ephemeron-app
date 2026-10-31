@@ -48,6 +48,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
   void _scheduleWidgetRefresh() {
     _widgetRefreshTimer?.cancel();
     _widgetRefreshTimer = Timer(const Duration(seconds: 2), () async {
+      if (!mounted) return;
       try {
         await ref.read(homeWidgetDataBinderProvider).refreshAll();
       } catch (_) {}
@@ -66,22 +67,24 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
     );
     // Rebuild the alarm window on every app open (rolling 48 h + 60).
     Future.microtask(() async {
+      if (!mounted) return;
       try {
         await ref.read(alarmRepositoryProvider).rebuildWindow();
       } catch (_) {}
     });
     // Refresh home-screen widgets from current app data.
     Future.microtask(() async {
+      if (!mounted) return;
       try {
         await ref.read(homeWidgetDataBinderProvider).refreshAll();
       } catch (_) {}
     });
-    ref.listen(openTasksProvider(null), (prev, next) => _scheduleWidgetRefresh());
-    ref.listen(habitsProvider(false), (prev, next) => _scheduleWidgetRefresh());
-    ref.listen(countdownsProvider, (prev, next) => _scheduleWidgetRefresh());
-    ref.listen(folderNotesProvider(null), (prev, next) => _scheduleWidgetRefresh());
-    ref.listen(currentFocusSessionProvider, (prev, next) => _scheduleWidgetRefresh());
-    ref.listen(upcomingAlarmsProvider, (prev, next) => _scheduleWidgetRefresh());
+    ref.listenManual(openTasksProvider(null), (prev, next) => _scheduleWidgetRefresh());
+    ref.listenManual(habitsProvider(false), (prev, next) => _scheduleWidgetRefresh());
+    ref.listenManual(countdownsProvider, (prev, next) => _scheduleWidgetRefresh());
+    ref.listenManual(folderNotesProvider(null), (prev, next) => _scheduleWidgetRefresh());
+    ref.listenManual(currentFocusSessionProvider, (prev, next) => _scheduleWidgetRefresh());
+    ref.listenManual(upcomingAlarmsProvider, (prev, next) => _scheduleWidgetRefresh());
     // Handle Android share-target text and launcher shortcuts once the
     // first frame is up (needs a BuildContext for sheets/navigation).
     WidgetsBinding.instance.addPostFrameCallback((_) => _handleIntents());
