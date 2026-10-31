@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:ephemeron/data/repositories/task_repository.dart';
 import 'package:ephemeron/features/alarms/data/alarm_repository.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 AppDatabase _db() => AppDatabase.forTesting(NativeDatabase.memory());
@@ -15,6 +16,18 @@ String _tomorrowKey() {
 }
 
 void main() {
+  // Tests run with TargetPlatform.android, so AlarmScheduler reaches the
+  // MethodChannel: stub it instead of touching the OS.
+  TestWidgetsFlutterBinding.ensureInitialized();
+  const channel = MethodChannel('ephemeron/alarms');
+  setUp(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async => null);
+  });
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null);
+  });
   test('task custom offsets schedule one reminder each', () async {
     final db = _db();
     addTearDown(db.close);
