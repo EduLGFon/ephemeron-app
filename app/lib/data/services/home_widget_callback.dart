@@ -4,23 +4,39 @@ import 'package:ephemeron/data/repositories/habit_repository.dart';
 import 'package:ephemeron/domain/habits/date_key.dart';
 import 'package:home_widget/home_widget.dart';
 
+/// Parsed widget toggle action. Pure and unit-testable.
+class ToggleRequest {
+  const ToggleRequest(this.kind, this.id);
+  final String kind;
+  final String id;
+}
+
+/// Parses `ephemeron://toggle/<kind>/<id>` URIs. Returns null when the URI
+/// is not a toggle action.
+ToggleRequest? parseToggleUri(Uri? uri) {
+  if (uri == null) return null;
+  final segments = uri.pathSegments;
+  if (segments.length >= 3 && segments[0] == 'toggle') {
+    final kind = segments[1];
+    final id = segments[2];
+    if ((kind == 'task' || kind == 'habit') && id.isNotEmpty) {
+      return ToggleRequest(kind, id);
+    }
+  }
+  return null;
+}
+
 @pragma('vm:entry-point')
 Future<void> homeWidgetBackgroundCallback(Uri? uri) async {
-  if (uri == null) return;
+  final req = parseToggleUri(uri);
+  if (req == null) return;
   AppDatabase? db;
   try {
     db = AppDatabase();
-    final segments = uri.pathSegments;
-    if (segments.length >= 3 && segments[0] == 'toggle') {
-      final kind = segments[1];
-      final id = segments[2];
-      if (kind == 'task') {
-        final repo = TaskRepository(db);
-        await repo.completeTask(id);
-      } else if (kind == 'habit') {
-        final repo = HabitRepository(db);
-        await repo.logDone(id, habitDateKey(DateTime.now()));
-      }
+    if (req.kind == 'task') {
+      await TaskRepository(db).completeTask(req.id);
+    } else if (req.kind == 'habit') {
+      await HabitRepository(db).logDone(req.id, habitDateKey(DateTime.now()));
     }
     await HomeWidget.saveWidgetData<String>('sync_status_title', 'Updated');
     await HomeWidget.updateWidget(

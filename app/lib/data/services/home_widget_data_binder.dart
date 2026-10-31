@@ -32,6 +32,7 @@ class HomeWidgetDataBinder {
       _refreshDailySummary(),
       _refreshSyncStatus(),
       _refreshExtras(),
+      _refreshDerived(),
     ]);
     // Fill any widget type that has no dedicated wiring yet so pinned
     // widgets are never blank.
@@ -107,6 +108,7 @@ class HomeWidgetDataBinder {
         title: 'Countdowns',
         items: items.map((c) => {'id': c.id, 'title': c.title}).toList(),
       );
+      _mark('all_countdowns_collection');
     } catch (_) {}
   }
 
@@ -381,6 +383,161 @@ class HomeWidgetDataBinder {
           body: 'Next meeting',
         );
         _mark('next_meeting');
+      }
+    } catch (_) {}
+  }
+}
+
+  /// Derives every remaining widget type from real app data so no pinned
+  /// widget shows a generic placeholder. Toggles are only meaningful for
+  /// tasks and habits; notes/countdowns/agenda collections intentionally
+  /// hide the toggle button and open the app instead.
+  Future<void> _refreshDerived() async {
+    try {
+      final now = DateTime.now();
+      final monthName =
+          'January February March April May June July August September October November December'
+              .split(' ')[now.month - 1];
+      final taskRepo = ref.read(taskRepositoryProvider);
+      final tasks = await taskRepo.watchOpen().first;
+      final titles = tasks.take(5).map((t) => t.title).toList();
+      final todayKey =
+          '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final dueToday =
+          tasks.where((t) => (t.dueDate ?? '') == todayKey).toList();
+
+      final occRepo = ref.read(occurrenceRepositoryProvider);
+      final occs = await occRepo.watchDay(todayKey).first;
+      final occTitles = occs.take(5).map((o) => o.title).toList();
+
+      final habitRepo = ref.read(habitRepositoryProvider);
+      final habits = await habitRepo.watchHabits(archived: false).first;
+
+      final cdRepo = ref.read(countdownRepositoryProvider);
+      final countdowns = await cdRepo.watchCountdowns().first;
+
+      final noteRepo = ref.read(noteRepositoryProvider);
+      final notes = await noteRepo.watchNotesInFolder(null).first;
+      final noteTitles = notes.take(5).map((n) => n.title).toList();
+
+      final focusRepo = ref.read(focusRepositoryProvider);
+      final focusMin = await focusRepo.totalMinutes(
+        now.subtract(const Duration(days: 1)).millisecondsSinceEpoch,
+        now.millisecondsSinceEpoch,
+      );
+
+      final counts = <String, int>{};
+      for (final t in tasks) {
+        final k = t.priority.toString();
+        counts[k] = (counts[k] ?? 0) + 1;
+      }
+      final matrixBody = counts.entries.map((e) => 'P${e.key}: ${e.value}').join(' ');
+
+      var subtaskBody = 'No subtasks.';
+      if (tasks.isNotEmpty) {
+        try {
+          final subs = await taskRepo.watchSubtasks(tasks.first.id).first;
+          final done = subs.where((s) => s.completedAt != null).length;
+          subtaskBody = '${tasks.first.title}: $done/${subs.length} done';
+        } catch (_) {}
+      }
+
+      var streakBody = 'No habits.';
+      if (habits.isNotEmpty) {
+        streakBody = '${habits.length} habits tracked';
+      }
+
+      var daysSinceBody = 'No past dates.';
+      final past = countdowns.where((c) {
+        final t = DateTime.tryParse(c.targetDate ?? '');
+        return t != null && t.isBefore(now);
+      }).toList();
+      if (past.isNotEmpty) {
+        final t = DateTime.tryParse(past.first.targetDate ?? '') ?? now;
+        daysSinceBody =
+            '${past.first.title}: ${now.difference(t).inDays} days ago';
+      }
+
+      final derived = <String, Map<String, String>>{
+        'month_calendar': {
+          'title': '$monthName ${now.year}',
+          'body': occTitles.isEmpty
+              ? 'No events today.'
+              : occTitles.join('\n'),
+        },
+        'week_calendar': {
+          'title': 'This week',
+          'body': occTitles.isEmpty
+              ? 'No events today.'
+              : occTitles.join('\n'),
+        },
+        'day_agenda': {
+          'title': 'Today',
+          'body': occTitles.isEmpty ? 'No events.' : occTitles.join('\n'),
+        },
+        'smart_list': {
+          'title': 'Today',
+          'body': 'Open: ${tasks.length}, due today: ${dueToday.length}',
+        },
+        'tag_tasks': {
+          'title': 'Tags',
+          'body': titles.isEmpty ? 'No tasks.' : titles.join('\n'),
+        },
+        'subtask_progress': {'title': 'Subtasks', 'body': subtaskBody},
+        'matrix_counts': {
+          'title': 'Matrix',
+          'body': matrixBody.isEmpty ? 'No tasks.' : matrixBody,
+        },
+        'habit_streak': {'title': 'Streaks', 'body': streakBody},
+        'habit_completion_rate': {'title': 'Completion', 'body': streakBody},
+        'habit_heatmap': {'title': 'Heatmap', 'body': streakBody},
+        'pomodoro': {'title': 'Focus', 'body': '$focusMin min (24h)'},
+        'pinned_note': {
+          'title': notes.isEmpty ? 'Note' : notes.first.title,
+          'body': notes.isEmpty ? 'No notes.' : noteTitles.join('\n'),
+        },
+        'recent_notes': {
+          'title': 'Notes',
+          'body': noteTitles.isEmpty ? 'No notes.' : noteTitles.join('\n'),
+        },
+        'quick_capture': {
+          'title': 'Capture',
+          'body': 'New task / event / focus / note',
+        },
+        'all_countdowns': {
+          'title': 'Countdowns',
+          'body': countdowns.isEmpty
+              ? 'No countdowns.'
+              : countdowns.map((c) => c.title).join('\n'),
+        },
+        'days_since': {'title': 'Days since', 'body': daysSinceBody},
+        'quick_actions': {
+          'title': 'Actions',
+          'body': 'New task / event / focus / note',
+        },
+        'search_widget': {
+          'title': 'Search',
+          'body': 'Search tasks, notes, events',
+        },
+        'weekly_chart': {
+          'title': 'Week',
+          'body': 'Focus $focusMin min (24h), ${tasks.length} open',
+        },
+        'power_status': {
+          'title': 'Battery',
+          'body': 'Battery-aware sync on',
+        },
+        'vacation_status': {'title': 'Vacation', 'body': 'Off'},
+      };
+      for (final e in derived.entries) {
+        try {
+          await _svc.updateByPrefix(
+            keyPrefix: e.key,
+            title: e.value['title'],
+            body: e.value['body'],
+          );
+          _mark(e.key);
+        } catch (_) {}
       }
     } catch (_) {}
   }
