@@ -3,7 +3,11 @@ import 'package:ephemeron/data/repositories/habit_repository.dart';
 import 'package:ephemeron/data/repositories/task_repository.dart';
 import 'package:ephemeron/domain/habits/date_key.dart';
 
-import 'headless_widget_push.dart';
+import 'headless_widget_push.dart'
+    show
+        cancelAlarmsForEntity,
+        pushHabitWidgets,
+        pushTaskWidgets;
 
 /// Parsed widget toggle action. Pure and unit-testable.
 class ToggleRequest {
@@ -47,10 +51,12 @@ Future<void> homeWidgetBackgroundCallback(Uri? uri) async {
     db = AppDatabase();
     if (req.kind == 'task') {
       await TaskRepository(db).completeTask(req.id);
+      await cancelAlarmsForEntity(db, req.id);
       // Push the updated list so the widget reflects the tap.
       await pushTaskWidgets(db);
     } else if (req.kind == 'habit') {
       await HabitRepository(db).logDone(req.id, habitDateKey(DateTime.now()));
+      await cancelAlarmsForEntity(db, req.id);
       await pushHabitWidgets(db);
     }
   } catch (_) {

@@ -42,7 +42,7 @@ class AppShell extends ConsumerStatefulWidget {
   ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends ConsumerState<AppShell> {
+class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver {
   Map<ShortcutActivator, VoidCallback> _shortcuts = const <ShortcutActivator, VoidCallback>{};
   Timer? _widgetRefreshTimer;
   void _scheduleWidgetRefresh() {
@@ -56,6 +56,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     HardwareKeyboard.instance.addHandler(_handleGlobalKey);
     _restoreLastTab();
     // Restart the persisted auto-sync schedule on every launch.
@@ -89,8 +90,22 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   void dispose() {
     _widgetRefreshTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     HardwareKeyboard.instance.removeHandler(_handleGlobalKey);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Widget taps while the app is already open only bring it forward;
+    // consume the pending action on resume so deep links still work.
+    if (state == AppLifecycleState.resumed) {
+      Future.microtask(() async {
+        if (!mounted) return;
+        await _handleWidgetAction();
+      });
+      _scheduleWidgetRefresh();
+    }
   }
 
   /// Opens quick add prefilled with shared text, jumps to the tab
@@ -114,6 +129,13 @@ class _AppShellState extends ConsumerState<AppShell> {
           _onTabSelected(AppSection.focus.index);
       }
     }
+    if (!mounted) return;
+    await _handleWidgetAction();
+  }
+
+  /// Routes a home-widget tap (new_task/search). Called on startup and on
+  /// resume so taps work whether the app was closed or already open.
+  Future<void> _handleWidgetAction() async {
     if (!mounted) return;
     final widgetAction = await SystemLauncher.consumeWidgetAction();
     if (widgetAction == null || !mounted) return;

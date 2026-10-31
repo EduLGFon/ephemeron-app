@@ -741,8 +741,14 @@ class HomeWidgetDataBinder {
     try {
       final repo = ref.read(habitRepositoryProvider);
       final habits = await repo.watchHabits(archived: false).first;
-      if (habits.isNotEmpty) {
-        final logs = await repo.watchLogs(habits.first.id).first;
+      final pinnedHeatId = await _config('HabitStreakWidgetProvider');
+      final heatHabit = pinnedHeatId == null
+          ? (habits.isEmpty ? null : habits.first)
+          : (habits.any((h) => h.id == pinnedHeatId)
+              ? habits.firstWhere((h) => h.id == pinnedHeatId)
+              : (habits.isEmpty ? null : habits.first));
+      if (heatHabit != null) {
+        final logs = await repo.watchLogs(heatHabit.id).first;
         final done = {
           for (final l in logs)
             if (l.done) l.dayKey,
@@ -755,7 +761,7 @@ class HomeWidgetDataBinder {
           await _svc.updateByPrefix(
             keyPrefix: 'habit_heatmap',
             title: 'Heatmap',
-            body: habits.first.name,
+            body: heatHabit.name,
             imagePath: path,
           );
         }
