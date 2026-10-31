@@ -1,6 +1,8 @@
 // Tasks screen: list filter, overdue section, swipe actions with undo,
 // trash, completed view, quick add FAB.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/ui/dialogs.dart';
+
 import 'package:ephemeron/core/ui/empty_state.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -189,27 +191,10 @@ class TasksScreen extends ConsumerWidget {
   }
 
   Future<void> _addList(BuildContext context, WidgetRef ref) async {
-    final controller = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('New list'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'List name'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-            child: const Text('Create'),
-          ),
-        ],
-      ),
+    final name = await showPromptDialog(
+      context,
+      title: 'New list',
+      hint: 'List name',
     );
     if (name != null && name.isNotEmpty) {
       await ref.read(taskRepositoryProvider).createList(name);

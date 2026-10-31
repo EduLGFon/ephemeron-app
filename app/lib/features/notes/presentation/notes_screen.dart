@@ -6,6 +6,8 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/ui/dialogs.dart';
+
 import 'package:ephemeron/core/ui/empty_state.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -319,27 +321,10 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
   }
 
   Future<void> _newFolder() async {
-    final controller = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('New folder'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Name'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-            child: const Text('Create'),
-          ),
-        ],
-      ),
+    final name = await showPromptDialog(
+      context,
+      title: 'New folder',
+      hint: 'Name',
     );
     if (name != null && name.isNotEmpty) {
       await ref
