@@ -11,6 +11,7 @@ import '../../sync/application/sync_providers.dart';
 import '../application/settings_providers.dart';
 import '../data/backup_service.dart';
 import '../data/settings_repository.dart';
+import 'home_widgets_screen.dart';
 import '../../../core/security/app_lock.dart';
 import '../../../core/theme/theme_tokens.dart';
 
@@ -220,6 +221,17 @@ class SettingsScreen extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(builder: (_) => const AuthScreen()),
+              ),
+            ),
+            const _SectionHeader('Home-screen widgets'),
+            ListTile(
+              title: const Text('Manage home-screen widgets'),
+              subtitle: const Text('Pin and configure launcher widgets.'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const HomeWidgetsScreen(),
+                ),
               ),
             ),
             const _SectionHeader('Google sync'),
