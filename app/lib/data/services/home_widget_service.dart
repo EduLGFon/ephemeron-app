@@ -66,6 +66,13 @@ const List<HomeWidgetDefinition> homeWidgets = <HomeWidgetDefinition>[
 class HomeWidgetService {
   HomeWidgetService();
 
+  static String encodeItems(List<Map<String, String>> items) {
+    final json = items
+        .map((e) =>
+            '{"id":"${(e['id'] ?? '').replaceAll('"', '\\"')}","title":"${(e['title'] ?? '').replaceAll('"', '\\"')}"}')
+        .join(',');
+    return '[$json]';
+  }
   /// Store a text/image payload for one widget and refresh it.
   Future<void> update({
     required String keyPrefix,
@@ -119,11 +126,7 @@ class HomeWidgetService {
     if (title != null) {
       await HomeWidget.saveWidgetData<String>('${keyPrefix}_title', title);
     }
-    final json = items
-        .map((e) =>
-            '{"id":"${(e['id'] ?? '').replaceAll('"', '\\"')}","title":"${(e['title'] ?? '').replaceAll('"', '\\"')}"}')
-        .join(',');
-    final wrapped = '[$json]';
+    final wrapped = encodeItems(items);
     await HomeWidget.saveWidgetData<String>('${keyPrefix}_items', wrapped);    await HomeWidget.updateWidget(
       androidName: provider,
       qualifiedAndroidName: 'com.spotnik.ephemeron.$provider',

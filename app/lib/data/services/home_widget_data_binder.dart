@@ -28,6 +28,9 @@ class HomeWidgetDataBinder {
       _refreshEvents(),
       _refreshMatrix(),
       _refreshAlarms(),
+      _refreshTaskVariants(),
+      _refreshDailySummary(),
+      _refreshSyncStatus(),
     ]);
     // Fill any widget type that has no dedicated wiring yet so pinned
     // widgets are never blank.
@@ -229,6 +232,83 @@ class HomeWidgetDataBinder {
         body: 'Next alarm',
       );
       _mark('next_alarm');
+    } catch (_) {}
+  }
+
+  Future<void> _refreshTaskVariants() async {
+    try {
+      final repo = ref.read(taskRepositoryProvider);
+      final tasks = await repo.watchOpen().first;
+      final now = DateTime.now();
+      final todayKey =
+          '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final dueToday = tasks.where((t) => (t.dueDate ?? '') == todayKey).toList();
+      final overdue = tasks.where((t) {
+        final d = t.dueDate;
+        return d != null && d.compareTo(todayKey) < 0;
+      }).toList();
+      final inbox = tasks.where((t) => t.listId == null).toList();
+      await _svc.updateByPrefix(
+        keyPrefix: 'tasks_due_today',
+        title: 'Due today',
+        body: dueToday.isEmpty
+            ? 'No tasks due today.'
+            : dueToday.map((t) => t.title).join('\n'),
+      );
+      _mark('tasks_due_today');
+      await _svc.updateByPrefix(
+        keyPrefix: 'inbox_tasks',
+        title: 'Inbox',
+        body: inbox.isEmpty ? 'Inbox empty.' : '${inbox.length} tasks',
+      );
+      _mark('inbox_tasks');
+      await _svc.updateByPrefix(
+        keyPrefix: 'overdue_badge',
+        title: 'Overdue',
+        body: '${overdue.length}',
+      );
+      _mark('overdue_badge');
+      await _svc.updateByPrefix(
+        keyPrefix: 'task_counts',
+        title: 'Tasks',
+        body: 'Open: ${tasks.length}',
+      );
+      _mark('task_counts');
+    } catch (_) {}
+  }
+
+  Future<void> _refreshDailySummary() async {
+    try {
+      final taskRepo = ref.read(taskRepositoryProvider);
+      final tasks = await taskRepo.watchOpen().first;
+      final focusRepo = ref.read(focusRepositoryProvider);
+      final minutes = await focusRepo.totalMinutes(
+        DateTime.now().subtract(const Duration(days: 1)).millisecondsSinceEpoch,
+        DateTime.now().millisecondsSinceEpoch,
+      );
+      await _svc.updateByPrefix(
+        keyPrefix: 'daily_summary',
+        title: 'Today',
+        body: 'Open tasks: ${tasks.length}\nFocus: $minutes min',
+      );
+      _mark('daily_summary');
+      await _svc.updateByPrefix(
+        keyPrefix: 'focus_minutes',
+        title: 'Focus',
+        body: '$minutes min (24h)',
+      );
+      _mark('focus_minutes');
+    } catch (_) {}
+  }
+
+  Future<void> _refreshSyncStatus() async {
+    try {
+      await _svc.updateByPrefix(
+        keyPrefix: 'sync_status',
+        title: 'Sync',
+        body: 'Updated ${DateTime.now().toLocal()}',
+      );
+      _mark('sync_status');
     } catch (_) {}
   }
 }

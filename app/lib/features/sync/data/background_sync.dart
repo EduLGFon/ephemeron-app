@@ -13,8 +13,8 @@ import '../../../core/config/app_config.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../data/remote/backend_sync_api.dart';
 import '../../../data/remote/google_api_client.dart';
-import '../../auth/data/backend_auth.dart';
-import '../../auth/data/google_auth.dart';
+import '../../../data/repositories/task_repository.dart';
+import '../../auth/data/backend_auth.dart';import '../../auth/data/google_auth.dart';
 import '../data/backend_sync_engine.dart';
 import '../data/sync_engine.dart';
 
@@ -57,6 +57,22 @@ void backgroundSyncDispatcher() {
           await backend.syncNow();
         }
         try {
+          final taskRepo = TaskRepository(db);
+          final tasks = await taskRepo.watchOpen().first;
+          final titles = tasks.take(5).map((t) => t.title).toList();
+          await HomeWidget.saveWidgetData<String>(
+            'pending_tasks_title',
+            'Pending tasks',
+          );
+          await HomeWidget.saveWidgetData<String>(
+            'pending_tasks_body',
+            titles.isEmpty ? 'No pending tasks.' : titles.join('\\n'),
+          );
+          await HomeWidget.updateWidget(
+            androidName: 'PendingTasksWidgetProvider',
+            qualifiedAndroidName:
+                'com.spotnik.ephemeron.PendingTasksWidgetProvider',
+          );
           await HomeWidget.saveWidgetData<String>('sync_status_title', 'Synced');
           await HomeWidget.saveWidgetData<String>(
             'sync_status_body',
