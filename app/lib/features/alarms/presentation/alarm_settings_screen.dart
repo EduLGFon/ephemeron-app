@@ -175,15 +175,11 @@ class _Upcoming extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.all(16),
-          child: Text('Upcoming'),
-        ),
+        const Padding(padding: EdgeInsets.all(16), child: Text('Upcoming')),
         upcoming.maybeWhen(
           data: (list) => Column(
             children: [
-              if (list.isEmpty)
-                const ListTile(title: Text('None scheduled')),
+              if (list.isEmpty) const ListTile(title: Text('None scheduled')),
               for (final a in list.take(20))
                 ListTile(
                   title: Text(a.title ?? a.sourceId),
@@ -223,9 +219,7 @@ class _Missed extends ConsumerWidget {
                 ListTile(
                   title: Text(m.title ?? m.sourceId),
                   subtitle: Text(
-                    DateTime.fromMillisecondsSinceEpoch(
-                      m.fireAtUtc,
-                    ).toString(),
+                    DateTime.fromMillisecondsSinceEpoch(m.fireAtUtc).toString(),
                   ),
                 ),
             ],

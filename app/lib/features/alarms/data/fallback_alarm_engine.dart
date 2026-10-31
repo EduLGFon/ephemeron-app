@@ -97,10 +97,7 @@ class _AlarmListenerState extends ConsumerState<AlarmListener>
         SnackBar(
           content: Text(kind == 'reminder' ? 'Reminder: $title' : title),
           duration: const Duration(seconds: 8),
-          action: SnackBarAction(
-            label: 'Open',
-            onPressed: () {},
-          ),
+          action: SnackBarAction(label: 'Open', onPressed: () {}),
         ),
       );
       return;
@@ -187,9 +184,9 @@ class _FallbackRingDialogState extends ConsumerState<_FallbackRingDialog> {
         content: Text(
           long
               ? 'Full-screen alert with constant sound and vibration. '
-                  'On phones this arrives as a notification while in use.'
+                    'On phones this arrives as a notification while in use.'
               : 'Full-screen alert with short sound. '
-                  'On phones this arrives as a notification while in use.',
+                    'On phones this arrives as a notification while in use.',
         ),
         actions: [
           TextButton(

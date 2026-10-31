@@ -104,9 +104,7 @@ class AlarmRepository {
       if (!seen.add(key)) continue;
       final title = e.title.isEmpty ? 'Event' : e.title;
       final offsets = parseReminderOffsets(e.reminders, allDay: e.isAllDay);
-      final base = e.isAllDay
-          ? _nineAmForDay(o.dayKey)
-          : o.startUtc;
+      final base = e.isAllDay ? _nineAmForDay(o.dayKey) : o.startUtc;
       for (final off in offsets) {
         out.add(
           AlarmCandidate(
@@ -156,13 +154,7 @@ class AlarmRepository {
       final mins = t.dueTime;
       final fire = mins == null
           ? DateTime.utc(y, m, d, 9).millisecondsSinceEpoch
-          : DateTime.utc(
-              y,
-              m,
-              d,
-              mins ~/ 60,
-              mins % 60,
-            ).millisecondsSinceEpoch;
+          : DateTime.utc(y, m, d, mins ~/ 60, mins % 60).millisecondsSinceEpoch;
       final title = t.title.isEmpty ? 'Task' : t.title;
       out.add(
         AlarmCandidate(
@@ -312,9 +304,8 @@ class AlarmRepository {
         '${now.month.toString().padLeft(2, '0')}-'
         '${now.day.toString().padLeft(2, '0')}';
     final log =
-        await (_db.select(_db.habitLogs)..where(
-              (l) => l.habitId.equals(habitId) & l.dayKey.equals(key),
-            ))
+        await (_db.select(_db.habitLogs)
+              ..where((l) => l.habitId.equals(habitId) & l.dayKey.equals(key)))
             .getSingleOrNull();
     return log?.done ?? false;
   }
@@ -377,7 +368,9 @@ class AlarmRepository {
   Future<List<AlarmsIndexData>> dueAlarms() async {
     final now = _now();
     return (_db.select(_db.alarmsIndex)..where(
-          (a) => a.state.equals('scheduled') & a.fireAtUtc.isSmallerOrEqualValue(now),
+          (a) =>
+              a.state.equals('scheduled') &
+              a.fireAtUtc.isSmallerOrEqualValue(now),
         ))
         .get();
   }
@@ -425,7 +418,9 @@ class AlarmRepository {
 
   Future<void> markMissedBefore(int nowMs) async {
     await (_db.update(_db.alarmsIndex)..where(
-          (a) => a.state.equals('scheduled') & a.fireAtUtc.isSmallerThanValue(nowMs),
+          (a) =>
+              a.state.equals('scheduled') &
+              a.fireAtUtc.isSmallerThanValue(nowMs),
         ))
         .write(const AlarmsIndexCompanion(state: Value('missed')));
   }

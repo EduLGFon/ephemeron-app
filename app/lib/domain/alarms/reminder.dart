@@ -17,17 +17,7 @@ class ReminderOptions {
   static const defaultsTimed = [m10];
   static const defaultsAllDay = [d1];
 
-  static const presets = [
-    atTime,
-    m5,
-    m10,
-    m15,
-    m30,
-    h1,
-    d1,
-    d2,
-    w1,
-  ];
+  static const presets = [atTime, m5, m10, m15, m30, h1, d1, d2, w1];
 
   static String label(int minutes) {
     return switch (minutes) {

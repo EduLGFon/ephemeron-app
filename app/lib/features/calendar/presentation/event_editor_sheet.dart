@@ -101,7 +101,10 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     _colorId = e?.colorId;
     _tzId = e?.tzId;
     _addMeet = e?.meetUrl != null;
-    _reminders = parseReminderOffsets(e?.reminders, allDay: e?.isAllDay ?? false);
+    _reminders = parseReminderOffsets(
+      e?.reminders,
+      allDay: e?.isAllDay ?? false,
+    );
     _alarmPreset = e?.alarmPreset;
     if (e?.startUtc != null) {
       _start = DateTime.fromMillisecondsSinceEpoch(

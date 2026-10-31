@@ -113,10 +113,7 @@ class SnoozePicker extends StatelessWidget {
       spacing: 8,
       children: [
         for (final m in const [5, 10, 15, 30, 60])
-          ActionChip(
-            label: Text('${m}m'),
-            onPressed: () => onPick(m),
-          ),
+          ActionChip(label: Text('${m}m'), onPressed: () => onPick(m)),
       ],
     );
   }
