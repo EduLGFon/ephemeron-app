@@ -6,6 +6,7 @@
 
 ## Open work
 
+- iOS home-screen widgets: add WidgetKit extension target, App Group, and SwiftUI widgets mirroring Android types.
 - Flashlight blink and MediaPlayer-on-alarm-stream sound; notification defaults
   ship instead.
 - Alarms follow-up: done. Task custom reminder offsets (per-task JSON,

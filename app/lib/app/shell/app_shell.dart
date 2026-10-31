@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'dart:async';
+import 'package:flutter/material.dart';import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -40,7 +40,15 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   Map<ShortcutActivator, VoidCallback> _shortcuts = const <ShortcutActivator, VoidCallback>{};
-
+  Timer? _widgetRefreshTimer;
+  void _scheduleWidgetRefresh() {
+    _widgetRefreshTimer?.cancel();
+    _widgetRefreshTimer = Timer(const Duration(seconds: 2), () async {
+      try {
+        await ref.read(homeWidgetDataBinderProvider).refreshAll();
+      } catch (_) {}
+    });
+  }
   @override
   void initState() {
     super.initState();
@@ -63,27 +71,9 @@ class _AppShellState extends ConsumerState<AppShell> {
         await ref.read(homeWidgetDataBinderProvider).refreshAll();
       } catch (_) {}
     });
-    ref.listen(openTasksProvider(null), (prev, next) {
-      Future.microtask(() async {
-        try {
-          await ref.read(homeWidgetDataBinderProvider).refreshAll();
-        } catch (_) {}
-      });
-    });
-    ref.listen(habitsProvider(false), (prev, next) {
-      Future.microtask(() async {
-        try {
-          await ref.read(homeWidgetDataBinderProvider).refreshAll();
-        } catch (_) {}
-      });
-    });
-    ref.listen(countdownsProvider, (prev, next) {
-      Future.microtask(() async {
-        try {
-          await ref.read(homeWidgetDataBinderProvider).refreshAll();
-        } catch (_) {}
-      });
-    });
+    ref.listen(openTasksProvider(null), (prev, next) => _scheduleWidgetRefresh());
+    ref.listen(habitsProvider(false), (prev, next) => _scheduleWidgetRefresh());
+    ref.listen(countdownsProvider, (prev, next) => _scheduleWidgetRefresh());
     // Handle Android share-target text and launcher shortcuts once the
     // first frame is up (needs a BuildContext for sheets/navigation).
     WidgetsBinding.instance.addPostFrameCallback((_) => _handleIntents());
@@ -91,6 +81,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   void dispose() {
+    _widgetRefreshTimer?.cancel();
     HardwareKeyboard.instance.removeHandler(_handleGlobalKey);
     super.dispose();
   }

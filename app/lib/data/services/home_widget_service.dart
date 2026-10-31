@@ -60,6 +60,7 @@ const List<HomeWidgetDefinition> homeWidgets = <HomeWidgetDefinition>[
   HomeWidgetDefinition('DayAgendaCollectionProvider', 'day_agenda_collection'),
   HomeWidgetDefinition('RecentNotesCollectionProvider', 'recent_notes_collection'),
   HomeWidgetDefinition('CountdownsCollectionProvider', 'all_countdowns_collection'),
+  HomeWidgetDefinition('HabitsTodayCollectionProvider', 'habits_today_collection'),
 ];
 
 class HomeWidgetService {

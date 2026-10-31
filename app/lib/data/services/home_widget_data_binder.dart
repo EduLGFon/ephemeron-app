@@ -5,22 +5,43 @@ import '../../../features/countdowns/application/countdowns_providers.dart';
 import '../../../features/habits/application/habits_providers.dart';
 import '../../../features/notes/application/notes_providers.dart';
 import '../../../features/focus/application/focus_providers.dart';
-import 'home_widget_service.dart';
+import '../../../features/calendar/application/calendar_providers.dart';
+import '../../../features/alarms/application/alarm_providers.dart';import 'home_widget_service.dart';
 
 class HomeWidgetDataBinder {
   HomeWidgetDataBinder(this.ref);
   final Ref ref;
 
   HomeWidgetService get _svc => ref.read(homeWidgetServiceProvider);
+  final Set<String> _touched = <String>{};
+
+  void _mark(String prefix) => _touched.add(prefix);
 
   Future<void> refreshAll() async {
+    _touched.clear();
     await Future.wait([
       _refreshTasks(),
       _refreshCountdowns(),
       _refreshHabits(),
       _refreshNotes(),
       _refreshFocus(),
+      _refreshEvents(),
+      _refreshMatrix(),
+      _refreshAlarms(),
     ]);
+    // Fill any widget type that has no dedicated wiring yet so pinned
+    // widgets are never blank.
+    for (final w in homeWidgets) {
+      if (_touched.contains(w.keyPrefix)) continue;
+      try {
+        await _svc.updateByPrefix(
+          keyPrefix: w.keyPrefix,
+          title: w.keyPrefix.replaceAll('_', ' '),
+          body: 'Open ephemeron for details.',
+        );
+        _mark(w.keyPrefix);
+      } catch (_) {}
+    }
     try {
       await _svc.updateByPrefix(
         keyPrefix: 'sync_status',
@@ -41,6 +62,8 @@ class HomeWidgetDataBinder {
         title: 'Pending tasks',
         body: titles.isEmpty ? 'No pending tasks.' : titles.join('\n'),
       );
+      _mark('pending_tasks');
+      _mark('pending_tasks_collection');
       await _svc.updateCollection(
         keyPrefix: 'pending_tasks_collection',
         provider: 'PendingTasksCollectionProvider',
@@ -50,6 +73,7 @@ class HomeWidgetDataBinder {
             .map((t) => {'id': t.id, 'title': t.title})
             .toList(),
       );
+      _mark('pending_tasks_collection');
     } catch (_) {}
   }
 
@@ -72,6 +96,7 @@ class HomeWidgetDataBinder {
         title: next.title,
         body: '$days days remaining',
       );
+      _mark('countdown');
       await _svc.updateCollection(
         keyPrefix: 'all_countdowns_collection',
         provider: 'CountdownsCollectionProvider',
@@ -84,11 +109,20 @@ class HomeWidgetDataBinder {
   Future<void> _refreshHabits() async {
     try {
       final repo = ref.read(habitRepositoryProvider);
-      final habits = await repo.watchHabits(archived: false).first;      await _svc.updateByPrefix(
+      final habits = await repo.watchHabits(archived: false).first;
+      await _svc.updateByPrefix(
         keyPrefix: 'habits_today',
         title: 'Habits today',
         body: habits.isEmpty ? 'No habits.' : '${habits.length} habits tracked',
       );
+      _mark('habits_today');
+      await _svc.updateCollection(
+        keyPrefix: 'habits_today_collection',
+        provider: 'HabitsTodayCollectionProvider',
+        title: 'Habits today',
+        items: habits.map((h) => {'id': h.id, 'title': h.name}).toList(),
+      );
+      _mark('habits_today_collection');
     } catch (_) {}
   }
 
@@ -104,6 +138,7 @@ class HomeWidgetDataBinder {
           body: (notes.first.body?.length ?? 0) > 120
               ? notes.first.body!.substring(0, 120)
               : notes.first.body ?? '',        );
+      _mark('one_note');
       }
       await _svc.updateCollection(
         keyPrefix: 'recent_notes_collection',
@@ -114,6 +149,7 @@ class HomeWidgetDataBinder {
             .map((n) => {'id': n.id, 'title': n.title})
             .toList(),
       );
+      _mark('recent_notes_collection');
     } catch (_) {}
   }
 
@@ -128,6 +164,71 @@ class HomeWidgetDataBinder {
             ? 'No active session.'
             : 'Session running',
       );
+      _mark('focus_timer');
+    } catch (_) {}
+  }
+
+  Future<void> _refreshEvents() async {
+    try {
+      final repo = ref.read(occurrenceRepositoryProvider);
+      final now = DateTime.now();
+      final key = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final occs = await repo.watchDay(key).first;
+      final titles = occs.take(5).map((o) => o.title).toList();
+      await _svc.updateCollection(
+        keyPrefix: 'day_agenda_collection',
+        provider: 'DayAgendaCollectionProvider',
+        title: 'Today',
+        items: occs
+            .take(5)
+            .map((o) => {'id': o.id, 'title': o.title})
+            .toList()
+            .cast<Map<String, String>>(),      );
+      _mark('day_agenda_collection');      await _svc.updateByPrefix(
+        keyPrefix: 'next_events',
+        title: titles.isEmpty ? 'No events' : titles.first,
+        body: titles.length > 1 ? titles.skip(1).join('\n') : '',
+      );
+      _mark('next_events');
+    } catch (_) {}
+  }
+
+  Future<void> _refreshMatrix() async {
+    try {
+      final repo = ref.read(taskRepositoryProvider);
+      final tasks = await repo.watchOpen().first;
+      final counts = <String, int>{};
+      for (final t in tasks) {
+        counts[t.priority.toString()] = (counts[t.priority.toString()] ?? 0) + 1;
+      }
+      await _svc.updateByPrefix(
+        keyPrefix: 'matrix',
+        title: 'Matrix',
+        body: 'Open tasks: ${tasks.length}',
+      );
+      _mark('matrix');
+    } catch (_) {}
+  }
+
+  Future<void> _refreshAlarms() async {
+    try {
+      final repo = ref.read(alarmRepositoryProvider);
+      final upcoming = await repo.watchUpcoming().first;
+      if (upcoming.isEmpty) {
+        await _svc.updateByPrefix(
+          keyPrefix: 'next_alarm',
+          title: 'Alarm',
+          body: 'No alarms.',
+        );
+        return;
+      }
+      final a = upcoming.first;
+      await _svc.updateByPrefix(
+        keyPrefix: 'next_alarm',
+        title: a.title,
+        body: 'Next alarm',
+      );
+      _mark('next_alarm');
     } catch (_) {}
   }
 }
