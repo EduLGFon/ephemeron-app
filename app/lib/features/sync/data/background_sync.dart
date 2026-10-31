@@ -6,6 +6,7 @@
 // Google data still never touches the backend: the two engines share only
 // the local database handle.
 import 'package:flutter/foundation.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../../../core/config/app_config.dart';
@@ -55,6 +56,18 @@ void backgroundSyncDispatcher() {
           );
           await backend.syncNow();
         }
+        try {
+          await HomeWidget.saveWidgetData<String>('sync_status_title', 'Synced');
+          await HomeWidget.saveWidgetData<String>(
+            'sync_status_body',
+            'Updated ${DateTime.now().toLocal()}',
+          );
+          await HomeWidget.updateWidget(
+            androidName: 'SyncStatusWidgetProvider',
+            qualifiedAndroidName:
+                'com.spotnik.ephemeron.SyncStatusWidgetProvider',
+          );
+        } catch (_) {}
       } finally {
         await db.close();
       }

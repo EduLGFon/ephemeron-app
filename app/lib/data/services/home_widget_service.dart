@@ -56,6 +56,10 @@ const List<HomeWidgetDefinition> homeWidgets = <HomeWidgetDefinition>[
   HomeWidgetDefinition('TagShortcutsWidgetProvider', 'tag_shortcuts'),
   HomeWidgetDefinition('FolderShortcutsWidgetProvider', 'folder_shortcuts'),
   HomeWidgetDefinition('VacationStatusWidgetProvider', 'vacation_status'),
+  HomeWidgetDefinition('PendingTasksCollectionProvider', 'pending_tasks_collection'),
+  HomeWidgetDefinition('DayAgendaCollectionProvider', 'day_agenda_collection'),
+  HomeWidgetDefinition('RecentNotesCollectionProvider', 'recent_notes_collection'),
+  HomeWidgetDefinition('CountdownsCollectionProvider', 'all_countdowns_collection'),
 ];
 
 class HomeWidgetService {
@@ -101,6 +105,26 @@ class HomeWidgetService {
       title: title,
       body: body,
       imagePath: imagePath,
+    );
+  }
+
+  /// Store a list payload for collection widgets.
+  Future<void> updateCollection({
+    required String keyPrefix,
+    required String provider,
+    required List<String> items,
+    String? title,
+  }) async {
+    if (title != null) {
+      await HomeWidget.saveWidgetData<String>('${keyPrefix}_title', title);
+    }
+    await HomeWidget.saveWidgetData<String>(
+      '${keyPrefix}_items',
+      '[${items.map((e) => '"${e.replaceAll('"', '\\"')}"').join(',')}]',
+    );
+    await HomeWidget.updateWidget(
+      androidName: provider,
+      qualifiedAndroidName: 'com.spotnik.ephemeron.$provider',
     );
   }
 
