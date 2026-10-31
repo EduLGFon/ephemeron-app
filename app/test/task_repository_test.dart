@@ -89,8 +89,7 @@ void main() {
     expect(prev[parent], l1);
   });
 
-  test('move undo restores previous list', () async {
-    final db = _db();
+  test('move undo restores previous list', () async {    final db = _db();
     addTearDown(db.close);
     final repo = TaskRepository(db);
     final l1 = await repo.createList('A');
@@ -105,5 +104,32 @@ void main() {
       db.tasks,
     )..where((x) => x.id.equals(t))).getSingle();
     expect(row.listId, l1);
+  });
+
+  test('task reminders and alarm preset persist', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final repo = TaskRepository(db);
+    final id = await repo.createTask(
+      title: 'Report',
+      dueDate: '2026-03-02',
+      reminders: '[5,0]',
+      alarmPreset: 'full_short',
+    );
+    var row = await (db.select(
+      db.tasks,
+    )..where((x) => x.id.equals(id))).getSingle();
+    expect(row.reminders, '[5,0]');
+    expect(row.alarmPreset, 'full_short');
+    await repo.updateTask(
+      id,
+      reminders: () => '[60]',
+      alarmPreset: () => null,
+    );
+    row = await (db.select(
+      db.tasks,
+    )..where((x) => x.id.equals(id))).getSingle();
+    expect(row.reminders, '[60]');
+    expect(row.alarmPreset, isNull);
   });
 }

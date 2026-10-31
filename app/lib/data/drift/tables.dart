@@ -119,6 +119,7 @@ class Tasks extends Table {
   IntColumn get completedAt => integer().nullable()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   TextColumn get alarmPreset => text().nullable()();
+  TextColumn get reminders => text().nullable()(); // json offsets, local-only
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
   IntColumn get deletedAt => integer().nullable()();
@@ -251,6 +252,7 @@ class FocusSessions extends Table {
   IntColumn get targetEndUtc => integer().nullable()();
   TextColumn get phase => text().nullable()();
   TextColumn get note => text().nullable()();
+  TextColumn get alarmPreset => text().nullable()();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
 

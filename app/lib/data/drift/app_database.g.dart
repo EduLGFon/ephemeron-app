@@ -4138,6 +4138,17 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _remindersMeta = const VerificationMeta(
+    'reminders',
+  );
+  @override
+  late final GeneratedColumn<String> reminders = GeneratedColumn<String>(
+    'reminders',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -4224,6 +4235,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     completedAt,
     sortOrder,
     alarmPreset,
+    reminders,
     createdAt,
     updatedAt,
     deletedAt,
@@ -4347,6 +4359,12 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         ),
       );
     }
+    if (data.containsKey('reminders')) {
+      context.handle(
+        _remindersMeta,
+        reminders.isAcceptableOrUnknown(data['reminders']!, _remindersMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -4460,6 +4478,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.string,
         data['${effectivePrefix}alarm_preset'],
       ),
+      reminders: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reminders'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
@@ -4510,6 +4532,7 @@ class Task extends DataClass implements Insertable<Task> {
   final int? completedAt;
   final int sortOrder;
   final String? alarmPreset;
+  final String? reminders;
   final int createdAt;
   final int updatedAt;
   final int? deletedAt;
@@ -4533,6 +4556,7 @@ class Task extends DataClass implements Insertable<Task> {
     this.completedAt,
     required this.sortOrder,
     this.alarmPreset,
+    this.reminders,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -4578,6 +4602,9 @@ class Task extends DataClass implements Insertable<Task> {
     map['sort_order'] = Variable<int>(sortOrder);
     if (!nullToAbsent || alarmPreset != null) {
       map['alarm_preset'] = Variable<String>(alarmPreset);
+    }
+    if (!nullToAbsent || reminders != null) {
+      map['reminders'] = Variable<String>(reminders);
     }
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
@@ -4632,6 +4659,9 @@ class Task extends DataClass implements Insertable<Task> {
       alarmPreset: alarmPreset == null && nullToAbsent
           ? const Value.absent()
           : Value(alarmPreset),
+      reminders: reminders == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reminders),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -4669,6 +4699,7 @@ class Task extends DataClass implements Insertable<Task> {
       completedAt: serializer.fromJson<int?>(json['completedAt']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       alarmPreset: serializer.fromJson<String?>(json['alarmPreset']),
+      reminders: serializer.fromJson<String?>(json['reminders']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
@@ -4697,6 +4728,7 @@ class Task extends DataClass implements Insertable<Task> {
       'completedAt': serializer.toJson<int?>(completedAt),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'alarmPreset': serializer.toJson<String?>(alarmPreset),
+      'reminders': serializer.toJson<String?>(reminders),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
       'deletedAt': serializer.toJson<int?>(deletedAt),
@@ -4723,6 +4755,7 @@ class Task extends DataClass implements Insertable<Task> {
     Value<int?> completedAt = const Value.absent(),
     int? sortOrder,
     Value<String?> alarmPreset = const Value.absent(),
+    Value<String?> reminders = const Value.absent(),
     int? createdAt,
     int? updatedAt,
     Value<int?> deletedAt = const Value.absent(),
@@ -4746,6 +4779,7 @@ class Task extends DataClass implements Insertable<Task> {
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     sortOrder: sortOrder ?? this.sortOrder,
     alarmPreset: alarmPreset.present ? alarmPreset.value : this.alarmPreset,
+    reminders: reminders.present ? reminders.value : this.reminders,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -4779,6 +4813,7 @@ class Task extends DataClass implements Insertable<Task> {
       alarmPreset: data.alarmPreset.present
           ? data.alarmPreset.value
           : this.alarmPreset,
+      reminders: data.reminders.present ? data.reminders.value : this.reminders,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -4809,6 +4844,7 @@ class Task extends DataClass implements Insertable<Task> {
           ..write('completedAt: $completedAt, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('alarmPreset: $alarmPreset, ')
+          ..write('reminders: $reminders, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -4837,6 +4873,7 @@ class Task extends DataClass implements Insertable<Task> {
     completedAt,
     sortOrder,
     alarmPreset,
+    reminders,
     createdAt,
     updatedAt,
     deletedAt,
@@ -4864,6 +4901,7 @@ class Task extends DataClass implements Insertable<Task> {
           other.completedAt == this.completedAt &&
           other.sortOrder == this.sortOrder &&
           other.alarmPreset == this.alarmPreset &&
+          other.reminders == this.reminders &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
@@ -4889,6 +4927,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<int?> completedAt;
   final Value<int> sortOrder;
   final Value<String?> alarmPreset;
+  final Value<String?> reminders;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   final Value<int?> deletedAt;
@@ -4913,6 +4952,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.completedAt = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.alarmPreset = const Value.absent(),
+    this.reminders = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -4938,6 +4978,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.completedAt = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.alarmPreset = const Value.absent(),
+    this.reminders = const Value.absent(),
     required int createdAt,
     required int updatedAt,
     this.deletedAt = const Value.absent(),
@@ -4965,6 +5006,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<int>? completedAt,
     Expression<int>? sortOrder,
     Expression<String>? alarmPreset,
+    Expression<String>? reminders,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
     Expression<int>? deletedAt,
@@ -4990,6 +5032,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (completedAt != null) 'completed_at': completedAt,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (alarmPreset != null) 'alarm_preset': alarmPreset,
+      if (reminders != null) 'reminders': reminders,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -5017,6 +5060,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<int?>? completedAt,
     Value<int>? sortOrder,
     Value<String?>? alarmPreset,
+    Value<String?>? reminders,
     Value<int>? createdAt,
     Value<int>? updatedAt,
     Value<int?>? deletedAt,
@@ -5042,6 +5086,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       completedAt: completedAt ?? this.completedAt,
       sortOrder: sortOrder ?? this.sortOrder,
       alarmPreset: alarmPreset ?? this.alarmPreset,
+      reminders: reminders ?? this.reminders,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -5103,6 +5148,9 @@ class TasksCompanion extends UpdateCompanion<Task> {
     if (alarmPreset.present) {
       map['alarm_preset'] = Variable<String>(alarmPreset.value);
     }
+    if (reminders.present) {
+      map['reminders'] = Variable<String>(reminders.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -5146,6 +5194,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
           ..write('completedAt: $completedAt, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('alarmPreset: $alarmPreset, ')
+          ..write('reminders: $reminders, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -9320,6 +9369,17 @@ class $FocusSessionsTable extends FocusSessions
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _alarmPresetMeta = const VerificationMeta(
+    'alarmPreset',
+  );
+  @override
+  late final GeneratedColumn<String> alarmPreset = GeneratedColumn<String>(
+    'alarm_preset',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -9352,6 +9412,7 @@ class $FocusSessionsTable extends FocusSessions
     targetEndUtc,
     phase,
     note,
+    alarmPreset,
     createdAt,
     updatedAt,
   ];
@@ -9419,6 +9480,15 @@ class $FocusSessionsTable extends FocusSessions
         note.isAcceptableOrUnknown(data['note']!, _noteMeta),
       );
     }
+    if (data.containsKey('alarm_preset')) {
+      context.handle(
+        _alarmPresetMeta,
+        alarmPreset.isAcceptableOrUnknown(
+          data['alarm_preset']!,
+          _alarmPresetMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -9476,6 +9546,10 @@ class $FocusSessionsTable extends FocusSessions
         DriftSqlType.string,
         data['${effectivePrefix}note'],
       ),
+      alarmPreset: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}alarm_preset'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
@@ -9502,6 +9576,7 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
   final int? targetEndUtc;
   final String? phase;
   final String? note;
+  final String? alarmPreset;
   final int createdAt;
   final int updatedAt;
   const FocusSession({
@@ -9513,6 +9588,7 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
     this.targetEndUtc,
     this.phase,
     this.note,
+    this.alarmPreset,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -9539,6 +9615,9 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
+    if (!nullToAbsent || alarmPreset != null) {
+      map['alarm_preset'] = Variable<String>(alarmPreset);
+    }
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
     return map;
@@ -9564,6 +9643,9 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
           ? const Value.absent()
           : Value(phase),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      alarmPreset: alarmPreset == null && nullToAbsent
+          ? const Value.absent()
+          : Value(alarmPreset),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -9583,6 +9665,7 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
       targetEndUtc: serializer.fromJson<int?>(json['targetEndUtc']),
       phase: serializer.fromJson<String?>(json['phase']),
       note: serializer.fromJson<String?>(json['note']),
+      alarmPreset: serializer.fromJson<String?>(json['alarmPreset']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
     );
@@ -9599,6 +9682,7 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
       'targetEndUtc': serializer.toJson<int?>(targetEndUtc),
       'phase': serializer.toJson<String?>(phase),
       'note': serializer.toJson<String?>(note),
+      'alarmPreset': serializer.toJson<String?>(alarmPreset),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
     };
@@ -9613,6 +9697,7 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
     Value<int?> targetEndUtc = const Value.absent(),
     Value<String?> phase = const Value.absent(),
     Value<String?> note = const Value.absent(),
+    Value<String?> alarmPreset = const Value.absent(),
     int? createdAt,
     int? updatedAt,
   }) => FocusSession(
@@ -9624,6 +9709,7 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
     targetEndUtc: targetEndUtc.present ? targetEndUtc.value : this.targetEndUtc,
     phase: phase.present ? phase.value : this.phase,
     note: note.present ? note.value : this.note,
+    alarmPreset: alarmPreset.present ? alarmPreset.value : this.alarmPreset,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -9639,6 +9725,9 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
           : this.targetEndUtc,
       phase: data.phase.present ? data.phase.value : this.phase,
       note: data.note.present ? data.note.value : this.note,
+      alarmPreset: data.alarmPreset.present
+          ? data.alarmPreset.value
+          : this.alarmPreset,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -9655,6 +9744,7 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
           ..write('targetEndUtc: $targetEndUtc, ')
           ..write('phase: $phase, ')
           ..write('note: $note, ')
+          ..write('alarmPreset: $alarmPreset, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -9671,6 +9761,7 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
     targetEndUtc,
     phase,
     note,
+    alarmPreset,
     createdAt,
     updatedAt,
   );
@@ -9686,6 +9777,7 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
           other.targetEndUtc == this.targetEndUtc &&
           other.phase == this.phase &&
           other.note == this.note &&
+          other.alarmPreset == this.alarmPreset &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -9699,6 +9791,7 @@ class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
   final Value<int?> targetEndUtc;
   final Value<String?> phase;
   final Value<String?> note;
+  final Value<String?> alarmPreset;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   final Value<int> rowid;
@@ -9711,6 +9804,7 @@ class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
     this.targetEndUtc = const Value.absent(),
     this.phase = const Value.absent(),
     this.note = const Value.absent(),
+    this.alarmPreset = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -9724,6 +9818,7 @@ class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
     this.targetEndUtc = const Value.absent(),
     this.phase = const Value.absent(),
     this.note = const Value.absent(),
+    this.alarmPreset = const Value.absent(),
     required int createdAt,
     required int updatedAt,
     this.rowid = const Value.absent(),
@@ -9740,6 +9835,7 @@ class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
     Expression<int>? targetEndUtc,
     Expression<String>? phase,
     Expression<String>? note,
+    Expression<String>? alarmPreset,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
     Expression<int>? rowid,
@@ -9753,6 +9849,7 @@ class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
       if (targetEndUtc != null) 'target_end_utc': targetEndUtc,
       if (phase != null) 'phase': phase,
       if (note != null) 'note': note,
+      if (alarmPreset != null) 'alarm_preset': alarmPreset,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -9768,6 +9865,7 @@ class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
     Value<int?>? targetEndUtc,
     Value<String?>? phase,
     Value<String?>? note,
+    Value<String?>? alarmPreset,
     Value<int>? createdAt,
     Value<int>? updatedAt,
     Value<int>? rowid,
@@ -9781,6 +9879,7 @@ class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
       targetEndUtc: targetEndUtc ?? this.targetEndUtc,
       phase: phase ?? this.phase,
       note: note ?? this.note,
+      alarmPreset: alarmPreset ?? this.alarmPreset,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -9814,6 +9913,9 @@ class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
+    if (alarmPreset.present) {
+      map['alarm_preset'] = Variable<String>(alarmPreset.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -9837,6 +9939,7 @@ class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
           ..write('targetEndUtc: $targetEndUtc, ')
           ..write('phase: $phase, ')
           ..write('note: $note, ')
+          ..write('alarmPreset: $alarmPreset, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -16054,6 +16157,7 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<int?> completedAt,
       Value<int> sortOrder,
       Value<String?> alarmPreset,
+      Value<String?> reminders,
       required int createdAt,
       required int updatedAt,
       Value<int?> deletedAt,
@@ -16080,6 +16184,7 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<int?> completedAt,
       Value<int> sortOrder,
       Value<String?> alarmPreset,
+      Value<String?> reminders,
       Value<int> createdAt,
       Value<int> updatedAt,
       Value<int?> deletedAt,
@@ -16210,6 +16315,11 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<String> get alarmPreset => $composableBuilder(
     column: $table.alarmPreset,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reminders => $composableBuilder(
+    column: $table.reminders,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16376,6 +16486,11 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get reminders => $composableBuilder(
+    column: $table.reminders,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -16492,6 +16607,9 @@ class $$TasksTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get reminders =>
+      $composableBuilder(column: $table.reminders, builder: (column) => column);
+
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -16605,6 +16723,7 @@ class $$TasksTableTableManager
                 Value<int?> completedAt = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<String?> alarmPreset = const Value.absent(),
+                Value<String?> reminders = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
                 Value<int?> deletedAt = const Value.absent(),
@@ -16629,6 +16748,7 @@ class $$TasksTableTableManager
                 completedAt: completedAt,
                 sortOrder: sortOrder,
                 alarmPreset: alarmPreset,
+                reminders: reminders,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -16655,6 +16775,7 @@ class $$TasksTableTableManager
                 Value<int?> completedAt = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<String?> alarmPreset = const Value.absent(),
+                Value<String?> reminders = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
                 Value<int?> deletedAt = const Value.absent(),
@@ -16679,6 +16800,7 @@ class $$TasksTableTableManager
                 completedAt: completedAt,
                 sortOrder: sortOrder,
                 alarmPreset: alarmPreset,
+                reminders: reminders,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -19791,6 +19913,7 @@ typedef $$FocusSessionsTableCreateCompanionBuilder =
       Value<int?> targetEndUtc,
       Value<String?> phase,
       Value<String?> note,
+      Value<String?> alarmPreset,
       required int createdAt,
       required int updatedAt,
       Value<int> rowid,
@@ -19805,6 +19928,7 @@ typedef $$FocusSessionsTableUpdateCompanionBuilder =
       Value<int?> targetEndUtc,
       Value<String?> phase,
       Value<String?> note,
+      Value<String?> alarmPreset,
       Value<int> createdAt,
       Value<int> updatedAt,
       Value<int> rowid,
@@ -19856,6 +19980,11 @@ class $$FocusSessionsTableFilterComposer
 
   ColumnFilters<String> get note => $composableBuilder(
     column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get alarmPreset => $composableBuilder(
+    column: $table.alarmPreset,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -19919,6 +20048,11 @@ class $$FocusSessionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get alarmPreset => $composableBuilder(
+    column: $table.alarmPreset,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -19964,6 +20098,11 @@ class $$FocusSessionsTableAnnotationComposer
 
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<String> get alarmPreset => $composableBuilder(
+    column: $table.alarmPreset,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -20011,6 +20150,7 @@ class $$FocusSessionsTableTableManager
                 Value<int?> targetEndUtc = const Value.absent(),
                 Value<String?> phase = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<String?> alarmPreset = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -20023,6 +20163,7 @@ class $$FocusSessionsTableTableManager
                 targetEndUtc: targetEndUtc,
                 phase: phase,
                 note: note,
+                alarmPreset: alarmPreset,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -20037,6 +20178,7 @@ class $$FocusSessionsTableTableManager
                 Value<int?> targetEndUtc = const Value.absent(),
                 Value<String?> phase = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<String?> alarmPreset = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -20049,6 +20191,7 @@ class $$FocusSessionsTableTableManager
                 targetEndUtc: targetEndUtc,
                 phase: phase,
                 note: note,
+                alarmPreset: alarmPreset,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

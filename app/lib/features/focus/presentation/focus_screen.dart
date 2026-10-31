@@ -10,8 +10,10 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/platform/system_launcher.dart';
 import '../../../data/drift/app_database.dart';
+import '../../../domain/alarms/alarm_preset.dart';
 import '../../../domain/habits/date_key.dart';
 import '../../alarms/data/alarm_scheduler.dart';
+import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../../habits/application/habits_providers.dart';
 import '../../settings/application/settings_providers.dart';
 import '../application/focus_providers.dart';
@@ -87,11 +89,13 @@ int _requestCode(String id) => id.hashCode & 0x7fffffff;
 Future<void> _scheduleEndAlarm(FocusSession s) {
   final target = s.targetEndUtc;
   if (target == null) return Future.value();
-  return AlarmScheduler.schedule(
+  final preset = parseAlarmPreset(s.alarmPreset) ?? AlarmPreset.notification;
+  return AlarmScheduler.schedulePreset(
     requestCode: _requestCode(s.id),
     fireAtUtcMs: target,
-    useAlarmClock: true,
+    preset: preset,
     title: 'Focus session complete',
+    body: '${s.phase ?? 'focus'} session is over.',
     sourceType: 'focus',
     sourceId: s.id,
   );
@@ -110,6 +114,7 @@ class _StartViewState extends ConsumerState<_StartView> {
   bool _isBreak = false;
   String? _taskId;
   String? _habitId;
+  String? _alarmPreset = AlarmPreset.notification.id;
 
   @override
   Widget build(BuildContext context) {
@@ -180,6 +185,11 @@ class _StartViewState extends ConsumerState<_StartView> {
           orElse: () => const SizedBox.shrink(),
         ),
         const SizedBox(height: 12),
+        AlarmPresetPicker(
+          value: _alarmPreset,
+          onChanged: (v) => setState(() => _alarmPreset = v),
+        ),
+        const SizedBox(height: 12),
         FilledButton.icon(
           onPressed: _start,
           icon: const Icon(Icons.play_arrow),
@@ -223,6 +233,7 @@ class _StartViewState extends ConsumerState<_StartView> {
       habitId: _habitId,
       durationMin: _isBreak ? _breakMin : _focusMin,
       phase: _isBreak ? 'break' : 'focus',
+      alarmPreset: _alarmPreset,
     );
     final session = await repo.currentSession();
     if (session != null && session.id == id) {

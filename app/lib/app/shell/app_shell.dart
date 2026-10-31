@@ -41,6 +41,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   void initState() {
     super.initState();
+    HardwareKeyboard.instance.addHandler(_handleGlobalKey);
     _restoreLastTab();
     // Restart the persisted auto-sync schedule on every launch.
     Future.microtask(() => ref.read(googleAutoSyncServiceProvider).start());
@@ -56,6 +57,12 @@ class _AppShellState extends ConsumerState<AppShell> {
     // Handle Android share-target text and launcher shortcuts once the
     // first frame is up (needs a BuildContext for sheets/navigation).
     WidgetsBinding.instance.addPostFrameCallback((_) => _handleIntents());
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleGlobalKey);
+    super.dispose();
   }
 
   /// Opens quick add prefilled with shared text, or jumps to the tab
@@ -103,6 +110,19 @@ class _AppShellState extends ConsumerState<AppShell> {
     if (ctx.widget is EditableText) return true;
     if (ctx.findAncestorWidgetOfExactType<EditableText>() != null) return true;
     return false;
+  }
+
+  bool _handleGlobalKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+    if (_isEditingText()) return false;
+    var handled = false;
+    for (final activator in _shortcuts.keys) {
+      if (activator.accepts(event, HardwareKeyboard.instance)) {
+        _shortcuts[activator]!();
+        handled = true;
+      }
+    }
+    return handled;
   }
 
   @override
@@ -177,38 +197,53 @@ class _AppShellState extends ConsumerState<AppShell> {
     };
 
     _shortcuts = shortcuts;
-    return AlarmListener(
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+        if (_isEditingText()) return KeyEventResult.ignored;
+        KeyEventResult result = KeyEventResult.ignored;
+        for (final activator in shortcuts.keys) {
+          if (activator.accepts(event, HardwareKeyboard.instance)) {
+            shortcuts[activator]!();
+            result = KeyEventResult.handled;
+          }
+        }
+        return result;
+      },
+      child: AlarmListener(
         child: Scaffold(
-          body: widget.navigationShell,
-          bottomNavigationBar: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: NavigationBar(
-              selectedIndex:
-                  pinned.contains(widget.navigationShell.currentIndex)
-                  ? pinned.indexOf(widget.navigationShell.currentIndex)
-                  : 5,
-              onDestinationSelected: (i) {
-                if (i < 5) {
-                  _onTabSelected(pinned[i]);
-                } else {
-                  _showMore(context, more, order);
-                }
-              },
-              destinations: [
-                for (final idx in pinned)
-                  NavigationDestination(
-                    icon: Icon(AppSection.values[idx].icon),
-                    label: AppSection.values[idx].title,
-                  ),
-                const NavigationDestination(
-                  icon: Icon(Icons.more_horiz),
-                  label: 'More',
+        body: widget.navigationShell,
+        bottomNavigationBar: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          child: NavigationBar(
+            selectedIndex:
+                pinned.contains(widget.navigationShell.currentIndex)
+                ? pinned.indexOf(widget.navigationShell.currentIndex)
+                : 5,
+            onDestinationSelected: (i) {
+              if (i < 5) {
+                _onTabSelected(pinned[i]);
+              } else {
+                _showMore(context, more, order);
+              }
+            },
+            destinations: [
+              for (final idx in pinned)
+                NavigationDestination(
+                  icon: Icon(AppSection.values[idx].icon),
+                  label: AppSection.values[idx].title,
                 ),
-              ],
-            ),
+              const NavigationDestination(
+                icon: Icon(Icons.more_horiz),
+                label: 'More',
+              ),
+            ],
           ),
         ),
-      ), // AlarmListener
+      ),
+      ),
+    );
   }
 
   void _showMore(BuildContext context, List<int> more, List<int> order) {

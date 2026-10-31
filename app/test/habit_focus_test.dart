@@ -56,8 +56,7 @@ void main() {
     );
   });
 
-  test('sessionsInRange returns finished sessions in window', () async {
-    final db = _db();
+  test('sessionsInRange returns finished sessions in window', () async {    final db = _db();
     addTearDown(db.close);
     final repo = FocusRepository(db);
     final id = await repo.startSession(durationMin: 25, phase: 'focus');
@@ -68,5 +67,19 @@ void main() {
     // A just-finished session counts 0 whole minutes; range query is the
     // assertion that matters here.
     expect(await repo.totalMinutes(now - 3600000, now + 60000), isNotNull);
+  });
+
+  test('focus session alarm preset persists', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final repo = FocusRepository(db);
+    final id = await repo.startSession(
+      durationMin: 25,
+      alarmPreset: 'full_long',
+    );
+    final session = await repo.currentSession();
+    expect(session?.id, id);
+    expect(session?.alarmPreset, 'full_long');
+    await repo.finishSession(id);
   });
 }

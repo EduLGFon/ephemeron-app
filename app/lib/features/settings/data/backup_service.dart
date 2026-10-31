@@ -301,6 +301,7 @@ class BackupService {
     completedAt: Value(_optInt(m, 'completedAt')),
     sortOrder: Value(_optInt(m, 'sortOrder') ?? 0),
     alarmPreset: Value(_optStr(m, 'alarmPreset')),
+    reminders: Value(_optStr(m, 'reminders')),
     createdAt: _reqInt(m, 'createdAt'),
     updatedAt: _reqInt(m, 'updatedAt'),
     deletedAt: Value(_optInt(m, 'deletedAt')),
@@ -412,6 +413,7 @@ class BackupService {
         targetEndUtc: Value(_optInt(m, 'targetEndUtc')),
         phase: Value(_optStr(m, 'phase')),
         note: Value(_optStr(m, 'note')),
+        alarmPreset: Value(_optStr(m, 'alarmPreset')),
         createdAt: _reqInt(m, 'createdAt'),
         updatedAt: _reqInt(m, 'updatedAt'),
       );

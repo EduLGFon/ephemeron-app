@@ -156,16 +156,23 @@ class AlarmRepository {
           ? DateTime.utc(y, m, d, 9).millisecondsSinceEpoch
           : DateTime.utc(y, m, d, mins ~/ 60, mins % 60).millisecondsSinceEpoch;
       final title = t.title.isEmpty ? 'Task' : t.title;
-      out.add(
-        AlarmCandidate(
-          sourceType: 'task_reminder',
-          sourceId: '${t.id}#at',
-          fireAtUtcMs: fire,
-          preset: AlarmPreset.notification.id,
-          kind: 'reminder',
-          title: title,
-        ),
-      );
+      // Custom reminder offsets; default preserves at-time-only behavior.
+      final raw = t.reminders;
+      final offsets = raw == null || raw.trim().isEmpty
+          ? const [0]
+          : parseReminderOffsets(raw);
+      for (final off in offsets) {
+        out.add(
+          AlarmCandidate(
+            sourceType: 'task_reminder',
+            sourceId: '${t.id}#r$off',
+            fireAtUtcMs: fire - off * msPerMinute,
+            preset: AlarmPreset.notification.id,
+            kind: 'reminder',
+            title: title,
+          ),
+        );
+      }
       final preset = parseAlarmPreset(t.alarmPreset);
       if (preset != null && preset != AlarmPreset.notification) {
         out.add(

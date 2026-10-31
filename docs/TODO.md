@@ -9,8 +9,19 @@
 - Home-screen widgets (Agenda, Next event, Habits today, Focus timer)
 - Flashlight blink and MediaPlayer-on-alarm-stream sound; notification defaults
   ship instead.
-- Alarms follow-up: task custom reminder offsets (currently at-time only),
-  focus-session end alarm, iOS Critical Alerts entitlement request.
+- Alarms follow-up: done. Task custom reminder offsets (per-task JSON,
+  at-time default preserved), focus end alarm preset picker (stored per
+  session, scheduled with that style, cancelled on finish/discard), iOS
+  Critical Alerts entitlement (`ios/Runner/Runner.entitlements`, versioned via
+  .gitignore ladder) plus `AlarmScheduler.requestCriticalAlerts` and a
+  settings request button.
+- iOS owner steps (need Xcode Mac + Apple approval, unverifiable on Linux):
+  select Runner.entitlements under Signing and Capabilities in Xcode
+  (CODE_SIGN_ENTITLEMENTS), add a `requestCriticalAlerts` handler on the
+  `ephemeron/alarms` channel calling
+  `UNUserNotificationCenter.current().requestAuthorization(options:
+  [.alert, .sound, .criticalAlert])`, request the Critical Alerts entitlement
+  in App Store Connect.
 - Alarm migration test v4->v5 (countdowns.alarm_preset, alarms_index
   kind/title/preset): schema migrates, no dedicated migration test yet.
 

@@ -21,6 +21,13 @@ pubspec.lock
 # Platform build artifacts
 # ios/Pods/
 ios/
+# Critical Alerts entitlement is hand-written source, not regenerable
+# scaffolding: keep it versioned like the Android alarm module.
+!app/ios/
+app/ios/*
+!app/ios/Runner/
+app/ios/Runner/*
+!app/ios/Runner/Runner.entitlements
 android/
 # Ephemeron native alarm module is hand-written source, not regenerable
 # scaffolding: keep it versioned so `flutter create` regens can't silently
@@ -54,6 +61,8 @@ windows
 macos
 web
 test
+# Widget and unit tests are source, not scaffolding.
+!app/test/
 *.py
 
 # Local DB files created at runtime (desktop/dev)

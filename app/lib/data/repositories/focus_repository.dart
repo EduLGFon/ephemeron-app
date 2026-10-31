@@ -17,6 +17,7 @@ class FocusRepository {
     String? habitId,
     required int durationMin,
     String phase = 'focus',
+    String? alarmPreset,
   }) async {
     final id = newId();
     final now = _now();
@@ -30,6 +31,7 @@ class FocusRepository {
             startUtc: now,
             targetEndUtc: Value(now + durationMin * msPerMinute),
             phase: Value(phase),
+            alarmPreset: Value(alarmPreset),
             createdAt: now,
             updatedAt: now,
           ),

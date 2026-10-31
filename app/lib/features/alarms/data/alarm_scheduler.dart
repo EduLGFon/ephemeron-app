@@ -147,4 +147,17 @@ class AlarmScheduler {
     if (defaultTargetPlatform != TargetPlatform.android) return;
     await _channel.invokeMethod<void>('openBatterySettings');
   }
+
+  /// Requests iOS Critical Alerts authorization (needs the entitlement plus
+  /// App Store approval; see docs/TODO.md). Returns true when granted.
+  /// Always false off iOS or when the native handler is missing.
+  static Future<bool> requestCriticalAlerts() async {
+    if (defaultTargetPlatform != TargetPlatform.iOS) return false;
+    try {
+      final v = await _channel.invokeMethod<bool>('requestCriticalAlerts');
+      return v ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
 }

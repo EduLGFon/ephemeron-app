@@ -5,6 +5,7 @@ import 'package:ephemeron/core/ui/sheet_padding.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
+import '../../../domain/alarms/reminder.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../application/tasks_providers.dart';
 
@@ -40,6 +41,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
   int? _dueTime;
   bool _pinned = false;
   String? _alarmPreset;
+  List<int> _reminders = const [0];
 
   @override
   void initState() {
@@ -54,6 +56,9 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
     _dueTime = t?.dueTime;
     _pinned = t?.pinned ?? false;
     _alarmPreset = t?.alarmPreset;
+    _reminders = t?.reminders == null || t!.reminders!.trim().isEmpty
+        ? const [0]
+        : parseReminderOffsets(t.reminders);
   }
 
   @override
@@ -94,6 +99,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         parentId: widget.parentId,
         tags: tagNames,
         alarmPreset: _alarmPreset,
+        reminders: encodeReminderOffsets(_reminders),
       );
     } else {
       await repo.updateTask(
@@ -106,6 +112,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         listId: _listId,
         pinned: _pinned,
         alarmPreset: () => _alarmPreset,
+        reminders: () => encodeReminderOffsets(_reminders),
       );
       if (tagNames.isNotEmpty) {
         await repo.setTaskTags(existing.id, tagNames);
@@ -241,6 +248,13 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
                       onPressed: () => setState(() => _dueTime = null),
                     ),
                 ],
+              ),
+              const SizedBox(height: 8),
+              ReminderPicker(
+                offsets: _reminders,
+                onChanged: (v) => setState(
+                  () => _reminders = v.isEmpty ? const [0] : v,
+                ),
               ),
               const SizedBox(height: 8),
               AlarmPresetPicker(

@@ -60,19 +60,42 @@ class AlarmSettingsScreen extends ConsumerWidget {
         ),
       );
     }
-    if (defaultTargetPlatform == TargetPlatform.iOS ||
-        defaultTargetPlatform == TargetPlatform.macOS) {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
       return Scaffold(
         appBar: AppBar(title: const Text('Alarms')),
         body: ListView(
           padding: const EdgeInsets.all(16),
-          children: const [
-            Text(
+          children: [
+            const Text(
               'iOS allows at most 64 pending notifications; the app keeps the '
               'same rolling window capped at 60. No full-screen ring screen '
               'is possible on iOS: alerts arrive as time-sensitive '
-              'notifications. Strong alerts use the time-sensitive '
-              'interruption level.',
+              'notifications.',
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Critical Alerts ring through silent mode and need Apple '
+              'approval for the App Store build.',
+            ),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: () async {
+                final ok = await AlarmScheduler.requestCriticalAlerts();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        ok
+                            ? 'Critical Alerts granted.'
+                            : 'Critical Alerts not granted. The native '
+                                  'request needs an Xcode build with the '
+                                  'entitlement (see docs/TODO.md).',
+                      ),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Request Critical Alerts'),
             ),
           ],
         ),

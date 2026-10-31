@@ -38,7 +38,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -63,6 +63,10 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(alarmsIndex, alarmsIndex.kind);
         await m.addColumn(alarmsIndex, alarmsIndex.title);
         await m.addColumn(alarmsIndex, alarmsIndex.preset);
+      }
+      if (from < 6) {
+        await m.addColumn(tasks, tasks.reminders);
+        await m.addColumn(focusSessions, focusSessions.alarmPreset);
       }
     },
     beforeOpen: (details) async {
