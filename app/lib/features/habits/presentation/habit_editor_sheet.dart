@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../data/drift/app_database.dart';
+import '../../../domain/alarms/alarm_preset.dart';
 import '../../../domain/habits/date_key.dart';
+import '../../../core/platform/app_permissions.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../application/habits_providers.dart';
 
@@ -241,6 +243,16 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
       return;
     }
     final amount = double.tryParse(_amount.text.trim());
+    // Moment of need, advisory only: the save always proceeds.
+    if (_reminderTime != null || _alarmPreset != null) {
+      final preset = AlarmPreset.tryParse(_alarmPreset);
+      await AppPermissions.ensureAlarmPrereqs(
+        context,
+        exactAlarm: preset?.needsAlarmClock ?? false,
+        fullScreen: preset?.usesFullScreen ?? false,
+      );
+      if (!mounted) return;
+    }
     final repo = ref.read(habitRepositoryProvider);
     final existing = widget.habit;
     if (existing == null) {

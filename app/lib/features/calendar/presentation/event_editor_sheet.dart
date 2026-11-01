@@ -7,7 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/event_repository.dart';
+import '../../../domain/alarms/alarm_preset.dart';
 import '../../../domain/alarms/reminder.dart';
+import '../../../core/platform/app_permissions.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../../settings/application/settings_providers.dart';
 import '../../notes/application/notes_providers.dart';
@@ -194,6 +196,17 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
         context,
       ).showSnackBar(const SnackBar(content: Text('Select a calendar.')));
       return;
+    }
+    // Moment of need: reminders/alarms only prompt here, at save time.
+    // Advisory only: the save always proceeds, alerts may stay silent.
+    if (_reminders.isNotEmpty || _alarmPreset != null) {
+      final preset = AlarmPreset.tryParse(_alarmPreset);
+      await AppPermissions.ensureAlarmPrereqs(
+        context,
+        exactAlarm: preset?.needsAlarmClock ?? false,
+        fullScreen: preset?.usesFullScreen ?? false,
+      );
+      if (!mounted) return;
     }
     final repo = ref.read(eventRepositoryProvider);
     // Conflict hint: warn if overlapping a busy event.

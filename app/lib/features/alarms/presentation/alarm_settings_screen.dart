@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/alarms/alarm_preset.dart';
+import '../../../core/platform/app_permissions.dart';
 import '../application/alarm_providers.dart';
 import '../data/alarm_scheduler.dart';
 
@@ -116,11 +117,22 @@ class AlarmSettingsScreen extends ConsumerWidget {
                     ? null
                     : FilledButton(
                         onPressed: () =>
-                            AlarmScheduler.openExactAlarmSettings(),
+                            AppPermissions.ensureExactAlarm(context),
                         child: const Text('Grant'),
                       ),
               );
             },
+          ),
+          ListTile(
+            title: const Text('Full-screen alarms'),
+            subtitle: const Text(
+              'Needed on Android 14+ for alarms over the lock screen.',
+            ),
+            trailing: FilledButton(
+              onPressed: () =>
+                  AppPermissions.ensureFullScreenIntent(context, needed: true),
+              child: const Text('Check'),
+            ),
           ),
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -141,7 +153,16 @@ class AlarmSettingsScreen extends ConsumerWidget {
               title: Text(p.title),
               subtitle: Text(p.description),
               trailing: TextButton(
-                onPressed: () {
+                onPressed: () async {
+                  // Moment of need: notifications, then exact alarms for
+                  // clock presets, then full-screen for lock-screen presets.
+                  // Each prompt explains why before the system dialog.
+                  await AppPermissions.ensureAlarmPrereqs(
+                    context,
+                    exactAlarm: p.needsAlarmClock,
+                    fullScreen: p.usesFullScreen,
+                  );
+                  if (!context.mounted) return;
                   AlarmScheduler.testAlarm(p);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(

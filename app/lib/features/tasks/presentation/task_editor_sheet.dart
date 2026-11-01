@@ -5,7 +5,9 @@ import 'package:ephemeron/core/ui/sheet_padding.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
+import '../../../domain/alarms/alarm_preset.dart';
 import '../../../domain/alarms/reminder.dart';
+import '../../../core/platform/app_permissions.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../application/tasks_providers.dart';
 
@@ -79,6 +81,16 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         context,
       ).showSnackBar(const SnackBar(content: Text('Title is required.')));
       return;
+    }
+    // Moment of need, advisory only: the save always proceeds.
+    if (_reminders.isNotEmpty || _alarmPreset != null) {
+      final preset = AlarmPreset.tryParse(_alarmPreset);
+      await AppPermissions.ensureAlarmPrereqs(
+        context,
+        exactAlarm: preset?.needsAlarmClock ?? false,
+        fullScreen: preset?.usesFullScreen ?? false,
+      );
+      if (!mounted) return;
     }
     final repo = ref.read(taskRepositoryProvider);
     final tagNames = _tags.text
@@ -252,9 +264,8 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
               const SizedBox(height: 8),
               ReminderPicker(
                 offsets: _reminders,
-                onChanged: (v) => setState(
-                  () => _reminders = v.isEmpty ? const [0] : v,
-                ),
+                onChanged: (v) =>
+                    setState(() => _reminders = v.isEmpty ? const [0] : v),
               ),
               const SizedBox(height: 8),
               AlarmPresetPicker(

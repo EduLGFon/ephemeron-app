@@ -2,6 +2,11 @@
     <!-- Required for Google Calendar/Tasks sync and backend habits/focus
          sync. Release builds do not inherit the debug manifest. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Device-calendar import (device_calendar_plus): declared here so the
+         OS shows a Calendar entry in app settings and runtime prompts work.
+         Requested only when the user taps Import from device calendars. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />

@@ -89,15 +89,24 @@ class GoogleAuth {
       return;
     }
     try {
-      await GoogleSignIn.instance.initialize(
-        clientId: defaultTargetPlatform == TargetPlatform.android
-            ? (AppConfig.androidGoogleClientId.isEmpty
-                  ? null
-                  : AppConfig.androidGoogleClientId)
-            : (AppConfig.webGoogleClientId.isEmpty
-                  ? null
-                  : AppConfig.webGoogleClientId),
-      );
+      // Android uses Credential Manager under the hood: it authenticates
+      // via the app signature, so no clientId is passed. The Web OAuth
+      // client goes in as serverClientId (required when no
+      // google-services.json with a client_type 3 entry is bundled).
+      // iOS/macOS/Web resolve the client from the passed clientId.
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        await GoogleSignIn.instance.initialize(
+          serverClientId: AppConfig.webGoogleClientId.isEmpty
+              ? null
+              : AppConfig.webGoogleClientId,
+        );
+      } else {
+        await GoogleSignIn.instance.initialize(
+          clientId: AppConfig.webGoogleClientId.isEmpty
+              ? null
+              : AppConfig.webGoogleClientId,
+        );
+      }
     } on UnimplementedError {
       throw GoogleAuthException(
         'Google sign-in is not available on this platform. '

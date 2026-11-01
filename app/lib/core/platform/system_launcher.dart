@@ -98,4 +98,55 @@ class SystemLauncher {
       return null;
     }
   }
+
+  /// Runtime notification permission (Android 13+). Below 13, notifications
+  /// need no runtime grant; only checks the system toggle.
+  static Future<bool> canPostNotifications() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return true;
+    try {
+      return await _channel.invokeMethod<bool>('canPostNotifications') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Shows the OS permission dialog on Android 13+. Returns the post-prompt
+  /// state (false when the user denies or an older request is in flight).
+  static Future<bool> requestNotifications() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return true;
+    try {
+      return await _channel.invokeMethod<bool>('requestNotifications') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Opens this app's entry in system Settings (for permanently-denied
+  /// permissions). Returns false when the settings page cannot open.
+  static Future<bool> openAppSettings() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return false;
+    try {
+      return await _channel.invokeMethod<bool>('openAppSettings') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Full-screen intent privilege (Android 14+). Always true below 14.
+  static Future<bool> canUseFullScreenIntent() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return true;
+    try {
+      return await _channel.invokeMethod<bool>('canUseFullScreenIntent') ??
+          false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> openFullScreenSettings() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      await _channel.invokeMethod<void>('openFullScreenSettings');
+    } catch (_) {}
+  }
 }

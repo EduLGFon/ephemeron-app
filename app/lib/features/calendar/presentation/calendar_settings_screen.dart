@@ -8,6 +8,8 @@ import '../../settings/application/settings_providers.dart';
 import '../application/calendar_providers.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../data/services/device_calendar_import_service.dart';
+import '../../../core/platform/app_permissions.dart';
+import '../../../core/platform/system_launcher.dart';
 
 List<MapEntry<String, List<Calendar>>> _groupCalendars(List<Calendar> cals) {
   final map = <String, List<Calendar>>{};
@@ -124,11 +126,21 @@ class CalendarSettingsScreen extends ConsumerWidget {
       }
       return;
     }
+    // Moment of need with a reason first: the OS prompt follows.
+    if (!await AppPermissions.explainCalendarImport(context)) return;
     final granted = await service.requestPermission();
     if (granted == 0) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Calendar permission denied')),
+          SnackBar(
+            content: const Text(
+              'Calendar permission denied. The import needs read access.',
+            ),
+            action: SnackBarAction(
+              label: 'Settings',
+              onPressed: SystemLauncher.openAppSettings,
+            ),
+          ),
         );
       }
       return;

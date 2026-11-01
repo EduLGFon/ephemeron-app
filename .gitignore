@@ -31,8 +31,10 @@ app/ios/Runner/*
 android/
 # Ephemeron native alarm module is hand-written source, not regenerable
 # scaffolding: keep it versioned so `flutter create` regens can't silently
-# drop it. Ladder re-includes only the manifest (receiver declarations) and
-# the two alarm files; everything else under android/ stays ignored.
+# drop it. Ladder re-includes only the manifest (receiver declarations),
+# the two alarm files, and MainActivity (permission bridge for
+# notifications/full-screen intent/app settings); everything else under
+# android/ stays ignored.
 !app/android/
 app/android/*
 !app/android/app/
@@ -52,6 +54,7 @@ app/android/app/src/main/kotlin/com/spotnik/*
 app/android/app/src/main/kotlin/com/spotnik/ephemeron/*
 !app/android/app/src/main/kotlin/com/spotnik/ephemeron/AlarmPlugin.kt
 !app/android/app/src/main/kotlin/com/spotnik/ephemeron/AlarmReceiver.kt
+!app/android/app/src/main/kotlin/com/spotnik/ephemeron/MainActivity.kt
 # android/.gradle/
 # android/local.properties
 #linux/flutter/ephemeral/

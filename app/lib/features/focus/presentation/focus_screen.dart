@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../../core/platform/app_permissions.dart';
 import '../../../core/platform/system_launcher.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../domain/alarms/alarm_preset.dart';
@@ -227,6 +228,15 @@ class _StartViewState extends ConsumerState<_StartView> {
   }
 
   Future<void> _start() async {
+    // Moment of need: the end-of-phase alarm needs notifications, and
+    // clock presets need exact-alarm access. Advisory only.
+    final preset = AlarmPreset.tryParse(_alarmPreset);
+    await AppPermissions.ensureAlarmPrereqs(
+      context,
+      exactAlarm: preset?.needsAlarmClock ?? false,
+      fullScreen: preset?.usesFullScreen ?? false,
+    );
+    if (!mounted) return;
     final repo = ref.read(focusRepositoryProvider);
     final id = await repo.startSession(
       taskId: _taskId,

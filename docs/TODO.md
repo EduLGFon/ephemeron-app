@@ -46,3 +46,17 @@ Remaining (not yet fixed):
 - wakelock_plus left at 1.8.0 (latest 1.8.2 unreachable): upstream conflict
   between wakelock_plus >=1.8.1 (dbus ^0.8.0) and battery_plus 7.1.2 (upower
   0.7.0 -> dbus ^0.7.0). Revisit when either package relaxes.
+
+## Google sign-in + runtime permissions (2026-10-31, needs device check)
+
+- Google Cloud console (owner): Android OAuth client must match package
+  `com.spotnik.ephemeron` plus debug AND release SHA-1; Web client supplies
+  `serverClientId` (code now passes the web ID on Android). Enable Calendar
+  and Tasks APIs. Without the SHA-1 entry sign-in fails with reauth/canceled.
+- Device check: sign-in on Android (debug + release), decline path shows the
+  real error; device-calendar import prompts and appears in app settings;
+  first reminder save / alarm test prompts for notifications; exact-alarm
+  and full-screen prompts fire only for clock / lock-screen presets.
+- `flutter test` full suite not run here (timed out in this env); targeted
+  `auth_screen`, `focus_screen`, `countdowns_screen` tests pass.
+  `flutter analyze` clean.

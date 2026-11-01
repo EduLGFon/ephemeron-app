@@ -37,16 +37,14 @@ class AuthScreen extends ConsumerWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.message)));
-    } catch (_) {
+    } catch (e) {
+      // Never mask the real failure behind the offline message: the app
+      // works offline, but a failed sign-in deserves its actual cause
+      // (for example a missing serverClientId or SHA-1 mismatch).
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Google sign-in is not available on this platform. '
-            'The app works fully offline without an account.',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Google sign-in failed: $e')));
     }
   }
 

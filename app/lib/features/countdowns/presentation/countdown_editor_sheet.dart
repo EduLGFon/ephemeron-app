@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
+import '../../../domain/alarms/alarm_preset.dart';
+import '../../../core/platform/app_permissions.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../application/countdowns_providers.dart';
 
@@ -191,6 +193,15 @@ class _CountdownEditorSheetState extends ConsumerState<_CountdownEditorSheet> {
         : '${_date!.year.toString().padLeft(4, '0')}-'
               '${_date!.month.toString().padLeft(2, '0')}-'
               '${_date!.day.toString().padLeft(2, '0')}';
+    // Countdown alerts always notify 3 days before and on the day, so the
+    // notification prompt belongs to every save (advisory only).
+    final preset = AlarmPreset.tryParse(_alarmPreset);
+    await AppPermissions.ensureAlarmPrereqs(
+      context,
+      exactAlarm: preset?.needsAlarmClock ?? false,
+      fullScreen: preset?.usesFullScreen ?? false,
+    );
+    if (!mounted) return;
     final repo = ref.read(countdownRepositoryProvider);
     final existing = widget.countdown;
     if (existing == null) {
