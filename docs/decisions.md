@@ -12,3 +12,12 @@ Decisions not covered by PLAN.md (lighter-weight option chosen by default).
 - Widget tests: close in-memory Drift DB and unmount inside the test body
   before the final pump; otherwise Drift's stream-close zero-timer trips the
   pending-timer check (addTearDown close runs too late).
+- Session restore (PLAN 8.1/8.2): lightweight UI state (tab, route, calendar
+  anchor/view/dayCount, selected list/folder, search query/scope, focus
+  options, open-sheet marker) in SharedPreferences for sync read at startup;
+  form contents in the existing Drift `drafts` table, autosaved debounced at
+  500 ms. No new dependency. Markers are set when a sheet opens and cleared
+  in dispose (which process kill skips), so kills restore but normal closes
+  do not; drafts expire after 7 days, reopen silently under 24 h and behind
+  a "Restore draft?" banner above that. Notes need no draft row (they
+  autosave to the DB).
