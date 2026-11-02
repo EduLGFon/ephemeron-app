@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'backend_auth_test.dart' show FakeBackend, MemoryTokenStore;
+import 'backend_auth_case.dart' show FakeBackend, MemoryTokenStore;
 
 void main() {
   testWidgets('backend sign-in shows sync controls', (

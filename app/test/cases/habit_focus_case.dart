@@ -56,7 +56,8 @@ void main() {
     );
   });
 
-  test('sessionsInRange returns finished sessions in window', () async {    final db = _db();
+  test('sessionsInRange returns finished sessions in window', () async {
+    final db = _db();
     addTearDown(db.close);
     final repo = FocusRepository(db);
     final id = await repo.startSession(durationMin: 25, phase: 'focus');

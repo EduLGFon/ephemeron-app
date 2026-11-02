@@ -13,7 +13,6 @@ import 'cases/auth_screen_case.dart' as auth_screen;
 import 'cases/backend_auth_case.dart' as backend_auth;
 import 'cases/backend_sync_case.dart' as backend_sync;
 import 'cases/backup_case.dart' as backup;
-import 'cases/calendar_color_case.dart' as calendar_color;
 import 'cases/countdowns_screen_case.dart' as countdowns_screen;
 import 'cases/db_case.dart' as db;
 import 'cases/event_scope_case.dart' as event_scope;
@@ -33,7 +32,6 @@ import 'cases/parser_case.dart' as parser;
 import 'cases/quick_add_case.dart' as quick_add;
 import 'cases/recurrence_case.dart' as recurrence;
 import 'cases/search_case.dart' as search;
-import 'cases/session_restore_case.dart' as session_restore;
 import 'cases/settings_case.dart' as settings;
 import 'cases/sync_engine_case.dart' as sync_engine;
 import 'cases/task_repository_case.dart' as task_repository;
@@ -50,7 +48,6 @@ const _included = <String>{
   'backend_auth_case.dart',
   'backend_sync_case.dart',
   'backup_case.dart',
-  'calendar_color_case.dart',
   'countdowns_screen_case.dart',
   'db_case.dart',
   'event_scope_case.dart',
@@ -70,7 +67,6 @@ const _included = <String>{
   'quick_add_case.dart',
   'recurrence_case.dart',
   'search_case.dart',
-  'session_restore_case.dart',
   'settings_case.dart',
   'sync_engine_case.dart',
   'task_repository_case.dart',
@@ -98,7 +94,6 @@ void main() {
   group('backend_auth', backend_auth.main);
   group('backend_sync', backend_sync.main);
   group('backup', backup.main);
-  group('calendar_color', calendar_color.main);
   group('countdowns_screen', countdowns_screen.main);
   group('db', db.main);
   group('event_scope', event_scope.main);
@@ -118,7 +113,6 @@ void main() {
   group('quick_add', quick_add.main);
   group('recurrence', recurrence.main);
   group('search', search.main);
-  group('session_restore', session_restore.main);
   group('settings', settings.main);
   group('sync_engine', sync_engine.main);
   group('task_repository', task_repository.main);

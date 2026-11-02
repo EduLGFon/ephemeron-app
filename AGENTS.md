@@ -69,8 +69,11 @@ command exists before claiming a check was run; do not invent commands.
 - Linter: `flutter analyze` (`flutter_lints` plus the rules in
   `analysis_options.yaml`).
 - Type checker: Dart analyzer (same command as the linter).
-- Test command: `flutter test` (from repo root); targeted:
-  `flutter test test/<file>.dart`.
+- Test command: `flutter test` (from `app/`). It discovers only
+  `test/all_test.dart`, the generated single entrypoint that runs every case.
+  Targeted: `flutter test test/cases/<file>_case.dart`. After adding or moving
+  a case, run `dart run tools/gen_test_runner.dart` (the runner also has a
+  guard test that fails when it is stale).
 - Build commands: `flutter build appbundle` (Android),
   `flutter build web --release` (Web), `flutter build linux` (Linux),
   `flutter build windows` (Windows).
@@ -83,6 +86,7 @@ command exists before claiming a check was run; do not invent commands.
 Quick commands:
 
 - `dart run build_runner build --delete-conflicting-outputs`
+- `dart run tools/gen_test_runner.dart`
 - `flutter analyze`
 - `flutter test`
 - `dart format .`
@@ -421,6 +425,9 @@ Legal and Regulatory Compliance
 ## 11. Testing and Verification
 
 - Add or update tests when observable behavior changes.
+- Put new test files under `test/cases/` with a `_case.dart` suffix, then run
+  `dart run tools/gen_test_runner.dart`. `test/all_test.dart` is generated and
+  its guard test fails if a case is missing.
 - Prefer testing behavior and public interfaces over implementation details.
 - Add regression tests for fixed bugs when practical.
 - Keep tests deterministic and independent. Inject clocks and randomness.

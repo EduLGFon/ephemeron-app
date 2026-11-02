@@ -11,8 +11,8 @@ import 'package:ephemeron/features/sync/data/backend_sync_engine.dart';
 import 'package:ephemeron/features/sync/data/sync_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'backend_auth_test.dart' show FakeBackend, MemoryTokenStore;
-import 'sync_engine_test.dart' show FakeGoogle;
+import 'backend_auth_case.dart' show FakeBackend, MemoryTokenStore;
+import 'sync_engine_case.dart' show FakeGoogle;
 
 class FakeSyncServer implements BackendSyncApi {
   List<Map<String, dynamic>> pushedHabits = [];

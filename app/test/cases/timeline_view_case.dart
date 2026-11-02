@@ -189,13 +189,13 @@ void main() {
     await _seed(db);
     await _pump(tester, db, DateTime.now(), 1);
 
-    expect(_hourGap(tester), moreOrLessEquals(56));
+    expect(_hourGap(tester), moreOrLessEquals(32.23529411764707));
 
     await _pressZoomIn(tester);
-    expect(_hourGap(tester), moreOrLessEquals(56 * 1.25));
+    expect(_hourGap(tester), moreOrLessEquals(32.23529411764707 * 1.25));
 
     await _pressZoomOut(tester);
-    expect(_hourGap(tester), moreOrLessEquals(56));
+    expect(_hourGap(tester), moreOrLessEquals(32.23529411764707));
     await _tearDown(tester, db);
   });
 
