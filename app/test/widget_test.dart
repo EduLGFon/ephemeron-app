@@ -8,7 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ephemeron/main.dart';
 
 void main() {
-  testWidgets('app builds', (WidgetTester tester) async {
+  testWidgets('app builds', timeout: const Timeout(Duration(minutes: 3)), (
+    WidgetTester tester,
+  ) async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     await tester.pumpWidget(
       ProviderScope(
@@ -18,10 +20,14 @@ void main() {
     );
     await tester.pump();
     expect(find.byType(MaterialApp), findsOneWidget);
-    // Close the db and unmount inside the test so Drift's stream-close
-    // timer fires before the framework's pending-timer check.
-    await db.close();
+    // Unmount first so every Riverpod stream subscription is cancelled,
+    // then pump twice: the first flushes the cancellations, the second
+    // fires drift's stream-cache timers. db.close() waits on those timers
+    // and deadlocks if they are still pending (they only run on pump).
     await tester.pumpWidget(Container());
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await db.close();
     await tester.pump();
   });
 }
