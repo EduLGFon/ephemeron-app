@@ -657,9 +657,13 @@ class SyncEngine {
       // of querying Google with a local UUID (which 404s and fails sync).
       final remoteId = list.remoteId;
       if (remoteId == null) continue;
-      final updatedMin = await _syncValue('tasks:${list.id}:updatedMin');
+      var updatedMin = await _syncValue('tasks:${list.id}:updatedMin');
       try {
-        final page = await client.tasksList(remoteId, updatedMin: updatedMin);
+        var page = await client.tasksList(remoteId, updatedMin: updatedMin);
+        if (updatedMin != null && page.items.isEmpty) {
+          page = await client.tasksList(remoteId);
+          debugPrint('[sync] tasksList retry without updatedMin got ${page.items.length} items');
+        }
         debugPrint('[sync] tasksList got ${page.items.length} items');
         for (final g in page.items) {
           if (await _mergeTask(list, g)) total++;

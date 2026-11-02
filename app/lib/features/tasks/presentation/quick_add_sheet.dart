@@ -80,11 +80,13 @@ class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
       tags: p.tags,
     );
     if (!mounted) return;
+    try { ref.read(occurrenceDirtyProvider.notifier).markDirty(); } catch (_) {}
     if (another) {
       _controller.clear();
       setState(() => _parsed = null);
     } else {
-      Navigator.of(context).pop();
+      final nav = Navigator.of(context);
+      if (nav.canPop()) nav.pop();
     }
   }
 
