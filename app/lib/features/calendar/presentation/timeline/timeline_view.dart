@@ -97,10 +97,21 @@ class _TimelineViewState extends ConsumerState<TimelineView>
                 onTap: (id) => showEventDetails(context, id),
               ),
             Expanded(
-              child: SingleChildScrollView(
-                controller: scroll,
-                child: SizedBox(
-                  height: 24 * hourHeight,
+              child: LayoutBuilder(
+                builder: (autoCtx, autoCons) {
+                  final desired = autoCons.maxHeight > 0
+                      ? (autoCons.maxHeight / (17 * timelineBaseHourHeight))
+                            .clamp(timelineMinScale, 1.0)
+                      : 1.0;
+                  if ((desired - autoScale).abs() > 1e-9) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) setState(() => autoScale = desired);
+                    });
+                  }
+                  return SingleChildScrollView(
+                    controller: scroll,
+                    child: SizedBox(
+                      height: 24 * hourHeight,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -204,11 +215,14 @@ class _TimelineViewState extends ConsumerState<TimelineView>
                     ],
                   ),
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+              ),  // SizedBox
+            );    // SingleChildScrollView return
+          },      // builder
+        ),        // LayoutBuilder
+      ),          // Expanded outer
+    ],
+  ),
+  ),
+);
   }
 }

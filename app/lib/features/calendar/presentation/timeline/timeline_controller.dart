@@ -37,15 +37,16 @@ mixin TimelineInteraction {
   String? pendingMovedId;
   bool didJump = false;
   double scale = 1;
-
+  // Auto-fitted base scale so the 6h-23h window (17 hours) fits the
+  // available viewport. Manual zoom ([scale]) multiplies on top.
+  double autoScale = 1;
   // Active pointers for pinch tracking. Listener-based so pinch never
   // competes with scrolling, tapping, or event dragging in the arena.
   final Map<int, Offset> pointers = {};
   double? pinchStartDist;
   double pinchBaseScale = 1;
 
-  double get hourHeight => timelineBaseHourHeight * scale;
-
+  double get hourHeight => timelineBaseHourHeight * autoScale * scale;
   void initTimelineInteraction() {
     WidgetsBinding.instance.addPostFrameCallback((_) => maybeJump());
   }
