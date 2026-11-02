@@ -74,6 +74,7 @@ test
 ephemeron_db*
 
 *.log
+log/*
 # Compile-time credentials config
 secrets.json
 env/android.json
