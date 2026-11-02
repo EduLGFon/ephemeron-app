@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/ui/escape_to_close.dart';
 import 'package:ephemeron/l10n/src/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -299,7 +300,7 @@ class SettingsScreen extends ConsumerWidget {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
+      builder: (ctx) => EscapeToClose(child: StatefulBuilder(
         builder: (ctx, setSt) => SafeArea(
           child: SizedBox(
             height: MediaQuery.of(ctx).size.height * 0.7,
@@ -338,7 +339,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
         ),
-      ),
+      )),
     );
   }
 }

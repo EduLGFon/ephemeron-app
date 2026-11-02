@@ -2,6 +2,7 @@
 // repeat presets, location, notes. Recurring edits ask scope.
 import 'package:flutter/material.dart';
 import 'package:ephemeron/core/ui/sheet_padding.dart';
+import 'package:ephemeron/core/ui/escape_to_close.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -27,10 +28,12 @@ Future<void> showEventEditor(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    builder: (_) => _EventEditor(
-      event: event,
-      initialDay: initialDay,
-      initialHour: initialHour,
+    builder: (_) => EscapeToClose(
+      child: _EventEditor(
+        event: event,
+        initialDay: initialDay,
+        initialHour: initialHour,
+      ),
     ),
   );
 }

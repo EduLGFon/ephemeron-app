@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:ephemeron/core/ui/dialogs.dart';
 
 import 'package:ephemeron/core/ui/empty_state.dart';
+import 'package:ephemeron/core/ui/escape_to_close.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -218,7 +219,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
   Future<void> _newFromTemplate() async {
     final choice = await showModalBottomSheet<String>(
       context: context,
-      builder: (ctx) => SafeArea(
+      builder: (ctx) => EscapeToClose(child: SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -232,7 +233,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
             ),
           ],
         ),
-      ),
+      )),
     );
     if (choice == 'meeting') {
       await _newNote(

@@ -1,6 +1,7 @@
 // Task create/edit sheet with list, priority, due chips, tags, subtasks.
 import 'package:flutter/material.dart';
 import 'package:ephemeron/core/ui/sheet_padding.dart';
+import 'package:ephemeron/core/ui/escape_to_close.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -19,7 +20,7 @@ Future<void> showTaskEditor(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    builder: (_) => _TaskEditor(task: task, parentId: parentId),
+    builder: (_) => EscapeToClose(child: _TaskEditor(task: task, parentId: parentId)),
   );
 }
 

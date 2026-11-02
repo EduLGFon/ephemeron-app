@@ -2,6 +2,7 @@
 // live preview chips, save and save-and-add-another.
 import 'package:flutter/material.dart';
 import 'package:ephemeron/core/ui/sheet_padding.dart';
+import 'package:ephemeron/core/ui/escape_to_close.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,7 +13,7 @@ Future<void> showQuickAdd(BuildContext context, {String? initialText}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    builder: (_) => _QuickAddSheet(initialText: initialText),
+    builder: (_) => EscapeToClose(child: _QuickAddSheet(initialText: initialText)),
   );
 }
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/ui/escape_to_close.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -315,7 +316,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
   void _showMore(BuildContext context, List<int> more, List<int> order) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (ctx) => MoreSheet(
+      builder: (ctx) => EscapeToClose(child: MoreSheet(
         more: more,
         onSelected: (idx) {
           Navigator.of(ctx).pop();
@@ -325,7 +326,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
           Navigator.of(ctx).pop();
           await _reorderSheet(context, order);
         },
-      ),
+      )),
     );
   }
 
@@ -334,7 +335,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
+      builder: (ctx) => EscapeToClose(child: StatefulBuilder(
         builder: (ctx, setSt) => SafeArea(
           child: SizedBox(
             height: MediaQuery.of(ctx).size.height * 0.7,
@@ -384,7 +385,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
             ),
           ),
         ),
-      ),
+      )),
     );
   }
 }

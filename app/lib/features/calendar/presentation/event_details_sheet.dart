@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/platform/system_launcher.dart';
+import '../../../core/ui/escape_to_close.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../core/db/db_provider.dart';
 import '../../../data/repositories/event_repository.dart';
@@ -19,7 +20,7 @@ import 'scope_sheet.dart';
 Future<void> showEventDetails(BuildContext context, String eventId) {
   return showModalBottomSheet<void>(
     context: context,
-    builder: (_) => _Details(eventId: eventId),
+    builder: (_) => EscapeToClose(child: _Details(eventId: eventId)),
   );
 }
 

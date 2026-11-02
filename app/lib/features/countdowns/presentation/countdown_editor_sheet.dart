@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../domain/alarms/alarm_preset.dart';
 import '../../../core/platform/app_permissions.dart';
+import '../../../core/ui/escape_to_close.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../application/countdowns_providers.dart';
 
@@ -12,7 +13,7 @@ Future<void> showCountdownEditor(BuildContext context, {Countdown? countdown}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    builder: (_) => _CountdownEditorSheet(countdown: countdown),
+    builder: (_) => EscapeToClose(child: _CountdownEditorSheet(countdown: countdown)),
   );
 }
 
