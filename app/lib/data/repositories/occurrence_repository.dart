@@ -275,25 +275,25 @@ class OccurrenceRepository {
     int startMs;
     int endMs;
     if (t.dueTime == null) {
-      final cursor = DateTime.utc(
+      final cursor = DateTime(
         int.parse(p[0]),
         int.parse(p[1]),
         int.parse(p[2]),
       );
-      startMs = cursor.millisecondsSinceEpoch;
-      endMs = cursor.add(const Duration(days: 1)).millisecondsSinceEpoch - 1;
+      startMs = cursor.toUtc().millisecondsSinceEpoch;
+      endMs = cursor.add(const Duration(days: 1)).toUtc().millisecondsSinceEpoch - 1;
     } else {
       final mins = t.dueTime!;
-      final dt = DateTime.utc(
+      final dt = DateTime(
         int.parse(p[0]),
         int.parse(p[1]),
         int.parse(p[2]),
         mins ~/ 60,
         mins % 60,
       );
-      startMs = dt.millisecondsSinceEpoch;
+      startMs = dt.toUtc().millisecondsSinceEpoch;
       final dur = Duration(minutes: t.durationMin ?? 30);
-      endMs = dt.add(dur).millisecondsSinceEpoch;
+      endMs = dt.add(dur).toUtc().millisecondsSinceEpoch;
     }
     await _insertRow(
       t.id,
