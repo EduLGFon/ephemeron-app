@@ -1,5 +1,23 @@
 # TODO
 
+## Test health (2026-11-02, found while splitting the timeline view)
+
+- `widget_test` "app builds" hung 10 min: `db.close()` deadlocks on drift's
+  stream-cache `Timer.run` completers when streams were cancelled after the
+  last pump (fake-async timers never fire while awaiting close). Fixed by
+  unmounting first, then pumping twice (second with a 1 s duration to flush
+  the chained cache timers) before `close()`; test now passes in ~3 s.
+  A 3-minute per-test timeout guards against future 10-minute CI burns.
+- `db_test` schema pin fixed: bumped to 7 with a day-index assertion
+  (was pinning 6 while the code had migrated to 7).
+- `log/linux` real-run errors fixed: `HeatmapImage`/`WeekBarsImage` used
+  `Expanded`/`FractionallySizedBox` under unbounded height (offscreen
+  widget-image renders) -> now fixed-size cells via `LayoutBuilder` with a
+  bounded fallback, plus unbounded-height layout tests; `home_widget`
+  `MissingPluginException` on Linux (no widget host) is now skipped
+  silently at the `HomeWidgetService` boundary instead of crashing
+  unhandled out of `main()`.
+
 ## Environment limits (no SDK/devices here; need owner machine)
 
 - Migration tests from previous schema versions: none yet (only v1 exists).
