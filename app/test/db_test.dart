@@ -34,9 +34,20 @@ void main() {
     await db.close();
   });
 
-  test('schema version is 6', () async {
+  test('schema version is 7', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
-    expect(db.schemaVersion, 6);
+    expect(db.schemaVersion, 7);
+    await db.close();
+  });
+
+  test('occurrence cache day index exists', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final res = await db
+        .customSelect(
+          "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_occurrence_cache_day'",
+        )
+        .get();
+    expect(res, isNotEmpty);
     await db.close();
   });
 }
