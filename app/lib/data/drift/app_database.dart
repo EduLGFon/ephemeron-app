@@ -38,7 +38,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -67,6 +67,13 @@ class AppDatabase extends _$AppDatabase {
       if (from < 6) {
         await m.addColumn(tasks, tasks.reminders);
         await m.addColumn(focusSessions, focusSessions.alarmPreset);
+      }
+      if (from < 7) {
+        await m.deleteTable('occurrence_cache');
+        await m.createTable(occurrenceCache);
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_occurrence_cache_day ON occurrence_cache(day_key);',
+        );
       }
     },
     beforeOpen: (details) async {
