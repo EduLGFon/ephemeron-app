@@ -235,27 +235,45 @@ mixin TimelineInteraction {
       master.endUtc ?? master.startUtc!,
       isUtc: true,
     ).add(Duration(minutes: snapped)).add(Duration(days: dayDelta));
+    final EditScope scope;
     if (master.rrule != null && master.rrule!.isNotEmpty) {
-      final scope = await showScopeSheet(context);
-      if (scope == null || !context.mounted) {
+      final picked = await showScopeSheet(context);
+      if (picked == null || !context.mounted) {
         _clearPending();
         return;
       }
-      await repo.editOccurrence(
-        id,
-        orig,
-        scope: scope,
-        startUtc: newStart,
-        endUtc: newEnd,
-      );
+      scope = picked;
     } else {
+      scope = EditScope.all;
+    }
+    final origEnd = DateTime.fromMillisecondsSinceEpoch(
+      master.endUtc ?? master.startUtc!,
+      isUtc: true,
+    );
+    await repo.editOccurrence(
+      id,
+      orig,
+      scope: scope,
+      startUtc: newStart,
+      endUtc: newEnd,
+    );
+    Future<void> undo() async {
       await repo.editOccurrence(
         id,
-        orig,
-        scope: EditScope.all,
-        startUtc: newStart,
-        endUtc: newEnd,
+        newStart,
+        scope: scope,
+        startUtc: orig,
+        endUtc: origEnd,
       );
+      try {
+        final window = ref.read(calendarStateProvider);
+        await ref
+            .read(occurrenceRepositoryProvider)
+            .rebuildWindow(
+              windowStartUtc: window.fromUtc,
+              windowEndUtc: window.toUtc,
+            );
+      } catch (_) {}
     }
     if (context.mounted) {
       // Rebuild occurrence cache so the moved event reappears immediately.
@@ -275,9 +293,14 @@ mixin TimelineInteraction {
           dragOffset = 0;
           pendingMovedId = null;
         });
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Event moved')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Event moved'),
+            duration: const Duration(seconds: 6),
+            persist: false,
+            action: SnackBarAction(label: 'Undo', onPressed: () => undo()),
+          ),
+        );
       }
     }
   }
