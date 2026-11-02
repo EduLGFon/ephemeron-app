@@ -49,8 +49,9 @@ bool timelineIsAllDay(OccurrenceCacheData o) {
 }
 
 Color timelineEventColor(BuildContext context, String? colorId) {
-  if (colorId != null && googleCalendarColors.containsKey(colorId)) {
-    return googleCalendarColors[colorId]!;
+  if (colorId != null && colorId.isNotEmpty) {
+    final parsed = googleCalendarColors[colorId] ?? tryParseCssHex(colorId);
+    if (parsed != null) return parsed;
   }
   return Theme.of(context).colorScheme.primary;
 }

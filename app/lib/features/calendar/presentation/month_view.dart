@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/time/time.dart';
 import '../../../data/drift/app_database.dart';
 import '../application/calendar_providers.dart';
+import 'google_calendar_colors.dart';
 
 class MonthView extends ConsumerWidget {
   const MonthView({super.key, required this.onDayTap});
@@ -21,11 +22,21 @@ class MonthView extends ConsumerWidget {
     final lead = (first.weekday - DateTime.monday + 7) % 7;
     final start = first.subtract(Duration(days: lead));
     final counts = <String, int>{};
+    final dotColors = <String, List<Color>>{};
     for (final o in occAsync.maybeWhen(
       data: (v) => v,
       orElse: () => const <OccurrenceCacheData>[],
     )) {
       counts[o.dayKey] = (counts[o.dayKey] ?? 0) + 1;
+      final list = dotColors.putIfAbsent(o.dayKey, () => []);
+      if (list.length < 3) {
+        list.add(
+          googleCalendarColor(
+            o.colorId ?? '',
+            fallback: Theme.of(context).colorScheme.primary,
+          ),
+        );
+      }
     }
     return Column(
       children: [
@@ -51,6 +62,7 @@ class MonthView extends ConsumerWidget {
                       isToday: isToday,
                       selected: _isSameDay(day, window.anchor),
                       count: counts[key] ?? 0,
+                      dots: dotColors[key] ?? const [],
                       primary: Theme.of(context).colorScheme.primary,
                       onSurface: Theme.of(context).colorScheme.onSurface,
                     ),
@@ -79,7 +91,8 @@ class MonthView extends ConsumerWidget {
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  String _monthName(BuildContext context, int m) => DeviceDateFormat.monthName(context, m);
+  String _monthName(BuildContext context, int m) =>
+      DeviceDateFormat.monthName(context, m);
 }
 
 class _WeekdayHeader extends StatelessWidget {
@@ -105,6 +118,7 @@ class _DayPainter extends CustomPainter {
     required this.isToday,
     required this.selected,
     required this.count,
+    this.dots = const [],
     required this.primary,
     required this.onSurface,
   });
@@ -113,6 +127,7 @@ class _DayPainter extends CustomPainter {
   final bool isToday;
   final bool selected;
   final int count;
+  final List<Color> dots;
   final Color primary;
   final Color onSurface;
 
@@ -131,12 +146,13 @@ class _DayPainter extends CustomPainter {
         Paint()..color = primary.withValues(alpha: 0.3),
       );
     }
-    final dots = count > 3 ? 3 : count;
-    for (var i = 0; i < dots; i++) {
+    final n = dots.isNotEmpty ? dots.length : (count > 3 ? 3 : count);
+    for (var i = 0; i < n; i++) {
+      final c = dots.isNotEmpty ? dots[i] : primary;
       canvas.drawCircle(
-        Offset(size.width / 2 + (i - (dots - 1) / 2) * 8, size.height - 8),
+        Offset(size.width / 2 + (i - (n - 1) / 2) * 8, size.height - 8),
         2.5,
-        Paint()..color = inMonth ? primary : onSurface.withValues(alpha: 0.3),
+        Paint()..color = inMonth ? c : onSurface.withValues(alpha: 0.3),
       );
     }
   }
@@ -144,6 +160,7 @@ class _DayPainter extends CustomPainter {
   @override
   bool shouldRepaint(_DayPainter old) =>
       old.count != count ||
+      old.dots != dots ||
       old.selected != selected ||
       old.isToday != isToday ||
       old.inMonth != inMonth;

@@ -1,9 +1,10 @@
 // Static timeline chrome: hour gutter, day headers, all-day strip.
-// Pure presentation; no business logic.
+// Pure presentation; dragging and tapping arrive via callbacks.
 import 'package:flutter/material.dart';
 
 import '../../../../core/time/time.dart';
 import '../../../../data/drift/app_database.dart';
+import 'timeline_utils.dart';
 
 class TimelineHourGutter extends StatelessWidget {
   const TimelineHourGutter({
@@ -162,14 +163,19 @@ class TimelineAllDayStrip extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: Theme.of(ctx).colorScheme.primaryContainer,
+                    color: timelineEventColor(
+                      ctx,
+                      o.colorId,
+                    ).withValues(alpha: 0.85),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     o.title ?? 'All-day',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(ctx).textTheme.labelSmall,
+                    style: Theme.of(ctx).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(ctx).colorScheme.onPrimary,
+                    ),
                   ),
                 ),
               ),

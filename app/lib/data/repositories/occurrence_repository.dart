@@ -3,6 +3,7 @@ import 'package:ephemeron/core/ids/ids.dart';
 import 'package:ephemeron/core/time/time.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:ephemeron/domain/recurrence/recurrence_rule.dart';
+import 'package:ephemeron/features/calendar/presentation/google_calendar_colors.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -47,6 +48,15 @@ class OccurrenceRepository {
       _db.tasks,
     )..where((t) => t.deletedAt.isNull() & t.completedAt.isNull())).get();
 
+    final calColors = <String, String?>{};
+    for (final c in await _db.select(_db.calendars).get()) {
+      calColors[c.id] = c.color;
+    }
+    final listColors = <String, String?>{};
+    for (final l in await _db.select(_db.taskLists).get()) {
+      listColors[l.id] = l.color;
+    }
+
     var inserted = 0;
     await _db.transaction(() async {
       await (_db.delete(_db.occurrenceCache)..where(
@@ -61,13 +71,24 @@ class OccurrenceRepository {
           exceptionsByMaster[m.id] ?? const [],
           windowStartUtc,
           windowEndUtc,
+          calColors,
         );
       }
       for (final s in singles) {
-        inserted += await _insertSingle(s, windowStartUtc, windowEndUtc);
+        inserted += await _insertSingle(
+          s,
+          windowStartUtc,
+          windowEndUtc,
+          calColors,
+        );
       }
       for (final t in tasks) {
-        inserted += await _insertTask(t, windowStartUtc, windowEndUtc);
+        inserted += await _insertTask(
+          t,
+          windowStartUtc,
+          windowEndUtc,
+          listColors,
+        );
       }
     });
     return inserted;
@@ -132,8 +153,11 @@ class OccurrenceRepository {
     List<Event> exceptions,
     DateTime rangeStart,
     DateTime rangeEnd,
+    Map<String, String?> calColors,
   ) async {
-    if (master.isAllDay) return _expandAllDayMaster(master, exceptions);
+    if (master.isAllDay) {
+      return _expandAllDayMaster(master, exceptions, calColors);
+    }
     if (master.startUtc == null) return 0;
     final durationMs = (master.endUtc ?? master.startUtc!) - master.startUtc!;
     final cancelled = <int>{
@@ -146,6 +170,11 @@ class OccurrenceRepository {
         if (ex.status != 'cancelled' && ex.originalStart != null)
           ex.originalStart!: ex,
     };
+    final color = effectiveEventColor(
+      eventColorId: master.colorId,
+      calendarColor: calColors[master.calendarId],
+      calendarId: master.calendarId,
+    );
     final starts = expandOccurrences(
       startUtc: DateTime.fromMillisecondsSinceEpoch(
         master.startUtc!,
@@ -169,15 +198,19 @@ class OccurrenceRepository {
         startMs,
         endMs,
         _dayKey(startMs, master.tzId),
-        title: master.title,
-        colorId: master.colorId,
+        title: override?.title ?? master.title,
+        colorId: override?.colorId ?? color,
       );
       n++;
     }
     return n;
   }
 
-  Future<int> _expandAllDayMaster(Event master, List<Event> exceptions) async {
+  Future<int> _expandAllDayMaster(
+    Event master,
+    List<Event> exceptions,
+    Map<String, String?> calColors,
+  ) async {
     if (master.startDate == null) return 0;
     final cancelledKeys = <String>{
       for (final ex in exceptions)
@@ -198,6 +231,11 @@ class OccurrenceRepository {
       int.parse(endParts[1]),
       int.parse(endParts[2]),
     ).difference(cursor).inDays;
+    final color = effectiveEventColor(
+      eventColorId: master.colorId,
+      calendarColor: calColors[master.calendarId],
+      calendarId: master.calendarId,
+    );
     final starts = expandOccurrences(
       startUtc: cursor,
       rrule: master.rrule!,
@@ -219,7 +257,7 @@ class OccurrenceRepository {
         dayEnd.millisecondsSinceEpoch - 1,
         day,
         title: master.title,
-        colorId: master.colorId,
+        colorId: color,
       );
       n++;
     }
@@ -230,7 +268,13 @@ class OccurrenceRepository {
     Event e,
     DateTime rangeStart,
     DateTime rangeEnd,
+    Map<String, String?> calColors,
   ) async {
+    final color = effectiveEventColor(
+      eventColorId: e.colorId,
+      calendarColor: calColors[e.calendarId],
+      calendarId: e.calendarId,
+    );
     if (e.isAllDay) {
       if (e.startDate == null) return 0;
       if (e.startDate!.compareTo(dateKey(rangeEnd)) > 0) return 0;
@@ -247,7 +291,7 @@ class OccurrenceRepository {
           next.millisecondsSinceEpoch - 1,
           dateKey(cursor),
           title: e.title,
-          colorId: e.colorId,
+          colorId: color,
         );
         n++;
         if (n > 366) break;
@@ -267,7 +311,7 @@ class OccurrenceRepository {
       endMs,
       _dayKey(e.startUtc!, e.tzId),
       title: e.title,
-      colorId: e.colorId,
+      colorId: color,
     );
     return 1;
   }
@@ -276,10 +320,15 @@ class OccurrenceRepository {
     Task t,
     DateTime rangeStart,
     DateTime rangeEnd,
+    Map<String, String?> listColors,
   ) async {
     if (t.dueDate == null) return 0;
     if (t.dueDate!.compareTo(dateKey(rangeEnd)) > 0) return 0;
     if (t.dueDate!.compareTo(dateKey(rangeStart)) < 0) return 0;
+    final color = effectiveTaskColor(
+      listColor: t.listId == null ? null : listColors[t.listId],
+      seed: t.listId ?? t.id,
+    );
     final p = t.dueDate!.split('-');
     int startMs;
     int endMs;
@@ -290,7 +339,9 @@ class OccurrenceRepository {
         int.parse(p[2]),
       );
       startMs = cursor.toUtc().millisecondsSinceEpoch;
-      endMs = cursor.add(const Duration(days: 1)).toUtc().millisecondsSinceEpoch - 1;
+      endMs =
+          cursor.add(const Duration(days: 1)).toUtc().millisecondsSinceEpoch -
+          1;
     } else {
       final mins = t.dueTime!;
       final dt = DateTime(
@@ -310,7 +361,7 @@ class OccurrenceRepository {
       endMs,
       t.dueDate!,
       title: t.title,
-      colorId: null,
+      colorId: color,
     );
     return 1;
   }

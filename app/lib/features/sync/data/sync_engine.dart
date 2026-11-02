@@ -385,6 +385,7 @@ class SyncEngine {
                 id: newId(),
                 remoteId: Value(id),
                 name: (name == null || name.isEmpty) ? id : name,
+                color: Value(_calendarColorOf(c)),
                 source: const Value('google'),
                 googleAccount: Value(account),
                 readOnly: Value((c['accessRole'] as String?) == 'reader'),
@@ -394,11 +395,17 @@ class SyncEngine {
             );
         created++;
       } else if (!existing.dirty && name != null && name.isNotEmpty) {
-        await (_db.update(
-          _db.calendars,
-        )..where((t) => t.id.equals(existing!.id))).write(
-          CalendarsCompanion(name: Value(name), updatedAt: Value(now)),
+        final color = _calendarColorOf(c);
+        final update = CalendarsCompanion(
+          name: Value(name),
+          updatedAt: Value(now),
+          color: color == null ? const Value.absent() : Value(color),
         );
+        if (existing.name != name || existing.color != color) {
+          await (_db.update(
+            _db.calendars,
+          )..where((t) => t.id.equals(existing!.id))).write(update);
+        }
       }
     }
     // Remove duplicate google calendars left by earlier (buggy) runs.
@@ -467,6 +474,17 @@ class SyncEngine {
   }
 
   // Pull.
+
+  /// Google calendarList color: backgroundColor hex wins, colorId palette
+  /// id as fallback. Returns null when the entry carries no color so the
+  /// occurrence builder can apply its stable per-calendar fallback.
+  String? _calendarColorOf(Map<String, dynamic> c) {
+    final bg = c['backgroundColor'] as String?;
+    if (bg != null && bg.isNotEmpty) return bg;
+    final id = c['colorId'] as String?;
+    if (id != null && id.isNotEmpty) return id;
+    return null;
+  }
 
   Future<int> _pullCalendars(GoogleApiClient client) async {
     final calendars =
@@ -662,7 +680,9 @@ class SyncEngine {
         var page = await client.tasksList(remoteId, updatedMin: updatedMin);
         if (updatedMin != null && page.items.isEmpty) {
           page = await client.tasksList(remoteId);
-          debugPrint('[sync] tasksList retry without updatedMin got ${page.items.length} items');
+          debugPrint(
+            '[sync] tasksList retry without updatedMin got ${page.items.length} items',
+          );
         }
         debugPrint('[sync] tasksList got ${page.items.length} items');
         for (final g in page.items) {
