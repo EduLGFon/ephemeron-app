@@ -6,8 +6,10 @@ import 'package:intl/intl.dart';
 
 import '../../../core/platform/system_launcher.dart';
 import '../../../data/drift/app_database.dart';
+import '../../../core/db/db_provider.dart';
 import '../../../data/repositories/event_repository.dart';
 import '../../notes/application/notes_providers.dart';
+import '../../tasks/application/tasks_providers.dart';
 import '../../notes/presentation/note_editor_screen.dart';
 import '../application/calendar_providers.dart';
 import 'event_editor_sheet.dart';
@@ -25,36 +27,37 @@ class _Details extends ConsumerWidget {
 
   final String eventId;
 
+  Future<Object?> _load(WidgetRef ref, String id) async {
+    final ev = await (ref.read(eventRepositoryProvider).dbSelect()
+          ..where((e) => e.id.equals(id)))
+        .getSingleOrNull();
+    if (ev != null) return ev;
+    return (ref.read(appDatabaseProvider).select(ref.read(appDatabaseProvider).tasks)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return FutureBuilder<Event?>(
-      future:
-          (ref.read(eventRepositoryProvider).dbSelect()
-                ..where((e) => e.id.equals(eventId)))
-              .getSingleOrNull(),
+    return FutureBuilder<Object?>(
+      future: _load(ref, eventId),
       builder: (ctx, snap) {
-        final e = snap.data;
-        if (e == null) {
-          return const SafeArea(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Text('Event not found'),
-            ),
-          );
-        }
-        return SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ListTile(
-                  title: Text(
-                    e.title,
-                    style: Theme.of(context).textTheme.titleLarge,
+        final data = snap.data;
+        if (data is Event) {
+          final e = data;
+          return SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ListTile(
+                    title: Text(
+                      e.title,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    subtitle: Text(_when(e)),
                   ),
-                  subtitle: Text(_when(e)),
-                ),
                 if (e.location != null && e.location!.isNotEmpty)
                   ListTile(
                     leading: const Icon(Icons.place_outlined),
@@ -150,6 +153,59 @@ class _Details extends ConsumerWidget {
             ),
           ),
         );
+      } else if (data is Task) {
+        final t = data;
+        return SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ListTile(
+                  title: Text(
+                    t.title,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  subtitle: Text(
+                    t.dueDate == null
+                        ? 'No due date'
+                        : 'Due ${t.dueDate}${t.dueTime == null ? '' : ' ${t.dueTime! ~/ 60}:${(t.dueTime! % 60).toString().padLeft(2, '0')}'}',
+                  ),
+                ),
+                if (t.notes != null && t.notes!.isNotEmpty)
+                  ListTile(
+                    leading: const Icon(Icons.notes_outlined),
+                    title: Text(t.notes!),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: FilledButton.icon(
+                    onPressed: t.completedAt == null
+                        ? () async {
+                            await ref
+                                .read(taskRepositoryProvider)
+                                .completeTask(t.id);
+                            if (context.mounted) Navigator.of(context).pop();
+                          }
+                        : null,
+                    icon: const Icon(Icons.check),
+                    label: Text(
+                      t.completedAt == null ? 'Mark as done' : 'Completed',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      } else {
+        return const SafeArea(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text('Event not found'),
+          ),
+        );
+      }
       },
     );
   }
