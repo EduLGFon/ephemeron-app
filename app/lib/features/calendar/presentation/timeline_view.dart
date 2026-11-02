@@ -13,6 +13,7 @@ import '../application/calendar_providers.dart';
 import 'event_details_sheet.dart';
 import 'event_editor_sheet.dart';
 import 'scope_sheet.dart';
+import 'timeline_layout.dart';
 import 'google_calendar_colors.dart';
 
 class TimelineView extends ConsumerStatefulWidget {
@@ -77,6 +78,45 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
   DateTime _dayStart(int i) {
     final a = widget.anchor;
     return DateTime(a.year, a.month, a.day).add(Duration(days: i));
+  }
+
+  DateTime _dayStartForKey(String dayKeyValue) {
+    for (var i = 0; i < widget.dayCount; i++) {
+      final d = _dayStart(i);
+      if (dateKey(d) == dayKeyValue) return d;
+    }
+    return _dayStart(0);
+  }
+
+  double _minutesOf(DateTime t, DateTime midnight) =>
+      t.difference(midnight).inSeconds / 60.0;
+
+  Map<String, TimelinePlacement> _placementsFor(
+    List<OccurrenceCacheData> timed,
+  ) {
+    final out = <String, TimelinePlacement>{};
+    final byDay = <String, List<OccurrenceCacheData>>{};
+    for (final o in timed) {
+      byDay.putIfAbsent(o.dayKey, () => []).add(o);
+    }
+    for (final entry in byDay.entries) {
+      final midnight = _dayStartForKey(entry.key);
+      final items = <TimelineItem>[];
+      for (final o in entry.value) {
+        final s = DateTime.fromMillisecondsSinceEpoch(o.startUtc);
+        final e = DateTime.fromMillisecondsSinceEpoch(o.endUtc);
+        var sMin = _minutesOf(s, midnight).clamp(0.0, 1440.0);
+        var eMin = _minutesOf(e, midnight).clamp(0.0, 1440.0);
+        if (eMin <= sMin) {
+          // Spans midnight or zero-length: show at least 30min, clamp to day.
+          eMin = (sMin + 30).clamp(0.0, 1440.0);
+          if (eMin <= sMin) eMin = 1440.0;
+        }
+        items.add(TimelineItem(id: o.id, startMin: sMin, endMin: eMin));
+      }
+      out.addAll(layoutDayEvents(items));
+    }
+    return out;
   }
 
   void _maybeJump() {
@@ -222,6 +262,14 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
                           builder: (ctx, cons) {
                             final colW = cons.maxWidth / widget.dayCount;
                             _lastColW = colW;
+                            final placements = _placementsFor(timed);
+                            final ordered = List<OccurrenceCacheData>.of(timed)
+                              ..sort((a, b) {
+                                final da = placements[a.id]?.depth ?? 0;
+                                final db = placements[b.id]?.depth ?? 0;
+                                if (da != db) return da.compareTo(db);
+                                return a.startUtc.compareTo(b.startUtc);
+                              });
                             return Stack(
                               children: [
                                 GestureDetector(
@@ -246,7 +294,8 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
                                     ),
                                   ),
                                 ),
-                                for (final o in timed) _eventBlock(o, colW),
+                                for (final o in ordered)
+                                  _eventBlock(o, colW, placements[o.id]),
                                 IgnorePointer(
                                   child: RepaintBoundary(
                                     child: CustomPaint(
@@ -297,7 +346,12 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
     return (o.endUtc - o.startUtc) >= const Duration(hours: 23).inMilliseconds;
   }
 
-  Widget _eventBlock(OccurrenceCacheData o, double colW) {
+  Widget _eventBlock(
+    OccurrenceCacheData o,
+    double colW, [
+    TimelinePlacement? placement,
+  ]) {
+    final midnight = _dayStartForKey(o.dayKey);
     final s = DateTime.fromMillisecondsSinceEpoch(o.startUtc);
     final e = DateTime.fromMillisecondsSinceEpoch(o.endUtc);
     var dayIdx = 0;
@@ -307,8 +361,11 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
         break;
       }
     }
-    var y0 = (s.hour * 60 + s.minute + s.second / 60) / 60 * hourHeight;
-    var y1 = (e.hour * 60 + e.minute + e.second / 60) / 60 * hourHeight;
+    var sMin = _minutesOf(s, midnight).clamp(0.0, 1440.0);
+    var eMin = _minutesOf(e, midnight).clamp(0.0, 1440.0);
+    if (eMin <= sMin) eMin = (sMin + 30).clamp(0.0, 1440.0);
+    var y0 = sMin / 60 * hourHeight;
+    var y1 = eMin / 60 * hourHeight;
     if (y1 - y0 < 20) y1 = y0 + 20;
     if (o.eventId == _dragId) {
       y0 += _dragDy;
@@ -321,10 +378,19 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
     final leftShift = (o.eventId == _dragId)
         ? _dragDayDelta * colW
         : (_pendingMovedId == o.eventId ? _dragXOffset : 0.0);
+    final fracLeft = placement?.left ?? 0.0;
+    final fracWidth = placement?.width ?? 1.0;
+    final depth = placement?.depth ?? 0;
+    final laneW = colW - 4;
+    var left = dayIdx * colW + 2 + fracLeft * laneW + leftShift;
+    var width = fracWidth * laneW - 2;
+    if (width < 14) width = 14;
+    final base = _eventColor(context, o.colorId);
+    final nested = depth > 0;
     return Positioned(
-      left: dayIdx * colW + 2 + leftShift,
+      left: left,
       top: y0,
-      width: colW - 4,
+      width: width,
       height: y1 - y0,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -353,8 +419,16 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           decoration: BoxDecoration(
-            color: _eventColor(context, o.colorId).withValues(alpha: 0.9),
+            color: base.withValues(alpha: nested ? 0.95 : 0.85),
             borderRadius: BorderRadius.circular(4),
+            border: nested
+                ? Border.all(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surface.withValues(alpha: 0.9),
+                    width: 1,
+                  )
+                : null,
           ),
           child: Text(
             title,
