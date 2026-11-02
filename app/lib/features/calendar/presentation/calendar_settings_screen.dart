@@ -136,6 +136,8 @@ class CalendarSettingsScreen extends ConsumerWidget {
             content: const Text(
               'Calendar permission denied. The import needs read access.',
             ),
+            duration: const Duration(seconds: 6),
+            persist: false,
             action: SnackBarAction(
               label: 'Settings',
               onPressed: SystemLauncher.openAppSettings,

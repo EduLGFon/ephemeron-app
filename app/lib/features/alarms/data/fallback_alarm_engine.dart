@@ -97,6 +97,7 @@ class _AlarmListenerState extends ConsumerState<AlarmListener>
         SnackBar(
           content: Text(kind == 'reminder' ? 'Reminder: $title' : title),
           duration: const Duration(seconds: 8),
+          persist: false,
           action: SnackBarAction(label: 'Open', onPressed: () {}),
         ),
       );

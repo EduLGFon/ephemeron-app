@@ -139,6 +139,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                               SnackBar(
                                 content: Text('Trashed "${n.title}"'),
                                 duration: const Duration(seconds: 6),
+                                persist: false,
                                 action: SnackBarAction(
                                   label: 'Undo',
                                   onPressed: () => ref

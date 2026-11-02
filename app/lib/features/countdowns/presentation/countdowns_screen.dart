@@ -169,6 +169,7 @@ class _CountdownTile extends ConsumerWidget {
       SnackBar(
         content: const Text('Countdown deleted.'),
         duration: const Duration(seconds: 6),
+        persist: false,
         action: SnackBarAction(
           label: 'Undo',
           onPressed: () => repo.restoreCountdown(entry.c.id),

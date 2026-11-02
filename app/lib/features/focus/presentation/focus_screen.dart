@@ -417,6 +417,7 @@ Future<void> _creditHabit(
     SnackBar(
       content: Text('Credited $kept min to habit.'),
       duration: const Duration(seconds: 6),
+      persist: false,
       action: SnackBarAction(
         label: 'Undo',
         onPressed: () {

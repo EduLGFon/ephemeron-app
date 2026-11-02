@@ -255,6 +255,8 @@ class _TaskTile extends ConsumerWidget {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Completed "${task.title}"'),
+                duration: const Duration(seconds: 6),
+                persist: false,
                 action: SnackBarAction(
                   label: 'Undo',
                   onPressed: () => repo.uncompleteTask(task.id),
@@ -274,6 +276,7 @@ class _TaskTile extends ConsumerWidget {
             SnackBar(
               content: Text('Deleted "${task.title}"'),
               duration: const Duration(seconds: 6),
+              persist: false,
               action: SnackBarAction(
                 label: 'Undo',
                 onPressed: () => repo.restoreTasks([task.id]),
@@ -292,6 +295,8 @@ class _TaskTile extends ConsumerWidget {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Completed "${task.title}"'),
+                  duration: const Duration(seconds: 6),
+                  persist: false,
                   action: SnackBarAction(
                     label: 'Undo',
                     onPressed: () => repo.uncompleteTask(task.id),
@@ -378,6 +383,7 @@ class _MoveButtons extends ConsumerWidget {
       SnackBar(
         content: Text('Moved "${task.title}"'),
         duration: const Duration(seconds: 6),
+        persist: false,
         action: SnackBarAction(
           label: 'Undo',
           onPressed: () async {

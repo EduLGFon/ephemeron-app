@@ -263,6 +263,7 @@ class _HabitTile extends ConsumerWidget {
       SnackBar(
         content: Text(wasArchived ? 'Habit unarchived.' : 'Habit archived.'),
         duration: const Duration(seconds: 6),
+        persist: false,
         action: SnackBarAction(
           label: 'Undo',
           onPressed: () => repo.archiveHabit(habit.id, wasArchived),

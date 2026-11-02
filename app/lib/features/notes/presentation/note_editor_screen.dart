@@ -254,6 +254,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
             SnackBar(
               content: const Text('Note trashed'),
               duration: const Duration(seconds: 6),
+              persist: false,
               action: SnackBarAction(
                 label: 'Undo',
                 onPressed: () => repo.restoreNote(note.id),

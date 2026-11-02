@@ -140,6 +140,8 @@ class AppPermissions {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
+        duration: const Duration(seconds: 6),
+        persist: false,
         action: SnackBarAction(
           label: 'Settings',
           onPressed: SystemLauncher.openAppSettings,
