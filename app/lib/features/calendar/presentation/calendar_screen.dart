@@ -12,7 +12,7 @@ import 'agenda_view.dart';
 import 'calendar_settings_screen.dart';
 import 'event_editor_sheet.dart';
 import 'month_view.dart';
-import 'timeline_view.dart';
+import 'timeline/timeline_view.dart';
 import 'year_view.dart';
 
 class CalendarScreen extends ConsumerStatefulWidget {

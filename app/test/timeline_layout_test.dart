@@ -1,4 +1,4 @@
-import 'package:ephemeron/features/calendar/presentation/timeline_layout.dart';
+import 'package:ephemeron/features/calendar/presentation/timeline/timeline_layout.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

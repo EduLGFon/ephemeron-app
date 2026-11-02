@@ -5,7 +5,7 @@ import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:ephemeron/data/repositories/occurrence_repository.dart';
 import 'package:ephemeron/features/calendar/application/calendar_providers.dart';
 import 'package:ephemeron/features/calendar/application/calendar_state.dart';
-import 'package:ephemeron/features/calendar/presentation/timeline_view.dart';
+import 'package:ephemeron/features/calendar/presentation/timeline/timeline_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
