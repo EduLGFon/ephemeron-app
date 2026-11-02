@@ -54,7 +54,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRebuild());
     return Scaffold(
       appBar: AppBar(
-        title: SyncTitle(text: 'Calendar ${_title(window)}'),
+        title: SyncTitle(text: 'Calendar ${_title(context, window)}'),
         leading: IconButton(
           icon: const Icon(Icons.today),
           tooltip: 'Today',
@@ -71,30 +71,37 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             onPressed: () =>
                 ref.read(calendarStateProvider.notifier).shift(_step(window)),
           ),
-          PopupMenuButton<CalendarViewKind>(
+          PopupMenuButton<CalendarViewKind?>(
             icon: const Icon(Icons.view_agenda_outlined),
             onSelected: (v) {
-              if (v == CalendarViewKind.multiDay) {
-                _pickDayCount();
-                return;
-              }
+              if (v == null) return;
               ref.read(calendarStateProvider.notifier).setView(v);
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(
                 value: CalendarViewKind.month,
                 child: Text('Month'),
               ),
-              PopupMenuItem(
-                value: CalendarViewKind.multiDay,
-                child: Text('3/4/7 days'),
+              for (final d in [3, 4, 7])
+                PopupMenuItem(
+                  value: null,
+                  onTap: () => ref
+                      .read(calendarStateProvider.notifier)
+                      .setView(CalendarViewKind.multiDay, dayCount: d),
+                  child: Text('$d days'),
+                ),
+              const PopupMenuItem(
+                value: CalendarViewKind.day,
+                child: Text('Day'),
               ),
-              PopupMenuItem(value: CalendarViewKind.day, child: Text('Day')),
-              PopupMenuItem(
+              const PopupMenuItem(
                 value: CalendarViewKind.agenda,
                 child: Text('Agenda'),
               ),
-              PopupMenuItem(value: CalendarViewKind.year, child: Text('Year')),
+              const PopupMenuItem(
+                value: CalendarViewKind.year,
+                child: Text('Year'),
+              ),
             ],
           ),
           IconButton(
@@ -142,28 +149,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     _ => 1,
   };
 
-  String _title(CalendarWindow w) => DateFormat.yMMM().format(w.anchor);
+  String _title(BuildContext context, CalendarWindow w) => DateFormat.yMMM(
+    Localizations.localeOf(context).toString(),
+  ).format(w.anchor);
 
-  Future<void> _pickDayCount() async {
-    final n = await showDialog<int>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('Days'),
-        children: [
-          for (final d in [3, 4, 7])
-            SimpleDialogOption(
-              onPressed: () => Navigator.of(ctx).pop(d),
-              child: Text('$d days'),
-            ),
-        ],
-      ),
-    );
-    if (n != null) {
-      ref
-          .read(calendarStateProvider.notifier)
-          .setView(CalendarViewKind.multiDay, dayCount: n);
-    }
-  }
 }
 
 Future<void> persistCalendarView(WidgetRef ref) async {
