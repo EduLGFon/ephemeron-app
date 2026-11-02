@@ -13,6 +13,7 @@ import '../../tasks/application/tasks_providers.dart';
 import '../../notes/presentation/note_editor_screen.dart';
 import '../application/calendar_providers.dart';
 import 'event_editor_sheet.dart';
+import '../../tasks/presentation/task_editor_sheet.dart';
 import 'scope_sheet.dart';
 
 Future<void> showEventDetails(BuildContext context, String eventId) {
@@ -179,6 +180,39 @@ class _Details extends ConsumerWidget {
                   ),
                 Padding(
                   padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            showTaskEditor(context, task: t);
+                          },
+                          child: const Text('Edit'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () async {
+                            await ref
+                                .read(taskRepositoryProvider)
+                                .softDeleteTasks([t.id]);
+                            try {
+                              ref
+                                  .read(occurrenceDirtyProvider.notifier)
+                                  .markDirty();
+                            } catch (_) {}
+                            if (context.mounted) Navigator.of(context).pop();
+                          },
+                          child: const Text('Delete'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   child: FilledButton.icon(
                     onPressed: t.completedAt == null
                         ? () async {
