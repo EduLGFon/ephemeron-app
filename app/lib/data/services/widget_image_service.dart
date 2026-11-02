@@ -74,8 +74,11 @@ class HeatmapImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final start =
-        DateTime(end.year, end.month, end.day).subtract(const Duration(days: 83));
+    final start = DateTime(
+      end.year,
+      end.month,
+      end.day,
+    ).subtract(const Duration(days: 83));
     String key(DateTime d) =>
         '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
     return Container(
@@ -85,20 +88,33 @@ class HeatmapImage extends StatelessWidget {
         children: [
           for (var w = 0; w < 12; w++)
             Expanded(
-              child: Column(
-                children: [
-                  for (var d = 0; d < 7; d++)
-                    Expanded(
-                      child: Container(
-                        margin: const EdgeInsets.all(1),
-                        color: done.contains(
-                          key(start.add(Duration(days: w * 7 + d))),
-                        )
-                            ? const Color(0xFF000000)
-                            : const Color(0xFFDDDDDD),
-                      ),
-                    ),
-                ],
+              child: LayoutBuilder(
+                builder: (ctx, cons) {
+                  // Fixed cell height: renderFlutterWidget can lay this out
+                  // with unbounded height, where Expanded would throw.
+                  final cellH = cons.maxHeight.isFinite
+                      ? (cons.maxHeight / 7) - 2
+                      : 14.0;
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var d = 0; d < 7; d++)
+                        SizedBox(
+                          height: cellH,
+                          width: double.infinity,
+                          child: Container(
+                            margin: const EdgeInsets.all(1),
+                            color:
+                                done.contains(
+                                  key(start.add(Duration(days: w * 7 + d))),
+                                )
+                                ? const Color(0xFF000000)
+                                : const Color(0xFFDDDDDD),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
         ],
@@ -114,24 +130,31 @@ class WeekBarsImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final max = minutes.fold<int>(
-      1,
-      (a, b) => b > a ? b : a,
-    );
+    final max = minutes.fold<int>(1, (a, b) => b > a ? b : a);
     return Container(
       color: const Color(0xFFFFFFFF),
       padding: const EdgeInsets.all(4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          for (final m in minutes)
-            Expanded(
-              child: FractionallySizedBox(
-                heightFactor: (m / max).clamp(0.05, 1.0),
-                child: Container(color: const Color(0xFF000000)),
-              ),
+      child: LayoutBuilder(
+        builder: (ctx, cons) {
+          // Bounded bar area: FractionallySizedBox needs a finite height,
+          // which offscreen renders do not always provide.
+          final areaH = cons.maxHeight.isFinite ? cons.maxHeight : 112.0;
+          return SizedBox(
+            height: areaH,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (final m in minutes)
+                  Expanded(
+                    child: FractionallySizedBox(
+                      heightFactor: (m / max).clamp(0.05, 1.0),
+                      child: Container(color: const Color(0xFF000000)),
+                    ),
+                  ),
+              ],
             ),
-        ],
+          );
+        },
       ),
     );
   }

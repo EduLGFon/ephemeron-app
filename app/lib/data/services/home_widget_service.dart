@@ -1,6 +1,7 @@
 // Service for pushing data to Android home-screen widgets via home_widget.
 // Widgets are rendered natively (see android/.../HomeWidgets.kt); this
 // service stores the small text/image payload each widget displays.
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:home_widget/home_widget.dart';
 
@@ -34,7 +35,10 @@ const List<HomeWidgetDefinition> homeWidgets = <HomeWidgetDefinition>[
   HomeWidgetDefinition('TaskCountsWidgetProvider', 'task_counts'),
   HomeWidgetDefinition('MatrixCountsWidgetProvider', 'matrix_counts'),
   HomeWidgetDefinition('HabitStreakWidgetProvider', 'habit_streak'),
-  HomeWidgetDefinition('HabitCompletionRateWidgetProvider', 'habit_completion_rate'),
+  HomeWidgetDefinition(
+    'HabitCompletionRateWidgetProvider',
+    'habit_completion_rate',
+  ),
   HomeWidgetDefinition('HabitHeatmapWidgetProvider', 'habit_heatmap'),
   HomeWidgetDefinition('FocusMinutesWidgetProvider', 'focus_minutes'),
   HomeWidgetDefinition('PomodoroWidgetProvider', 'pomodoro'),
@@ -56,23 +60,48 @@ const List<HomeWidgetDefinition> homeWidgets = <HomeWidgetDefinition>[
   HomeWidgetDefinition('TagShortcutsWidgetProvider', 'tag_shortcuts'),
   HomeWidgetDefinition('FolderShortcutsWidgetProvider', 'folder_shortcuts'),
   HomeWidgetDefinition('VacationStatusWidgetProvider', 'vacation_status'),
-  HomeWidgetDefinition('PendingTasksCollectionProvider', 'pending_tasks_collection'),
+  HomeWidgetDefinition(
+    'PendingTasksCollectionProvider',
+    'pending_tasks_collection',
+  ),
   HomeWidgetDefinition('DayAgendaCollectionProvider', 'day_agenda_collection'),
-  HomeWidgetDefinition('RecentNotesCollectionProvider', 'recent_notes_collection'),
-  HomeWidgetDefinition('CountdownsCollectionProvider', 'all_countdowns_collection'),
-  HomeWidgetDefinition('HabitsTodayCollectionProvider', 'habits_today_collection'),
+  HomeWidgetDefinition(
+    'RecentNotesCollectionProvider',
+    'recent_notes_collection',
+  ),
+  HomeWidgetDefinition(
+    'CountdownsCollectionProvider',
+    'all_countdowns_collection',
+  ),
+  HomeWidgetDefinition(
+    'HabitsTodayCollectionProvider',
+    'habits_today_collection',
+  ),
 ];
 
 class HomeWidgetService {
   HomeWidgetService();
 
+  /// Runs a home_widget platform call, silently skipping on platforms
+  /// without a widget host (e.g. Linux desktop). Never throws.
+  Future<void> _widgetCall(Future<void> Function() call) async {
+    try {
+      await call();
+    } on MissingPluginException {
+      // No widget host on this platform; degrade gracefully.
+    }
+  }
+
   static String encodeItems(List<Map<String, String>> items) {
     final json = items
-        .map((e) =>
-            '{"id":"${(e['id'] ?? '').replaceAll('"', '\\"')}","title":"${(e['title'] ?? '').replaceAll('"', '\\"')}"}')
+        .map(
+          (e) =>
+              '{"id":"${(e['id'] ?? '').replaceAll('"', '\\"')}","title":"${(e['title'] ?? '').replaceAll('"', '\\"')}"}',
+        )
         .join(',');
     return '[$json]';
   }
+
   /// Store a text/image payload for one widget and refresh it.
   Future<void> update({
     required String keyPrefix,
@@ -80,20 +109,25 @@ class HomeWidgetService {
     String? title,
     String? body,
     String? imagePath,
-  }) async {
-    if (title != null) {
-      await HomeWidget.saveWidgetData<String>('${keyPrefix}_title', title);
-    }
-    if (body != null) {
-      await HomeWidget.saveWidgetData<String>('${keyPrefix}_body', body);
-    }
-    if (imagePath != null) {
-      await HomeWidget.saveWidgetData<String>('${keyPrefix}_image', imagePath);
-    }
-    await HomeWidget.updateWidget(
-      androidName: provider,
-      qualifiedAndroidName: 'com.spotnik.ephemeron.$provider',
-    );
+  }) {
+    return _widgetCall(() async {
+      if (title != null) {
+        await HomeWidget.saveWidgetData<String>('${keyPrefix}_title', title);
+      }
+      if (body != null) {
+        await HomeWidget.saveWidgetData<String>('${keyPrefix}_body', body);
+      }
+      if (imagePath != null) {
+        await HomeWidget.saveWidgetData<String>(
+          '${keyPrefix}_image',
+          imagePath,
+        );
+      }
+      await HomeWidget.updateWidget(
+        androidName: provider,
+        qualifiedAndroidName: 'com.spotnik.ephemeron.$provider',
+      );
+    });
   }
 
   /// Convenience: update by key prefix (provider resolved).
@@ -122,25 +156,30 @@ class HomeWidgetService {
     required String provider,
     required List<Map<String, String>> items,
     String? title,
-  }) async {
-    if (title != null) {
-      await HomeWidget.saveWidgetData<String>('${keyPrefix}_title', title);
-    }
-    final wrapped = encodeItems(items);
-    await HomeWidget.saveWidgetData<String>('${keyPrefix}_items', wrapped);    await HomeWidget.updateWidget(
-      androidName: provider,
-      qualifiedAndroidName: 'com.spotnik.ephemeron.$provider',
-    );
+  }) {
+    return _widgetCall(() async {
+      if (title != null) {
+        await HomeWidget.saveWidgetData<String>('${keyPrefix}_title', title);
+      }
+      final wrapped = encodeItems(items);
+      await HomeWidget.saveWidgetData<String>('${keyPrefix}_items', wrapped);
+      await HomeWidget.updateWidget(
+        androidName: provider,
+        qualifiedAndroidName: 'com.spotnik.ephemeron.$provider',
+      );
+    });
   }
 
   /// Refresh every shipped widget (best-effort).
-  Future<void> refreshAll() async {
-    for (final def in homeWidgets) {
-      await HomeWidget.updateWidget(
-        androidName: def.provider,
-        qualifiedAndroidName: 'com.spotnik.ephemeron.${def.provider}',
-      );
-    }
+  Future<void> refreshAll() {
+    return _widgetCall(() async {
+      for (final def in homeWidgets) {
+        await HomeWidget.updateWidget(
+          androidName: def.provider,
+          qualifiedAndroidName: 'com.spotnik.ephemeron.${def.provider}',
+        );
+      }
+    });
   }
 }
 
