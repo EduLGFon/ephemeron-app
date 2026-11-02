@@ -1,7 +1,7 @@
 // Habit editor bottom sheet: create and edit.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../../../domain/alarms/alarm_preset.dart';
@@ -168,7 +168,9 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
             const SizedBox(height: 8),
             Row(
               children: [
-                Expanded(child: Text('Start: $_startDate')),
+                Expanded(
+                  child: Text('Start: ${DeviceDateFormat.dateIso(context, _startDate)}'),
+                ),
                 TextButton(
                   onPressed: _pickStartDate,
                   child: const Text('Change'),
@@ -297,9 +299,9 @@ class _WeekdayPicker extends StatelessWidget {
   final void Function(int mask) onChanged;
 
   static const _labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  static List<String> get _names => List.generate(
+  static List<String> _names(BuildContext context) => List.generate(
     7,
-    (i) => DateFormat.EEEE().format(DateTime(2024, 1, 1 + i)),
+    (i) => DeviceDateFormat.eeee(context).format(DateTime(2024, 1, 1 + i)),
   );
 
   @override
@@ -309,7 +311,7 @@ class _WeekdayPicker extends StatelessWidget {
       children: [
         for (var i = 0; i < 7; i++)
           Semantics(
-            label: _names[i],
+            label: _names(context)[i],
             selected: (mask & (1 << i)) != 0,
             child: FilterChip(
               label: Text(_labels[i]),

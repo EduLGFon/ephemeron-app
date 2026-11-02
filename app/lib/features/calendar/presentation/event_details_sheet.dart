@@ -1,8 +1,8 @@
 // Event details sheet: view, edit, delete with scope, duplicate.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/platform/system_launcher.dart';
 import '../../../core/ui/escape_to_close.dart';
@@ -10,6 +10,7 @@ import '../../../data/drift/app_database.dart';
 import '../../../core/db/db_provider.dart';
 import '../../../data/repositories/event_repository.dart';
 import '../../notes/application/notes_providers.dart';
+import '../../sync/application/pending_operations.dart';
 import '../../tasks/application/tasks_providers.dart';
 import '../../notes/presentation/note_editor_screen.dart';
 import '../application/calendar_providers.dart';
@@ -30,11 +31,14 @@ class _Details extends ConsumerWidget {
   final String eventId;
 
   Future<Object?> _load(WidgetRef ref, String id) async {
-    final ev = await (ref.read(eventRepositoryProvider).dbSelect()
-          ..where((e) => e.id.equals(id)))
-        .getSingleOrNull();
+    final ev =
+        await (ref.read(eventRepositoryProvider).dbSelect()
+              ..where((e) => e.id.equals(id)))
+            .getSingleOrNull();
     if (ev != null) return ev;
-    return (ref.read(appDatabaseProvider).select(ref.read(appDatabaseProvider).tasks)
+    return (ref
+            .read(appDatabaseProvider)
+            .select(ref.read(appDatabaseProvider).tasks)
           ..where((t) => t.id.equals(id)))
         .getSingleOrNull();
   }
@@ -58,189 +62,205 @@ class _Details extends ConsumerWidget {
                       e.title,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    subtitle: Text(_when(e)),
+                    subtitle: Text(_when(context, e)),
                   ),
-                if (e.location != null && e.location!.isNotEmpty)
-                  ListTile(
-                    leading: const Icon(Icons.place_outlined),
-                    title: Text(e.location!),
-                  ),
-                if (e.meetUrl != null && e.meetUrl!.isNotEmpty)
-                  ListTile(
-                    leading: const Icon(Icons.videocam_outlined),
-                    title: Text(e.meetUrl!),
-                    subtitle: const Text('Google Meet'),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.open_in_new),
-                      tooltip: 'Join meeting',
-                      onPressed: () async {
-                        final ok = await SystemLauncher.openUrl(e.meetUrl!);
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              ok
-                                  ? 'Opening meeting'
-                                  : 'Join not supported here - link copied',
+                  if (e.location != null && e.location!.isNotEmpty)
+                    ListTile(
+                      leading: const Icon(Icons.place_outlined),
+                      title: Text(e.location!),
+                    ),
+                  if (e.meetUrl != null && e.meetUrl!.isNotEmpty)
+                    ListTile(
+                      leading: const Icon(Icons.videocam_outlined),
+                      title: Text(e.meetUrl!),
+                      subtitle: const Text('Google Meet'),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.open_in_new),
+                        tooltip: 'Join meeting',
+                        onPressed: () async {
+                          final ok = await SystemLauncher.openUrl(e.meetUrl!);
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                ok
+                                    ? 'Opening meeting'
+                                    : 'Join not supported here - link copied',
+                              ),
                             ),
-                          ),
+                          );
+                          if (!ok) {
+                            await Clipboard.setData(
+                              ClipboardData(text: e.meetUrl!),
+                            );
+                          }
+                        },
+                      ),
+                      onTap: () {
+                        Clipboard.setData(ClipboardData(text: e.meetUrl!));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Meet link copied')),
                         );
-                        if (!ok) {
-                          await Clipboard.setData(
-                            ClipboardData(text: e.meetUrl!),
+                      },
+                    ),
+                  if (e.notes != null && e.notes!.isNotEmpty)
+                    ListTile(
+                      leading: const Icon(Icons.notes_outlined),
+                      title: Text(e.notes!),
+                    ),
+                  _Attendees(eventId: e.id),
+                  _LinkedNotes(eventId: e.id),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              showEventEditor(context, event: e);
+                            },
+                            child: const Text('Edit'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => _delete(context, ref, e),
+                            child: const Text('Delete'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final noteRepo = ref.read(noteRepositoryProvider);
+                        final id = await noteRepo.createNote(
+                          title: 'Notes for ${e.title}',
+                          linkedEventId: e.id,
+                        );
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => NoteEditorScreen(noteId: id),
+                            ),
                           );
                         }
                       },
+                      icon: const Icon(Icons.note_add_outlined),
+                      label: const Text('Add note'),
                     ),
-                    onTap: () {
-                      Clipboard.setData(ClipboardData(text: e.meetUrl!));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Meet link copied')),
-                      );
-                    },
                   ),
-                if (e.notes != null && e.notes!.isNotEmpty)
+                ],
+              ),
+            ),
+          );
+        } else if (data is Task) {
+          final t = data;
+          return SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                   ListTile(
-                    leading: const Icon(Icons.notes_outlined),
-                    title: Text(e.notes!),
+                    title: Text(
+                      t.title,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    subtitle: Text(
+                      t.dueDate == null
+                          ? 'No due date'
+                          : 'Due ${DeviceDateFormat.dateIso(context, t.dueDate!)}${t.dueTime == null ? '' : ' ${t.dueTime! ~/ 60}:${(t.dueTime! % 60).toString().padLeft(2, '0')}'}',
+                    ),
                   ),
-                _Attendees(eventId: e.id),
-                _LinkedNotes(eventId: e.id),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                            showEventEditor(context, event: e);
-                          },
-                          child: const Text('Edit'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => _delete(context, ref, e),
-                          child: const Text('Delete'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      final noteRepo = ref.read(noteRepositoryProvider);
-                      final id = await noteRepo.createNote(
-                        title: 'Notes for ${e.title}',
-                        linkedEventId: e.id,
-                      );
-                      if (context.mounted) {
-                        Navigator.of(context).pop();
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => NoteEditorScreen(noteId: id),
+                  if (t.notes != null && t.notes!.isNotEmpty)
+                    ListTile(
+                      leading: const Icon(Icons.notes_outlined),
+                      title: Text(t.notes!),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              showTaskEditor(context, task: t);
+                            },
+                            child: const Text('Edit'),
                           ),
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.note_add_outlined),
-                    label: const Text('Add note'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      } else if (data is Task) {
-        final t = data;
-        return SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ListTile(
-                  title: Text(
-                    t.title,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  subtitle: Text(
-                    t.dueDate == null
-                        ? 'No due date'
-                        : 'Due ${t.dueDate}${t.dueTime == null ? '' : ' ${t.dueTime! ~/ 60}:${(t.dueTime! % 60).toString().padLeft(2, '0')}'}',
-                  ),
-                ),
-                if (t.notes != null && t.notes!.isNotEmpty)
-                  ListTile(
-                    leading: const Icon(Icons.notes_outlined),
-                    title: Text(t.notes!),
-                  ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                            showTaskEditor(context, task: t);
-                          },
-                          child: const Text('Edit'),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () async {
-                            await ref
-                                .read(taskRepositoryProvider)
-                                .softDeleteTasks([t.id]);
-                            try {
-                              ref
-                                  .read(occurrenceDirtyProvider.notifier)
-                                  .markDirty();
-                            } catch (_) {}
-                            if (context.mounted) Navigator.of(context).pop();
-                          },
-                          child: const Text('Delete'),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () async {
+                              final pending = ref.read(
+                                pendingOperationsProvider,
+                              );
+                              final opId = await pending.scheduleTaskDelete(
+                                t.id,
+                              );
+                              try {
+                                ref
+                                    .read(occurrenceDirtyProvider.notifier)
+                                    .markDirty();
+                              } catch (_) {}
+                              if (!context.mounted) return;
+                              final messenger = ScaffoldMessenger.of(context);
+                              Navigator.of(context).pop();
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text('Deleted "${t.title}"'),
+                                  duration: const Duration(seconds: 6),
+                                  persist: false,
+                                  action: SnackBarAction(
+                                    label: 'Undo',
+                                    onPressed: () => pending.cancel(opId),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: const Text('Delete'),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: FilledButton.icon(
-                    onPressed: t.completedAt == null
-                        ? () async {
-                            await ref
-                                .read(taskRepositoryProvider)
-                                .completeTask(t.id);
-                            if (context.mounted) Navigator.of(context).pop();
-                          }
-                        : null,
-                    icon: const Icon(Icons.check),
-                    label: Text(
-                      t.completedAt == null ? 'Mark as done' : 'Completed',
+                      ],
                     ),
                   ),
-                ),
-              ],
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: FilledButton.icon(
+                      onPressed: t.completedAt == null
+                          ? () async {
+                              await ref
+                                  .read(taskRepositoryProvider)
+                                  .completeTask(t.id);
+                              if (context.mounted) Navigator.of(context).pop();
+                            }
+                          : null,
+                      icon: const Icon(Icons.check),
+                      label: Text(
+                        t.completedAt == null ? 'Mark as done' : 'Completed',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-      } else {
-        return const SafeArea(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text('Event not found'),
-          ),
-        );
-      }
+          );
+        } else {
+          return const SafeArea(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text('Event not found'),
+            ),
+          );
+        }
       },
     );
   }
@@ -343,11 +363,18 @@ class _LinkedNotes extends ConsumerWidget {
   }
 }
 
-String _when(Event e) {
-  if (e.isAllDay) return e.startDate ?? '';
+String _when(BuildContext context, Event e) {
+  if (e.isAllDay) {
+    if (e.startDate == null) return '';
+    try {
+      return DeviceDateFormat.yMMMd(context).format(DateTime.parse(e.startDate!));
+    } catch (_) {
+      return e.startDate!;
+    }
+  }
   final s = e.startUtc == null
       ? '?'
-      : DateFormat.yMMMd().add_Hm().format(
+      : DeviceDateFormat.yMMMd(context).add_Hm().format(
           DateTime.fromMillisecondsSinceEpoch(
             e.startUtc!,
             isUtc: true,
@@ -355,12 +382,12 @@ String _when(Event e) {
         );
   final en = e.endUtc == null
       ? ''
-      : ' - ${DateFormat.Hm().format(DateTime.fromMillisecondsSinceEpoch(e.endUtc!, isUtc: true).toLocal())}';
+      : ' - ${DeviceDateFormat.hm(context).format(DateTime.fromMillisecondsSinceEpoch(e.endUtc!, isUtc: true).toLocal())}';
   return '$s$en';
 }
 
+
 Future<void> _delete(BuildContext context, WidgetRef ref, Event e) async {
-  final repo = ref.read(eventRepositoryProvider);
   final recurring =
       e.rrule != null && e.rrule!.isNotEmpty && e.recurringMasterId == null;
   EditScope scope = EditScope.all;
@@ -373,13 +400,24 @@ Future<void> _delete(BuildContext context, WidgetRef ref, Event e) async {
     orig = DateTime.fromMillisecondsSinceEpoch(e.startUtc ?? 0, isUtc: true);
     if (!context.mounted) return;
     if (scope == EditScope.single || scope == EditScope.following) {
-      await repo.deleteOccurrence(e.id, orig, scope: scope);
+      final pending = ref.read(pendingOperationsProvider);
+      final opId = await pending.scheduleEventDeleteOccurrence(
+        e.id,
+        orig,
+        scope: scope,
+      );
       if (context.mounted) {
+        final messenger = ScaffoldMessenger.of(context);
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Event deleted'),
-            duration: Duration(seconds: 6),
+        messenger.showSnackBar(
+          SnackBar(
+            content: const Text('Event deleted'),
+            duration: const Duration(seconds: 6),
+            persist: false,
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () => pending.cancel(opId),
+            ),
           ),
         );
       }
@@ -406,13 +444,20 @@ Future<void> _delete(BuildContext context, WidgetRef ref, Event e) async {
       ) ??
       false;
   if (!confirm || !context.mounted) return;
-  await repo.deleteEvent(e.id);
+  final pending = ref.read(pendingOperationsProvider);
+  final opId = await pending.scheduleEventDelete(e.id);
   if (context.mounted) {
+    final messenger = ScaffoldMessenger.of(context);
     Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Event deleted'),
-        duration: Duration(seconds: 6),
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text('Event deleted'),
+        duration: const Duration(seconds: 6),
+        persist: false,
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () => pending.cancel(opId),
+        ),
       ),
     );
   }

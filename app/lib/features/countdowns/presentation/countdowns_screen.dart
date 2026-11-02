@@ -1,12 +1,14 @@
 // Countdowns screen: upcoming/passed groups, relative distances,
 // editor, delete with undo.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:ephemeron/core/ui/empty_state.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../../../domain/countdowns/countdown.dart';
+import '../../sync/application/pending_operations.dart';
 import '../application/countdowns_providers.dart';
 import 'countdown_editor_sheet.dart';
 
@@ -139,7 +141,9 @@ class _CountdownTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = entry.c;
     final detail = StringBuffer(_relativeText(entry.days));
-    detail.write(' - ${entry.next.year}-${entry.next.month}-${entry.next.day}');
+    detail.write(
+      ' - ${DeviceDateFormat.yMMMd(context).format(entry.next)}',
+    );
     if (c.yearlyRepeat) {
       final birth = _parseDate(c.targetDate);
       if (c.showAge && birth != null) {
@@ -162,8 +166,8 @@ class _CountdownTile extends ConsumerWidget {
   }
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
-    final repo = ref.read(countdownRepositoryProvider);
-    await repo.deleteCountdown(entry.c.id);
+    final pending = ref.read(pendingOperationsProvider);
+    final opId = await pending.scheduleCountdownDelete(entry.c.id);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -172,7 +176,7 @@ class _CountdownTile extends ConsumerWidget {
         persist: false,
         action: SnackBarAction(
           label: 'Undo',
-          onPressed: () => repo.restoreCountdown(entry.c.id),
+          onPressed: () => pending.cancel(opId),
         ),
       ),
     );
@@ -193,4 +197,3 @@ class _UndatedTile extends ConsumerWidget {
     );
   }
 }
-

@@ -1,6 +1,6 @@
 // Year heat-map: 12 mini month grids shaded by event counts.
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/calendar_providers.dart';
@@ -37,12 +37,15 @@ class YearView extends ConsumerWidget {
             context,
           ).colorScheme.primary.withValues(alpha: 0.1 + 0.5 * c / max),
           child: Center(
-            child: Text('${_name(m + 1)}\n$c', textAlign: TextAlign.center),
+            child: Text(
+              '${_name(context, m + 1)}\n$c',
+              textAlign: TextAlign.center,
+            ),
           ),
         );
       },
     );
   }
 
-  String _name(int m) => DateFormat.MMM().format(DateTime(2000, m));
+  String _name(BuildContext context, int m) => DeviceDateFormat.shortMonthName(context, m);
 }

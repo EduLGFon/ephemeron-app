@@ -1,6 +1,7 @@
 // Eisenhower matrix: quadrants from priority + due date, drag-free
 // tap-to-edit, unclassified tray, configurable urgent window.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/tasks/eisenhower.dart';
@@ -88,7 +89,9 @@ class _QuadrantCard extends StatelessWidget {
           for (final t in tasks)
             ListTile(
               title: Text(t.title),
-              subtitle: t.dueDate == null ? null : Text(t.dueDate!),
+              subtitle: t.dueDate == null
+                  ? null
+                  : Text(DeviceDateFormat.dateIso(context, t.dueDate!)),
               onTap: () => showTaskEditor(context, task: t),
             ),
         ],
@@ -96,3 +99,4 @@ class _QuadrantCard extends StatelessWidget {
     );
   }
 }
+

@@ -1,13 +1,14 @@
 // Habits screen: 7-day navigator, sections, one-tap logging,
 // skip, streaks, archive with undo.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:ephemeron/core/ui/empty_state.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../../../domain/habits/date_key.dart';
+import '../../sync/application/pending_operations.dart';
 import '../application/habits_providers.dart';
 import 'habit_editor_sheet.dart';
 
@@ -94,7 +95,9 @@ class _DayStrip extends StatelessWidget {
         children: [
           for (final d in days) ...[
             ChoiceChip(
-              label: Text('${DateFormat.E().format(d)} ${d.day}'),
+              label: Text(
+                '${DeviceDateFormat.e(context).format(d)} ${d.day}',
+              ),
               selected: habitDateKey(d) == selected,
               onSelected: (_) => onSelect(habitDateKey(d)),
             ),
@@ -255,9 +258,9 @@ class _HabitTile extends ConsumerWidget {
   }
 
   Future<void> _toggleArchive(BuildContext context, WidgetRef ref) async {
-    final repo = ref.read(habitRepositoryProvider);
+    final pending = ref.read(pendingOperationsProvider);
     final wasArchived = habit.archived;
-    await repo.archiveHabit(habit.id, !wasArchived);
+    final opId = await pending.scheduleHabitArchive(habit.id, !wasArchived);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -266,13 +269,12 @@ class _HabitTile extends ConsumerWidget {
         persist: false,
         action: SnackBarAction(
           label: 'Undo',
-          onPressed: () => repo.archiveHabit(habit.id, wasArchived),
+          onPressed: () => pending.cancel(opId),
         ),
       ),
     );
   }
 }
-
 
 class _ErrorState extends StatelessWidget {
   const _ErrorState({required this.onRetry});

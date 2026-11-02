@@ -1,6 +1,7 @@
 // Event editor: title, calendar, all-day/timed, timezone note,
 // repeat presets, location, notes. Recurring edits ask scope.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:ephemeron/core/ui/sheet_padding.dart';
 import 'package:ephemeron/core/ui/escape_to_close.dart';
 
@@ -38,7 +39,7 @@ Future<void> showEventEditor(
   );
 }
 
-String _summarizeRrule(String rrule) {
+String _summarizeRrule(BuildContext context, String rrule) {
   try {
     final r = RecurrenceRule.parse(rrule);
     final freq = r.freq[0] + r.freq.substring(1).toLowerCase();
@@ -47,7 +48,7 @@ String _summarizeRrule(String rrule) {
     final end = r.count != null
         ? ' for ${r.count} times'
         : r.untilUtc != null
-        ? ' until ${r.untilUtc!.toLocal().toString().split(' ').first}'
+        ? ' until ${DeviceDateFormat.yMMMd(context).format(r.untilUtc!.toLocal())}'
         : r.untilDate != null
         ? ' until ${r.untilDate}'
         : '';
@@ -456,7 +457,9 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => _pickDate(true),
-                      child: Text(_fmtDate(_start)),
+                      child: Text(
+                        DeviceDateFormat.yMMMd(context).format(_start),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -475,7 +478,9 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => _pickDate(false),
-                      child: Text(_fmtDate(_end)),
+                      child: Text(
+                        DeviceDateFormat.yMMMd(context).format(_end),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -505,7 +510,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                     child: Text(
                       _rrule == null
                           ? 'Custom'
-                          : 'Custom: ${_summarizeRrule(_rrule!)}',
+                          : 'Custom: ${_summarizeRrule(context, _rrule!)}',
                     ),
                   ),
                 ],
@@ -719,7 +724,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                                     child: Text(
                                       until == null
                                           ? 'Pick date'
-                                          : '${until!.year}-${until!.month.toString().padLeft(2, '0')}-${until!.day.toString().padLeft(2, '0')}',
+                                          : DeviceDateFormat.yMMMd(ctx).format(until!),
                                     ),
                                   ),
                                 ],

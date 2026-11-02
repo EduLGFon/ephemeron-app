@@ -1,34 +1,46 @@
 // Task create/edit sheet with list, priority, due chips, tags, subtasks.
+// Unsaved input autosaves (debounced) and restores after restart.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:ephemeron/core/ui/sheet_padding.dart';
 import 'package:ephemeron/core/ui/escape_to_close.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/session/session_restore.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../domain/alarms/alarm_preset.dart';
 import '../../../domain/alarms/reminder.dart';
 import '../../../core/platform/app_permissions.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
+import '../../settings/application/settings_providers.dart';
 import '../application/tasks_providers.dart';
 
 Future<void> showTaskEditor(
   BuildContext context, {
   Task? task,
   String? parentId,
+  Map<String, dynamic>? restoredDraft,
 }) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    builder: (_) => EscapeToClose(child: _TaskEditor(task: task, parentId: parentId)),
+    builder: (_) => EscapeToClose(
+      child: _TaskEditor(
+        task: task,
+        parentId: parentId,
+        restoredDraft: restoredDraft,
+      ),
+    ),
   );
 }
 
 class _TaskEditor extends ConsumerStatefulWidget {
-  const _TaskEditor({this.task, this.parentId});
+  const _TaskEditor({this.task, this.parentId, this.restoredDraft});
 
   final Task? task;
   final String? parentId;
+  final Map<String, dynamic>? restoredDraft;
 
   @override
   ConsumerState<_TaskEditor> createState() => _TaskEditorState();
@@ -45,27 +57,122 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
   bool _pinned = false;
   String? _alarmPreset;
   List<int> _reminders = const [0];
+  DraftAutosaver? _saver;
+  bool _saved = false;
+
+  String get _draftEntityId => widget.task?.id ?? 'new';
 
   @override
   void initState() {
     super.initState();
     final t = widget.task;
-    _title = TextEditingController(text: t?.title ?? '');
-    _notes = TextEditingController(text: t?.notes ?? '');
-    _tags = TextEditingController();
-    _listId = t?.listId;
-    _priority = t?.priority ?? 0;
-    _dueDate = t?.dueDate;
-    _dueTime = t?.dueTime;
-    _pinned = t?.pinned ?? false;
-    _alarmPreset = t?.alarmPreset;
-    _reminders = t?.reminders == null || t!.reminders!.trim().isEmpty
-        ? const [0]
-        : parseReminderOffsets(t.reminders);
+    final d = widget.restoredDraft;
+    _title = TextEditingController(
+      text: (d?['title'] as String?) ?? t?.title ?? '',
+    );
+    _notes = TextEditingController(
+      text: (d?['notes'] as String?) ?? t?.notes ?? '',
+    );
+    _tags = TextEditingController(text: (d?['tags'] as String?) ?? '');
+    _listId = (d?['listId'] as String?) ?? t?.listId;
+    _priority = (d?['priority'] as num?)?.toInt() ?? t?.priority ?? 0;
+    _dueDate = (d?['dueDate'] as String?) ?? t?.dueDate;
+    _dueTime = (d?['dueTime'] as num?)?.toInt() ?? t?.dueTime;
+    _pinned = (d?['pinned'] as bool?) ?? t?.pinned ?? false;
+    _alarmPreset = (d?['alarmPreset'] as String?) ?? t?.alarmPreset;
+    final draftReminders = (d?['reminders'] as List?)?.whereType<num>().map((e) => e.toInt()).toList();
+    _reminders = draftReminders != null && draftReminders.isNotEmpty
+        ? draftReminders
+        : (t?.reminders == null || t!.reminders!.trim().isEmpty
+              ? const [0]
+              : parseReminderOffsets(t.reminders));
+    for (final c in [_title, _notes, _tags]) {
+      c.addListener(_queueDraft);
+    }
+    if (d == null && t == null) Future.microtask(_preloadDraft);
+  }
+
+  Future<void> _preloadDraft() async {
+    if (!mounted || _title.text.isNotEmpty || _notes.text.isNotEmpty) return;
+    try {
+      final draft = await ref.read(draftStoreProvider).load('task', 'new');
+      if (draft == null || !mounted) return;
+      if (draftIsExpired(draft.updatedAtMs, DateTime.now().toUtc().millisecondsSinceEpoch)) return;
+      final j = draft.json;
+      final title = j['title'] as String?;
+      if (title == null || title.isEmpty) return;
+      setState(() {
+        _title.text = title;
+        _notes.text = (j['notes'] as String?) ?? '';
+        _tags.text = (j['tags'] as String?) ?? '';
+        _listId = j['listId'] as String?;
+        _priority = (j['priority'] as num?)?.toInt() ?? 0;
+        _dueDate = j['dueDate'] as String?;
+        _dueTime = (j['dueTime'] as num?)?.toInt();
+        _pinned = (j['pinned'] as bool?) ?? false;
+        _alarmPreset = j['alarmPreset'] as String?;
+      });
+    } catch (_) {}
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _saver ??= DraftAutosaver(
+      ref.read(draftStoreProvider),
+      'task',
+      _draftEntityId,
+    );
+    Future.microtask(() async {
+      try {
+        final repo = await ref.read(settingsRepositoryProvider.future);
+        await repo.setOpenSheet(
+          widget.task == null ? 'task_new' : 'task:${widget.task!.id}',
+        );
+      } catch (_) {}
+    });
+  }
+
+  void _queueDraft() {
+    _saver?.changed(() => {
+      'title': _title.text,
+      'notes': _notes.text,
+      'tags': _tags.text,
+      'listId': _listId,
+      'priority': _priority,
+      'dueDate': _dueDate,
+      'dueTime': _dueTime,
+      'pinned': _pinned,
+      'alarmPreset': _alarmPreset,
+      'reminders': _reminders,
+      'parentId': widget.parentId,
+    });
+  }
+
+  void _fieldChanged() {
+    _queueDraft();
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    if (!_saved) {
+      final snapshot = {
+        'title': _title.text,
+        'notes': _notes.text,
+        'tags': _tags.text,
+        'listId': _listId,
+        'priority': _priority,
+        'dueDate': _dueDate,
+        'dueTime': _dueTime,
+        'pinned': _pinned,
+        'alarmPreset': _alarmPreset,
+        'reminders': _reminders,
+        'parentId': widget.parentId,
+      };
+      _saver?.changed(() => snapshot);
+    }
+    _saver?.dispose();
     _title.dispose();
     _notes.dispose();
     _tags.dispose();
@@ -133,6 +240,15 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
     }
     try {
       ref.read(occurrenceDirtyProvider.notifier).markDirty();
+    } catch (_) {}
+    _saved = true;
+    try {
+      await ref.read(draftStoreProvider).clear('task', _draftEntityId);
+      final srepo = await ref.read(settingsRepositoryProvider.future);
+      final expected = widget.task == null
+          ? 'task_new'
+          : 'task:${widget.task!.id}';
+      if (srepo.openSheet == expected) await srepo.setOpenSheet(null);
     } catch (_) {}
     if (mounted) Navigator.of(context).pop();
   }
@@ -219,7 +335,9 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
                   ),
                   if (_dueDate != null)
                     ActionChip(
-                      label: Text('Clear ($_dueDate)'),
+                      label: Text(
+                        'Clear (${_dueDate == null ? '' : DeviceDateFormat.dateIso(context, _dueDate!)})',
+                      ),
                       onPressed: () => setState(() => _dueDate = null),
                     ),
                 ],
@@ -362,3 +480,4 @@ class _SubtaskSection extends ConsumerWidget {
     );
   }
 }
+

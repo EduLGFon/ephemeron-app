@@ -2,6 +2,7 @@
 // habits, countdowns and tags, with type filters.
 // Result rows are display-only; deep navigation ships separately.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:ephemeron/l10n/src/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,6 +19,7 @@ Map<SearchScope, String> _scopeLabels(AppLocalizations l) => {
   SearchScope.countdowns: l.searchCountdowns,
   SearchScope.tags: l.searchTags,
 };
+
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -105,7 +107,9 @@ class _Results extends ConsumerWidget {
           tile: (t) => ListTile(
             leading: const Icon(Icons.checklist_outlined),
             title: Text(t.title),
-            subtitle: t.dueDate == null ? null : Text(t.dueDate!),
+            subtitle: t.dueDate == null
+                ? null
+                : Text(DeviceDateFormat.dateIso(context, t.dueDate!)),
           ),
         ),
       );
@@ -156,7 +160,9 @@ class _Results extends ConsumerWidget {
           tile: (c) => ListTile(
             leading: const Icon(Icons.hourglass_bottom_outlined),
             title: Text(c.title),
-            subtitle: c.targetDate == null ? null : Text(c.targetDate!),
+            subtitle: c.targetDate == null
+                ? null
+                : Text(DeviceDateFormat.dateIso(context, c.targetDate!)),
           ),
         ),
       );

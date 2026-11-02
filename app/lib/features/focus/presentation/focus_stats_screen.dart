@@ -1,6 +1,7 @@
 // Focus stats screen: monthly calendar grid plus breakdowns by task,
 // habit and time of day (last 30 days), and the DND-during-focus toggle.
 import 'package:flutter/foundation.dart';
+import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -45,7 +46,7 @@ class _FocusStatsScreenState extends ConsumerState<FocusStatsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            '${_month.year}-${_month.month.toString().padLeft(2, '0')}',
+            DeviceDateFormat.yMMM(context).format(_month),
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),

@@ -1,26 +1,40 @@
 // Quick-add bottom sheet: one field with shorthand and NLP parsing,
 // live preview chips, save and save-and-add-another.
+// Unsaved text autosaves (debounced) and restores after restart.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:ephemeron/core/ui/sheet_padding.dart';
 import 'package:ephemeron/core/ui/escape_to_close.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/session/session_restore.dart';
 import '../../../domain/parsing/quick_add_parser.dart';
+import '../../settings/application/settings_providers.dart';
 import '../application/tasks_providers.dart';
 
-Future<void> showQuickAdd(BuildContext context, {String? initialText}) {
+Future<void> showQuickAdd(
+  BuildContext context, {
+  String? initialText,
+  Map<String, dynamic>? restoredDraft,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    builder: (_) => EscapeToClose(child: _QuickAddSheet(initialText: initialText)),
+    builder: (_) => EscapeToClose(
+      child: _QuickAddSheet(
+        initialText: initialText,
+        restoredDraft: restoredDraft,
+      ),
+    ),
   );
 }
 
 class _QuickAddSheet extends ConsumerStatefulWidget {
-  const _QuickAddSheet({this.initialText});
+  const _QuickAddSheet({this.initialText, this.restoredDraft});
 
   final String? initialText;
+  final Map<String, dynamic>? restoredDraft;
 
   @override
   ConsumerState<_QuickAddSheet> createState() => _QuickAddSheetState();
@@ -29,20 +43,71 @@ class _QuickAddSheet extends ConsumerStatefulWidget {
 class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
   final _controller = TextEditingController();
   QuickAddParsed? _parsed;
+  DraftAutosaver? _saver;
+  bool _saved = false;
 
   @override
   void initState() {
     super.initState();
-    final initial = widget.initialText;
-    if (initial != null && initial.isNotEmpty) {
+    final restored = widget.restoredDraft?['text'] as String?;
+    final initial = widget.initialText ?? restored ?? '';
+    if (initial.isNotEmpty) {
       _controller.text = initial;
       _parsed = parseQuickAdd(initial);
     }
+    if (restored == null) {
+      // Preload a leftover draft for fresh opens (e.g. dismissed sheet).
+      Future.microtask(_preloadDraft);
+    }
+  }
+
+  Future<void> _preloadDraft() async {
+    if (!mounted || _controller.text.isNotEmpty) return;
+    try {
+      final draft = await ref.read(draftStoreProvider).load('quick_add', null);
+      if (draft == null || !mounted || _controller.text.isNotEmpty) return;
+      final text = draft.json['text'] as String?;
+      if (text == null || text.isEmpty) return;
+      if (draftIsExpired(draft.updatedAtMs, DateTime.now().toUtc().millisecondsSinceEpoch)) {
+        return;
+      }
+      setState(() {
+        _controller.text = text;
+        _parsed = parseQuickAdd(text);
+      });
+    } catch (_) {}
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _saver ??= DraftAutosaver(ref.read(draftStoreProvider), 'quick_add', null);
+    // Track the open sheet so a kill mid-typing restores it.
+    Future.microtask(() async {
+      try {
+        final repo = await ref.read(settingsRepositoryProvider.future);
+        await repo.setOpenSheet('quick_add');
+      } catch (_) {}
+    });
   }
 
   @override
   void dispose() {
+    if (!_saved) {
+      _saver?.changed(() => {'text': _controller.text});
+    }
+    _saver?.dispose();
     _controller.dispose();
+    if (_saved) {
+      Future.microtask(() async {
+        try {
+          final repo = ref.read(settingsRepositoryProvider).valueOrNull;
+          if (repo != null && repo.openSheet == 'quick_add') {
+            await repo.setOpenSheet(null);
+          }
+        } catch (_) {}
+      });
+    }
     super.dispose();
   }
 
@@ -50,6 +115,7 @@ class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
     setState(() {
       _parsed = v.trim().isEmpty ? null : parseQuickAdd(v);
     });
+    _saver?.changed(() => {'text': v});
   }
 
   Future<void> _save({required bool another}) async {
@@ -81,8 +147,18 @@ class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
       tags: p.tags,
     );
     if (!mounted) return;
-    try { ref.read(occurrenceDirtyProvider.notifier).markDirty(); } catch (_) {}
+    try {
+      ref.read(occurrenceDirtyProvider.notifier).markDirty();
+    } catch (_) {}
+    _saved = true;
+    try {
+      await ref.read(draftStoreProvider).clear('quick_add', null);
+      final srepo = await ref.read(settingsRepositoryProvider.future);
+      if (srepo.openSheet == 'quick_add') await srepo.setOpenSheet(null);
+    } catch (_) {}
+    if (!mounted) return;
     if (another) {
+      _saved = false;
       _controller.clear();
       setState(() => _parsed = null);
     } else {
@@ -121,7 +197,11 @@ class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
                   if (p.list != null) Chip(label: Text('~${p.list}')),
                   if (p.priority > 0) Chip(label: Text('P${5 - p.priority}')),
                   if (p.due != null)
-                    Chip(label: Text(p.due.toString().substring(0, 16))),
+                    Chip(
+                      label: Text(
+                        DeviceDateFormat.yMMMd(context).add_Hm().format(p.due!),
+                      ),
+                    ),
                   if (p.rrule != null) Chip(label: Text(p.rrule!)),
                 ],
               ),

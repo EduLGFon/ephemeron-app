@@ -1,6 +1,7 @@
 // Tasks screen: list filter, overdue section, swipe actions with undo,
 // trash, completed view, quick add FAB.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:ephemeron/core/ui/dialogs.dart';
 
 import 'package:ephemeron/core/ui/empty_state.dart';
@@ -8,6 +9,7 @@ import 'package:ephemeron/core/ui/empty_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
+import '../../sync/application/pending_operations.dart';
 import '../../sync/presentation/sync_title.dart';
 import '../application/tasks_providers.dart';
 import 'quick_add_sheet.dart';
@@ -118,7 +120,9 @@ class TasksScreen extends ConsumerWidget {
                       ),
                     ),
                   );
-                  items.addAll(overdue.map((t) => _TaskTile(task: t, overdue: true)));
+                  items.addAll(
+                    overdue.map((t) => _TaskTile(task: t, overdue: true)),
+                  );
                 }
                 items.addAll(rest.map((t) => _TaskTile(task: t)));
                 return RepaintBoundary(
@@ -269,8 +273,8 @@ class _TaskTile extends ConsumerWidget {
         return true;
       },
       onDismissed: (_) async {
-        final repo = ref.read(taskRepositoryProvider);
-        await repo.softDeleteTasks([task.id]);
+        final pending = ref.read(pendingOperationsProvider);
+        final opId = await pending.scheduleTaskDelete(task.id);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -279,7 +283,7 @@ class _TaskTile extends ConsumerWidget {
               persist: false,
               action: SnackBarAction(
                 label: 'Undo',
-                onPressed: () => repo.restoreTasks([task.id]),
+                onPressed: () => pending.cancel(opId),
               ),
             ),
           );
@@ -310,16 +314,24 @@ class _TaskTile extends ConsumerWidget {
           task.title,
           style: overdue ? const TextStyle(color: Colors.red) : null,
         ),
-        subtitle: _subtitle(),
+        subtitle: _subtitle(context),
         trailing: _MoveButtons(task: task),
         onTap: () => showTaskEditor(context, task: task),
       ),
     );
   }
 
-  Widget? _subtitle() {
+  Widget? _subtitle(BuildContext context) {
     final parts = <String>[];
-    if (task.dueDate != null) parts.add(task.dueDate!);
+    if (task.dueDate != null) {
+      try {
+        parts.add(
+          DeviceDateFormat.yMMMd(context).format(DateTime.parse(task.dueDate!)),
+        );
+      } catch (_) {
+        parts.add(task.dueDate!);
+      }
+    }
     if (task.priority > 0) parts.add('P${5 - task.priority}');
     if (task.wontDo) parts.add("Won't do");
     if (parts.isEmpty) return null;
@@ -453,7 +465,9 @@ class _CompletedScreen extends ConsumerWidget {
                 return ListTile(
                   leading: const Icon(Icons.check_circle_outline),
                   title: Text(t.title),
-                  subtitle: t.dueDate == null ? null : Text(t.dueDate!),
+                  subtitle: t.dueDate == null
+                      ? null
+                      : Text(DeviceDateFormat.dateIso(context, t.dueDate!)),
                   trailing: IconButton(
                     icon: const Icon(Icons.undo),
                     tooltip: 'Reopen',

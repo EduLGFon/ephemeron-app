@@ -1,5 +1,6 @@
 // Countdown editor bottom sheet: create and edit.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
@@ -13,7 +14,8 @@ Future<void> showCountdownEditor(BuildContext context, {Countdown? countdown}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    builder: (_) => EscapeToClose(child: _CountdownEditorSheet(countdown: countdown)),
+    builder: (_) =>
+        EscapeToClose(child: _CountdownEditorSheet(countdown: countdown)),
   );
 }
 
@@ -88,7 +90,7 @@ class _CountdownEditorSheetState extends ConsumerState<_CountdownEditorSheet> {
                   child: Text(
                     _date == null
                         ? 'No date'
-                        : '${_date!.year}-${_date!.month}-${_date!.day}',
+                        : DeviceDateFormat.yMMMd(context).format(_date!),
                   ),
                 ),
                 TextButton(

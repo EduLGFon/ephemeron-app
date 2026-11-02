@@ -1,7 +1,7 @@
 // Calendar screen: view switcher, navigation, rebuild-on-window-change.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../settings/application/settings_providers.dart';
 import '../../sync/presentation/sync_title.dart';
@@ -149,9 +149,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     _ => 1,
   };
 
-  String _title(BuildContext context, CalendarWindow w) => DateFormat.yMMM(
-    Localizations.localeOf(context).toString(),
-  ).format(w.anchor);
+  String _title(BuildContext context, CalendarWindow w) => DeviceDateFormat.yMMM(context).format(w.anchor);
 
 }
 

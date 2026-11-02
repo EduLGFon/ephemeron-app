@@ -1,8 +1,8 @@
 // Calendar settings: calendars (add/enable/default), week start,
 // default duration.
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../settings/application/settings_providers.dart';
 import '../application/calendar_providers.dart';
@@ -75,15 +75,21 @@ class CalendarSettingsScreen extends ConsumerWidget {
                 items: [
                   DropdownMenuItem(
                     value: DateTime.monday,
-                    child: Text(DateFormat.EEEE().format(DateTime(2024, 1, 1))),
+                    child: Text(
+                      DeviceDateFormat.eeee(ctx).format(DateTime(2024, 1, 1)),
+                    ),
                   ),
                   DropdownMenuItem(
                     value: DateTime.sunday,
-                    child: Text(DateFormat.EEEE().format(DateTime(2024, 1, 7))),
+                    child: Text(
+                      DeviceDateFormat.eeee(ctx).format(DateTime(2024, 1, 7)),
+                    ),
                   ),
                   DropdownMenuItem(
                     value: DateTime.saturday,
-                    child: Text(DateFormat.EEEE().format(DateTime(2024, 1, 6))),
+                    child: Text(
+                      DeviceDateFormat.eeee(ctx).format(DateTime(2024, 1, 6)),
+                    ),
                   ),
                 ],
                 onChanged: (v) async {
