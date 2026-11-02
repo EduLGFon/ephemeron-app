@@ -9,6 +9,7 @@ import 'package:ephemeron/core/search/sanitize.dart';
 import 'package:ephemeron/core/time/time.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:ephemeron/data/repositories/outbox_helper.dart';
+import 'package:ephemeron/data/repositories/pending_operations_repository.dart';
 import 'package:ephemeron/domain/tasks/recurring_task.dart';
 
 class TaskRepository {
@@ -119,6 +120,9 @@ class TaskRepository {
         (t) =>
             t.deletedAt.isNull() &
             t.completedAt.isNull() &
+            t.id.isNotInQuery(
+              pendingIdsQuery(_db, entity: 'task', ops: const {'delete'}),
+            ) &
             (listId == null
                 ? t.parentId.isNull()
                 : t.listId.equals(listId) & t.parentId.isNull()),
@@ -133,7 +137,13 @@ class TaskRepository {
 
   Stream<List<Task>> watchTrash() {
     return (_db.select(_db.tasks)
-          ..where((t) => t.deletedAt.isNotNull())
+          ..where(
+            (t) =>
+                t.deletedAt.isNotNull() &
+                t.id.isNotInQuery(
+                  pendingIdsQuery(_db, entity: 'task', ops: const {'purge'}),
+                ),
+          )
           ..orderBy([(t) => OrderingTerm.desc(t.deletedAt)]))
         .watch();
   }
@@ -151,6 +161,9 @@ class TaskRepository {
           ..where(
             (t) =>
                 t.deletedAt.isNull() &
+                t.id.isNotInQuery(
+                  pendingIdsQuery(_db, entity: 'task', ops: const {'delete'}),
+                ) &
                 (t.title.like(like) | t.notes.like(like)),
           )
           ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])
@@ -174,6 +187,9 @@ class TaskRepository {
         (t) =>
             t.deletedAt.isNull() &
             t.completedAt.isNotNull() &
+            t.id.isNotInQuery(
+              pendingIdsQuery(_db, entity: 'task', ops: const {'delete'}),
+            ) &
             (listId == null ? const Constant(true) : t.listId.equals(listId)),
       );
     q
@@ -184,7 +200,14 @@ class TaskRepository {
 
   Stream<List<Task>> watchSubtasks(String parentId) {
     return (_db.select(_db.tasks)
-          ..where((t) => t.parentId.equals(parentId) & t.deletedAt.isNull())
+          ..where(
+            (t) =>
+                t.parentId.equals(parentId) &
+                t.deletedAt.isNull() &
+                t.id.isNotInQuery(
+                  pendingIdsQuery(_db, entity: 'task', ops: const {'delete'}),
+                ),
+          )
           ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
         .watch();
   }
@@ -407,8 +430,8 @@ class TaskRepository {
     });
   }
 
-  /// Purges items deleted more than [olderThanDays] ago (default 30).
-  Future<int> emptyTrash({int olderThanDays = 30}) async {
+  /// Ids of trashed items older than [olderThanDays] (default 30).
+  Future<List<String>> oldTrashIds({int olderThanDays = 30}) async {
     final cutoff = DateTime.now()
         .toUtc()
         .subtract(Duration(days: olderThanDays))
@@ -420,8 +443,14 @@ class TaskRepository {
                   t.deletedAt.isSmallerThanValue(cutoff),
             ))
             .get();
-    for (final t in old) {
-      await purgeTask(t.id);
+    return [for (final t in old) t.id];
+  }
+
+  /// Purges items deleted more than [olderThanDays] ago (default 30).
+  Future<int> emptyTrash({int olderThanDays = 30}) async {
+    final ids = await oldTrashIds(olderThanDays: olderThanDays);
+    for (final id in ids) {
+      await purgeTask(id);
     }
     return old.length;
   }
@@ -513,7 +542,14 @@ class TaskRepository {
   /// (YYYY-MM-DD), showCompleted, query.
   Future<List<Task>> evalSmartList(Map<String, Object?> filter) async {
     final showCompleted = filter['showCompleted'] == true;
-    final q = _db.select(_db.tasks)..where((t) => t.deletedAt.isNull());
+    final q = _db.select(_db.tasks)
+      ..where(
+        (t) =>
+            t.deletedAt.isNull() &
+            t.id.isNotInQuery(
+              pendingIdsQuery(_db, entity: 'task', ops: const {'delete'}),
+            ),
+      );
     if (!showCompleted) {
       q.where((t) => t.completedAt.isNull());
     }

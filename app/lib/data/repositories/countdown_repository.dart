@@ -4,6 +4,7 @@ import 'package:ephemeron/core/ids/ids.dart';
 import 'package:ephemeron/core/search/sanitize.dart';
 import 'package:ephemeron/core/time/time.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
+import 'package:ephemeron/data/repositories/pending_operations_repository.dart';
 
 class CountdownRepository {
   CountdownRepository(this._db);
@@ -44,7 +45,14 @@ class CountdownRepository {
   }
 
   Stream<List<Countdown>> watchCountdowns() {
-    final q = _db.select(_db.countdowns)..where((c) => c.deletedAt.isNull());
+    final q = _db.select(_db.countdowns)
+      ..where(
+        (c) =>
+            c.deletedAt.isNull() &
+            c.id.isNotInQuery(
+              pendingIdsQuery(_db, entity: 'countdown', ops: const {'delete'}),
+            ),
+      );
     q.orderBy([(c) => OrderingTerm.asc(c.targetDate)]);
     return q.watch();
   }
@@ -60,7 +68,18 @@ class CountdownRepository {
     if (stripped.isEmpty) return [];
     final like = '%$stripped%';
     return (_db.select(_db.countdowns)
-          ..where((c) => c.deletedAt.isNull() & c.title.like(like))
+          ..where(
+            (c) =>
+                c.deletedAt.isNull() &
+                c.id.isNotInQuery(
+                  pendingIdsQuery(
+                    _db,
+                    entity: 'countdown',
+                    ops: const {'delete'},
+                  ),
+                ) &
+                c.title.like(like),
+          )
           ..orderBy([(c) => OrderingTerm.asc(c.targetDate)])
           ..limit(limit))
         .get();

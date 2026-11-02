@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:ephemeron/core/ids/ids.dart';
 import 'package:ephemeron/core/search/sanitize.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
+import 'package:ephemeron/data/repositories/pending_operations_repository.dart';
 import 'package:ephemeron/core/time/time.dart';
 import 'package:image/image.dart' as img;
 
@@ -25,7 +26,14 @@ class NoteRepository {
   // Folders.
 
   Stream<List<Folder>> watchFolders(String? parentId) {
-    final q = _db.select(_db.folders)..where((t) => t.deletedAt.isNull());
+    final q = _db.select(_db.folders)
+      ..where(
+        (t) =>
+            t.deletedAt.isNull() &
+            t.id.isNotInQuery(
+              pendingIdsQuery(_db, entity: 'folder', ops: const {'delete'}),
+            ),
+      );
     if (parentId == null) {
       q.where((t) => t.parentId.isNull());
     } else {
@@ -39,7 +47,14 @@ class NoteRepository {
       watchFolders(parentId);
 
   Future<List<Folder>> childFolders(String? parentId) async {
-    final q = _db.select(_db.folders)..where((t) => t.deletedAt.isNull());
+    final q = _db.select(_db.folders)
+      ..where(
+        (t) =>
+            t.deletedAt.isNull() &
+            t.id.isNotInQuery(
+              pendingIdsQuery(_db, entity: 'folder', ops: const {'delete'}),
+            ),
+      );
     if (parentId == null) {
       q.where((t) => t.parentId.isNull());
     } else {
@@ -221,7 +236,14 @@ class NoteRepository {
   }
 
   Future<List<Note>> notesInFolder(String? folderId) {
-    final q = _db.select(_db.notes)..where((t) => t.deletedAt.isNull());
+    final q = _db.select(_db.notes)
+      ..where(
+        (t) =>
+            t.deletedAt.isNull() &
+            t.id.isNotInQuery(
+              pendingIdsQuery(_db, entity: 'note', ops: const {'trash'}),
+            ),
+      );
     if (folderId == null) {
       q.where((t) => t.folderId.isNull());
     } else {
@@ -235,7 +257,14 @@ class NoteRepository {
   }
 
   Stream<List<Note>> watchNotesInFolder(String? folderId) {
-    final q = _db.select(_db.notes)..where((t) => t.deletedAt.isNull());
+    final q = _db.select(_db.notes)
+      ..where(
+        (t) =>
+            t.deletedAt.isNull() &
+            t.id.isNotInQuery(
+              pendingIdsQuery(_db, entity: 'note', ops: const {'trash'}),
+            ),
+      );
     if (folderId == null) {
       q.where((t) => t.folderId.isNull());
     } else {
@@ -250,7 +279,14 @@ class NoteRepository {
 
   Future<List<Note>> notesForEvent(String eventId) {
     return (_db.select(_db.notes)
-          ..where((t) => t.linkedEventId.equals(eventId) & t.deletedAt.isNull())
+          ..where(
+            (t) =>
+                t.linkedEventId.equals(eventId) &
+                t.deletedAt.isNull() &
+                t.id.isNotInQuery(
+                  pendingIdsQuery(_db, entity: 'note', ops: const {'trash'}),
+                ),
+          )
           ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
         .get();
   }
@@ -299,6 +335,13 @@ class NoteRepository {
               ..where(
                 (t) =>
                     t.deletedAt.isNull() &
+                    t.id.isNotInQuery(
+                      pendingIdsQuery(
+                        _db,
+                        entity: 'note',
+                        ops: const {'trash'},
+                      ),
+                    ) &
                     (t.title.like(like) | t.body.like(like)),
               )
               ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
@@ -373,9 +416,15 @@ class NoteRepository {
     )..where((t) => t.toNoteId.equals(noteId))).get();
     final ids = rows.map((r) => r.fromNoteId).toSet();
     if (ids.isEmpty) return [];
-    return (_db.select(
-      _db.notes,
-    )..where((t) => t.id.isIn(ids) & t.deletedAt.isNull())).get();
+    return (_db.select(_db.notes)..where(
+          (t) =>
+              t.id.isIn(ids) &
+              t.deletedAt.isNull() &
+              t.id.isNotInQuery(
+                pendingIdsQuery(_db, entity: 'note', ops: const {'trash'}),
+              ),
+        ))
+        .get();
   }
 
   /// Notes that [noteId] links to (excludes trashed).
@@ -385,9 +434,15 @@ class NoteRepository {
     )..where((t) => t.fromNoteId.equals(noteId))).get();
     final ids = rows.map((r) => r.toNoteId).toSet();
     if (ids.isEmpty) return [];
-    return (_db.select(
-      _db.notes,
-    )..where((t) => t.id.isIn(ids) & t.deletedAt.isNull())).get();
+    return (_db.select(_db.notes)..where(
+          (t) =>
+              t.id.isIn(ids) &
+              t.deletedAt.isNull() &
+              t.id.isNotInQuery(
+                pendingIdsQuery(_db, entity: 'note', ops: const {'trash'}),
+              ),
+        ))
+        .get();
   }
 
   // Attachments (content-addressed; orphan cleanup on demand).

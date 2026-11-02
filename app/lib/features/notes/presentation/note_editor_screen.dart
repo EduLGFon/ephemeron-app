@@ -9,6 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/note_repository.dart';
+import '../../settings/application/settings_providers.dart';
+import '../../sync/application/pending_operations.dart';
 import '../application/notes_providers.dart';
 import 'markdown_preview.dart' show MarkdownPreview, countWords;
 
@@ -247,7 +249,8 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
           );
         }
       case 'delete':
-        await repo.trashNote(note.id);
+        final pending = ref.read(pendingOperationsProvider);
+        final opId = await pending.scheduleNoteTrash(note.id);
         if (mounted) {
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
@@ -257,7 +260,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
               persist: false,
               action: SnackBarAction(
                 label: 'Undo',
-                onPressed: () => repo.restoreNote(note.id),
+                onPressed: () => pending.cancel(opId),
               ),
             ),
           );

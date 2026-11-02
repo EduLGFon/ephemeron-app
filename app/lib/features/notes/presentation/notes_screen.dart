@@ -15,6 +15,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../data/drift/app_database.dart';
+import '../../settings/application/settings_providers.dart';
+import '../../sync/application/pending_operations.dart';
 import '../application/notes_providers.dart';
 import 'note_editor_screen.dart';
 
@@ -98,12 +100,24 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                         leading: const Icon(Icons.folder_outlined),
                         title: Text(f.name),
                         trailing: PopupMenuButton<String>(
-                          onSelected: (v) {
-                            if (v == 'delete') {
-                              ref
-                                  .read(noteRepositoryProvider)
-                                  .deleteFolder(f.id);
-                            }
+                          onSelected: (v) async {
+                            if (v != 'delete') return;
+                            final pending = ref.read(pendingOperationsProvider);
+                            final opId = await pending.scheduleFolderDelete(
+                              f.id,
+                            );
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Deleted folder "${f.name}"'),
+                                duration: const Duration(seconds: 6),
+                                persist: false,
+                                action: SnackBarAction(
+                                  label: 'Undo',
+                                  onPressed: () => pending.cancel(opId),
+                                ),
+                              ),
+                            );
                           },
                           itemBuilder: (_) => const [
                             PopupMenuItem(
@@ -131,9 +145,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                           ),
                         ),
                         confirmDismiss: (_) async {
-                          await ref
-                              .read(noteRepositoryProvider)
-                              .trashNote(n.id);
+                          final pending = ref.read(pendingOperationsProvider);
+                          final opId = await pending.scheduleNoteTrash(n.id);
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -142,9 +155,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                                 persist: false,
                                 action: SnackBarAction(
                                   label: 'Undo',
-                                  onPressed: () => ref
-                                      .read(noteRepositoryProvider)
-                                      .restoreNote(n.id),
+                                  onPressed: () => pending.cancel(opId),
                                 ),
                               ),
                             );

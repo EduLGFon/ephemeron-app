@@ -98,7 +98,8 @@ class OccurrenceRepository {
                 ) &
                 c.endUtc.isBiggerOrEqualValue(
                   fromUtc.toUtc().millisecondsSinceEpoch,
-                ),
+                ) &
+                c.eventId.isNotInQuery(_pendingDeletes(_db)),
           )
           ..orderBy([(c) => OrderingTerm.asc(c.startUtc)]))
         .watch();
@@ -106,14 +107,22 @@ class OccurrenceRepository {
 
   Stream<List<OccurrenceCacheData>> watchDay(String dayKey) {
     return (_db.select(_db.occurrenceCache)
-          ..where((c) => c.dayKey.equals(dayKey))
+          ..where(
+            (c) =>
+                c.dayKey.equals(dayKey) &
+                c.eventId.isNotInQuery(_pendingDeletes(_db)),
+          )
           ..orderBy([(c) => OrderingTerm.asc(c.startUtc)]))
         .watch();
   }
 
   Future<List<OccurrenceCacheData>> occurrencesForDay(String dayKey) {
     return (_db.select(_db.occurrenceCache)
-          ..where((c) => c.dayKey.equals(dayKey))
+          ..where(
+            (c) =>
+                c.dayKey.equals(dayKey) &
+                c.eventId.isNotInQuery(_pendingDeletes(_db)),
+          )
           ..orderBy([(c) => OrderingTerm.asc(c.startUtc)]))
         .get();
   }
@@ -356,4 +365,14 @@ class OccurrenceRepository {
     final p = ymd.split('-');
     return DateTime.utc(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
   }
+}
+
+/// Event or task ids queued for deletion.
+JoinedSelectStatement _pendingDeletes(AppDatabase db) {
+  return db.selectOnly(db.pendingOperations)
+    ..addColumns([db.pendingOperations.entityId])
+    ..where(
+      db.pendingOperations.entity.isIn(const ['event', 'task']) &
+          db.pendingOperations.op.equals('delete'),
+    );
 }

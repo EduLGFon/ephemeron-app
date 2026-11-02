@@ -5,6 +5,7 @@ import 'package:ephemeron/core/search/sanitize.dart';
 import 'package:ephemeron/core/time/time.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:ephemeron/data/repositories/outbox_helper.dart';
+import 'package:ephemeron/data/repositories/pending_operations_repository.dart';
 import 'package:ephemeron/domain/habits/date_key.dart';
 import 'package:ephemeron/domain/habits/streaks.dart';
 
@@ -85,7 +86,18 @@ class HabitRepository {
 
   Stream<List<Habit>> watchHabits({bool archived = false}) {
     final q = _db.select(_db.habits)
-      ..where((h) => h.archived.equals(archived) & h.deletedAt.isNull());
+      ..where(
+        (h) =>
+            h.archived.equals(archived) &
+            h.deletedAt.isNull() &
+            h.id.isNotInQuery(
+              pendingIdsQuery(
+                _db,
+                entity: 'habit',
+                ops: {archived ? 'unarchive' : 'archive'},
+              ),
+            ),
+      );
     q.orderBy([(h) => OrderingTerm.asc(h.name)]);
     return q.watch();
   }
@@ -98,7 +110,14 @@ class HabitRepository {
     if (stripped.isEmpty) return [];
     final like = '%$stripped%';
     return (_db.select(_db.habits)
-          ..where((h) => h.deletedAt.isNull() & h.name.like(like))
+          ..where(
+            (h) =>
+                h.deletedAt.isNull() &
+                h.id.isNotInQuery(
+                  pendingIdsQuery(_db, entity: 'habit', ops: const {'archive'}),
+                ) &
+                h.name.like(like),
+          )
           ..orderBy([(h) => OrderingTerm.asc(h.name)])
           ..limit(limit))
         .get();

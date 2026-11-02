@@ -29,6 +29,7 @@ part 'app_database.g.dart';
     AlarmsIndex,
     Outbox,
     SyncState,
+    PendingOperations,
     Drafts,
   ],
 )
@@ -38,7 +39,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -73,6 +74,12 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(occurrenceCache);
         await customStatement(
           'CREATE INDEX IF NOT EXISTS idx_occurrence_cache_day ON occurrence_cache(day_key);',
+        );
+      }
+      if (from < 8) {
+        await m.createTable(pendingOperations);
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_pending_operations_scheduled ON pending_operations(scheduled_at);',
         );
       }
     },
@@ -121,6 +128,9 @@ Future<void> _createIndexesAndFts(AppDatabase db) async {
   );
   await db.customStatement(
     'CREATE INDEX IF NOT EXISTS idx_alarms_fire ON alarms_index(fire_at_utc);',
+  );
+  await db.customStatement(
+    'CREATE INDEX IF NOT EXISTS idx_pending_operations_scheduled ON pending_operations(scheduled_at);',
   );
 
   await db.customStatement(

@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import 'package:ephemeron/core/ids/ids.dart';
 import 'package:ephemeron/core/time/time.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
+import 'package:ephemeron/data/repositories/pending_operations_repository.dart';
 
 class FocusRepository {
   FocusRepository(this._db);
@@ -42,7 +43,13 @@ class FocusRepository {
   /// The currently running session, if any.
   Future<FocusSession?> currentSession() {
     return (_db.select(_db.focusSessions)
-          ..where((f) => f.endUtc.isNull())
+          ..where(
+            (f) =>
+                f.endUtc.isNull() &
+                f.id.isNotInQuery(
+                  pendingIdsQuery(_db, entity: 'focus', ops: const {'delete'}),
+                ),
+          )
           ..orderBy([(f) => OrderingTerm.desc(f.startUtc)])
           ..limit(1))
         .getSingleOrNull();
@@ -92,13 +99,21 @@ class FocusRepository {
     return (_db.select(_db.focusSessions)..where(
           (f) =>
               f.startUtc.isSmallerThanValue(toUtc) &
-              (f.endUtc.isNull() | f.endUtc.isBiggerOrEqualValue(fromUtc)),
+              (f.endUtc.isNull() | f.endUtc.isBiggerOrEqualValue(fromUtc)) &
+              f.id.isNotInQuery(
+                pendingIdsQuery(_db, entity: 'focus', ops: const {'delete'}),
+              ),
         ))
         .get();
   }
 
   Stream<List<FocusSession>> watchRecent({int limit = 50}) {
     final q = _db.select(_db.focusSessions)
+      ..where(
+        (f) => f.id.isNotInQuery(
+          pendingIdsQuery(_db, entity: 'focus', ops: const {'delete'}),
+        ),
+      )
       ..orderBy([(f) => OrderingTerm.desc(f.startUtc)])
       ..limit(limit);
     return q.watch();

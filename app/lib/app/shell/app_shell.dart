@@ -22,6 +22,7 @@ import '../../features/habits/application/habits_providers.dart';
 import '../../features/countdowns/application/countdowns_providers.dart';
 import '../../features/notes/application/notes_providers.dart';
 import '../../features/focus/application/focus_providers.dart';
+import '../../features/sync/application/pending_operations.dart';
 import 'more_sheet.dart';
 
 const List<LogicalKeyboardKey> _digitKeys = <LogicalKeyboardKey>[
@@ -60,7 +61,9 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     HardwareKeyboard.instance.addHandler(_handleGlobalKey);
-    _restoreLastTab();
+    _restoreSession();
+    // Apply destructive operations left pending by a previous session.
+    ref.read(pendingOperationsProvider);
     // Restart the persisted auto-sync schedule on every launch.
     Future.microtask(() => ref.read(googleAutoSyncServiceProvider).start());
     Future.microtask(
@@ -188,12 +191,24 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
   Widget build(BuildContext context) {
     // Widget refresh triggers: resubscribed on rebuild, previous
     // subscriptions are cancelled automatically by Riverpod.
-    ref.listen(openTasksProvider(null), (prev, next) => _scheduleWidgetRefresh());
+    ref.listen(
+      openTasksProvider(null),
+      (prev, next) => _scheduleWidgetRefresh(),
+    );
     ref.listen(habitsProvider(false), (prev, next) => _scheduleWidgetRefresh());
     ref.listen(countdownsProvider, (prev, next) => _scheduleWidgetRefresh());
-    ref.listen(folderNotesProvider(null), (prev, next) => _scheduleWidgetRefresh());
-    ref.listen(currentFocusSessionProvider, (prev, next) => _scheduleWidgetRefresh());
-    ref.listen(upcomingAlarmsProvider, (prev, next) => _scheduleWidgetRefresh());
+    ref.listen(
+      folderNotesProvider(null),
+      (prev, next) => _scheduleWidgetRefresh(),
+    );
+    ref.listen(
+      currentFocusSessionProvider,
+      (prev, next) => _scheduleWidgetRefresh(),
+    );
+    ref.listen(
+      upcomingAlarmsProvider,
+      (prev, next) => _scheduleWidgetRefresh(),
+    );
     final orderAsync = ref.watch(settingsRepositoryProvider);
     final onboarded = orderAsync.maybeWhen(
       data: (r) => r.onboarded,

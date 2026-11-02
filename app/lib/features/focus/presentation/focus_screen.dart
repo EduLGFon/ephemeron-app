@@ -15,6 +15,7 @@ import '../../../domain/alarms/alarm_preset.dart';
 import '../../../domain/habits/date_key.dart';
 import '../../alarms/data/alarm_scheduler.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
+import '../../sync/application/pending_operations.dart';
 import '../../habits/application/habits_providers.dart';
 import '../../settings/application/settings_providers.dart';
 import '../application/focus_providers.dart';
@@ -390,8 +391,8 @@ class _RunningViewState extends ConsumerState<_RunningView> {
   }
 
   Future<void> _discard(BuildContext context, WidgetRef ref) async {
-    final repo = ref.read(focusRepositoryProvider);
-    await repo.deleteSession(widget.session.id);
+    final pending = ref.read(pendingOperationsProvider);
+    final opId = await pending.scheduleFocusDelete(widget.session.id);
     await AlarmScheduler.cancel(_requestCode(widget.session.id));
     await SystemLauncher.stopFocusChronometer();
     try {
@@ -454,6 +455,18 @@ Future<String?> _askNote(BuildContext context) async {
       ],
     ),
   );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Session discarded.'),
+        duration: const Duration(seconds: 6),
+        persist: false,
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () => pending.cancel(opId),
+        ),
+      ),
+    );
 }
 
 String _formatMin(int min) {

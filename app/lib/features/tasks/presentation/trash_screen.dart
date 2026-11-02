@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../sync/application/pending_operations.dart';
 import '../application/tasks_providers.dart';
 
 class TrashScreen extends ConsumerWidget {
@@ -16,12 +17,28 @@ class TrashScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () async {
-              final n = await ref.read(taskRepositoryProvider).emptyTrash();
-              if (context.mounted) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('Purged $n old items')));
+              final ids = await ref.read(taskRepositoryProvider).oldTrashIds();
+              if (!context.mounted) return;
+              if (ids.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Nothing to purge')),
+                );
+                return;
               }
+              final pending = ref.read(pendingOperationsProvider);
+              final opIds = await pending.scheduleTaskPurgeAll(ids);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Purged ${ids.length} old items'),
+                  duration: const Duration(seconds: 6),
+                  persist: false,
+                  action: SnackBarAction(
+                    label: 'Undo',
+                    onPressed: () => pending.cancelAll(opIds),
+                  ),
+                ),
+              );
             },
             child: const Text('Empty old'),
           ),
@@ -67,8 +84,22 @@ class TrashScreen extends ConsumerWidget {
                       ) ??
                       false;
                 },
-                onDismissed: (_) =>
-                    ref.read(taskRepositoryProvider).purgeTask(t.id),
+                onDismissed: (_) async {
+                  final pending = ref.read(pendingOperationsProvider);
+                  final opId = await pending.scheduleTaskPurge(t.id);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Deleting "${t.title}" forever'),
+                      duration: const Duration(seconds: 6),
+                      persist: false,
+                      action: SnackBarAction(
+                        label: 'Undo',
+                        onPressed: () => pending.cancel(opId),
+                      ),
+                    ),
+                  );
+                },
                 child: ListTile(
                   title: Text(t.title),
                   trailing: IconButton(

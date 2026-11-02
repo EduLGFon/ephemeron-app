@@ -357,6 +357,21 @@ class SyncState extends Table {
   Set<Column> get primaryKey => {key};
 }
 
+/// Durable buffer for destructive operations that apply after a short undo
+/// window. Rows survive app restarts and are applied on next launch.
+class PendingOperations extends Table {
+  TextColumn get id => text()();
+  TextColumn get entity => text()();
+  TextColumn get entityId => text()();
+  TextColumn get op => text()();
+  TextColumn get payload => text().nullable()();
+  IntColumn get scheduledAt => integer()();
+  IntColumn get createdAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 class Drafts extends Table {
   TextColumn get id => text()();
   TextColumn get formType => text()();
