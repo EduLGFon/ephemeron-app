@@ -10,7 +10,6 @@ import '../../../domain/alarms/reminder.dart';
 import '../../../core/platform/app_permissions.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../application/tasks_providers.dart';
-import '../../calendar/application/calendar_providers.dart';
 
 Future<void> showTaskEditor(
   BuildContext context, {
@@ -132,11 +131,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
       }
     }
     try {
-      final window = ref.read(calendarStateProvider);
-      await ref.read(occurrenceRepositoryProvider).rebuildWindow(
-        windowStartUtc: window.fromUtc,
-        windowEndUtc: window.toUtc,
-      );
+      ref.read(occurrenceDirtyProvider.notifier).markDirty();
     } catch (_) {}
     if (mounted) Navigator.of(context).pop();
   }

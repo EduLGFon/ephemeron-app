@@ -57,3 +57,14 @@ class SelectedTaskList extends Notifier<String?> {
 
   void select(String? id) => state = id;
 }
+
+class OccurrenceDirty extends Notifier<bool> {
+  @override
+  bool build() => true;
+  void markDirty() => state = true;
+  void clear() => state = false;
+}
+
+final occurrenceDirtyProvider = NotifierProvider<OccurrenceDirty, bool>(
+  OccurrenceDirty.new,
+);

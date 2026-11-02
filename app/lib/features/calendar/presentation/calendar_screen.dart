@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../settings/application/settings_providers.dart';
 import '../../sync/presentation/sync_title.dart';
 import '../application/calendar_providers.dart';
+import '../../tasks/application/tasks_providers.dart';
 import '../application/calendar_state.dart';
 import 'agenda_view.dart';
 import 'calendar_settings_screen.dart';
@@ -33,7 +34,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Future<void> _maybeRebuild() async {
     if (!mounted) return;
     final window = ref.read(calendarStateProvider);
-    if (_built == window) return;
+    final dirty = ref.read(occurrenceDirtyProvider);
+    if (_built == window && !dirty) return;
     _built = window;
     await ref
         .read(occurrenceRepositoryProvider)
@@ -41,12 +43,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           windowStartUtc: window.fromUtc,
           windowEndUtc: window.toUtc,
         );
+    ref.read(occurrenceDirtyProvider.notifier).clear();
     if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     final window = ref.watch(calendarStateProvider);
+    ref.watch(occurrenceDirtyProvider);
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRebuild());
     return Scaffold(
       appBar: AppBar(
