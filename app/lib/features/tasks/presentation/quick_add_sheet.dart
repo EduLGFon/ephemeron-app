@@ -45,6 +45,7 @@ class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
   QuickAddParsed? _parsed;
   DraftAutosaver? _saver;
   bool _saved = false;
+  dynamic _settings;
 
   @override
   void initState() {
@@ -68,7 +69,10 @@ class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
       if (draft == null || !mounted || _controller.text.isNotEmpty) return;
       final text = draft.json['text'] as String?;
       if (text == null || text.isEmpty) return;
-      if (draftIsExpired(draft.updatedAtMs, DateTime.now().toUtc().millisecondsSinceEpoch)) {
+      if (draftIsExpired(
+        draft.updatedAtMs,
+        DateTime.now().toUtc().millisecondsSinceEpoch,
+      )) {
         return;
       }
       setState(() {
@@ -83,9 +87,12 @@ class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
     super.didChangeDependencies();
     _saver ??= DraftAutosaver(ref.read(draftStoreProvider), 'quick_add', null);
     // Track the open sheet so a kill mid-typing restores it.
+    // (dispose never runs on process kill, so the value survives kills
+    // but is cleared on normal close in dispose below.)
     Future.microtask(() async {
       try {
         final repo = await ref.read(settingsRepositoryProvider.future);
+        _settings = repo;
         await repo.setOpenSheet('quick_add');
       } catch (_) {}
     });
@@ -97,17 +104,19 @@ class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
       _saver?.changed(() => {'text': _controller.text});
     }
     _saver?.dispose();
-    _controller.dispose();
-    if (_saved) {
+    final settings = _settings;
+    // Normal close: clear the marker but keep the draft for preload.
+    // Process kill skips dispose, so the marker survives kills.
+    if (settings != null) {
       Future.microtask(() async {
         try {
-          final repo = ref.read(settingsRepositoryProvider).valueOrNull;
-          if (repo != null && repo.openSheet == 'quick_add') {
-            await repo.setOpenSheet(null);
+          if (settings.openSheet == 'quick_add') {
+            await settings.setOpenSheet(null);
           }
         } catch (_) {}
       });
     }
+    _controller.dispose();
     super.dispose();
   }
 

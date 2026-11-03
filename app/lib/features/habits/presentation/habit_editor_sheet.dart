@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/session/session_restore.dart';
 import '../../../data/drift/app_database.dart';
+import '../../settings/application/settings_providers.dart';
 import '../../../domain/alarms/alarm_preset.dart';
 import '../../../domain/habits/date_key.dart';
 import '../../../core/platform/app_permissions.dart';
@@ -11,20 +13,27 @@ import '../../../core/ui/escape_to_close.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../application/habits_providers.dart';
 
-Future<void> showHabitEditor(BuildContext context, {Habit? habit}) {
+Future<void> showHabitEditor(
+  BuildContext context, {
+  Habit? habit,
+  Map<String, dynamic>? restoredDraft,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    builder: (_) => EscapeToClose(child: _HabitEditorSheet(habit: habit)),
+    builder: (_) => EscapeToClose(
+      child: _HabitEditorSheet(habit: habit, restoredDraft: restoredDraft),
+    ),
   );
 }
 
 const _frequencies = ['daily', 'weekdays', 'weekly', 'interval'];
 
 class _HabitEditorSheet extends ConsumerStatefulWidget {
-  const _HabitEditorSheet({this.habit});
+  const _HabitEditorSheet({this.habit, this.restoredDraft});
 
   final Habit? habit;
+  final Map<String, dynamic>? restoredDraft;
 
   @override
   ConsumerState<_HabitEditorSheet> createState() => _HabitEditorSheetState();
@@ -42,28 +51,112 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
   late String _startDate;
   String? _reminderTime;
   String? _alarmPreset;
+  DraftAutosaver? _saver;
+  bool _saved = false;
+  dynamic _settings;
+
+  String get _draftEntityId => widget.habit?.id ?? 'new';
+
+  Map<String, dynamic> _snapshot() => {
+    'name': _name.text,
+    'amount': _amount.text,
+    'unit': _unit.text,
+    'sectionId': _sectionId,
+    'frequency': _frequency,
+    'weekdaysMask': _weekdaysMask,
+    'weeklyTarget': _weeklyTarget,
+    'intervalDays': _intervalDays,
+    'startDate': _startDate,
+    'reminderTime': _reminderTime,
+    'alarmPreset': _alarmPreset,
+  };
+
+  void _queueDraft() => _saver?.changed(_snapshot);
+
+  void _changed(void Function() fn) {
+    setState(fn);
+    _queueDraft();
+  }
 
   @override
   void initState() {
     super.initState();
     final h = widget.habit;
-    _name = TextEditingController(text: h?.name ?? '');
-    _amount = TextEditingController(
-      text: h?.goalAmount != null ? '${h!.goalAmount}' : '',
+    final d = widget.restoredDraft;
+    _name = TextEditingController(
+      text: (d?['name'] as String?) ?? h?.name ?? '',
     );
-    _unit = TextEditingController(text: h?.unit ?? '');
-    _sectionId = h?.sectionId;
-    _frequency = _frequencies.contains(h?.frequency) ? h!.frequency : 'daily';
-    _weekdaysMask = h?.weekdaysMask ?? 127;
-    _weeklyTarget = h?.weeklyTarget ?? 3;
-    _intervalDays = h?.intervalDays ?? 2;
-    _startDate = h?.startDate ?? habitDateKey(DateTime.now());
-    _reminderTime = h?.reminderTime;
-    _alarmPreset = h?.alarmPreset;
+    _amount = TextEditingController(
+      text:
+          (d?['amount'] as String?) ??
+          (h?.goalAmount != null ? '${h!.goalAmount}' : ''),
+    );
+    _unit = TextEditingController(
+      text: (d?['unit'] as String?) ?? h?.unit ?? '',
+    );
+    _sectionId = (d?['sectionId'] as String?) ?? h?.sectionId;
+    _frequency =
+        (d?['frequency'] as String?) ??
+        (_frequencies.contains(h?.frequency) ? h!.frequency : 'daily');
+    _weekdaysMask =
+        (d?['weekdaysMask'] as num?)?.toInt() ?? h?.weekdaysMask ?? 127;
+    _weeklyTarget =
+        (d?['weeklyTarget'] as num?)?.toInt() ?? h?.weeklyTarget ?? 3;
+    _intervalDays =
+        (d?['intervalDays'] as num?)?.toInt() ?? h?.intervalDays ?? 2;
+    _startDate =
+        (d?['startDate'] as String?) ??
+        h?.startDate ??
+        habitDateKey(DateTime.now());
+    _reminderTime = (d?['reminderTime'] as String?) ?? h?.reminderTime;
+    _alarmPreset = (d?['alarmPreset'] as String?) ?? h?.alarmPreset;
+    for (final c in [_name, _amount, _unit]) {
+      c.addListener(_queueDraft);
+    }
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _saver ??= DraftAutosaver(
+      ref.read(draftStoreProvider),
+      'habit',
+      _draftEntityId,
+    );
+    Future.microtask(() async {
+      try {
+        final repo = await ref.read(settingsRepositoryProvider.future);
+        _settings = repo;
+        await repo.setOpenSheet(
+          widget.habit == null ? 'habit_new' : 'habit:${widget.habit!.id}',
+        );
+      } catch (_) {}
+    });
+  }
+
+  String _expectedSheet() =>
+      widget.habit == null ? 'habit_new' : 'habit:${widget.habit!.id}';
+
+  @override
   void dispose() {
+    if (!_saved) {
+      final snap = _snapshot();
+      _saver?.changed(() => snap);
+    }
+    _saver?.dispose();
+    final settings = _settings;
+    // Normal close clears the marker; process kill skips dispose
+    // so the marker survives kills. Drafts are kept for preload.
+    if (settings != null) {
+      final expected = _expectedSheet();
+      Future.microtask(() async {
+        try {
+          if (settings.openSheet == expected) {
+            await settings.setOpenSheet(null);
+          }
+        } catch (_) {}
+      });
+    }
     _name.dispose();
     _amount.dispose();
     _unit.dispose();
@@ -106,7 +199,7 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
                   for (final s in sections)
                     DropdownMenuItem<String?>(value: s.id, child: Text(s.name)),
                 ],
-                onChanged: (v) => setState(() => _sectionId = v),
+                onChanged: (v) => _changed(() => _sectionId = v),
               ),
               orElse: () => const SizedBox.shrink(),
             ),
@@ -122,26 +215,26 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
                 ButtonSegment(value: 'interval', label: Text('Every N')),
               ],
               selected: {_frequency},
-              onSelectionChanged: (s) => setState(() => _frequency = s.single),
+              onSelectionChanged: (s) => _changed(() => _frequency = s.single),
             ),
             const SizedBox(height: 8),
             if (_frequency == 'weekdays')
               _WeekdayPicker(
                 mask: _weekdaysMask,
-                onChanged: (m) => setState(() => _weekdaysMask = m),
+                onChanged: (m) => _changed(() => _weekdaysMask = m),
               ),
             if (_frequency == 'weekly')
               _Stepper(
                 label: 'Days per week',
                 value: _weeklyTarget,
-                onChanged: (v) => setState(() => _weeklyTarget = v),
+                onChanged: (v) => _changed(() => _weeklyTarget = v),
               ),
             if (_frequency == 'interval')
               _Stepper(
                 label: 'Every N days',
                 value: _intervalDays,
                 min: 2,
-                onChanged: (v) => setState(() => _intervalDays = v),
+                onChanged: (v) => _changed(() => _intervalDays = v),
               ),
             Row(
               children: [
@@ -169,7 +262,9 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
             Row(
               children: [
                 Expanded(
-                  child: Text('Start: ${DeviceDateFormat.dateIso(context, _startDate)}'),
+                  child: Text(
+                    'Start: ${DeviceDateFormat.dateIso(context, _startDate)}',
+                  ),
                 ),
                 TextButton(
                   onPressed: _pickStartDate,
@@ -184,14 +279,14 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
                 if (_reminderTime != null)
                   IconButton(
                     icon: const Icon(Icons.clear),
-                    onPressed: () => setState(() => _reminderTime = null),
+                    onPressed: () => _changed(() => _reminderTime = null),
                   ),
               ],
             ),
             const SizedBox(height: 8),
             AlarmPresetPicker(
               value: _alarmPreset,
-              onChanged: (v) => setState(() => _alarmPreset = v),
+              onChanged: (v) => _changed(() => _alarmPreset = v),
             ),
             const SizedBox(height: 4),
             const Text(
@@ -212,7 +307,7 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
     if (name == null || name.trim().isEmpty) return;
     final repo = ref.read(habitRepositoryProvider);
     final id = await repo.createSection(name.trim());
-    setState(() => _sectionId = id);
+    _changed(() => _sectionId = id);
   }
 
   Future<void> _pickStartDate() async {
@@ -223,7 +318,7 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (d != null) setState(() => _startDate = habitDateKey(d));
+    if (d != null) _changed(() => _startDate = habitDateKey(d));
   }
 
   Future<void> _pickReminder() async {
@@ -234,7 +329,7 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
     if (t == null) return;
     final hh = t.hour.toString().padLeft(2, '0');
     final mm = t.minute.toString().padLeft(2, '0');
-    setState(() => _reminderTime = '$hh:$mm');
+    _changed(() => _reminderTime = '$hh:$mm');
   }
 
   Future<void> _save() async {
@@ -288,6 +383,15 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
         alarmPreset: () => _alarmPreset,
       );
     }
+    _saved = true;
+    try {
+      await ref.read(draftStoreProvider).clear('habit', _draftEntityId);
+      final srepo = await ref.read(settingsRepositoryProvider.future);
+      final expected = widget.habit == null
+          ? 'habit_new'
+          : 'habit:${widget.habit!.id}';
+      if (srepo.openSheet == expected) await srepo.setOpenSheet(null);
+    } catch (_) {}
     if (mounted) Navigator.of(context).pop();
   }
 }

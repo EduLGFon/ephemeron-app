@@ -97,9 +97,7 @@ class HomeWidgetsScreen extends ConsumerWidget {
         content: options.isEmpty
             ? const Text('No options available yet.')
             : DropdownButton<String?>(
-                value: options.any((o) => o.$1 == selected)
-                    ? selected
-                    : null,
+                value: options.any((o) => o.$1 == selected) ? selected : null,
                 hint: const Text('All (default)'),
                 items: [
                   const DropdownMenuItem<String?>(
@@ -107,10 +105,7 @@ class HomeWidgetsScreen extends ConsumerWidget {
                     child: Text('All (default)'),
                   ),
                   for (final o in options)
-                    DropdownMenuItem<String?>(
-                      value: o.$1,
-                      child: Text(o.$2),
-                    ),
+                    DropdownMenuItem<String?>(value: o.$1, child: Text(o.$2)),
                 ],
                 onChanged: (v) {
                   selected = v;
@@ -130,10 +125,7 @@ class HomeWidgetsScreen extends ConsumerWidget {
   }
 
   /// Returns (id, label) options for a config kind.
-  Future<List<(String, String)>> _optionsFor(
-    WidgetRef ref,
-    String kind,
-  ) async {
+  Future<List<(String, String)>> _optionsFor(WidgetRef ref, String kind) async {
     try {
       switch (kind) {
         case 'listId':
@@ -147,9 +139,7 @@ class HomeWidgetsScreen extends ConsumerWidget {
           return [for (final l in lists) (l.id, l.name)];
         case 'taskId':
           final tasks = await ref.read(openTasksProvider(null).future);
-          return [
-            for (final t in tasks.take(50)) (t.id, t.title),
-          ];
+          return [for (final t in tasks.take(50)) (t.id, t.title)];
         case 'noteId':
           final notes = await ref.read(folderNotesProvider(null).future);
           return [for (final n in notes.take(50)) (n.id, n.title)];

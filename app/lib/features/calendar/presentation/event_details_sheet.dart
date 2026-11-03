@@ -10,6 +10,7 @@ import '../../../data/drift/app_database.dart';
 import '../../../core/db/db_provider.dart';
 import '../../../data/repositories/event_repository.dart';
 import '../../notes/application/notes_providers.dart';
+import '../../settings/application/settings_providers.dart';
 import '../../sync/application/pending_operations.dart';
 import '../../tasks/application/tasks_providers.dart';
 import '../../notes/presentation/note_editor_screen.dart';
@@ -18,11 +19,31 @@ import 'event_editor_sheet.dart';
 import '../../tasks/presentation/task_editor_sheet.dart';
 import 'scope_sheet.dart';
 
-Future<void> showEventDetails(BuildContext context, String eventId) {
-  return showModalBottomSheet<void>(
-    context: context,
-    builder: (_) => EscapeToClose(child: _Details(eventId: eventId)),
-  );
+Future<void> showEventDetails(BuildContext context, String eventId) async {
+  // Track the open modal so a kill while viewing restores it.
+  // Normal close clears the marker below; process kill skips it.
+  try {
+    final container = ProviderScope.containerOf(context);
+    final repo = await container.read(settingsRepositoryProvider.future);
+    await repo.setOpenSheet('event_details:$eventId');
+  } catch (_) {}
+  if (!context.mounted) return;
+  try {
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (_) => EscapeToClose(child: _Details(eventId: eventId)),
+    );
+  } finally {
+    try {
+      if (context.mounted) {
+        final container = ProviderScope.containerOf(context);
+        final repo = await container.read(settingsRepositoryProvider.future);
+        if (repo.openSheet == 'event_details:$eventId') {
+          await repo.setOpenSheet(null);
+        }
+      }
+    } catch (_) {}
+  }
 }
 
 class _Details extends ConsumerWidget {
@@ -367,7 +388,9 @@ String _when(BuildContext context, Event e) {
   if (e.isAllDay) {
     if (e.startDate == null) return '';
     try {
-      return DeviceDateFormat.yMMMd(context).format(DateTime.parse(e.startDate!));
+      return DeviceDateFormat.yMMMd(
+        context,
+      ).format(DateTime.parse(e.startDate!));
     } catch (_) {
       return e.startDate!;
     }
@@ -385,7 +408,6 @@ String _when(BuildContext context, Event e) {
       : ' - ${DeviceDateFormat.hm(context).format(DateTime.fromMillisecondsSinceEpoch(e.endUtc!, isUtc: true).toLocal())}';
   return '$s$en';
 }
-
 
 Future<void> _delete(BuildContext context, WidgetRef ref, Event e) async {
   final recurring =

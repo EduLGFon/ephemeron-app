@@ -5,7 +5,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'data/services/home_widget_callback.dart';
 import 'data/services/home_widget_refresh_service.dart';
-import 'package:home_widget/home_widget.dart';import 'app/router/app_router.dart';
+import 'package:home_widget/home_widget.dart';
+import 'app/router/app_router.dart';
 import 'core/security/app_lock.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_tokens.dart';
@@ -15,9 +16,16 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   final container = ProviderContainer();
-  runApp(UncontrolledProviderScope(container: container, child: const EphemeronApp()));
+  runApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: const EphemeronApp(),
+    ),
+  );
   try {
-    await HomeWidget.registerInteractivityCallback(homeWidgetBackgroundCallback);
+    await HomeWidget.registerInteractivityCallback(
+      homeWidgetBackgroundCallback,
+    );
   } catch (_) {}
   // Best-effort: keep home-screen widgets from being blank.
   container.read(homeWidgetRefreshServiceProvider).refreshDefaults();

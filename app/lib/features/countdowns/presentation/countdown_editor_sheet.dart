@@ -3,26 +3,37 @@ import 'package:flutter/material.dart';
 import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/session/session_restore.dart';
 import '../../../data/drift/app_database.dart';
+import '../../settings/application/settings_providers.dart';
 import '../../../domain/alarms/alarm_preset.dart';
 import '../../../core/platform/app_permissions.dart';
 import '../../../core/ui/escape_to_close.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../application/countdowns_providers.dart';
 
-Future<void> showCountdownEditor(BuildContext context, {Countdown? countdown}) {
+Future<void> showCountdownEditor(
+  BuildContext context, {
+  Countdown? countdown,
+  Map<String, dynamic>? restoredDraft,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    builder: (_) =>
-        EscapeToClose(child: _CountdownEditorSheet(countdown: countdown)),
+    builder: (_) => EscapeToClose(
+      child: _CountdownEditorSheet(
+        countdown: countdown,
+        restoredDraft: restoredDraft,
+      ),
+    ),
   );
 }
 
 class _CountdownEditorSheet extends ConsumerStatefulWidget {
-  const _CountdownEditorSheet({this.countdown});
+  const _CountdownEditorSheet({this.countdown, this.restoredDraft});
 
   final Countdown? countdown;
+  final Map<String, dynamic>? restoredDraft;
 
   @override
   ConsumerState<_CountdownEditorSheet> createState() =>
@@ -39,25 +50,105 @@ class _CountdownEditorSheetState extends ConsumerState<_CountdownEditorSheet> {
   int _alertHour = 9;
   int _alertMinute = 0;
   String? _alarmPreset;
+  DraftAutosaver? _saver;
+  bool _saved = false;
+  dynamic _settings;
+
+  String get _draftEntityId => widget.countdown?.id ?? 'new';
+
+  Map<String, dynamic> _snapshot() => {
+    'title': _title.text,
+    'notes': _notes.text,
+    'date': _date == null
+        ? null
+        : '${_date!.year.toString().padLeft(4, '0')}-${_date!.month.toString().padLeft(2, '0')}-${_date!.day.toString().padLeft(2, '0')}',
+    'yearlyRepeat': _yearlyRepeat,
+    'showAge': _showAge,
+    'alertOffsetDays': _alertOffsetDays,
+    'alertHour': _alertHour,
+    'alertMinute': _alertMinute,
+    'alarmPreset': _alarmPreset,
+  };
+
+  void _queueDraft() => _saver?.changed(_snapshot);
+
+  void _changed(void Function() fn) {
+    setState(fn);
+    _queueDraft();
+  }
 
   @override
   void initState() {
     super.initState();
     final c = widget.countdown;
-    _title = TextEditingController(text: c?.title ?? '');
-    _notes = TextEditingController(text: c?.notes ?? '');
-    _date = _parseDate(c?.targetDate);
-    _yearlyRepeat = c?.yearlyRepeat ?? false;
-    _showAge = c?.showAge ?? false;
-    _alertOffsetDays = c?.alertOffsetDays ?? 3;
+    final d = widget.restoredDraft;
+    _title = TextEditingController(
+      text: (d?['title'] as String?) ?? c?.title ?? '',
+    );
+    _notes = TextEditingController(
+      text: (d?['notes'] as String?) ?? c?.notes ?? '',
+    );
+    _date = d?['date'] != null
+        ? _parseDate(d!['date'] as String?)
+        : _parseDate(c?.targetDate);
+    _yearlyRepeat = (d?['yearlyRepeat'] as bool?) ?? c?.yearlyRepeat ?? false;
+    _showAge = (d?['showAge'] as bool?) ?? c?.showAge ?? false;
+    _alertOffsetDays =
+        (d?['alertOffsetDays'] as num?)?.toInt() ?? c?.alertOffsetDays ?? 3;
     final tm = c?.alertTimeMin ?? 540;
-    _alertHour = tm ~/ 60;
-    _alertMinute = tm % 60;
-    _alarmPreset = c?.alarmPreset;
+    _alertHour = (d?['alertHour'] as num?)?.toInt() ?? tm ~/ 60;
+    _alertMinute = (d?['alertMinute'] as num?)?.toInt() ?? tm % 60;
+    _alarmPreset = (d?['alarmPreset'] as String?) ?? c?.alarmPreset;
+    for (final ctl in [_title, _notes]) {
+      ctl.addListener(_queueDraft);
+    }
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _saver ??= DraftAutosaver(
+      ref.read(draftStoreProvider),
+      'countdown',
+      _draftEntityId,
+    );
+    Future.microtask(() async {
+      try {
+        final repo = await ref.read(settingsRepositoryProvider.future);
+        _settings = repo;
+        await repo.setOpenSheet(
+          widget.countdown == null
+              ? 'countdown_new'
+              : 'countdown:${widget.countdown!.id}',
+        );
+      } catch (_) {}
+    });
+  }
+
+  String _expectedSheet() => widget.countdown == null
+      ? 'countdown_new'
+      : 'countdown:${widget.countdown!.id}';
+
+  @override
   void dispose() {
+    if (!_saved) {
+      final snap = _snapshot();
+      _saver?.changed(() => snap);
+    }
+    _saver?.dispose();
+    final settings = _settings;
+    // Normal close clears the marker; process kill skips dispose
+    // so the marker survives kills. Drafts are kept for preload.
+    if (settings != null) {
+      final expected = _expectedSheet();
+      Future.microtask(() async {
+        try {
+          if (settings.openSheet == expected) {
+            await settings.setOpenSheet(null);
+          }
+        } catch (_) {}
+      });
+    }
     _title.dispose();
     _notes.dispose();
     super.dispose();
@@ -102,12 +193,12 @@ class _CountdownEditorSheetState extends ConsumerState<_CountdownEditorSheet> {
             SwitchListTile(
               title: const Text('Repeats yearly'),
               value: _yearlyRepeat,
-              onChanged: (v) => setState(() => _yearlyRepeat = v),
+              onChanged: (v) => _changed(() => _yearlyRepeat = v),
             ),
             SwitchListTile(
               title: const Text('Show age'),
               value: _showAge,
-              onChanged: (v) => setState(() => _showAge = v),
+              onChanged: (v) => _changed(() => _showAge = v),
             ),
             TextField(
               controller: _notes,
@@ -142,14 +233,14 @@ class _CountdownEditorSheetState extends ConsumerState<_CountdownEditorSheet> {
                     DropdownMenuItem(value: 3, child: Text('3 days')),
                     DropdownMenuItem(value: 7, child: Text('7 days')),
                   ],
-                  onChanged: (v) => setState(() => _alertOffsetDays = v ?? 3),
+                  onChanged: (v) => _changed(() => _alertOffsetDays = v ?? 3),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             AlarmPresetPicker(
               value: _alarmPreset,
-              onChanged: (v) => setState(() => _alarmPreset = v),
+              onChanged: (v) => _changed(() => _alarmPreset = v),
             ),
             const SizedBox(height: 12),
             FilledButton(onPressed: _save, child: const Text('Save')),
@@ -167,7 +258,7 @@ class _CountdownEditorSheetState extends ConsumerState<_CountdownEditorSheet> {
       firstDate: DateTime(1900),
       lastDate: DateTime(2100),
     );
-    if (d != null) setState(() => _date = d);
+    if (d != null) _changed(() => _date = d);
   }
 
   Future<void> _pickAlertTime() async {
@@ -176,7 +267,7 @@ class _CountdownEditorSheetState extends ConsumerState<_CountdownEditorSheet> {
       initialTime: TimeOfDay(hour: _alertHour, minute: _alertMinute),
     );
     if (t != null) {
-      setState(() {
+      _changed(() {
         _alertHour = t.hour;
         _alertMinute = t.minute;
       });
@@ -231,6 +322,15 @@ class _CountdownEditorSheetState extends ConsumerState<_CountdownEditorSheet> {
         alarmPreset: () => _alarmPreset,
       );
     }
+    _saved = true;
+    try {
+      await ref.read(draftStoreProvider).clear('countdown', _draftEntityId);
+      final srepo = await ref.read(settingsRepositoryProvider.future);
+      final expected = widget.countdown == null
+          ? 'countdown_new'
+          : 'countdown:${widget.countdown!.id}';
+      if (srepo.openSheet == expected) await srepo.setOpenSheet(null);
+    } catch (_) {}
     if (mounted) Navigator.of(context).pop();
   }
 }

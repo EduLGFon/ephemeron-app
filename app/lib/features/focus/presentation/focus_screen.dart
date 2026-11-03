@@ -117,6 +117,41 @@ class _StartViewState extends ConsumerState<_StartView> {
   String? _taskId;
   String? _habitId;
   String? _alarmPreset = AlarmPreset.notification.id;
+  bool _setupRestored = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_setupRestored) {
+      _setupRestored = true;
+      Future.microtask(() async {
+        try {
+          final repo = await ref.read(settingsRepositoryProvider.future);
+          if (!mounted) return;
+          setState(() {
+            _focusMin = repo.focusSetupMin;
+            _breakMin = repo.focusBreakMin;
+            _isBreak = repo.focusIsBreak;
+            _taskId = repo.focusTaskId;
+            _habitId = repo.focusHabitId;
+          });
+        } catch (_) {}
+      });
+    }
+  }
+
+  Future<void> _persistSetup() async {
+    try {
+      final repo = await ref.read(settingsRepositoryProvider.future);
+      await repo.setFocusSetup(
+        focusMin: _focusMin,
+        breakMin: _breakMin,
+        isBreak: _isBreak,
+        taskId: () => _taskId,
+        habitId: () => _habitId,
+      );
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -129,101 +164,121 @@ class _StartViewState extends ConsumerState<_StartView> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-        SegmentedButton<bool>(
-          segments: const [
-            ButtonSegment(value: false, label: Text('Focus')),
-            ButtonSegment(value: true, label: Text('Break')),
-          ],
-          selected: {_isBreak},
-          onSelectionChanged: (s) => setState(() => _isBreak = s.single),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          children: [
-            for (final m in (_isBreak ? _breakPresets : _focusPresets))
-              ChoiceChip(
-                label: Text('$m min'),
-                selected: (_isBreak ? _breakMin : _focusMin) == m,
-                onSelected: (_) => setState(() {
-                  if (_isBreak) {
-                    _breakMin = m;
-                  } else {
-                    _focusMin = m;
-                  }
-                }),
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        tasksAsync.maybeWhen(
-          data: (tasks) => DropdownButtonFormField<String?>(
-            initialValue: _taskId,
-            decoration: const InputDecoration(
-              labelText: 'Link task (optional)',
-            ),
-            items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('None')),
-              for (final t in tasks.take(50))
-                DropdownMenuItem<String?>(value: t.id, child: Text(t.title)),
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(value: false, label: Text('Focus')),
+              ButtonSegment(value: true, label: Text('Break')),
             ],
-            onChanged: (v) => setState(() => _taskId = v),
+            selected: {_isBreak},
+            onSelectionChanged: (s) {
+              setState(() => _isBreak = s.single);
+              _persistSetup();
+            },
           ),
-          orElse: () => const SizedBox.shrink(),
-        ),
-        habitsAsync.maybeWhen(
-          data: (habits) => DropdownButtonFormField<String?>(
-            initialValue: _habitId,
-            decoration: const InputDecoration(
-              labelText: 'Link habit (optional)',
-            ),
-            items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('None')),
-              for (final h in habits)
-                DropdownMenuItem<String?>(value: h.id, child: Text(h.name)),
-            ],
-            onChanged: (v) => setState(() => _habitId = v),
-          ),
-          orElse: () => const SizedBox.shrink(),
-        ),
-        const SizedBox(height: 12),
-        AlarmPresetPicker(
-          value: _alarmPreset,
-          onChanged: (v) => setState(() => _alarmPreset = v),
-        ),
-        const SizedBox(height: 12),
-        FilledButton.icon(
-          onPressed: _start,
-          icon: const Icon(Icons.play_arrow),
-          label: Text(
-            'Start ${_isBreak ? _breakMin : _focusMin} min ${_isBreak ? 'break' : 'focus'}',
-          ),
-        ),
-        const SizedBox(height: 16),
-        todayAsync.maybeWhen(
-          data: (min) => Text(
-            'Today: ${_formatMin(min)}',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          orElse: () => const SizedBox.shrink(),
-        ),
-        const SizedBox(height: 8),
-        weekAsync.maybeWhen(
-          data: (days) => _WeekBars(days: days),
-          orElse: () => const SizedBox.shrink(),
-        ),
-        const SizedBox(height: 8),
-        recentAsync.maybeWhen(
-          data: (sessions) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
             children: [
-              Text('Recent', style: Theme.of(context).textTheme.titleSmall),
-              for (final s in sessions.take(10)) _SessionTile(session: s),
+              for (final m in (_isBreak ? _breakPresets : _focusPresets))
+                ChoiceChip(
+                  label: Text('$m min'),
+                  selected: (_isBreak ? _breakMin : _focusMin) == m,
+                  onSelected: (_) {
+                    setState(() {
+                      if (_isBreak) {
+                        _breakMin = m;
+                      } else {
+                        _focusMin = m;
+                      }
+                    });
+                    _persistSetup();
+                  },
+                ),
             ],
           ),
-          orElse: () => const SizedBox.shrink(),
-        ),
-      ],
+          const SizedBox(height: 8),
+          tasksAsync.maybeWhen(
+            data: (tasks) => DropdownButtonFormField<String?>(
+              initialValue: _taskId,
+              decoration: const InputDecoration(
+                labelText: 'Link task (optional)',
+              ),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('None'),
+                ),
+                for (final t in tasks.take(50))
+                  DropdownMenuItem<String?>(value: t.id, child: Text(t.title)),
+              ],
+              onChanged: (v) {
+                setState(() => _taskId = v);
+                _persistSetup();
+              },
+            ),
+            orElse: () => const SizedBox.shrink(),
+          ),
+          habitsAsync.maybeWhen(
+            data: (habits) => DropdownButtonFormField<String?>(
+              initialValue: _habitId,
+              decoration: const InputDecoration(
+                labelText: 'Link habit (optional)',
+              ),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('None'),
+                ),
+                for (final h in habits)
+                  DropdownMenuItem<String?>(value: h.id, child: Text(h.name)),
+              ],
+              onChanged: (v) {
+                setState(() => _habitId = v);
+                _persistSetup();
+              },
+            ),
+            orElse: () => const SizedBox.shrink(),
+          ),
+          const SizedBox(height: 12),
+          AlarmPresetPicker(
+            value: _alarmPreset,
+            onChanged: (v) => setState(
+              () => _alarmPreset = v,
+            ), // alarm preset is per-session, not persisted
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: _start,
+            icon: const Icon(Icons.play_arrow),
+            label: Text(
+              'Start ${_isBreak ? _breakMin : _focusMin} min ${_isBreak ? 'break' : 'focus'}',
+            ),
+          ),
+          const SizedBox(height: 16),
+          todayAsync.maybeWhen(
+            data: (min) => Text(
+              'Today: ${_formatMin(min)}',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            orElse: () => const SizedBox.shrink(),
+          ),
+          const SizedBox(height: 8),
+          weekAsync.maybeWhen(
+            data: (days) => _WeekBars(days: days),
+            orElse: () => const SizedBox.shrink(),
+          ),
+          const SizedBox(height: 8),
+          recentAsync.maybeWhen(
+            data: (sessions) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Recent', style: Theme.of(context).textTheme.titleSmall),
+                for (final s in sessions.take(10)) _SessionTile(session: s),
+              ],
+            ),
+            orElse: () => const SizedBox.shrink(),
+          ),
+        ],
       ),
     );
   }
@@ -400,6 +455,18 @@ class _RunningViewState extends ConsumerState<_RunningView> {
       if (settings.focusDnd) await SystemLauncher.setDnd(false);
     } catch (_) {}
     _refresh(ref);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Session discarded.'),
+        duration: const Duration(seconds: 6),
+        persist: false,
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () => pending.cancel(opId),
+        ),
+      ),
+    );
   }
 }
 
@@ -455,18 +522,6 @@ Future<String?> _askNote(BuildContext context) async {
       ],
     ),
   );
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Session discarded.'),
-        duration: const Duration(seconds: 6),
-        persist: false,
-        action: SnackBarAction(
-          label: 'Undo',
-          onPressed: () => pending.cancel(opId),
-        ),
-      ),
-    );
 }
 
 String _formatMin(int min) {

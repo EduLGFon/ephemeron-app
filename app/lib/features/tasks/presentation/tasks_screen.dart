@@ -9,6 +9,7 @@ import 'package:ephemeron/core/ui/empty_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
+import '../../settings/application/settings_providers.dart';
 import '../../sync/application/pending_operations.dart';
 import '../../sync/presentation/sync_title.dart';
 import '../application/tasks_providers.dart';
@@ -18,6 +19,14 @@ import 'trash_screen.dart';
 
 class TasksScreen extends ConsumerWidget {
   const TasksScreen({super.key});
+
+  Future<void> _select(WidgetRef ref, String? id) async {
+    ref.read(selectedTaskListProvider.notifier).select(id);
+    try {
+      final repo = await ref.read(settingsRepositoryProvider.future);
+      await repo.setSelectedTaskListId(id);
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -53,18 +62,14 @@ class TasksScreen extends ConsumerWidget {
                   ChoiceChip(
                     label: const Text('All'),
                     selected: listId == null,
-                    onSelected: (_) => ref
-                        .read(selectedTaskListProvider.notifier)
-                        .select(null),
+                    onSelected: (_) => _select(ref, null),
                   ),
                   const SizedBox(width: 8),
                   for (final l in lists) ...[
                     ChoiceChip(
                       label: Text(l.name),
                       selected: listId == l.id,
-                      onSelected: (_) => ref
-                          .read(selectedTaskListProvider.notifier)
-                          .select(l.id),
+                      onSelected: (_) => _select(ref, l.id),
                     ),
                     const SizedBox(width: 8),
                   ],
@@ -409,7 +414,6 @@ class _MoveButtons extends ConsumerWidget {
     );
   }
 }
-
 
 class _ErrorState extends StatelessWidget {
   const _ErrorState({required this.message, required this.onRetry});

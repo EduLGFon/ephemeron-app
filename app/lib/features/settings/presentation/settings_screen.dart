@@ -51,6 +51,13 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncRepo = ref.watch(settingsRepositoryProvider);
+    // Track the route so restarts return here.
+    Future.microtask(() async {
+      try {
+        final repo = await ref.read(settingsRepositoryProvider.future);
+        if (repo.lastRoute != '/settings') await repo.setLastRoute('/settings');
+      } catch (_) {}
+    });
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: asyncRepo.when(
@@ -300,46 +307,48 @@ class SettingsScreen extends ConsumerWidget {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => EscapeToClose(child: StatefulBuilder(
-        builder: (ctx, setSt) => SafeArea(
-          child: SizedBox(
-            height: MediaQuery.of(ctx).size.height * 0.7,
-            child: Column(
-              children: [
-                Expanded(
-                  child: ReorderableListView(
-                    onReorderItem: (oldIndex, newIndex) {
-                      setSt(() {
-                        final item = current.removeAt(oldIndex);
-                        current.insert(newIndex, item);
-                      });
-                    },
-                    children: [
-                      for (final idx in current)
-                        ListTile(
-                          key: ValueKey(idx),
-                          title: Text(AppSectionLabel.label(idx)),
-                          trailing: const Icon(Icons.drag_handle),
-                        ),
-                    ],
+      builder: (ctx) => EscapeToClose(
+        child: StatefulBuilder(
+          builder: (ctx, setSt) => SafeArea(
+            child: SizedBox(
+              height: MediaQuery.of(ctx).size.height * 0.7,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ReorderableListView(
+                      onReorderItem: (oldIndex, newIndex) {
+                        setSt(() {
+                          final item = current.removeAt(oldIndex);
+                          current.insert(newIndex, item);
+                        });
+                      },
+                      children: [
+                        for (final idx in current)
+                          ListTile(
+                            key: ValueKey(idx),
+                            title: Text(AppSectionLabel.label(idx)),
+                            trailing: const Icon(Icons.drag_handle),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: FilledButton(
-                    onPressed: () async {
-                      await repo.setNavOrder(current);
-                      ref.invalidate(settingsRepositoryProvider);
-                      if (ctx.mounted) Navigator.of(ctx).pop();
-                    },
-                    child: const Text('Save'),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: FilledButton(
+                      onPressed: () async {
+                        await repo.setNavOrder(current);
+                        ref.invalidate(settingsRepositoryProvider);
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+                      },
+                      child: const Text('Save'),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      )),
+      ),
     );
   }
 }

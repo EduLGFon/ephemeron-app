@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/alarms/alarm_preset.dart';
 import '../../../core/platform/app_permissions.dart';
+import '../../settings/application/settings_providers.dart';
 import '../application/alarm_providers.dart';
 import '../data/alarm_scheduler.dart';
 
@@ -15,6 +16,15 @@ class AlarmSettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Track the route so restarts return here.
+    Future.microtask(() async {
+      try {
+        final repo = await ref.read(settingsRepositoryProvider.future);
+        if (repo.lastRoute != '/alarm-settings') {
+          await repo.setLastRoute('/alarm-settings');
+        }
+      } catch (_) {}
+    });
     if (kIsWeb) {
       return Scaffold(
         appBar: AppBar(title: const Text('Alarms')),

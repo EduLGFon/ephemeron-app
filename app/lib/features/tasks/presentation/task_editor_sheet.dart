@@ -59,6 +59,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
   List<int> _reminders = const [0];
   DraftAutosaver? _saver;
   bool _saved = false;
+  dynamic _settings;
 
   String get _draftEntityId => widget.task?.id ?? 'new';
 
@@ -80,7 +81,10 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
     _dueTime = (d?['dueTime'] as num?)?.toInt() ?? t?.dueTime;
     _pinned = (d?['pinned'] as bool?) ?? t?.pinned ?? false;
     _alarmPreset = (d?['alarmPreset'] as String?) ?? t?.alarmPreset;
-    final draftReminders = (d?['reminders'] as List?)?.whereType<num>().map((e) => e.toInt()).toList();
+    final draftReminders = (d?['reminders'] as List?)
+        ?.whereType<num>()
+        .map((e) => e.toInt())
+        .toList();
     _reminders = draftReminders != null && draftReminders.isNotEmpty
         ? draftReminders
         : (t?.reminders == null || t!.reminders!.trim().isEmpty
@@ -97,7 +101,12 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
     try {
       final draft = await ref.read(draftStoreProvider).load('task', 'new');
       if (draft == null || !mounted) return;
-      if (draftIsExpired(draft.updatedAtMs, DateTime.now().toUtc().millisecondsSinceEpoch)) return;
+      if (draftIsExpired(
+        draft.updatedAtMs,
+        DateTime.now().toUtc().millisecondsSinceEpoch,
+      )) {
+        return;
+      }
       final j = draft.json;
       final title = j['title'] as String?;
       if (title == null || title.isEmpty) return;
@@ -126,6 +135,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
     Future.microtask(() async {
       try {
         final repo = await ref.read(settingsRepositoryProvider.future);
+        _settings = repo;
         await repo.setOpenSheet(
           widget.task == null ? 'task_new' : 'task:${widget.task!.id}',
         );
@@ -134,25 +144,25 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
   }
 
   void _queueDraft() {
-    _saver?.changed(() => {
-      'title': _title.text,
-      'notes': _notes.text,
-      'tags': _tags.text,
-      'listId': _listId,
-      'priority': _priority,
-      'dueDate': _dueDate,
-      'dueTime': _dueTime,
-      'pinned': _pinned,
-      'alarmPreset': _alarmPreset,
-      'reminders': _reminders,
-      'parentId': widget.parentId,
-    });
+    _saver?.changed(
+      () => {
+        'title': _title.text,
+        'notes': _notes.text,
+        'tags': _tags.text,
+        'listId': _listId,
+        'priority': _priority,
+        'dueDate': _dueDate,
+        'dueTime': _dueTime,
+        'pinned': _pinned,
+        'alarmPreset': _alarmPreset,
+        'reminders': _reminders,
+        'parentId': widget.parentId,
+      },
+    );
   }
 
-  void _fieldChanged() {
-    _queueDraft();
-    if (mounted) setState(() {});
-  }
+  String _expectedSheet() =>
+      widget.task == null ? 'task_new' : 'task:${widget.task!.id}';
 
   @override
   void dispose() {
@@ -173,6 +183,19 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
       _saver?.changed(() => snapshot);
     }
     _saver?.dispose();
+    final settings = _settings;
+    // Normal close clears the marker; process kill skips dispose
+    // so the marker survives kills. Drafts are kept for preload.
+    if (settings != null) {
+      final expected = _expectedSheet();
+      Future.microtask(() async {
+        try {
+          if (settings.openSheet == expected) {
+            await settings.setOpenSheet(null);
+          }
+        } catch (_) {}
+      });
+    }
     _title.dispose();
     _notes.dispose();
     _tags.dispose();
@@ -295,7 +318,10 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
                     for (final l in lists)
                       DropdownMenuItem(value: l.id, child: Text(l.name)),
                   ],
-                  onChanged: (v) => setState(() => _listId = v),
+                  onChanged: (v) {
+                    setState(() => _listId = v);
+                    _queueDraft();
+                  },
                 ),
                 orElse: () => const SizedBox.shrink(),
               ),
@@ -313,8 +339,10 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
                       ButtonSegment(value: 4, label: Text('P1')),
                     ],
                     selected: {_priority},
-                    onSelectionChanged: (s) =>
-                        setState(() => _priority = s.single),
+                    onSelectionChanged: (s) {
+                      setState(() => _priority = s.single);
+                      _queueDraft();
+                    },
                   ),
                 ],
               ),
@@ -338,7 +366,10 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
                       label: Text(
                         'Clear (${_dueDate == null ? '' : DeviceDateFormat.dateIso(context, _dueDate!)})',
                       ),
-                      onPressed: () => setState(() => _dueDate = null),
+                      onPressed: () {
+                        setState(() => _dueDate = null);
+                        _queueDraft();
+                      },
                     ),
                 ],
               ),
@@ -371,6 +402,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
                       );
                       if (t != null) {
                         setState(() => _dueTime = t.hour * 60 + t.minute);
+                        _queueDraft();
                       }
                     },
                     child: const Text('Set time'),
@@ -379,20 +411,28 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
                     IconButton(
                       icon: const Icon(Icons.clear),
                       tooltip: 'Clear time',
-                      onPressed: () => setState(() => _dueTime = null),
+                      onPressed: () {
+                        setState(() => _dueTime = null);
+                        _queueDraft();
+                      },
                     ),
                 ],
               ),
               const SizedBox(height: 8),
               ReminderPicker(
                 offsets: _reminders,
-                onChanged: (v) =>
-                    setState(() => _reminders = v.isEmpty ? const [0] : v),
+                onChanged: (v) {
+                  setState(() => _reminders = v.isEmpty ? const [0] : v);
+                  _queueDraft();
+                },
               ),
               const SizedBox(height: 8),
               AlarmPresetPicker(
                 value: _alarmPreset,
-                onChanged: (v) => setState(() => _alarmPreset = v),
+                onChanged: (v) {
+                  setState(() => _alarmPreset = v);
+                  _queueDraft();
+                },
               ),
               const SizedBox(height: 4),
               const Text(
@@ -402,7 +442,10 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
               const SizedBox(height: 8),
               SwitchListTile(
                 value: _pinned,
-                onChanged: (v) => setState(() => _pinned = v),
+                onChanged: (v) {
+                  setState(() => _pinned = v);
+                  _queueDraft();
+                },
                 title: const Text('Pinned'),
                 contentPadding: EdgeInsets.zero,
               ),
@@ -423,7 +466,10 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
     return ChoiceChip(
       label: Text(label),
       selected: selected,
-      onSelected: (_) => setState(() => _dueDate = selected ? null : value),
+      onSelected: (_) {
+        setState(() => _dueDate = selected ? null : value);
+        _queueDraft();
+      },
     );
   }
 
@@ -480,4 +526,3 @@ class _SubtaskSection extends ConsumerWidget {
     );
   }
 }
-

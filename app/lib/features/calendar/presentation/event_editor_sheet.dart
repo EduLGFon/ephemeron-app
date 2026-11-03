@@ -1,5 +1,6 @@
 // Event editor: title, calendar, all-day/timed, timezone note,
 // repeat presets, location, notes. Recurring edits ask scope.
+// Unsaved input autosaves (debounced) and restores after restart.
 import 'package:flutter/material.dart';
 import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:ephemeron/core/ui/sheet_padding.dart';
@@ -7,6 +8,7 @@ import 'package:ephemeron/core/ui/escape_to_close.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/session/session_restore.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/event_repository.dart';
 import '../../../domain/alarms/alarm_preset.dart';
@@ -25,6 +27,7 @@ Future<void> showEventEditor(
   Event? event,
   DateTime? initialDay,
   int? initialHour,
+  Map<String, dynamic>? restoredDraft,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -34,6 +37,7 @@ Future<void> showEventEditor(
         event: event,
         initialDay: initialDay,
         initialHour: initialHour,
+        restoredDraft: restoredDraft,
       ),
     ),
   );
@@ -68,11 +72,17 @@ const _repeatPresets = {
 };
 
 class _EventEditor extends ConsumerStatefulWidget {
-  const _EventEditor({this.event, this.initialDay, this.initialHour});
+  const _EventEditor({
+    this.event,
+    this.initialDay,
+    this.initialHour,
+    this.restoredDraft,
+  });
 
   final Event? event;
   final DateTime? initialDay;
   final int? initialHour;
+  final Map<String, dynamic>? restoredDraft;
 
   @override
   ConsumerState<_EventEditor> createState() => _EventEditorState();
@@ -93,26 +103,43 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
   String? _tzId;
   List<int> _reminders = [10];
   String? _alarmPreset;
+  DraftAutosaver? _saver;
+  bool _saved = false;
+  dynamic _settings;
+
+  String get _draftEntityId => widget.event?.id ?? 'new';
 
   @override
   void initState() {
     super.initState();
     final e = widget.event;
-    _title = TextEditingController(text: e?.title ?? '');
-    _location = TextEditingController(text: e?.location ?? '');
-    _notes = TextEditingController(text: e?.notes ?? '');
-    _attendees = TextEditingController();
-    _calendarId = e?.calendarId;
-    _allDay = e?.isAllDay ?? false;
-    _colorId = e?.colorId;
-    _tzId = e?.tzId;
-    _addMeet = e?.meetUrl != null;
-    _reminders = parseReminderOffsets(
-      e?.reminders,
-      allDay: e?.isAllDay ?? false,
+    final d = widget.restoredDraft;
+    _title = TextEditingController(
+      text: (d?['title'] as String?) ?? e?.title ?? '',
     );
-    _alarmPreset = e?.alarmPreset;
-    if (e?.startUtc != null) {
+    _location = TextEditingController(
+      text: (d?['location'] as String?) ?? e?.location ?? '',
+    );
+    _notes = TextEditingController(
+      text: (d?['notes'] as String?) ?? e?.notes ?? '',
+    );
+    _attendees = TextEditingController(
+      text: (d?['attendees'] as String?) ?? '',
+    );
+    _calendarId = (d?['calendarId'] as String?) ?? e?.calendarId;
+    _allDay = (d?['allDay'] as bool?) ?? e?.isAllDay ?? false;
+    _colorId = (d?['colorId'] as String?) ?? e?.colorId;
+    _tzId = (d?['tzId'] as String?) ?? e?.tzId;
+    _addMeet = (d?['addMeet'] as bool?) ?? (e?.meetUrl != null);
+    final draftReminders = (d?['reminders'] as List?)
+        ?.whereType<num>()
+        .map((x) => x.toInt())
+        .toList();
+    _reminders =
+        draftReminders ??
+        parseReminderOffsets(e?.reminders, allDay: e?.isAllDay ?? false);
+    _alarmPreset = (d?['alarmPreset'] as String?) ?? e?.alarmPreset;
+    if (e?.startUtc != null && d?['startMs'] == null) {
       _start = DateTime.fromMillisecondsSinceEpoch(
         e!.startUtc!,
         isUtc: true,
@@ -123,22 +150,152 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
               e.endUtc!,
               isUtc: true,
             ).toLocal();
+    } else if (d?['startMs'] != null) {
+      _start = DateTime.fromMillisecondsSinceEpoch(
+        (d!['startMs'] as num).toInt(),
+      );
+      final endMs = (d['endMs'] as num?)?.toInt();
+      _end = endMs == null
+          ? _start.add(const Duration(hours: 1))
+          : DateTime.fromMillisecondsSinceEpoch(endMs);
     } else {
       final day = widget.initialDay ?? DateTime.now();
       final hour = widget.initialHour ?? 9;
       _start = DateTime(day.year, day.month, day.day, hour);
       _end = _start.add(const Duration(hours: 1));
     }
-    _rrule = e?.rrule;
+    _rrule = (d?['rrule'] as String?) ?? e?.rrule;
+    for (final c in [_title, _location, _notes, _attendees]) {
+      c.addListener(_queueDraft);
+    }
+    if (d == null && e == null) Future.microtask(_preloadDraft);
+  }
+
+  Future<void> _preloadDraft() async {
+    if (!mounted || _title.text.isNotEmpty) return;
+    try {
+      final draft = await ref.read(draftStoreProvider).load('event', 'new');
+      if (draft == null || !mounted || _title.text.isNotEmpty) return;
+      if (draftIsExpired(
+        draft.updatedAtMs,
+        DateTime.now().toUtc().millisecondsSinceEpoch,
+      )) {
+        return;
+      }
+      _applyDraft(draft.json);
+    } catch (_) {}
+  }
+
+  void _applyDraft(Map<String, dynamic> j) {
+    setState(() {
+      _title.text = (j['title'] as String?) ?? '';
+      _location.text = (j['location'] as String?) ?? '';
+      _notes.text = (j['notes'] as String?) ?? '';
+      _attendees.text = (j['attendees'] as String?) ?? '';
+      _calendarId = j['calendarId'] as String?;
+      _allDay = (j['allDay'] as bool?) ?? false;
+      _colorId = j['colorId'] as String?;
+      _tzId = j['tzId'] as String?;
+      _addMeet = (j['addMeet'] as bool?) ?? false;
+      final r = (j['reminders'] as List?)
+          ?.whereType<num>()
+          .map((x) => x.toInt())
+          .toList();
+      if (r != null && r.isNotEmpty) _reminders = r;
+      _alarmPreset = j['alarmPreset'] as String?;
+      final startMs = (j['startMs'] as num?)?.toInt();
+      final endMs = (j['endMs'] as num?)?.toInt();
+      if (startMs != null) {
+        _start = DateTime.fromMillisecondsSinceEpoch(startMs);
+      }
+      if (endMs != null) _end = DateTime.fromMillisecondsSinceEpoch(endMs);
+      _rrule = j['rrule'] as String?;
+    });
+  }
+
+  Map<String, dynamic> _snapshot() => {
+    'title': _title.text,
+    'location': _location.text,
+    'notes': _notes.text,
+    'attendees': _attendees.text,
+    'calendarId': _calendarId,
+    'allDay': _allDay,
+    'colorId': _colorId,
+    'tzId': _tzId,
+    'addMeet': _addMeet,
+    'reminders': _reminders,
+    'alarmPreset': _alarmPreset,
+    'startMs': _start.millisecondsSinceEpoch,
+    'endMs': _end.millisecondsSinceEpoch,
+    'rrule': _rrule,
+  };
+
+  void _queueDraft() => _saver?.changed(_snapshot);
+
+  void _changed(void Function() fn) {
+    setState(fn);
+    _queueDraft();
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _saver ??= DraftAutosaver(
+      ref.read(draftStoreProvider),
+      'event',
+      _draftEntityId,
+    );
+    Future.microtask(() async {
+      try {
+        final repo = await ref.read(settingsRepositoryProvider.future);
+        _settings = repo;
+        await repo.setOpenSheet(
+          widget.event == null ? 'event_new' : 'event:${widget.event!.id}',
+        );
+      } catch (_) {}
+    });
+  }
+
+  String _expectedSheet() =>
+      widget.event == null ? 'event_new' : 'event:${widget.event!.id}';
+
+  @override
   void dispose() {
+    if (!_saved) {
+      final snap = _snapshot();
+      _saver?.changed(() => snap);
+    }
+    _saver?.dispose();
+    final settings = _settings;
+    // Normal close clears the marker; process kill skips dispose
+    // so the marker survives kills. Drafts are kept for preload.
+    if (settings != null) {
+      final expected = _expectedSheet();
+      Future.microtask(() async {
+        try {
+          if (settings.openSheet == expected) {
+            await settings.setOpenSheet(null);
+          }
+        } catch (_) {}
+      });
+    }
     _title.dispose();
     _location.dispose();
     _notes.dispose();
     _attendees.dispose();
     super.dispose();
+  }
+
+  Future<void> _clearDraftAfterSave() async {
+    _saved = true;
+    try {
+      await ref.read(draftStoreProvider).clear('event', _draftEntityId);
+      final srepo = await ref.read(settingsRepositoryProvider.future);
+      final expected = widget.event == null
+          ? 'event_new'
+          : 'event:${widget.event!.id}';
+      if (srepo.openSheet == expected) await srepo.setOpenSheet(null);
+    } catch (_) {}
   }
 
   Future<void> _pickDate(bool isStart) async {
@@ -149,7 +306,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
       lastDate: DateTime(2100),
     );
     if (d == null) return;
-    setState(() {
+    _changed(() {
       if (isStart) {
         _start = DateTime(d.year, d.month, d.day, _start.hour, _start.minute);
         if (_end.isBefore(_start)) {
@@ -170,7 +327,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
   Future<void> _pickTime(bool isStart) async {
     final t = await awaitTime(context, isStart ? _start : _end);
     if (t == null) return;
-    setState(() {
+    _changed(() {
       if (isStart) {
         final dur = _end.difference(_start);
         _start = DateTime(
@@ -305,6 +462,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
         );
       }
       await repo.setAttendees(existing!.id, _attendees.text.split(','));
+      await _clearDraftAfterSave();
       if (mounted) Navigator.of(context).pop();
       return;
     }
@@ -351,6 +509,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
         resetExceptions: !keep,
       );
       await repo.setAttendees(existing.id, _attendees.text.split(','));
+      await _clearDraftAfterSave();
       if (mounted) Navigator.of(context).pop();
       return;
     }
@@ -375,6 +534,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
       } catch (_) {
         // Best-effort; next navigation rebuilds.
       }
+      await _clearDraftAfterSave();
       if (mounted) Navigator.of(context).pop();
     }
   }
@@ -440,7 +600,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                       border: OutlineInputBorder(),
                     ),
                     items: items,
-                    onChanged: (v) => setState(() => _calendarId = v),
+                    onChanged: (v) => _changed(() => _calendarId = v),
                   );
                 },
                 orElse: () => const SizedBox.shrink(),
@@ -448,7 +608,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
               const SizedBox(height: 8),
               SwitchListTile(
                 value: _allDay,
-                onChanged: (v) => setState(() => _allDay = v),
+                onChanged: (v) => _changed(() => _allDay = v),
                 title: const Text('All day'),
                 contentPadding: EdgeInsets.zero,
               ),
@@ -478,9 +638,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => _pickDate(false),
-                      child: Text(
-                        DeviceDateFormat.yMMMd(context).format(_end),
-                      ),
+                      child: Text(DeviceDateFormat.yMMMd(context).format(_end)),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -724,7 +882,9 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                                     child: Text(
                                       until == null
                                           ? 'Pick date'
-                                          : DeviceDateFormat.yMMMd(ctx).format(until!),
+                                          : DeviceDateFormat.yMMMd(
+                                              ctx,
+                                            ).format(until!),
                                     ),
                                   ),
                                 ],
@@ -765,10 +925,10 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                       ),
                     );
                     if (result != null) {
-                      setState(() => _rrule = result.isEmpty ? null : result);
+                      _changed(() => _rrule = result.isEmpty ? null : result);
                     }
                   } else {
-                    setState(() => _rrule = v);
+                    _changed(() => _rrule = v);
                   }
                 },
               ),
@@ -776,7 +936,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
               SwitchListTile(
                 title: const Text('Add Google Meet'),
                 value: _addMeet,
-                onChanged: (v) => setState(() => _addMeet = v),
+                onChanged: (v) => _changed(() => _addMeet = v),
               ),
               const SizedBox(height: 8),
               TextField(
@@ -806,7 +966,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                     '11',
                   ])
                     GestureDetector(
-                      onTap: () => setState(() => _colorId = c),
+                      onTap: () => _changed(() => _colorId = c),
                       child: CircleAvatar(
                         radius: 20,
                         backgroundColor: c == null
@@ -853,7 +1013,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                     child: Text('Asia/Tokyo'),
                   ),
                 ],
-                onChanged: (v) => setState(() => _tzId = v),
+                onChanged: (v) => _changed(() => _tzId = v),
               ),
               const SizedBox(height: 8),
               TextField(
@@ -875,12 +1035,12 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
               const SizedBox(height: 8),
               ReminderPicker(
                 offsets: _reminders,
-                onChanged: (v) => setState(() => _reminders = v),
+                onChanged: (v) => _changed(() => _reminders = v),
               ),
               const SizedBox(height: 8),
               AlarmPresetPicker(
                 value: _alarmPreset,
-                onChanged: (v) => setState(() => _alarmPreset = v),
+                onChanged: (v) => _changed(() => _alarmPreset = v),
               ),
               const SizedBox(height: 12),
               FilledButton(

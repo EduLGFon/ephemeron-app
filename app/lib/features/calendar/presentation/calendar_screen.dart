@@ -44,6 +44,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           windowEndUtc: window.toUtc,
         );
     ref.read(occurrenceDirtyProvider.notifier).clear();
+    // Persist the calendar view so restarts return to the same place.
+    // Best-effort, never blocks the UI.
+    Future.microtask(() async {
+      try {
+        await persistCalendarView(ref);
+      } catch (_) {}
+    });
     if (mounted) setState(() {});
   }
 
@@ -149,12 +156,20 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     _ => 1,
   };
 
-  String _title(BuildContext context, CalendarWindow w) => DeviceDateFormat.yMMM(context).format(w.anchor);
-
+  String _title(BuildContext context, CalendarWindow w) =>
+      DeviceDateFormat.yMMM(context).format(w.anchor);
 }
 
 Future<void> persistCalendarView(WidgetRef ref) async {
   final repo = await ref.read(settingsRepositoryProvider.future);
-  final view = ref.read(calendarStateProvider).view;
-  await repo.setCalendarView(view.name);
+  final window = ref.read(calendarStateProvider);
+  await repo.setCalendarView(window.view.name);
+  await repo.setCalendarAnchorMs(
+    DateTime.utc(
+      window.anchor.year,
+      window.anchor.month,
+      window.anchor.day,
+    ).millisecondsSinceEpoch,
+  );
+  await repo.setCalendarDayCount(window.dayCount);
 }

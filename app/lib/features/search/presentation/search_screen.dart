@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:ephemeron/data/repositories/note_repository.dart';
+import 'package:ephemeron/features/settings/application/settings_providers.dart';
 import '../application/search_providers.dart';
 
 Map<SearchScope, String> _scopeLabels(AppLocalizations l) => {
@@ -20,7 +21,6 @@ Map<SearchScope, String> _scopeLabels(AppLocalizations l) => {
   SearchScope.tags: l.searchTags,
 };
 
-
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
 
@@ -30,6 +30,50 @@ class SearchScreen extends ConsumerStatefulWidget {
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
+  bool _restored = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_restored) {
+      _restored = true;
+      Future.microtask(() async {
+        try {
+          final repo = await ref.read(settingsRepositoryProvider.future);
+          final q = repo.searchQuery;
+          final scopeName = repo.searchScope;
+          if (!mounted) return;
+          if (q.isNotEmpty) {
+            _controller.text = q;
+            ref.read(searchQueryProvider.notifier).set(q);
+          }
+          final scope = SearchScope.values.firstWhere(
+            (s) => s.name == scopeName,
+            orElse: () => SearchScope.all,
+          );
+          ref.read(searchScopeProvider.notifier).set(scope);
+          // Track the route so restarts return here.
+          await repo.setLastRoute('/search');
+        } catch (_) {}
+      });
+    }
+  }
+
+  Future<void> _onQueryChanged(String v) async {
+    ref.read(searchQueryProvider.notifier).set(v);
+    try {
+      final repo = await ref.read(settingsRepositoryProvider.future);
+      await repo.setSearchQuery(v);
+    } catch (_) {}
+  }
+
+  Future<void> _onScopeChanged(SearchScope s) async {
+    ref.read(searchScopeProvider.notifier).set(s);
+    try {
+      final repo = await ref.read(settingsRepositoryProvider.future);
+      await repo.setSearchScope(s.name);
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -56,7 +100,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ),
               autofocus: true,
               textInputAction: TextInputAction.search,
-              onChanged: (v) => ref.read(searchQueryProvider.notifier).set(v),
+              onChanged: _onQueryChanged,
             ),
           ),
           SingleChildScrollView(
@@ -68,8 +112,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   ChoiceChip(
                     label: Text(_scopeLabels(l)[s]!),
                     selected: scope == s,
-                    onSelected: (_) =>
-                        ref.read(searchScopeProvider.notifier).set(s),
+                    onSelected: (_) => _onScopeChanged(s),
                   ),
                   const SizedBox(width: 8),
                 ],

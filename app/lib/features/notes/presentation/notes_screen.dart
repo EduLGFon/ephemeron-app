@@ -33,6 +33,34 @@ class NotesScreen extends ConsumerStatefulWidget {
 class _NotesScreenState extends ConsumerState<NotesScreen> {
   String? _folderId;
   String _query = '';
+  bool _folderRestored = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_folderRestored) {
+      _folderRestored = true;
+      Future.microtask(() async {
+        try {
+          final repo = await ref.read(settingsRepositoryProvider.future);
+          final saved = repo.selectedNotesFolderId;
+          if (saved != _folderId && mounted) {
+            setState(() => _folderId = saved);
+          }
+          ref.read(selectedFolderProvider.notifier).select(saved);
+        } catch (_) {}
+      });
+    }
+  }
+
+  Future<void> _navigateFolder(String? id) async {
+    setState(() => _folderId = id);
+    ref.read(selectedFolderProvider.notifier).select(id);
+    try {
+      final repo = await ref.read(settingsRepositoryProvider.future);
+      await repo.setSelectedNotesFolderId(id);
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +97,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
         children: [
           _Breadcrumbs(
             folderId: _folderId,
-            onNavigate: (id) => setState(() => _folderId = id),
+            onNavigate: (id) => _navigateFolder(id),
           ),
           Expanded(
             child: foldersAsync.when(
@@ -126,7 +154,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                             ),
                           ],
                         ),
-                        onTap: () => setState(() => _folderId = f.id),
+                        onTap: () => _navigateFolder(f.id),
                       ),
                     );
                   }
@@ -139,10 +167,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                           color: Colors.red,
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.only(right: 16),
-                          child: const Icon(
-                            Icons.delete,
-                            color: Colors.white,
-                          ),
+                          child: const Icon(Icons.delete, color: Colors.white),
                         ),
                         confirmDismiss: (_) async {
                           final pending = ref.read(pendingOperationsProvider);
@@ -166,9 +191,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                           leading: n.pinned
                               ? const Icon(Icons.push_pin, size: 18)
                               : null,
-                          title: Text(
-                            n.title.isEmpty ? '(untitled)' : n.title,
-                          ),
+                          title: Text(n.title.isEmpty ? '(untitled)' : n.title),
                           subtitle: _subtitle(n),
                           onTap: () => _openNote(n),
                         ),
@@ -231,21 +254,23 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
   Future<void> _newFromTemplate() async {
     final choice = await showModalBottomSheet<String>(
       context: context,
-      builder: (ctx) => EscapeToClose(child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: const Text('Blank'),
-              onTap: () => Navigator.of(ctx).pop('blank'),
-            ),
-            ListTile(
-              title: const Text('Meeting notes'),
-              onTap: () => Navigator.of(ctx).pop('meeting'),
-            ),
-          ],
+      builder: (ctx) => EscapeToClose(
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text('Blank'),
+                onTap: () => Navigator.of(ctx).pop('blank'),
+              ),
+              ListTile(
+                title: const Text('Meeting notes'),
+                onTap: () => Navigator.of(ctx).pop('meeting'),
+              ),
+            ],
+          ),
         ),
-      )),
+      ),
     );
     if (choice == 'meeting') {
       await _newNote(
@@ -491,7 +516,6 @@ class _TrashScreen extends ConsumerWidget {
     );
   }
 }
-
 
 class _ErrorState extends StatelessWidget {
   const _ErrorState({required this.message, required this.onRetry});

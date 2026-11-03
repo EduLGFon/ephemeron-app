@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/settings/application/settings_providers.dart';
 import 'app_sections.dart';
 
-class MoreSheet extends StatelessWidget {
+class MoreSheet extends ConsumerWidget {
   const MoreSheet({
     super.key,
     required this.more,
@@ -16,7 +18,14 @@ class MoreSheet extends StatelessWidget {
   final VoidCallback onReorder;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    Future<void> record(String route) async {
+      try {
+        final repo = await ref.read(settingsRepositoryProvider.future);
+        await repo.setLastRoute(route);
+      } catch (_) {}
+    }
+
     return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -33,6 +42,7 @@ class MoreSheet extends StatelessWidget {
             onTap: () {
               Navigator.of(context).pop();
               context.push('/search');
+              record('/search');
             },
           ),
           ListTile(
@@ -41,6 +51,7 @@ class MoreSheet extends StatelessWidget {
             onTap: () {
               Navigator.of(context).pop();
               context.push('/settings');
+              record('/settings');
             },
           ),
           ListTile(

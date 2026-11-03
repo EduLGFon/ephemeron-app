@@ -30,6 +30,22 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   bool _preview = false;
   bool _loaded = false;
   NoteRepository? _repo;
+  dynamic _settings;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Track the open editor so a kill while writing restores it.
+    // Notes autosave to the DB, so no draft row is needed.
+    Future.microtask(() async {
+      try {
+        final repo = await ref.read(settingsRepositoryProvider.future);
+        _settings = repo;
+        await repo.setOpenSheet('note:${widget.noteId}');
+        await repo.setLastRoute('note:${widget.noteId}');
+      } catch (_) {}
+    });
+  }
 
   @override
   void dispose() {
@@ -41,6 +57,16 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
       final title = _titleCtl.text;
       final body = _bodyCtl.text;
       unawaited(repo.updateNote(id, title: title, body: () => body));
+    }
+    final settings = _settings;
+    if (settings != null) {
+      Future.microtask(() async {
+        try {
+          if (settings.openSheet == 'note:${widget.noteId}') {
+            await settings.setOpenSheet(null);
+          }
+        } catch (_) {}
+      });
     }
     _titleCtl.dispose();
     _bodyCtl.dispose();

@@ -112,117 +112,121 @@ class _TimelineViewState extends ConsumerState<TimelineView>
                     controller: scroll,
                     child: SizedBox(
                       height: 24 * hourHeight,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      TimelineHourGutter(
-                        hourHeight: hourHeight,
-                        width: timelineGutterWidth,
-                      ),
-                      Expanded(
-                        child: LayoutBuilder(
-                          builder: (ctx, cons) {
-                            final colW = cons.maxWidth / widget.dayCount;
-                            lastColW = colW;
-                            final placements = timelinePlacementsFor(
-                              anchor: widget.anchor,
-                              dayCount: widget.dayCount,
-                              timed: timed,
-                            );
-                            final ordered = List<OccurrenceCacheData>.of(timed)
-                              ..sort((a, b) {
-                                final da = placements[a.id]?.depth ?? 0;
-                                final db = placements[b.id]?.depth ?? 0;
-                                if (da != db) return da.compareTo(db);
-                                return a.startUtc.compareTo(b.startUtc);
-                              });
-                            return Stack(
-                              children: [
-                                GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTapUp: (d) =>
-                                      tapEmptyAt(d.localPosition, colW),
-                                  child: RepaintBoundary(
-                                    child: CustomPaint(
-                                      size: Size(
-                                        cons.maxWidth,
-                                        24 * hourHeight,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TimelineHourGutter(
+                            hourHeight: hourHeight,
+                            width: timelineGutterWidth,
+                          ),
+                          Expanded(
+                            child: LayoutBuilder(
+                              builder: (ctx, cons) {
+                                final colW = cons.maxWidth / widget.dayCount;
+                                lastColW = colW;
+                                final placements = timelinePlacementsFor(
+                                  anchor: widget.anchor,
+                                  dayCount: widget.dayCount,
+                                  timed: timed,
+                                );
+                                final ordered =
+                                    List<OccurrenceCacheData>.of(timed)
+                                      ..sort((a, b) {
+                                        final da = placements[a.id]?.depth ?? 0;
+                                        final db = placements[b.id]?.depth ?? 0;
+                                        if (da != db) return da.compareTo(db);
+                                        return a.startUtc.compareTo(b.startUtc);
+                                      });
+                                return Stack(
+                                  children: [
+                                    GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTapUp: (d) =>
+                                          tapEmptyAt(d.localPosition, colW),
+                                      child: RepaintBoundary(
+                                        child: CustomPaint(
+                                          size: Size(
+                                            cons.maxWidth,
+                                            24 * hourHeight,
+                                          ),
+                                          painter: TimelineGridPainter(
+                                            anchor: widget.anchor,
+                                            dayCount: widget.dayCount,
+                                            hourHeight: hourHeight,
+                                            primary: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                          ),
+                                        ),
                                       ),
-                                      painter: TimelineGridPainter(
+                                    ),
+                                    for (final o in ordered)
+                                      TimelineEventBlock(
+                                        occurrence: o,
                                         anchor: widget.anchor,
                                         dayCount: widget.dayCount,
+                                        dayIndex: timelineDayIndex(
+                                          widget.anchor,
+                                          widget.dayCount,
+                                          o.dayKey,
+                                        ),
+                                        columnWidth: colW,
                                         hourHeight: hourHeight,
-                                        primary: Theme.of(
+                                        placement: placements[o.id],
+                                        yOffset: o.eventId == dragId
+                                            ? dragDy
+                                            : (dragOffset != 0 &&
+                                                      o.eventId ==
+                                                          pendingMovedId
+                                                  ? dragOffset
+                                                  : 0),
+                                        leftShift: o.eventId == dragId
+                                            ? dragDayDelta * colW
+                                            : (pendingMovedId == o.eventId
+                                                  ? dragXOffset
+                                                  : 0.0),
+                                        onTap: () => showEventDetails(
                                           context,
-                                        ).colorScheme.primary,
+                                          o.eventId,
+                                        ),
+                                        onLongPressStart: () =>
+                                            beginDrag(o.eventId),
+                                        onLongPressMoveUpdate: (d) =>
+                                            updateDrag(o.eventId, d),
+                                        onLongPressEnd: () =>
+                                            endDrag(o.eventId),
+                                      ),
+                                    IgnorePointer(
+                                      child: RepaintBoundary(
+                                        child: CustomPaint(
+                                          size: Size(
+                                            cons.maxWidth,
+                                            24 * hourHeight,
+                                          ),
+                                          painter: TimelineNowLinePainter(
+                                            anchor: widget.anchor,
+                                            dayCount: widget.dayCount,
+                                            hourHeight: hourHeight,
+                                            now: DateTime.now(),
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ),
-                                for (final o in ordered)
-                                  TimelineEventBlock(
-                                    occurrence: o,
-                                    anchor: widget.anchor,
-                                    dayCount: widget.dayCount,
-                                    dayIndex: timelineDayIndex(
-                                      widget.anchor,
-                                      widget.dayCount,
-                                      o.dayKey,
-                                    ),
-                                    columnWidth: colW,
-                                    hourHeight: hourHeight,
-                                    placement: placements[o.id],
-                                    yOffset: o.eventId == dragId
-                                        ? dragDy
-                                        : (dragOffset != 0 &&
-                                                  o.eventId == pendingMovedId
-                                              ? dragOffset
-                                              : 0),
-                                    leftShift: o.eventId == dragId
-                                        ? dragDayDelta * colW
-                                        : (pendingMovedId == o.eventId
-                                              ? dragXOffset
-                                              : 0.0),
-                                    onTap: () =>
-                                        showEventDetails(context, o.eventId),
-                                    onLongPressStart: () =>
-                                        beginDrag(o.eventId),
-                                    onLongPressMoveUpdate: (d) =>
-                                        updateDrag(o.eventId, d),
-                                    onLongPressEnd: () => endDrag(o.eventId),
-                                  ),
-                                IgnorePointer(
-                                  child: RepaintBoundary(
-                                    child: CustomPaint(
-                                      size: Size(
-                                        cons.maxWidth,
-                                        24 * hourHeight,
-                                      ),
-                                      painter: TimelineNowLinePainter(
-                                        anchor: widget.anchor,
-                                        dayCount: widget.dayCount,
-                                        hourHeight: hourHeight,
-                                        now: DateTime.now(),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-              ),  // SizedBox
-            );    // SingleChildScrollView return
-          },      // builder
-        ),        // LayoutBuilder
-      ),          // Expanded outer
-    ],
-  ),
-  ),
-);
+                    ),
+                  ); // SingleChildScrollView return
+                }, // builder
+              ), // LayoutBuilder
+            ), // Expanded outer
+          ],
+        ), // Column
+      ), // Listener
+    ); // Focus
   }
 }

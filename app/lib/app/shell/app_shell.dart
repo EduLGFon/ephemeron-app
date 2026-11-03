@@ -6,15 +6,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/platform/system_launcher.dart';
+import '../../core/db/db_provider.dart';
+import '../../app/session/session_restore.dart';
+import '../../data/drift/app_database.dart';
 import '../../features/alarms/application/alarm_providers.dart';
 import '../../features/alarms/data/fallback_alarm_engine.dart';
 import '../../features/auth/application/auth_providers.dart';
 import '../../features/calendar/application/calendar_providers.dart';
 import '../../features/calendar/application/calendar_state.dart';
+import '../../features/calendar/presentation/event_details_sheet.dart';
+import '../../features/calendar/presentation/event_editor_sheet.dart';
+import '../../features/countdowns/presentation/countdown_editor_sheet.dart';
+import '../../features/habits/presentation/habit_editor_sheet.dart';
+import '../../features/notes/presentation/note_editor_screen.dart';
+import '../../features/search/application/search_providers.dart';
 import '../../features/settings/application/settings_providers.dart';
 import '../../features/settings/presentation/onboarding_screen.dart';
+import '../../features/sync/application/pending_operations.dart';
 import '../../features/sync/application/sync_providers.dart';
 import '../../features/tasks/presentation/quick_add_sheet.dart';
+import '../../features/tasks/presentation/task_editor_sheet.dart';
 import '../../data/services/home_widget_data_binder.dart';
 import 'app_sections.dart';
 import '../../features/tasks/application/tasks_providers.dart';
@@ -22,7 +33,6 @@ import '../../features/habits/application/habits_providers.dart';
 import '../../features/countdowns/application/countdowns_providers.dart';
 import '../../features/notes/application/notes_providers.dart';
 import '../../features/focus/application/focus_providers.dart';
-import '../../features/sync/application/pending_operations.dart';
 import 'more_sheet.dart';
 
 const List<LogicalKeyboardKey> _digitKeys = <LogicalKeyboardKey>[
@@ -44,8 +54,10 @@ class AppShell extends ConsumerStatefulWidget {
   ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver {
-  Map<ShortcutActivator, VoidCallback> _shortcuts = const <ShortcutActivator, VoidCallback>{};
+class _AppShellState extends ConsumerState<AppShell>
+    with WidgetsBindingObserver {
+  Map<ShortcutActivator, VoidCallback> _shortcuts =
+      const <ShortcutActivator, VoidCallback>{};
   Timer? _widgetRefreshTimer;
   void _scheduleWidgetRefresh() {
     _widgetRefreshTimer?.cancel();
@@ -56,6 +68,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
       } catch (_) {}
     });
   }
+
   @override
   void initState() {
     super.initState();
@@ -145,24 +158,328 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
         await showQuickAdd(context);
       case 'search':
         GoRouter.of(context).push('/search');
+        try {
+          final repo = await ref.read(settingsRepositoryProvider.future);
+          await repo.setLastRoute('/search');
+        } catch (_) {}
     }
   }
 
-  Future<void> _restoreLastTab() async {
-    final repo = await ref.read(settingsRepositoryProvider.future);
-    if (!mounted) return;
-    final idx = repo.lastTabIndex.clamp(0, 6);
-    if (idx != widget.navigationShell.currentIndex) {
-      widget.navigationShell.goBranch(idx);
+  Future<void> _restoreSession() async {
+    try {
+      final repo = await ref.read(settingsRepositoryProvider.future);
+      // Drop expired drafts from previous sessions.
+      try {
+        await ref.read(draftStoreProvider).clearExpired();
+      } catch (_) {}
+      if (!mounted) return;
+      // Last tab.
+      final idx = repo.lastTabIndex.clamp(0, 6);
+      if (idx != widget.navigationShell.currentIndex) {
+        widget.navigationShell.goBranch(idx);
+      }
+      // Calendar view + anchor + day count.
+      try {
+        final view = CalendarViewKind.values.firstWhere(
+          (v) => v.name == repo.calendarView,
+          orElse: () => CalendarViewKind.month,
+        );
+        final anchorMs = repo.calendarAnchorMs;
+        final anchor = anchorMs == null
+            ? DateTime.now()
+            : DateTime.fromMillisecondsSinceEpoch(
+                anchorMs,
+                isUtc: true,
+              ).toLocal();
+        ref
+            .read(calendarStateProvider.notifier)
+            .restore(view, anchor, dayCount: repo.calendarDayCount);
+      } catch (_) {}
+      // Task list + notes folder + search filters.
+      try {
+        ref
+            .read(selectedTaskListProvider.notifier)
+            .select(repo.selectedTaskListId);
+      } catch (_) {}
+      try {
+        ref
+            .read(selectedFolderProvider.notifier)
+            .select(repo.selectedNotesFolderId);
+      } catch (_) {}
+      try {
+        if (repo.searchQuery.isNotEmpty) {
+          ref.read(searchQueryProvider.notifier).set(repo.searchQuery);
+        }
+        final scope = SearchScope.values.firstWhere(
+          (s) => s.name == repo.searchScope,
+          orElse: () => SearchScope.all,
+        );
+        ref.read(searchScopeProvider.notifier).set(scope);
+      } catch (_) {}
+      // Restore a previous Google sign-in so sync works after restart.
+      await ref.read(googleAccountProvider.notifier).restore();
+      if (!mounted) return;
+      // Pushed routes (search/settings) recorded before the kill.
+      final route = repo.lastRoute;
+      if (route == '/search' ||
+          route == '/settings' ||
+          route == '/alarm-settings') {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          try {
+            GoRouter.of(context).push(route!);
+          } catch (_) {}
+        });
+      } else if (route != null && route.startsWith('note:')) {
+        // Note editors reopen through the openSheet path below.
+      }
+      // Reopen the sheet/modal that was open at kill time.
+      final sheet = repo.openSheet;
+      if (sheet != null && sheet.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _maybeReopenSheet(sheet);
+        });
+      }
+    } catch (_) {
+      // Best-effort: restore must never block startup.
+      try {
+        await ref.read(googleAccountProvider.notifier).restore();
+      } catch (_) {}
     }
-    // Restore a previous Google sign-in so sync works after restart.
-    await ref.read(googleAccountProvider.notifier).restore();
+  }
+
+  /// Reopens [sheet] (`quick_add`, `task_new`, `task:<id>`, ...).
+  /// Fresh drafts (<24 h) reopen silently; week-old drafts show a
+  /// "Restore draft?" banner; expired drafts are discarded.
+  Future<void> _maybeReopenSheet(String sheet) async {
+    if (!mounted) return;
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    try {
+      final settings = await ref.read(settingsRepositoryProvider.future);
+      final store = ref.read(draftStoreProvider);
+      final atMs = settings.openSheetAtMs ?? now;
+
+      Future<void> openWithDraft(
+        String formType,
+        String? entityId,
+        Map<String, dynamic>? draft,
+      ) async {
+        if (!mounted) return;
+        await _openSheetByType(sheet, draft);
+      }
+
+      // Sheets without a draft row (details views, notes persist in DB).
+      if (sheet.startsWith('event_details:') || sheet.startsWith('note:')) {
+        if (now - atMs > draftExpiryMs) {
+          await settings.setOpenSheet(null);
+          return;
+        }
+        if (now - atMs > silentRestoreWindowMs) {
+          _askRestoreBanner(
+            sheet,
+            onRestore: () => _openSheetByType(sheet, null),
+          );
+          return;
+        }
+        await _openSheetByType(sheet, null);
+        return;
+      }
+
+      final parts = sheet.split(':');
+      final formType = parts[0] == 'task_new'
+          ? 'task'
+          : parts[0] == 'event_new'
+          ? 'event'
+          : parts[0] == 'habit_new'
+          ? 'habit'
+          : parts[0] == 'countdown_new'
+          ? 'countdown'
+          : parts[0];
+      String? entityId;
+      if (sheet == 'quick_add') {
+        entityId = null;
+      } else if (parts.length > 1 &&
+          (parts[0] == 'task' ||
+              parts[0] == 'event' ||
+              parts[0] == 'habit' ||
+              parts[0] == 'countdown')) {
+        entityId = parts.sublist(1).join(':');
+      } else if (sheet.endsWith('_new')) {
+        entityId = 'new';
+      } else {
+        return;
+      }
+      final draft = await store.load(formType, entityId);
+      if (draft == null) {
+        // No unsaved content: nothing to reopen, clear the stale marker.
+        if (settings.openSheet == sheet) await settings.setOpenSheet(null);
+        return;
+      }
+      if (draftIsExpired(draft.updatedAtMs, now)) {
+        await store.clear(formType, entityId);
+        if (settings.openSheet == sheet) await settings.setOpenSheet(null);
+        return;
+      }
+      if (draftNeedsConfirm(draft.updatedAtMs, now)) {
+        _askRestoreBanner(
+          sheet,
+          onRestore: () => openWithDraft(formType, entityId, draft.json),
+        );
+        return;
+      }
+      await openWithDraft(formType, entityId, draft.json);
+    } catch (_) {}
+  }
+
+  void _askRestoreBanner(
+    String sheet, {
+    required Future<void> Function() onRestore,
+  }) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text('Restore unsaved draft?'),
+        duration: const Duration(seconds: 12),
+        action: SnackBarAction(label: 'Restore', onPressed: () => onRestore()),
+      ),
+    );
+    // The draft is kept until the user opens the form (which preloads it)
+    // or saves. Clearing a form field deletes its draft via the autosaver,
+    // and drafts expire after 7 days. The marker is cleared so this banner
+    // shows at most once per restart.
+    Future.microtask(() async {
+      try {
+        final s = await ref.read(settingsRepositoryProvider.future);
+        if (s.openSheet == sheet) await s.setOpenSheet(null);
+      } catch (_) {}
+    });
+  }
+
+  /// Opens a sheet by its persisted descriptor. Returns false when the
+  /// backing entity no longer exists (draft is cleared by the caller).
+  Future<void> _openSheetByType(
+    String sheet,
+    Map<String, dynamic>? draft,
+  ) async {
+    if (!mounted) return;
+    try {
+      if (sheet == 'quick_add') {
+        if (!mounted) return;
+        await showQuickAdd(context, restoredDraft: draft);
+      } else if (sheet == 'task_new') {
+        if (!mounted) return;
+        await showTaskEditor(context, restoredDraft: draft);
+      } else if (sheet.startsWith('task:')) {
+        final id = sheet.substring('task:'.length);
+        final task = await _loadTask(id);
+        if (task == null || !mounted) return;
+        await showTaskEditor(context, task: task, restoredDraft: draft);
+      } else if (sheet == 'event_new') {
+        if (!mounted) return;
+        await showEventEditor(context, restoredDraft: draft);
+      } else if (sheet.startsWith('event:')) {
+        final id = sheet.substring('event:'.length);
+        final event = await _loadEvent(id);
+        if (event == null || !mounted) return;
+        await showEventEditor(context, event: event, restoredDraft: draft);
+      } else if (sheet.startsWith('event_details:')) {
+        final id = sheet.substring('event_details:'.length);
+        if (!mounted) return;
+        await showEventDetails(context, id);
+      } else if (sheet == 'habit_new') {
+        if (!mounted) return;
+        await showHabitEditor(context, restoredDraft: draft);
+      } else if (sheet.startsWith('habit:')) {
+        final id = sheet.substring('habit:'.length);
+        final habit = await _loadHabit(id);
+        if (habit == null || !mounted) return;
+        await showHabitEditor(context, habit: habit, restoredDraft: draft);
+      } else if (sheet == 'countdown_new') {
+        if (!mounted) return;
+        await showCountdownEditor(context, restoredDraft: draft);
+      } else if (sheet.startsWith('countdown:')) {
+        final id = sheet.substring('countdown:'.length);
+        final countdown = await _loadCountdown(id);
+        if (countdown == null || !mounted) return;
+        await showCountdownEditor(
+          context,
+          countdown: countdown,
+          restoredDraft: draft,
+        );
+      } else if (sheet.startsWith('note:')) {
+        final id = sheet.substring('note:'.length);
+        final exists = await _noteExists(id);
+        if (!exists || !mounted) return;
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => NoteEditorScreen(noteId: id)),
+        );
+      }
+    } catch (_) {}
+  }
+
+  Future<Task?> _loadTask(String id) async {
+    try {
+      final db = ref.read(appDatabaseProvider);
+      return await (db.select(
+        db.tasks,
+      )..where((t) => t.id.equals(id))).getSingleOrNull();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Event?> _loadEvent(String id) async {
+    try {
+      final rows =
+          await (ref.read(eventRepositoryProvider).dbSelect()
+                ..where((e) => e.id.equals(id)))
+              .getSingleOrNull();
+      return rows;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Habit?> _loadHabit(String id) async {
+    try {
+      final db = ref.read(appDatabaseProvider);
+      return await (db.select(
+        db.habits,
+      )..where((h) => h.id.equals(id))).getSingleOrNull();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Countdown?> _loadCountdown(String id) async {
+    try {
+      final db = ref.read(appDatabaseProvider);
+      return await (db.select(
+        db.countdowns,
+      )..where((c) => c.id.equals(id))).getSingleOrNull();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<bool> _noteExists(String id) async {
+    try {
+      return await ref.read(noteRepositoryProvider).getNote(id) != null;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _onTabSelected(int branchIndex) async {
     widget.navigationShell.goBranch(branchIndex);
-    final repo = await ref.read(settingsRepositoryProvider.future);
-    await repo.setLastTabIndex(branchIndex);
+    try {
+      final repo = await ref.read(settingsRepositoryProvider.future);
+      await repo.setLastTabIndex(branchIndex);
+      await repo.setLastRoute('/tab$branchIndex');
+    } catch (_) {}
   }
 
   bool _isEditingText() {
@@ -237,6 +554,12 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
       SingleActivator(LogicalKeyboardKey.slash): () {
         if (!mounted) return;
         context.push('/search');
+        Future.microtask(() async {
+          try {
+            final repo = await ref.read(settingsRepositoryProvider.future);
+            await repo.setLastRoute('/search');
+          } catch (_) {}
+        });
       },
       SingleActivator(LogicalKeyboardKey.escape): () {
         if (!mounted) return;
@@ -295,35 +618,35 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
       },
       child: AlarmListener(
         child: Scaffold(
-        body: widget.navigationShell,
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          child: NavigationBar(
-            selectedIndex:
-                pinned.contains(widget.navigationShell.currentIndex)
-                ? pinned.indexOf(widget.navigationShell.currentIndex)
-                : 5,
-            onDestinationSelected: (i) {
-              if (i < 5) {
-                _onTabSelected(pinned[i]);
-              } else {
-                _showMore(context, more, order);
-              }
-            },
-            destinations: [
-              for (final idx in pinned)
-                NavigationDestination(
-                  icon: Icon(AppSection.values[idx].icon),
-                  label: AppSection.values[idx].title,
+          body: widget.navigationShell,
+          bottomNavigationBar: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: NavigationBar(
+              selectedIndex:
+                  pinned.contains(widget.navigationShell.currentIndex)
+                  ? pinned.indexOf(widget.navigationShell.currentIndex)
+                  : 5,
+              onDestinationSelected: (i) {
+                if (i < 5) {
+                  _onTabSelected(pinned[i]);
+                } else {
+                  _showMore(context, more, order);
+                }
+              },
+              destinations: [
+                for (final idx in pinned)
+                  NavigationDestination(
+                    icon: Icon(AppSection.values[idx].icon),
+                    label: AppSection.values[idx].title,
+                  ),
+                const NavigationDestination(
+                  icon: Icon(Icons.more_horiz),
+                  label: 'More',
                 ),
-              const NavigationDestination(
-                icon: Icon(Icons.more_horiz),
-                label: 'More',
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -331,17 +654,19 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
   void _showMore(BuildContext context, List<int> more, List<int> order) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (ctx) => EscapeToClose(child: MoreSheet(
-        more: more,
-        onSelected: (idx) {
-          Navigator.of(ctx).pop();
-          _onTabSelected(idx);
-        },
-        onReorder: () async {
-          Navigator.of(ctx).pop();
-          await _reorderSheet(context, order);
-        },
-      )),
+      builder: (ctx) => EscapeToClose(
+        child: MoreSheet(
+          more: more,
+          onSelected: (idx) {
+            Navigator.of(ctx).pop();
+            _onTabSelected(idx);
+          },
+          onReorder: () async {
+            Navigator.of(ctx).pop();
+            await _reorderSheet(context, order);
+          },
+        ),
+      ),
     );
   }
 
@@ -350,57 +675,59 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => EscapeToClose(child: StatefulBuilder(
-        builder: (ctx, setSt) => SafeArea(
-          child: SizedBox(
-            height: MediaQuery.of(ctx).size.height * 0.7,
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    'Reorder sections',
-                    style: Theme.of(ctx).textTheme.titleMedium,
+      builder: (ctx) => EscapeToClose(
+        child: StatefulBuilder(
+          builder: (ctx, setSt) => SafeArea(
+            child: SizedBox(
+              height: MediaQuery.of(ctx).size.height * 0.7,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'Reorder sections',
+                      style: Theme.of(ctx).textTheme.titleMedium,
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: ReorderableListView(
-                    onReorderItem: (oldIndex, newIndex) {
-                      setSt(() {
-                        final item = current.removeAt(oldIndex);
-                        current.insert(newIndex, item);
-                      });
-                    },
-                    children: [
-                      for (final idx in current)
-                        ListTile(
-                          key: ValueKey(idx),
-                          leading: Icon(AppSection.values[idx].icon),
-                          title: Text(AppSection.values[idx].title),
-                          trailing: const Icon(Icons.drag_handle),
-                        ),
-                    ],
+                  Expanded(
+                    child: ReorderableListView(
+                      onReorderItem: (oldIndex, newIndex) {
+                        setSt(() {
+                          final item = current.removeAt(oldIndex);
+                          current.insert(newIndex, item);
+                        });
+                      },
+                      children: [
+                        for (final idx in current)
+                          ListTile(
+                            key: ValueKey(idx),
+                            leading: Icon(AppSection.values[idx].icon),
+                            title: Text(AppSection.values[idx].title),
+                            trailing: const Icon(Icons.drag_handle),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: FilledButton(
-                    onPressed: () async {
-                      final repo = await ref.read(
-                        settingsRepositoryProvider.future,
-                      );
-                      await repo.setNavOrder(current);
-                      ref.invalidate(settingsRepositoryProvider);
-                      if (ctx.mounted) Navigator.of(ctx).pop();
-                    },
-                    child: const Text('Save'),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: FilledButton(
+                      onPressed: () async {
+                        final repo = await ref.read(
+                          settingsRepositoryProvider.future,
+                        );
+                        await repo.setNavOrder(current);
+                        ref.invalidate(settingsRepositoryProvider);
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+                      },
+                      child: const Text('Save'),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      )),
+      ),
     );
   }
 }
