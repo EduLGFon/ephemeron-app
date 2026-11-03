@@ -1,11 +1,14 @@
 // Renders small PNGs for image-capable home-screen widgets (month grid,
-// habit heatmap, weekly focus chart) via home_widget's renderFlutterWidget.
+// week calendar, habit heatmap, weekly focus chart) via home_widget's
+// renderFlutterWidget.
 // Foreground only: rendering needs a Flutter engine, so headless sync skips
 // images and pushes text payloads instead.
 import 'package:flutter/widgets.dart';
 import 'package:home_widget/home_widget.dart';
 
 import 'home_widget_support.dart';
+import 'week_calendar_data.dart';
+import 'week_calendar_image.dart';
 
 /// Month grid with event dots. Pure widget, no app dependencies.
 class MonthGridImage extends StatelessWidget {
@@ -192,6 +195,25 @@ class WidgetImageService {
           today: today,
         ),
         key: 'month_calendar_image',
+        logicalSize: const Size(360, 360),
+        pixelRatio: 2,
+      );
+      return path as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Renders the full current-week grid.
+  Future<String?> renderWeekCalendar({
+    required List<WeekCalendarDay> days,
+    required DateTime now,
+  }) async {
+    if (!isHomeWidgetSupported) return null;
+    try {
+      final path = await HomeWidget.renderFlutterWidget(
+        WeekCalendarImage(days: days, now: now),
+        key: 'week_calendar_image',
         logicalSize: const Size(360, 360),
         pixelRatio: 2,
       );

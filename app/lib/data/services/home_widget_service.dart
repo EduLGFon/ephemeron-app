@@ -107,13 +107,15 @@ class HomeWidgetService {
     return '[$json]';
   }
 
-  /// Store a text/image payload for one widget and refresh it.
+  /// Store a text/image payload for one widget and refresh it. [extra]
+  /// values are saved as `<keyPrefix>_<key>` for provider-specific payloads.
   Future<void> update({
     required String keyPrefix,
     required String provider,
     String? title,
     String? body,
     String? imagePath,
+    Map<String, String>? extra,
   }) {
     return _widgetCall(() async {
       if (title != null) {
@@ -127,6 +129,14 @@ class HomeWidgetService {
           '${keyPrefix}_image',
           imagePath,
         );
+      }
+      if (extra != null) {
+        for (final entry in extra.entries) {
+          await HomeWidget.saveWidgetData<String>(
+            '${keyPrefix}_${entry.key}',
+            entry.value,
+          );
+        }
       }
       await HomeWidget.updateWidget(
         androidName: provider,

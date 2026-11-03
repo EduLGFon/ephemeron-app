@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/time/time.dart';
 import '../../features/alarms/data/alarm_scheduler.dart';
 import '../drift/app_database.dart';
 import '../repositories/occurrence_repository.dart';
@@ -13,16 +14,26 @@ import '../repositories/focus_repository.dart';
 import '../repositories/habit_repository.dart';
 import '../repositories/note_repository.dart';
 import '../repositories/task_repository.dart';
+import 'week_calendar_data.dart';
 
 Future<void> _push(
   String prefix,
   String provider,
   String title,
-  String body,
-) async {
+  String body, {
+  Map<String, String>? extra,
+}) async {
   try {
     await HomeWidget.saveWidgetData<String>('${prefix}_title', title);
     await HomeWidget.saveWidgetData<String>('${prefix}_body', body);
+    if (extra != null) {
+      for (final entry in extra.entries) {
+        await HomeWidget.saveWidgetData<String>(
+          '${prefix}_${entry.key}',
+          entry.value,
+        );
+      }
+    }
     await HomeWidget.updateWidget(
       androidName: provider,
       qualifiedAndroidName: 'com.spotnik.ephemeron.$provider',
@@ -229,6 +240,28 @@ Future<void> pushAllHeadlessWidgets(AppDatabase db) async {
   await pushNoteWidgets(db, noteId: noteId);
   await pushFocusWidgets(db);
   await rebuildOccurrenceWindowHeadless(db);
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final firstDay = prefs.getInt('calendar.weekStart') ?? DateTime.monday;
+    final now = DateTime.now();
+    final start = weekStartFor(now, weekStartDay: firstDay);
+    final end = start.add(const Duration(days: 7));
+    final occs =
+        await (db.select(db.occurrenceCache)..where(
+              (o) =>
+                  o.startUtc.isSmallerOrEqualValue(end.millisecondsSinceEpoch) &
+                  o.endUtc.isBiggerOrEqualValue(start.millisecondsSinceEpoch),
+            ))
+            .get();
+    final days = buildWeekCalendar(occurrences: occs, weekStart: start);
+    await _push(
+      'week_calendar',
+      'WeekCalendarWidgetProvider',
+      weekCalendarTitle(start),
+      weekCalendarBody(days),
+      extra: {'days': days.map((d) => dateKey(d.date)).join(',')},
+    );
+  } catch (_) {}
   try {
     final now = DateTime.now();
     final key =

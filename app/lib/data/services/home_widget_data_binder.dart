@@ -5,6 +5,7 @@ import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../domain/habits/date_key.dart';
 import '../../../core/power/power_saving_manager.dart';
+import '../../../core/time/time.dart';
 import '../../../features/tasks/application/tasks_providers.dart';
 import '../../../features/countdowns/application/countdowns_providers.dart';
 import '../../../features/habits/application/habits_providers.dart';
@@ -12,8 +13,10 @@ import '../../../features/notes/application/notes_providers.dart';
 import '../../../features/focus/application/focus_providers.dart';
 import '../../../features/calendar/application/calendar_providers.dart';
 import '../../../features/alarms/application/alarm_providers.dart';
+import '../../../features/settings/application/settings_providers.dart';
 import 'home_widget_service.dart';
 import 'home_widget_support.dart';
+import 'week_calendar_data.dart';
 import 'widget_config_store.dart';
 import 'widget_image_service.dart';
 
@@ -35,6 +38,7 @@ class HomeWidgetDataBinder {
       _refreshNotes(),
       _refreshFocus(),
       _refreshEvents(),
+      _refreshWeekCalendar(),
       _refreshMatrix(),
       _refreshAlarms(),
       _refreshTaskVariants(),
@@ -234,6 +238,53 @@ class HomeWidgetDataBinder {
         body: titles.length > 1 ? titles.skip(1).join('\n') : '',
       );
       _mark('next_events');
+    } catch (_) {}
+  }
+
+  /// Seven-day payload shared by the text push and the image renderer.
+  Future<
+    ({
+      DateTime start,
+      List<WeekCalendarDay> days,
+      String title,
+      String body,
+      String dayKeys,
+    })
+  >
+  _weekCalendarData() async {
+    var firstDay = DateTime.monday;
+    try {
+      final settings = await ref.read(settingsRepositoryProvider.future);
+      firstDay = settings.weekStart;
+    } catch (_) {}
+    final now = DateTime.now();
+    final start = weekStartFor(now, weekStartDay: firstDay);
+    final end = start.add(const Duration(days: 7));
+    final occs = await ref
+        .read(occurrenceRepositoryProvider)
+        .watchWindow(start, end)
+        .first;
+    final days = buildWeekCalendar(occurrences: occs, weekStart: start);
+    return (
+      start: start,
+      days: days,
+      title: weekCalendarTitle(start),
+      body: weekCalendarBody(days),
+      dayKeys: days.map((d) => dateKey(d.date)).join(','),
+    );
+  }
+
+  Future<void> _refreshWeekCalendar() async {
+    try {
+      final data = await _weekCalendarData();
+      await _svc.update(
+        keyPrefix: 'week_calendar',
+        provider: 'WeekCalendarWidgetProvider',
+        title: data.title,
+        body: data.body,
+        extra: {'days': data.dayKeys},
+      );
+      _mark('week_calendar');
     } catch (_) {}
   }
 
@@ -597,7 +648,7 @@ class HomeWidgetDataBinder {
         },
         'week_calendar': {
           'title': 'This week',
-          'body': occTitles.isEmpty ? 'No events today.' : occTitles.join('\n'),
+          'body': 'Open ephemeron for details.',
         },
         'day_agenda': {
           'title': 'Today',
@@ -705,6 +756,25 @@ class HomeWidgetDataBinder {
       }
     }
 
+    if (want('WeekCalendarWidgetProvider') && await due('week_calendar')) {
+      try {
+        final data = await _weekCalendarData();
+        final path = await images.renderWeekCalendar(
+          days: data.days,
+          now: DateTime.now(),
+        );
+        if (path != null) {
+          await _svc.update(
+            keyPrefix: 'week_calendar',
+            provider: 'WeekCalendarWidgetProvider',
+            title: data.title,
+            body: data.body,
+            imagePath: path,
+            extra: {'days': data.dayKeys},
+          );
+        }
+      } catch (_) {}
+    }
     if (want('MonthCalendarWidgetProvider') && await due('month_calendar')) {
       try {
         final now = DateTime.now();
