@@ -63,6 +63,101 @@ class SettingsRepository {
   int get lastTabIndex => _prefs.getInt(_kLastTab) ?? 0;
   Future<void> setLastTabIndex(int v) => _prefs.setInt(_kLastTab, v);
 
+  /// Last top-level route for session restore (`/tab0`..`/tab6`,
+  /// `/search`, `/settings`, `/alarm-settings`, `note:<id>`).
+  static const _kLastRoute = 'session.lastRoute';
+  String? get lastRoute => _prefs.getString(_kLastRoute);
+  Future<void> setLastRoute(String? v) =>
+      v == null ? _prefs.remove(_kLastRoute) : _prefs.setString(_kLastRoute, v);
+
+  /// Open sheet/modal descriptor persisted across restarts so unsaved
+  /// work is never lost. Values like `quick_add`, `task_new`,
+  /// `task:[id]`, `event_new`, `event:[id]`, `event_details:[id]`,
+  /// `habit_new`, `habit:[id]`, `countdown_new`, `countdown:[id]`,
+  /// `note:[id]`. Null means no sheet was open.
+  static const _kOpenSheet = 'session.openSheet';
+  static const _kOpenSheetAt = 'session.openSheetAtMs';
+  String? get openSheet => _prefs.getString(_kOpenSheet);
+  int? get openSheetAtMs => _prefs.getInt(_kOpenSheetAt);
+  Future<void> setOpenSheet(String? type) async {
+    if (type == null) {
+      await _prefs.remove(_kOpenSheet);
+      await _prefs.remove(_kOpenSheetAt);
+    } else {
+      await _prefs.setString(_kOpenSheet, type);
+      await _prefs.setInt(
+        _kOpenSheetAt,
+        DateTime.now().toUtc().millisecondsSinceEpoch,
+      );
+    }
+  }
+
+  static const _kCalAnchor = 'calendar.anchorMs';
+  int? get calendarAnchorMs => _prefs.getInt(_kCalAnchor);
+  Future<void> setCalendarAnchorMs(int v) => _prefs.setInt(_kCalAnchor, v);
+
+  static const _kCalDayCount = 'calendar.dayCount';
+  int get calendarDayCount => _prefs.getInt(_kCalDayCount) ?? 1;
+  Future<void> setCalendarDayCount(int v) => _prefs.setInt(_kCalDayCount, v);
+
+  static const _kTaskList = 'tasks.selectedList';
+  String? get selectedTaskListId => _prefs.getString(_kTaskList);
+  Future<void> setSelectedTaskListId(String? v) =>
+      v == null ? _prefs.remove(_kTaskList) : _prefs.setString(_kTaskList, v);
+
+  static const _kNotesFolder = 'notes.selectedFolder';
+  String? get selectedNotesFolderId => _prefs.getString(_kNotesFolder);
+  Future<void> setSelectedNotesFolderId(String? v) => v == null
+      ? _prefs.remove(_kNotesFolder)
+      : _prefs.setString(_kNotesFolder, v);
+
+  static const _kSearchQuery = 'search.query';
+  String get searchQuery => _prefs.getString(_kSearchQuery) ?? '';
+  Future<void> setSearchQuery(String v) => _prefs.setString(_kSearchQuery, v);
+
+  static const _kSearchScope = 'search.scope';
+  String get searchScope => _prefs.getString(_kSearchScope) ?? 'all';
+  Future<void> setSearchScope(String v) => _prefs.setString(_kSearchScope, v);
+
+  /// Focus start-view options (lightweight, prefs not drafts).
+  static const _kFocusMin = 'focus.setupMin';
+  static const _kBreakMin = 'focus.breakMin';
+  static const _kFocusIsBreak = 'focus.isBreak';
+  static const _kFocusTask = 'focus.taskId';
+  static const _kFocusHabit = 'focus.habitId';
+  int get focusSetupMin => _prefs.getInt(_kFocusMin) ?? 25;
+  int get focusBreakMin => _prefs.getInt(_kBreakMin) ?? 5;
+  bool get focusIsBreak => _prefs.getBool(_kFocusIsBreak) ?? false;
+  String? get focusTaskId => _prefs.getString(_kFocusTask);
+  String? get focusHabitId => _prefs.getString(_kFocusHabit);
+  Future<void> setFocusSetup({
+    int? focusMin,
+    int? breakMin,
+    bool? isBreak,
+    String? Function()? taskId,
+    String? Function()? habitId,
+  }) async {
+    if (focusMin != null) await _prefs.setInt(_kFocusMin, focusMin);
+    if (breakMin != null) await _prefs.setInt(_kBreakMin, breakMin);
+    if (isBreak != null) await _prefs.setBool(_kFocusIsBreak, isBreak);
+    if (taskId != null) {
+      final v = taskId();
+      if (v == null) {
+        await _prefs.remove(_kFocusTask);
+      } else {
+        await _prefs.setString(_kFocusTask, v);
+      }
+    }
+    if (habitId != null) {
+      final v = habitId();
+      if (v == null) {
+        await _prefs.remove(_kFocusHabit);
+      } else {
+        await _prefs.setString(_kFocusHabit, v);
+      }
+    }
+  }
+
   static const _kCalView = 'calendar.view';
   String get calendarView => _prefs.getString(_kCalView) ?? 'month';
   Future<void> setCalendarView(String v) => _prefs.setString(_kCalView, v);
