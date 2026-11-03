@@ -154,7 +154,13 @@ class AlarmRepository {
       final mins = t.dueTime;
       final fire = mins == null
           ? DateTime(y, m, d, 9).toUtc().millisecondsSinceEpoch
-          : DateTime(y, m, d, mins ~/ 60, mins % 60).toUtc().millisecondsSinceEpoch;
+          : DateTime(
+              y,
+              m,
+              d,
+              mins ~/ 60,
+              mins % 60,
+            ).toUtc().millisecondsSinceEpoch;
       final title = t.title.isEmpty ? 'Task' : t.title;
       // Custom reminder offsets; default preserves at-time-only behavior.
       final raw = t.reminders;

@@ -47,5 +47,6 @@ class YearView extends ConsumerWidget {
     );
   }
 
-  String _name(BuildContext context, int m) => DeviceDateFormat.shortMonthName(context, m);
+  String _name(BuildContext context, int m) =>
+      DeviceDateFormat.shortMonthName(context, m);
 }

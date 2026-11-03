@@ -28,10 +28,7 @@ class EmptyState extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           Text(title, style: Theme.of(context).textTheme.titleMedium),
-          if (subtitle != null) ...[
-            const SizedBox(height: 4),
-            Text(subtitle!),
-          ],
+          if (subtitle != null) ...[const SizedBox(height: 4), Text(subtitle!)],
           if (actionLabel != null && onAction != null) ...[
             const SizedBox(height: 8),
             FilledButton(onPressed: onAction, child: Text(actionLabel!)),

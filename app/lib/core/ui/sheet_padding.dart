@@ -3,8 +3,8 @@
 import 'package:flutter/material.dart';
 
 EdgeInsets sheetPadding(BuildContext context) => EdgeInsets.only(
-      left: 16,
-      right: 16,
-      top: 16,
-      bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-    );
+  left: 16,
+  right: 16,
+  top: 16,
+  bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+);

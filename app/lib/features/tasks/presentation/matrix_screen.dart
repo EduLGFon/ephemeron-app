@@ -99,4 +99,3 @@ class _QuadrantCard extends StatelessWidget {
     );
   }
 }
-

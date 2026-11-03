@@ -141,9 +141,7 @@ class _CountdownTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = entry.c;
     final detail = StringBuffer(_relativeText(entry.days));
-    detail.write(
-      ' - ${DeviceDateFormat.yMMMd(context).format(entry.next)}',
-    );
+    detail.write(' - ${DeviceDateFormat.yMMMd(context).format(entry.next)}');
     if (c.yearlyRepeat) {
       final birth = _parseDate(c.targetDate);
       if (c.showAge && birth != null) {

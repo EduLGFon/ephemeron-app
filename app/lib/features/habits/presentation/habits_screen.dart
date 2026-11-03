@@ -95,9 +95,7 @@ class _DayStrip extends StatelessWidget {
         children: [
           for (final d in days) ...[
             ChoiceChip(
-              label: Text(
-                '${DeviceDateFormat.e(context).format(d)} ${d.day}',
-              ),
+              label: Text('${DeviceDateFormat.e(context).format(d)} ${d.day}'),
               selected: habitDateKey(d) == selected,
               onSelected: (_) => onSelect(habitDateKey(d)),
             ),

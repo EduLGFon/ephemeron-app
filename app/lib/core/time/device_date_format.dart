@@ -38,11 +38,9 @@ class DeviceDateFormat {
   static DateFormat yMMM(BuildContext context) =>
       DateFormat.yMMM(locale(context));
 
-  static DateFormat hm(BuildContext context) =>
-      DateFormat.Hm(locale(context));
+  static DateFormat hm(BuildContext context) => DateFormat.Hm(locale(context));
 
-  static DateFormat e(BuildContext context) =>
-      DateFormat.E(locale(context));
+  static DateFormat e(BuildContext context) => DateFormat.E(locale(context));
 
   static DateFormat eeee(BuildContext context) =>
       DateFormat.EEEE(locale(context));
