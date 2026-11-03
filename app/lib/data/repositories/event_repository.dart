@@ -39,6 +39,7 @@ class EventRepository {
   }) async {
     final id = newId();
     final now = nowMs();
+    final account = await _accountOfCalendar(calendarId);
     await _db
         .into(_db.events)
         .insert(
@@ -59,12 +60,21 @@ class EventRepository {
             createMeet: Value(createMeet),
             reminders: Value(reminders),
             alarmPreset: Value(alarmPreset),
+            dirty: const Value(true),
+            googleAccount: Value(account),
             createdAt: now,
             updatedAt: now,
           ),
         );
     await _enqueue(id, 'create');
     return id;
+  }
+
+  Future<String?> _accountOfCalendar(String calendarId) async {
+    final cal = await (_db.select(
+      _db.calendars,
+    )..where((c) => c.id.equals(calendarId))).getSingleOrNull();
+    return cal?.googleAccount;
   }
 
   Future<Event> _master(String id) async {
@@ -271,6 +281,7 @@ class EventRepository {
             changes.copyWith(
               id: Value(newId()),
               calendarId: Value(master.calendarId),
+              googleAccount: Value(master.googleAccount),
               title: changes.title.present
                   ? changes.title
                   : Value(master.title),
@@ -360,6 +371,8 @@ class EventRepository {
             tzId: Value(master.tzId),
             rrule: Value(rrule ?? _stripCount(master.rrule ?? '')),
             location: Value(location ?? master.location),
+            dirty: const Value(true),
+            googleAccount: Value(master.googleAccount),
             createdAt: now,
             updatedAt: now,
           ),

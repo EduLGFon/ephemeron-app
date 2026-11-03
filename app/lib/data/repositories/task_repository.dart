@@ -78,6 +78,7 @@ class TaskRepository {
     final now = nowMs();
     var list = listId;
     list ??= await _defaultListId();
+    final account = await _accountOfList(list);
     await _db
         .into(_db.tasks)
         .insert(
@@ -96,6 +97,8 @@ class TaskRepository {
             pinned: Value(pinned),
             alarmPreset: Value(alarmPreset),
             reminders: Value(reminders),
+            dirty: const Value(true),
+            googleAccount: Value(account),
             createdAt: now,
             updatedAt: now,
           ),
@@ -112,6 +115,14 @@ class TaskRepository {
               ..limit(1))
             .get();
     return lists.isEmpty ? null : lists.single.id;
+  }
+
+  Future<String?> _accountOfList(String? listId) async {
+    if (listId == null) return null;
+    final list = await (_db.select(
+      _db.taskLists,
+    )..where((l) => l.id.equals(listId))).getSingleOrNull();
+    return list?.googleAccount;
   }
 
   Stream<List<Task>> watchOpen({String? listId}) {
@@ -405,11 +416,13 @@ class TaskRepository {
           _db.tasks,
         )..where((t) => t.id.equals(id))).getSingle();
         prev[id] = task.listId;
+        final account = await _accountOfList(listId);
         await (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(
           TasksCompanion(
             listId: Value(listId),
             updatedAt: Value(nowMs()),
             dirty: const Value(true),
+            googleAccount: Value(account),
           ),
         );
       }
