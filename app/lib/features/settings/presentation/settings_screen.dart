@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/ui/app_sheet.dart';
 import 'package:ephemeron/core/ui/escape_to_close.dart';
 import 'package:ephemeron/l10n/src/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -304,18 +305,21 @@ class SettingsScreen extends ConsumerWidget {
     SettingsRepository repo,
   ) async {
     final current = List<int>.from(repo.navOrder);
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
+    await showAppSheet<void>(
+      context,
       builder: (ctx) => EscapeToClose(
         child: StatefulBuilder(
           builder: (ctx, setSt) => SafeArea(
-            child: SizedBox(
-              height: MediaQuery.of(ctx).size.height * 0.7,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.7,
+              ),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
+                  Flexible(
                     child: ReorderableListView(
+                      shrinkWrap: true,
                       onReorderItem: (oldIndex, newIndex) {
                         setSt(() {
                           final item = current.removeAt(oldIndex);

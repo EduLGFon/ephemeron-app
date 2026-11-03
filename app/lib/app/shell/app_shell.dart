@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:ephemeron/core/ui/app_sheet.dart';
 import 'package:ephemeron/core/ui/escape_to_close.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,6 +28,7 @@ import '../../features/sync/application/sync_providers.dart';
 import '../../features/tasks/presentation/quick_add_sheet.dart';
 import '../../features/tasks/presentation/task_editor_sheet.dart';
 import '../../data/services/home_widget_data_binder.dart';
+import '../../data/services/week_calendar_data.dart';
 import 'app_sections.dart';
 import '../../features/tasks/application/tasks_providers.dart';
 import '../../features/habits/application/habits_providers.dart';
@@ -147,22 +149,43 @@ class _AppShellState extends ConsumerState<AppShell>
     await _handleWidgetAction();
   }
 
-  /// Routes a home-widget tap (new_task/search). Called on startup and on
-  /// resume so taps work whether the app was closed or already open.
+  /// Routes a home-widget tap (new_task/search/week day). Called on startup
+  /// and on resume so taps work whether the app was closed or already open.
   Future<void> _handleWidgetAction() async {
     if (!mounted) return;
     final widgetAction = await SystemLauncher.consumeWidgetAction();
     if (widgetAction == null || !mounted) return;
-    switch (widgetAction) {
-      case 'new_task':
-        await showQuickAdd(context);
-      case 'search':
-        GoRouter.of(context).push('/search');
-        try {
-          final repo = await ref.read(settingsRepositoryProvider.future);
-          await repo.setLastRoute('/search');
-        } catch (_) {}
+    if (widgetAction == 'new_task') {
+      await showQuickAdd(context);
+    } else if (widgetAction == 'search') {
+      GoRouter.of(context).push('/search');
+      try {
+        final repo = await ref.read(settingsRepositoryProvider.future);
+        await repo.setLastRoute('/search');
+      } catch (_) {}
+    } else if (widgetAction == 'calendar' || widgetAction == 'calendar/today') {
+      await _openWeekCalendar(DateTime.now());
+    } else if (widgetAction.startsWith('calendar/')) {
+      final raw = widgetAction.substring('calendar/'.length);
+      await _openWeekCalendar(DateTime.tryParse(raw) ?? DateTime.now());
     }
+  }
+
+  /// Opens the app on the seven-day timeline containing [day], anchored at
+  /// the configured first day of the week.
+  Future<void> _openWeekCalendar(DateTime day) async {
+    if (!mounted) return;
+    await _onTabSelected(AppSection.calendar.index);
+    if (!mounted) return;
+    var firstDay = DateTime.monday;
+    try {
+      final repo = await ref.read(settingsRepositoryProvider.future);
+      firstDay = repo.weekStart;
+    } catch (_) {}
+    final start = weekStartFor(day, weekStartDay: firstDay);
+    final notifier = ref.read(calendarStateProvider.notifier);
+    notifier.goTo(start);
+    notifier.setView(CalendarViewKind.multiDay, dayCount: 7);
   }
 
   Future<void> _restoreSession() async {
@@ -526,6 +549,9 @@ class _AppShellState extends ConsumerState<AppShell>
       upcomingAlarmsProvider,
       (prev, next) => _scheduleWidgetRefresh(),
     );
+    ref.listen(occurrenceDirtyProvider, (prev, next) {
+      if (next) _scheduleWidgetRefresh();
+    });
     final orderAsync = ref.watch(settingsRepositoryProvider);
     final onboarded = orderAsync.maybeWhen(
       data: (r) => r.onboarded,
@@ -652,8 +678,8 @@ class _AppShellState extends ConsumerState<AppShell>
   }
 
   void _showMore(BuildContext context, List<int> more, List<int> order) {
-    showModalBottomSheet<void>(
-      context: context,
+    showAppSheet<void>(
+      context,
       builder: (ctx) => EscapeToClose(
         child: MoreSheet(
           more: more,
@@ -672,15 +698,17 @@ class _AppShellState extends ConsumerState<AppShell>
 
   Future<void> _reorderSheet(BuildContext context, List<int> order) async {
     final current = List<int>.from(order);
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
+    await showAppSheet<void>(
+      context,
       builder: (ctx) => EscapeToClose(
         child: StatefulBuilder(
           builder: (ctx, setSt) => SafeArea(
-            child: SizedBox(
-              height: MediaQuery.of(ctx).size.height * 0.7,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.7,
+              ),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(16),
@@ -689,8 +717,9 @@ class _AppShellState extends ConsumerState<AppShell>
                       style: Theme.of(ctx).textTheme.titleMedium,
                     ),
                   ),
-                  Expanded(
+                  Flexible(
                     child: ReorderableListView(
+                      shrinkWrap: true,
                       onReorderItem: (oldIndex, newIndex) {
                         setSt(() {
                           final item = current.removeAt(oldIndex);

@@ -2,14 +2,15 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/repositories/event_repository.dart';
+import '../../../core/ui/app_sheet.dart';
 import '../../../core/ui/escape_to_close.dart';
 
 Future<EditScope?> showScopeSheet(
   BuildContext context, {
   bool allowSingle = true,
 }) {
-  return showModalBottomSheet<EditScope>(
-    context: context,
+  return showAppSheet<EditScope>(
+    context,
     builder: (ctx) => EscapeToClose(
       child: SafeArea(
         child: Column(

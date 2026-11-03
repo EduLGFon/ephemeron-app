@@ -9,6 +9,7 @@ import '../../settings/application/settings_providers.dart';
 import '../../../domain/alarms/alarm_preset.dart';
 import '../../../domain/habits/date_key.dart';
 import '../../../core/platform/app_permissions.dart';
+import '../../../core/ui/app_sheet.dart';
 import '../../../core/ui/escape_to_close.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../application/habits_providers.dart';
@@ -18,9 +19,8 @@ Future<void> showHabitEditor(
   Habit? habit,
   Map<String, dynamic>? restoredDraft,
 }) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
+  return showAppSheet<void>(
+    context,
     builder: (_) => EscapeToClose(
       child: _HabitEditorSheet(habit: habit, restoredDraft: restoredDraft),
     ),

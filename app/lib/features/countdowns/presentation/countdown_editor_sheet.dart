@@ -8,6 +8,7 @@ import '../../../data/drift/app_database.dart';
 import '../../settings/application/settings_providers.dart';
 import '../../../domain/alarms/alarm_preset.dart';
 import '../../../core/platform/app_permissions.dart';
+import '../../../core/ui/app_sheet.dart';
 import '../../../core/ui/escape_to_close.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../application/countdowns_providers.dart';
@@ -17,9 +18,8 @@ Future<void> showCountdownEditor(
   Countdown? countdown,
   Map<String, dynamic>? restoredDraft,
 }) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
+  return showAppSheet<void>(
+    context,
     builder: (_) => EscapeToClose(
       child: _CountdownEditorSheet(
         countdown: countdown,

@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:ephemeron/core/ui/dialogs.dart';
 
 import 'package:ephemeron/core/ui/empty_state.dart';
+import 'package:ephemeron/core/ui/app_sheet.dart';
 import 'package:ephemeron/core/ui/escape_to_close.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -252,8 +253,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
   }
 
   Future<void> _newFromTemplate() async {
-    final choice = await showModalBottomSheet<String>(
-      context: context,
+    final choice = await showAppSheet<String>(
+      context,
       builder: (ctx) => EscapeToClose(
         child: SafeArea(
           child: Column(

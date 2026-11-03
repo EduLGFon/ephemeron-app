@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/platform/system_launcher.dart';
+import '../../../core/ui/app_sheet.dart';
 import '../../../core/ui/escape_to_close.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../core/db/db_provider.dart';
@@ -29,8 +30,8 @@ Future<void> showEventDetails(BuildContext context, String eventId) async {
   } catch (_) {}
   if (!context.mounted) return;
   try {
-    await showModalBottomSheet<void>(
-      context: context,
+    await showAppSheet<void>(
+      context,
       builder: (_) => EscapeToClose(child: _Details(eventId: eventId)),
     );
   } finally {
@@ -299,7 +300,7 @@ class _Attendees extends ConsumerWidget {
       builder: (ctx, snap) {
         final atts = snap.data ?? const [];
         if (atts.isEmpty) return const SizedBox.shrink();
-        final self = atts.where((a) => a.isSelf).firstOrNull ?? atts.first;
+        final self = atts.where((a) => a.isSelf).firstOrNull;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -309,26 +310,30 @@ class _Attendees extends ConsumerWidget {
                 title: Text(a.email),
                 trailing: Text(a.rsvp ?? ''),
               ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Wrap(
-                spacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  const Text('My response:'),
-                  for (final (value, label) in const [
-                    ('accepted', 'Yes'),
-                    ('tentative', 'Maybe'),
-                    ('declined', 'No'),
-                  ])
-                    ChoiceChip(
-                      label: Text(label),
-                      selected: (self.rsvp ?? '') == value,
-                      onSelected: (_) => _respond(ctx, ref, self, value),
-                    ),
-                ],
+            if (self != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                child: Wrap(
+                  spacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    const Text('My response:'),
+                    for (final (value, label) in const [
+                      ('accepted', 'Yes'),
+                      ('tentative', 'Maybe'),
+                      ('declined', 'No'),
+                    ])
+                      ChoiceChip(
+                        label: Text(label),
+                        selected: (self.rsvp ?? '') == value,
+                        onSelected: (_) => _respond(ctx, ref, self, value),
+                      ),
+                  ],
+                ),
               ),
-            ),
           ],
         );
       },
