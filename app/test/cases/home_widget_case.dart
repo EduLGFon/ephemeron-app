@@ -85,5 +85,12 @@ void main() {
       await images.renderWeekBars(minutes: const [1, 2, 3, 4, 5, 6, 7]),
       isNull,
     );
+    expect(
+      await images.renderWeekCalendar(
+        days: const [],
+        now: DateTime(2026, 11, 2),
+      ),
+      isNull,
+    );
   });
 }
