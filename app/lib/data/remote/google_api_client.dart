@@ -15,8 +15,27 @@ class GoogleApiException implements Exception {
 
   bool get isGone => status == 410;
   bool get isUnauthorized => status == 401;
-  bool get isRateLimited => status == 403 || status == 429;
   bool get isConflict => status == 412;
+
+  /// 429, or 403 carrying a rate-limit/quota reason. All other 403s are
+  /// permission denials (missing scopes, revoked access) and must never
+  /// be treated as rate limits or stale rows.
+  bool get isRateLimited {
+    if (status == 429) return true;
+    if (status != 403) return false;
+    final m = message.toLowerCase();
+    return m.contains('ratelimit') ||
+        m.contains('quotaexceeded') ||
+        m.contains('quota_exceeded');
+  }
+
+  /// Expired/revoked token (401) or a non-rate-limit 403. The queued row is
+  /// valid; the credential is not. Keep the row and ask to reconnect.
+  bool get isPermissionDenied {
+    if (status == 401) return true;
+    if (status != 403) return false;
+    return !isRateLimited;
+  }
 }
 
 class CalendarPage {
