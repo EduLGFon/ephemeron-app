@@ -9,6 +9,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 class FakeGoogle implements GoogleApiClient {
   List<Map<String, dynamic>> events = [];
+  List<Map<String, dynamic>> calendars = [];
+  List<Map<String, dynamic>> taskListsResult = [];
+  final List<String> pulledCalendars = [];
+  final List<String> pulledTaskLists = [];
   String? lastSyncTokenSeen;
   String? lastEtagSeen;
   bool fail410Once = false;
@@ -19,7 +23,7 @@ class FakeGoogle implements GoogleApiClient {
   int? retryAfterSec;
 
   @override
-  Future<List<Map<String, dynamic>>> calendarList() async => [];
+  Future<List<Map<String, dynamic>>> calendarList() async => List.of(calendars);
 
   @override
   Future<CalendarPage> eventsList(
@@ -32,6 +36,7 @@ class FakeGoogle implements GoogleApiClient {
       fail410Once = false;
       throw GoogleApiException(410, 'gone');
     }
+    pulledCalendars.add(calendarId);
     lastSyncTokenSeen = syncToken;
     return CalendarPage(items: List.of(events), nextSyncToken: 'tok123');
   }
@@ -65,11 +70,14 @@ class FakeGoogle implements GoogleApiClient {
   Future<void> eventDelete(String c, String e) async {}
 
   @override
-  Future<List<Map<String, dynamic>>> taskLists() async => [];
+  Future<List<Map<String, dynamic>>> taskLists() async =>
+      List.of(taskListsResult);
 
   @override
-  Future<TasksPage> tasksList(String id, {String? updatedMin}) async =>
-      TasksPage(items: [], nextUpdatedMin: 'now');
+  Future<TasksPage> tasksList(String id, {String? updatedMin}) async {
+    pulledTaskLists.add(id);
+    return TasksPage(items: [], nextUpdatedMin: 'now');
+  }
 
   @override
   Future<Map<String, dynamic>> taskInsert(
@@ -373,6 +381,199 @@ void main() {
     final remaining = await db.select(db.outbox).get();
     expect(remaining.map((o) => o.id), ['op-bad']);
   });
+
+  test('401 push keeps the row and reports auth failure', () async {
+    final db = _db();
+    addTearDown(db.close);
+    await _cal(db);
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    await db
+        .into(db.events)
+        .insert(
+          EventsCompanion.insert(
+            id: 'e1',
+            calendarId: 'c1',
+            title: Value('New'),
+            createdAt: now,
+            updatedAt: now,
+            dirty: Value(true),
+          ),
+        );
+    await db
+        .into(db.outbox)
+        .insert(
+          OutboxCompanion.insert(
+            id: 'op1',
+            entity: 'event',
+            entityId: 'e1',
+            op: 'create',
+            createdAt: now,
+          ),
+        );
+    final engine = SyncEngine(
+      db,
+      clientFactory: () => _FailAll(401, 'no token'),
+    );
+    await engine.syncNow();
+    // Row kept for retry, engine signals reconnect instead of clean success.
+    final op = await (db.select(
+      db.outbox,
+    )..where((o) => o.id.equals('op1'))).getSingle();
+    expect(op.attempts, 1);
+    expect(op.nextTryAt, isNotNull);
+    expect(engine.authFailure, isTrue);
+    expect(engine.status, SyncStatus.error);
+  });
+
+  test('permission 403 keeps the row; rate-limit 403 backs off', () async {
+    for (final body in [
+      '{"error":{"errors":[{"reason":"insufficientPermissions"}],"code":403}}',
+      '{"error":{"errors":[{"reason":"rateLimitExceeded"}],"code":403}}',
+    ]) {
+      final db = _db();
+      addTearDown(db.close);
+      await _cal(db);
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      await db
+          .into(db.events)
+          .insert(
+            EventsCompanion.insert(
+              id: 'e1',
+              calendarId: 'c1',
+              title: Value('New'),
+              createdAt: now,
+              updatedAt: now,
+              dirty: Value(true),
+            ),
+          );
+      await db
+          .into(db.outbox)
+          .insert(
+            OutboxCompanion.insert(
+              id: 'op1',
+              entity: 'event',
+              entityId: 'e1',
+              op: 'create',
+              createdAt: now,
+            ),
+          );
+      final engine = SyncEngine(db, clientFactory: () => _FailAll(403, body));
+      await engine.syncNow();
+      final remaining = await (db.select(
+        db.outbox,
+      )..where((o) => o.id.equals('op1'))).get();
+      // Neither flavor deletes the row anymore.
+      expect(remaining, hasLength(1));
+      if (body.contains('rateLimit')) {
+        expect(engine.authFailure, isFalse);
+        expect(remaining.single.lastError, 'rate limited');
+      } else {
+        expect(engine.authFailure, isTrue);
+        expect(engine.status, SyncStatus.error);
+      }
+    }
+  });
+
+  test('404 drops owned rows but keeps foreign-account rows', () async {
+    final db = _db();
+    addTearDown(db.close);
+    await _cal(db);
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    for (final entry in [('mine', 'a@x'), ('theirs', 'b@x')]) {
+      await db
+          .into(db.events)
+          .insert(
+            EventsCompanion.insert(
+              id: entry.$1,
+              calendarId: 'c1',
+              title: Value(entry.$1),
+              createdAt: now,
+              updatedAt: now,
+              dirty: Value(true),
+              googleAccount: Value(entry.$2),
+            ),
+          );
+      await db
+          .into(db.outbox)
+          .insert(
+            OutboxCompanion.insert(
+              id: 'op-${entry.$1}',
+              entity: 'event',
+              entityId: entry.$1,
+              op: 'create',
+              createdAt: now,
+            ),
+          );
+    }
+    // Active account a@x: its own 404 is gone-remote (dropped); b@x rows
+    // are skipped before any API call, so they survive.
+    final engine = SyncEngine(
+      db,
+      clientFactory: () => _FailAll(404, 'not found'),
+      account: 'a@x',
+    );
+    await engine.syncNow();
+    final remaining = await db.select(db.outbox).get();
+    expect(remaining.map((o) => o.id), ['op-theirs']);
+  });
+
+  test('discovery stamps accounts and disables only own calendars', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    for (final entry in [('ca', 'ra'), ('cb', 'rb')]) {
+      await db
+          .into(db.calendars)
+          .insert(
+            CalendarsCompanion.insert(
+              id: entry.$1,
+              remoteId: Value(entry.$2),
+              name: entry.$1,
+              source: Value('google'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.taskLists)
+          .insert(
+            TaskListsCompanion.insert(
+              id: 'l-${entry.$1}',
+              remoteId: Value('rl-${entry.$2}'),
+              name: 'l-${entry.$1}',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+    }
+    final fake = FakeGoogle()
+      ..calendars = [
+        {'id': 'ra', 'summary': 'ca'},
+      ]
+      ..taskListsResult = [
+        {'id': 'rl-ra', 'title': 'l-ca'},
+      ];
+    final engine = SyncEngine(db, clientFactory: () => fake, account: 'a@x');
+    await engine.syncNow();
+    // Matched rows stamped; unmatched rows keep a null stamp.
+    final ca = await (db.select(
+      db.calendars,
+    )..where((c) => c.id.equals('ca'))).getSingle();
+    expect(ca.googleAccount, 'a@x');
+    final cb = await (db.select(
+      db.calendars,
+    )..where((c) => c.id.equals('cb'))).getSingle();
+    expect(cb.googleAccount, isNull);
+    // rb belongs to another account: not disabled by a@x's loop.
+    expect(cb.enabled, isTrue);
+    final la = await (db.select(
+      db.taskLists,
+    )..where((l) => l.id.equals('l-ca'))).getSingle();
+    expect(la.googleAccount, 'a@x');
+    // Pull only queried the owned calendar/list: no foreign 404s.
+    expect(fake.pulledCalendars, ['ra']);
+    expect(fake.pulledTaskLists, ['rl-ra']);
+  });
 }
 
 class _RateLimitedOnce extends FakeGoogle {
@@ -398,4 +599,37 @@ class _PartialFail extends FakeGoogle {
     }
     return {'id': 'r-ok', 'etag': 'e1'};
   }
+}
+
+class _FailAll extends FakeGoogle {
+  _FailAll(this.status, this.message);
+
+  final int status;
+  final String message;
+
+  @override
+  Future<List<Map<String, dynamic>>> calendarList() async =>
+      throw GoogleApiException(status, message);
+
+  @override
+  Future<CalendarPage> eventsList(
+    String calendarId, {
+    String? syncToken,
+    String? timeMin,
+    String? timeMax,
+  }) async => throw GoogleApiException(status, message);
+
+  @override
+  Future<Map<String, dynamic>> eventInsert(
+    String calendarId,
+    Map<String, dynamic> body,
+  ) async => throw GoogleApiException(status, message);
+
+  @override
+  Future<List<Map<String, dynamic>>> taskLists() async =>
+      throw GoogleApiException(status, message);
+
+  @override
+  Future<TasksPage> tasksList(String id, {String? updatedMin}) async =>
+      throw GoogleApiException(status, message);
 }
