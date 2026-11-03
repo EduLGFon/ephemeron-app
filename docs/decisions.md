@@ -21,3 +21,12 @@ Decisions not covered by PLAN.md (lighter-weight option chosen by default).
   do not; drafts expire after 7 days, reopen silently under 24 h and behind
   a "Restore draft?" banner above that. Notes need no draft row (they
   autosave to the DB).
+- Google sync account linking (2026-11-03, Android tasks never synced):
+  Calendar-only sign-in on Android meant Tasks calls 403d and the engine
+  deleted the outbox rows as stale, then 401d on everything after expiry,
+  all while the chip read synced. Fix: sign-in requests Calendar + Tasks
+  everywhere (desktop already did); 401/permission-403 keeps the row with
+  backoff and raises a reconnect banner instead of deleting; `events` and
+  `tasks` gain `googleAccount` (schema v9, backfilled from parent
+  calendar/list) so push/pull/discovery are scoped per account and one
+  account's loop can no longer 404-drop another's rows.
