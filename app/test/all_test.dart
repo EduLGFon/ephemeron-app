@@ -14,6 +14,7 @@ import 'cases/backend_auth_case.dart' as backend_auth;
 import 'cases/backend_sync_case.dart' as backend_sync;
 import 'cases/backup_case.dart' as backup;
 import 'cases/calendar_color_case.dart' as calendar_color;
+import 'cases/calendar_swipe_case.dart' as calendar_swipe;
 import 'cases/countdowns_screen_case.dart' as countdowns_screen;
 import 'cases/db_case.dart' as db;
 import 'cases/event_scope_case.dart' as event_scope;
@@ -51,6 +52,7 @@ const _included = <String>{
   'backend_sync_case.dart',
   'backup_case.dart',
   'calendar_color_case.dart',
+  'calendar_swipe_case.dart',
   'countdowns_screen_case.dart',
   'db_case.dart',
   'event_scope_case.dart',
@@ -99,6 +101,7 @@ void main() {
   group('backend_sync', backend_sync.main);
   group('backup', backup.main);
   group('calendar_color', calendar_color.main);
+  group('calendar_swipe', calendar_swipe.main);
   group('countdowns_screen', countdowns_screen.main);
   group('db', db.main);
   group('event_scope', event_scope.main);

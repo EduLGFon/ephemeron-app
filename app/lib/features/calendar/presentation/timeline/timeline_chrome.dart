@@ -2,6 +2,7 @@
 // Pure presentation; dragging and tapping arrive via callbacks.
 import 'package:flutter/material.dart';
 
+import '../../../../core/time/device_date_format.dart';
 import '../../../../core/time/time.dart';
 import '../../../../data/drift/app_database.dart';
 import 'timeline_utils.dart';
@@ -44,13 +45,13 @@ class TimelineDayHeader extends StatelessWidget {
     required this.anchor,
     required this.dayCount,
     required this.gutterWidth,
+    this.swipeOffset = 0,
   });
 
   final DateTime anchor;
   final int dayCount;
   final double gutterWidth;
-
-  static const _wd = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  final double swipeOffset;
 
   @override
   Widget build(BuildContext context) {
@@ -58,8 +59,17 @@ class TimelineDayHeader extends StatelessWidget {
     return Row(
       children: [
         SizedBox(width: gutterWidth),
-        for (var i = 0; i < dayCount; i++)
-          Expanded(child: _dayCell(context, i, now)),
+        Expanded(
+          child: Transform.translate(
+            offset: Offset(swipeOffset, 0),
+            child: Row(
+              children: [
+                for (var i = 0; i < dayCount; i++)
+                  Expanded(child: _dayCell(context, i, now)),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -79,7 +89,9 @@ class TimelineDayHeader extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            _wd[(day.weekday - 1) % 7],
+            DeviceDateFormat.weekday(context, day),
+            maxLines: 1,
+            softWrap: false,
             style: Theme.of(context).textTheme.labelSmall,
           ),
           Container(
@@ -109,6 +121,7 @@ class TimelineAllDayStrip extends StatelessWidget {
     required this.dayCount,
     required this.gutterWidth,
     required this.onTap,
+    this.swipeOffset = 0,
   });
 
   final List<OccurrenceCacheData> occs;
@@ -116,6 +129,7 @@ class TimelineAllDayStrip extends StatelessWidget {
   final int dayCount;
   final double gutterWidth;
   final ValueChanged<String> onTap;
+  final double swipeOffset;
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +147,18 @@ class TimelineAllDayStrip extends StatelessWidget {
             ),
           ),
         ),
-        for (var i = 0; i < dayCount; i++) Expanded(child: _dayChips(i)),
+        Expanded(
+          child: Transform.translate(
+            offset: Offset(swipeOffset, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < dayCount; i++)
+                  Expanded(child: _dayChips(i)),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

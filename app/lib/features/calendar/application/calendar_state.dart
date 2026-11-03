@@ -1,5 +1,7 @@
 // Visible calendar window: anchor date, view kind, day count.
 // Changing it triggers a cache rebuild (see CalendarScreen).
+import 'dart:math' as math;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class CalendarWindow {
@@ -87,6 +89,18 @@ class CalendarState extends Notifier<CalendarWindow> {
   void shift(int days) {
     state = CalendarWindow(
       anchor: state.anchor.add(Duration(days: days)),
+      view: state.view,
+      dayCount: state.dayCount,
+    );
+  }
+
+  /// Moves to the same day in another month, clamped to that month's length.
+  void shiftMonths(int months) {
+    final anchor = state.anchor;
+    final first = DateTime(anchor.year, anchor.month + months, 1);
+    final lastDay = DateTime(first.year, first.month + 1, 0).day;
+    state = CalendarWindow(
+      anchor: DateTime(first.year, first.month, math.min(anchor.day, lastDay)),
       view: state.view,
       dayCount: state.dayCount,
     );

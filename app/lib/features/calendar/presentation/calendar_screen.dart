@@ -10,6 +10,7 @@ import '../../tasks/application/tasks_providers.dart';
 import '../application/calendar_state.dart';
 import 'agenda_view.dart';
 import 'calendar_settings_screen.dart';
+import 'calendar_swipe.dart';
 import 'event_editor_sheet.dart';
 import 'month_view.dart';
 import 'timeline/timeline_view.dart';
@@ -122,12 +123,17 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         ],
       ),
       body: switch (window.view) {
-        CalendarViewKind.month => MonthView(
-          onDayTap: (d) {
-            ref.read(calendarStateProvider.notifier)
-              ..goTo(d)
-              ..setView(CalendarViewKind.day);
-          },
+        CalendarViewKind.month => CalendarSwipe(
+          enabled: true,
+          onShift: (direction) =>
+              ref.read(calendarStateProvider.notifier).shiftMonths(direction),
+          child: MonthView(
+            onDayTap: (d) {
+              ref.read(calendarStateProvider.notifier)
+                ..goTo(d)
+                ..setView(CalendarViewKind.day);
+            },
+          ),
         ),
         CalendarViewKind.multiDay => TimelineView(
           anchor: window.anchor,

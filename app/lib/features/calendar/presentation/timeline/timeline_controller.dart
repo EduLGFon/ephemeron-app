@@ -46,20 +46,137 @@ mixin TimelineInteraction {
   double? pinchStartDist;
   double pinchBaseScale = 1;
 
+  // Horizontal swipe state for advancing one day at a time while keeping
+  // the hour gutter fixed.
+  double swipeOffset = 0;
+  bool swipeDragging = false;
+  bool swipeDisabled = false;
+  Animation<double>? swipeAnimation;
+  int _swipeGeneration = 0;
+  late AnimationController swipeController;
+
   double get hourHeight => timelineBaseHourHeight * autoScale * scale;
   void initTimelineInteraction() {
+    swipeController =
+        AnimationController(
+          vsync: this as TickerProvider,
+          duration: const Duration(milliseconds: 180),
+        )..addListener(() {
+          final animation = swipeAnimation;
+          if (animation != null) {
+            setState(() => swipeOffset = animation.value);
+          }
+        });
     WidgetsBinding.instance.addPostFrameCallback((_) => maybeJump());
   }
 
   void refreshTimelineWindow() {
-    didJump = false;
+    // Keep the current vertical position when the visible day changes; only
+    // the initial mount auto-scrolls to now (or 8am when today is off-screen).
     dragId = null;
     dragDy = 0;
-    WidgetsBinding.instance.addPostFrameCallback((_) => maybeJump());
   }
 
   void disposeTimelineInteraction() {
+    swipeController.dispose();
     scroll.dispose();
+  }
+
+  void _swipeAbort() {
+    _swipeGeneration++;
+    swipeController.stop();
+    swipeAnimation = null;
+    swipeDragging = false;
+    if (swipeOffset != 0) setState(() => swipeOffset = 0);
+  }
+
+  void onSwipeStart(DragStartDetails details) {
+    if (dragId != null) {
+      swipeDragging = false;
+      return;
+    }
+    if (pointers.length > 1) {
+      swipeDisabled = true;
+      swipeDragging = false;
+      return;
+    }
+    swipeDisabled = false;
+    swipeDragging = true;
+    swipeOffset = 0;
+    swipeAnimation = null;
+  }
+
+  void onSwipeUpdate(DragUpdateDetails details) {
+    if (!swipeDragging || swipeDisabled || dragId != null) return;
+    final width = (lastColW * dayCount).clamp(1.0, double.infinity);
+    swipeOffset = (swipeOffset + details.delta.dx).clamp(-width, width);
+    setState(() {});
+  }
+
+  Future<void> onSwipeEnd(DragEndDetails details) async {
+    if (!swipeDragging) {
+      swipeDragging = false;
+      return;
+    }
+    swipeDragging = false;
+    if (swipeDisabled || dragId != null) {
+      await _swipeSnapBack();
+      return;
+    }
+    final width = (lastColW * dayCount).clamp(1.0, double.infinity);
+    final velocity = details.primaryVelocity ?? 0;
+    final fling = velocity.abs() > 300;
+    final passed = swipeOffset.abs() > width * 0.2;
+    if (!fling && !passed) {
+      await _swipeSnapBack();
+      return;
+    }
+    final direction = fling
+        ? -velocity.sign.toInt()
+        : -swipeOffset.sign.toInt();
+    if (direction == 0) {
+      await _swipeSnapBack();
+      return;
+    }
+    await _swipeReverse(direction, width);
+  }
+
+  void onSwipeCancel() {
+    swipeDragging = false;
+    if (swipeOffset != 0) _swipeSnapBack();
+  }
+
+  Future<void> _swipeReverse(int direction, double width) async {
+    final generation = ++_swipeGeneration;
+    await _swipeAnimateTo(-direction * width);
+    if (!mounted || generation != _swipeGeneration) return;
+    ref.read(calendarStateProvider.notifier).shift(direction);
+    setState(() => swipeOffset = direction * width);
+    await _swipeAnimateTo(0);
+    if (!mounted || generation != _swipeGeneration) return;
+  }
+
+  Future<void> _swipeSnapBack() async {
+    final generation = ++_swipeGeneration;
+    await _swipeAnimateTo(0);
+    if (!mounted || generation != _swipeGeneration) return;
+  }
+
+  Future<void> _swipeAnimateTo(double target) async {
+    final begin = swipeOffset;
+    if ((begin - target).abs() < 0.5) {
+      if (mounted) setState(() => swipeOffset = target);
+      return;
+    }
+    swipeAnimation = Tween<double>(begin: begin, end: target).animate(
+      CurvedAnimation(parent: swipeController, curve: Curves.easeOutCubic),
+    );
+    swipeController.reset();
+    try {
+      await swipeController.forward().orCancel;
+    } on TickerCanceled {
+      return;
+    }
   }
 
   void maybeJump() {
@@ -131,6 +248,8 @@ mixin TimelineInteraction {
     if (pointers.length == 2) {
       pinchStartDist = _pointerDist();
       pinchBaseScale = scale;
+      swipeDisabled = true;
+      _swipeAbort();
     }
   }
 
@@ -145,6 +264,7 @@ mixin TimelineInteraction {
   void onTimelinePointerEnd(PointerEvent e) {
     pointers.remove(e.pointer);
     if (pointers.length < 2) pinchStartDist = null;
+    if (pointers.isEmpty) swipeDisabled = false;
   }
 
   void tapEmptyAt(Offset pos, double colW) {
