@@ -28,6 +28,10 @@
 ## Environment limits (no SDK/devices here; need owner machine)
 
 - Migration tests from previous schema versions: none yet (only v1 exists).
+- Week calendar home widget: Android grid/provider/layout added (7 day
+  columns, all-day band, timed blocks, day tap deep link, 1dp minimum size).
+  No Android SDK/device here, so the native build and launcher behavior are
+  not verified yet.
 
 ## Open work
 

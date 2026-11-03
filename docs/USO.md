@@ -16,7 +16,7 @@ Plataformas: Android (prioridade máxima), Linux e Web (médio), Windows (baixo)
 - A última seção aberta é restaurada ao abrir o app.
 - Botão flutuante (FAB) cria o item principal da seção atual.
 - Busca global acessível pelo menu "Mais" (ícone de busca) ou em `/search`.
-- Home-screen widgets: Ajustes > Home-screen widgets lists all available types and pins one to the launcher (Android only). Widgets refresh when the app opens.
+- Home-screen widgets: Ajustes > Home-screen widgets lists all available types and pins one to the launcher (Android only). Widgets refresh when the app opens. O widget de semana mostra a semana inteira (itens de dia todo, eventos e tarefas com hora); toque numa coluna para abrir essa semana no app.
 
 ## 3. Primeiro uso (onboarding)
 
