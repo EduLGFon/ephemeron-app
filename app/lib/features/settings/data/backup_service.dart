@@ -225,6 +225,7 @@ class BackupService {
         deletedAt: Value(_optInt(m, 'deletedAt')),
         dirty: Value(_reqBool(m, 'dirty')),
         remoteEtag: Value(_optStr(m, 'remoteEtag')),
+        googleAccount: Value(_optStr(m, 'googleAccount')),
       );
 
   EventsCompanion _eventOf(Map<String, dynamic> m) => EventsCompanion.insert(
@@ -251,6 +252,7 @@ class BackupService {
     alarmPreset: Value(_optStr(m, 'alarmPreset')),
     visibility: Value(_optStr(m, 'visibility')),
     transparency: Value(_optStr(m, 'transparency')),
+    googleAccount: Value(_optStr(m, 'googleAccount')),
     createdAt: _reqInt(m, 'createdAt'),
     updatedAt: _reqInt(m, 'updatedAt'),
     deletedAt: Value(_optInt(m, 'deletedAt')),
@@ -282,6 +284,7 @@ class BackupService {
         deletedAt: Value(_optInt(m, 'deletedAt')),
         dirty: Value(_reqBool(m, 'dirty')),
         remoteEtag: Value(_optStr(m, 'remoteEtag')),
+        googleAccount: Value(_optStr(m, 'googleAccount')),
       );
 
   TasksCompanion _taskOf(Map<String, dynamic> m) => TasksCompanion.insert(
@@ -308,6 +311,7 @@ class BackupService {
     dirty: Value(_reqBool(m, 'dirty')),
     remoteId: Value(_optStr(m, 'remoteId')),
     remoteEtag: Value(_optStr(m, 'remoteEtag')),
+    googleAccount: Value(_optStr(m, 'googleAccount')),
   );
 
   TaskTagsCompanion _taskTagOf(Map<String, dynamic> m) =>

@@ -39,7 +39,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -80,6 +80,23 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(pendingOperations);
         await customStatement(
           'CREATE INDEX IF NOT EXISTS idx_pending_operations_scheduled ON pending_operations(scheduled_at);',
+        );
+      }
+      if (from < 9) {
+        await m.addColumn(events, events.googleAccount);
+        await m.addColumn(tasks, tasks.googleAccount);
+        // Link existing rows to their parent calendar/list account.
+        await customStatement(
+          'UPDATE events SET google_account = '
+          '(SELECT google_account FROM calendars '
+          'WHERE calendars.id = events.calendar_id) '
+          'WHERE google_account IS NULL;',
+        );
+        await customStatement(
+          'UPDATE tasks SET google_account = '
+          '(SELECT google_account FROM task_lists '
+          'WHERE task_lists.id = tasks.list_id) '
+          'WHERE google_account IS NULL;',
         );
       }
     },

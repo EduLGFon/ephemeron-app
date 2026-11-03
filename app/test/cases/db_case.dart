@@ -34,9 +34,21 @@ void main() {
     await db.close();
   });
 
-  test('schema version is 8', () async {
+  test('schema version is 9', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
-    expect(db.schemaVersion, 8);
+    expect(db.schemaVersion, 9);
+    await db.close();
+  });
+
+  test('events and tasks carry google_account', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    for (final table in ['events', 'tasks']) {
+      final cols = await db.customSelect('PRAGMA table_info($table)').get();
+      expect(
+        cols.map((r) => r.read<String>('name')),
+        contains('google_account'),
+      );
+    }
     await db.close();
   });
 

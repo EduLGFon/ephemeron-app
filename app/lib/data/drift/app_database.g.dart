@@ -1099,6 +1099,17 @@ class $EventsTable extends Events with TableInfo<$EventsTable, Event> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _googleAccountMeta = const VerificationMeta(
+    'googleAccount',
+  );
+  @override
+  late final GeneratedColumn<String> googleAccount = GeneratedColumn<String>(
+    'google_account',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1131,6 +1142,7 @@ class $EventsTable extends Events with TableInfo<$EventsTable, Event> {
     dirty,
     remoteId,
     remoteEtag,
+    googleAccount,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1344,6 +1356,15 @@ class $EventsTable extends Events with TableInfo<$EventsTable, Event> {
         remoteEtag.isAcceptableOrUnknown(data['remote_etag']!, _remoteEtagMeta),
       );
     }
+    if (data.containsKey('google_account')) {
+      context.handle(
+        _googleAccountMeta,
+        googleAccount.isAcceptableOrUnknown(
+          data['google_account']!,
+          _googleAccountMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1473,6 +1494,10 @@ class $EventsTable extends Events with TableInfo<$EventsTable, Event> {
         DriftSqlType.string,
         data['${effectivePrefix}remote_etag'],
       ),
+      googleAccount: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}google_account'],
+      ),
     );
   }
 
@@ -1513,6 +1538,7 @@ class Event extends DataClass implements Insertable<Event> {
   final bool dirty;
   final String? remoteId;
   final String? remoteEtag;
+  final String? googleAccount;
   const Event({
     required this.id,
     required this.calendarId,
@@ -1544,6 +1570,7 @@ class Event extends DataClass implements Insertable<Event> {
     required this.dirty,
     this.remoteId,
     this.remoteEtag,
+    this.googleAccount,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1620,6 +1647,9 @@ class Event extends DataClass implements Insertable<Event> {
     if (!nullToAbsent || remoteEtag != null) {
       map['remote_etag'] = Variable<String>(remoteEtag);
     }
+    if (!nullToAbsent || googleAccount != null) {
+      map['google_account'] = Variable<String>(googleAccount);
+    }
     return map;
   }
 
@@ -1695,6 +1725,9 @@ class Event extends DataClass implements Insertable<Event> {
       remoteEtag: remoteEtag == null && nullToAbsent
           ? const Value.absent()
           : Value(remoteEtag),
+      googleAccount: googleAccount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(googleAccount),
     );
   }
 
@@ -1738,6 +1771,7 @@ class Event extends DataClass implements Insertable<Event> {
       dirty: serializer.fromJson<bool>(json['dirty']),
       remoteId: serializer.fromJson<String?>(json['remoteId']),
       remoteEtag: serializer.fromJson<String?>(json['remoteEtag']),
+      googleAccount: serializer.fromJson<String?>(json['googleAccount']),
     );
   }
   @override
@@ -1774,6 +1808,7 @@ class Event extends DataClass implements Insertable<Event> {
       'dirty': serializer.toJson<bool>(dirty),
       'remoteId': serializer.toJson<String?>(remoteId),
       'remoteEtag': serializer.toJson<String?>(remoteEtag),
+      'googleAccount': serializer.toJson<String?>(googleAccount),
     };
   }
 
@@ -1808,6 +1843,7 @@ class Event extends DataClass implements Insertable<Event> {
     bool? dirty,
     Value<String?> remoteId = const Value.absent(),
     Value<String?> remoteEtag = const Value.absent(),
+    Value<String?> googleAccount = const Value.absent(),
   }) => Event(
     id: id ?? this.id,
     calendarId: calendarId ?? this.calendarId,
@@ -1845,6 +1881,9 @@ class Event extends DataClass implements Insertable<Event> {
     dirty: dirty ?? this.dirty,
     remoteId: remoteId.present ? remoteId.value : this.remoteId,
     remoteEtag: remoteEtag.present ? remoteEtag.value : this.remoteEtag,
+    googleAccount: googleAccount.present
+        ? googleAccount.value
+        : this.googleAccount,
   );
   Event copyWithCompanion(EventsCompanion data) {
     return Event(
@@ -1896,6 +1935,9 @@ class Event extends DataClass implements Insertable<Event> {
       remoteEtag: data.remoteEtag.present
           ? data.remoteEtag.value
           : this.remoteEtag,
+      googleAccount: data.googleAccount.present
+          ? data.googleAccount.value
+          : this.googleAccount,
     );
   }
 
@@ -1931,7 +1973,8 @@ class Event extends DataClass implements Insertable<Event> {
           ..write('deletedAt: $deletedAt, ')
           ..write('dirty: $dirty, ')
           ..write('remoteId: $remoteId, ')
-          ..write('remoteEtag: $remoteEtag')
+          ..write('remoteEtag: $remoteEtag, ')
+          ..write('googleAccount: $googleAccount')
           ..write(')'))
         .toString();
   }
@@ -1968,6 +2011,7 @@ class Event extends DataClass implements Insertable<Event> {
     dirty,
     remoteId,
     remoteEtag,
+    googleAccount,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -2002,7 +2046,8 @@ class Event extends DataClass implements Insertable<Event> {
           other.deletedAt == this.deletedAt &&
           other.dirty == this.dirty &&
           other.remoteId == this.remoteId &&
-          other.remoteEtag == this.remoteEtag);
+          other.remoteEtag == this.remoteEtag &&
+          other.googleAccount == this.googleAccount);
 }
 
 class EventsCompanion extends UpdateCompanion<Event> {
@@ -2036,6 +2081,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
   final Value<bool> dirty;
   final Value<String?> remoteId;
   final Value<String?> remoteEtag;
+  final Value<String?> googleAccount;
   final Value<int> rowid;
   const EventsCompanion({
     this.id = const Value.absent(),
@@ -2068,6 +2114,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
     this.dirty = const Value.absent(),
     this.remoteId = const Value.absent(),
     this.remoteEtag = const Value.absent(),
+    this.googleAccount = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   EventsCompanion.insert({
@@ -2101,6 +2148,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
     this.dirty = const Value.absent(),
     this.remoteId = const Value.absent(),
     this.remoteEtag = const Value.absent(),
+    this.googleAccount = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        calendarId = Value(calendarId),
@@ -2137,6 +2185,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
     Expression<bool>? dirty,
     Expression<String>? remoteId,
     Expression<String>? remoteEtag,
+    Expression<String>? googleAccount,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2171,6 +2220,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
       if (dirty != null) 'dirty': dirty,
       if (remoteId != null) 'remote_id': remoteId,
       if (remoteEtag != null) 'remote_etag': remoteEtag,
+      if (googleAccount != null) 'google_account': googleAccount,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2206,6 +2256,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
     Value<bool>? dirty,
     Value<String?>? remoteId,
     Value<String?>? remoteEtag,
+    Value<String?>? googleAccount,
     Value<int>? rowid,
   }) {
     return EventsCompanion(
@@ -2239,6 +2290,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
       dirty: dirty ?? this.dirty,
       remoteId: remoteId ?? this.remoteId,
       remoteEtag: remoteEtag ?? this.remoteEtag,
+      googleAccount: googleAccount ?? this.googleAccount,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2338,6 +2390,9 @@ class EventsCompanion extends UpdateCompanion<Event> {
     if (remoteEtag.present) {
       map['remote_etag'] = Variable<String>(remoteEtag.value);
     }
+    if (googleAccount.present) {
+      map['google_account'] = Variable<String>(googleAccount.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2377,6 +2432,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
           ..write('dirty: $dirty, ')
           ..write('remoteId: $remoteId, ')
           ..write('remoteEtag: $remoteEtag, ')
+          ..write('googleAccount: $googleAccount, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4217,6 +4273,17 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _googleAccountMeta = const VerificationMeta(
+    'googleAccount',
+  );
+  @override
+  late final GeneratedColumn<String> googleAccount = GeneratedColumn<String>(
+    'google_account',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4242,6 +4309,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     dirty,
     remoteId,
     remoteEtag,
+    googleAccount,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4405,6 +4473,15 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         remoteEtag.isAcceptableOrUnknown(data['remote_etag']!, _remoteEtagMeta),
       );
     }
+    if (data.containsKey('google_account')) {
+      context.handle(
+        _googleAccountMeta,
+        googleAccount.isAcceptableOrUnknown(
+          data['google_account']!,
+          _googleAccountMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -4506,6 +4583,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.string,
         data['${effectivePrefix}remote_etag'],
       ),
+      googleAccount: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}google_account'],
+      ),
     );
   }
 
@@ -4539,6 +4620,7 @@ class Task extends DataClass implements Insertable<Task> {
   final bool dirty;
   final String? remoteId;
   final String? remoteEtag;
+  final String? googleAccount;
   const Task({
     required this.id,
     this.listId,
@@ -4563,6 +4645,7 @@ class Task extends DataClass implements Insertable<Task> {
     required this.dirty,
     this.remoteId,
     this.remoteEtag,
+    this.googleAccount,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4617,6 +4700,9 @@ class Task extends DataClass implements Insertable<Task> {
     }
     if (!nullToAbsent || remoteEtag != null) {
       map['remote_etag'] = Variable<String>(remoteEtag);
+    }
+    if (!nullToAbsent || googleAccount != null) {
+      map['google_account'] = Variable<String>(googleAccount);
     }
     return map;
   }
@@ -4674,6 +4760,9 @@ class Task extends DataClass implements Insertable<Task> {
       remoteEtag: remoteEtag == null && nullToAbsent
           ? const Value.absent()
           : Value(remoteEtag),
+      googleAccount: googleAccount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(googleAccount),
     );
   }
 
@@ -4706,6 +4795,7 @@ class Task extends DataClass implements Insertable<Task> {
       dirty: serializer.fromJson<bool>(json['dirty']),
       remoteId: serializer.fromJson<String?>(json['remoteId']),
       remoteEtag: serializer.fromJson<String?>(json['remoteEtag']),
+      googleAccount: serializer.fromJson<String?>(json['googleAccount']),
     );
   }
   @override
@@ -4735,6 +4825,7 @@ class Task extends DataClass implements Insertable<Task> {
       'dirty': serializer.toJson<bool>(dirty),
       'remoteId': serializer.toJson<String?>(remoteId),
       'remoteEtag': serializer.toJson<String?>(remoteEtag),
+      'googleAccount': serializer.toJson<String?>(googleAccount),
     };
   }
 
@@ -4762,6 +4853,7 @@ class Task extends DataClass implements Insertable<Task> {
     bool? dirty,
     Value<String?> remoteId = const Value.absent(),
     Value<String?> remoteEtag = const Value.absent(),
+    Value<String?> googleAccount = const Value.absent(),
   }) => Task(
     id: id ?? this.id,
     listId: listId.present ? listId.value : this.listId,
@@ -4786,6 +4878,9 @@ class Task extends DataClass implements Insertable<Task> {
     dirty: dirty ?? this.dirty,
     remoteId: remoteId.present ? remoteId.value : this.remoteId,
     remoteEtag: remoteEtag.present ? remoteEtag.value : this.remoteEtag,
+    googleAccount: googleAccount.present
+        ? googleAccount.value
+        : this.googleAccount,
   );
   Task copyWithCompanion(TasksCompanion data) {
     return Task(
@@ -4822,6 +4917,9 @@ class Task extends DataClass implements Insertable<Task> {
       remoteEtag: data.remoteEtag.present
           ? data.remoteEtag.value
           : this.remoteEtag,
+      googleAccount: data.googleAccount.present
+          ? data.googleAccount.value
+          : this.googleAccount,
     );
   }
 
@@ -4850,7 +4948,8 @@ class Task extends DataClass implements Insertable<Task> {
           ..write('deletedAt: $deletedAt, ')
           ..write('dirty: $dirty, ')
           ..write('remoteId: $remoteId, ')
-          ..write('remoteEtag: $remoteEtag')
+          ..write('remoteEtag: $remoteEtag, ')
+          ..write('googleAccount: $googleAccount')
           ..write(')'))
         .toString();
   }
@@ -4880,6 +4979,7 @@ class Task extends DataClass implements Insertable<Task> {
     dirty,
     remoteId,
     remoteEtag,
+    googleAccount,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -4907,7 +5007,8 @@ class Task extends DataClass implements Insertable<Task> {
           other.deletedAt == this.deletedAt &&
           other.dirty == this.dirty &&
           other.remoteId == this.remoteId &&
-          other.remoteEtag == this.remoteEtag);
+          other.remoteEtag == this.remoteEtag &&
+          other.googleAccount == this.googleAccount);
 }
 
 class TasksCompanion extends UpdateCompanion<Task> {
@@ -4934,6 +5035,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<bool> dirty;
   final Value<String?> remoteId;
   final Value<String?> remoteEtag;
+  final Value<String?> googleAccount;
   final Value<int> rowid;
   const TasksCompanion({
     this.id = const Value.absent(),
@@ -4959,6 +5061,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.dirty = const Value.absent(),
     this.remoteId = const Value.absent(),
     this.remoteEtag = const Value.absent(),
+    this.googleAccount = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TasksCompanion.insert({
@@ -4985,6 +5088,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.dirty = const Value.absent(),
     this.remoteId = const Value.absent(),
     this.remoteEtag = const Value.absent(),
+    this.googleAccount = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        createdAt = Value(createdAt),
@@ -5013,6 +5117,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<bool>? dirty,
     Expression<String>? remoteId,
     Expression<String>? remoteEtag,
+    Expression<String>? googleAccount,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -5039,6 +5144,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (dirty != null) 'dirty': dirty,
       if (remoteId != null) 'remote_id': remoteId,
       if (remoteEtag != null) 'remote_etag': remoteEtag,
+      if (googleAccount != null) 'google_account': googleAccount,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -5067,6 +5173,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<bool>? dirty,
     Value<String?>? remoteId,
     Value<String?>? remoteEtag,
+    Value<String?>? googleAccount,
     Value<int>? rowid,
   }) {
     return TasksCompanion(
@@ -5093,6 +5200,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       dirty: dirty ?? this.dirty,
       remoteId: remoteId ?? this.remoteId,
       remoteEtag: remoteEtag ?? this.remoteEtag,
+      googleAccount: googleAccount ?? this.googleAccount,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -5169,6 +5277,9 @@ class TasksCompanion extends UpdateCompanion<Task> {
     if (remoteEtag.present) {
       map['remote_etag'] = Variable<String>(remoteEtag.value);
     }
+    if (googleAccount.present) {
+      map['google_account'] = Variable<String>(googleAccount.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5201,6 +5312,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
           ..write('dirty: $dirty, ')
           ..write('remoteId: $remoteId, ')
           ..write('remoteEtag: $remoteEtag, ')
+          ..write('googleAccount: $googleAccount, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -14691,6 +14803,7 @@ typedef $$EventsTableCreateCompanionBuilder =
       Value<bool> dirty,
       Value<String?> remoteId,
       Value<String?> remoteEtag,
+      Value<String?> googleAccount,
       Value<int> rowid,
     });
 typedef $$EventsTableUpdateCompanionBuilder =
@@ -14725,6 +14838,7 @@ typedef $$EventsTableUpdateCompanionBuilder =
       Value<bool> dirty,
       Value<String?> remoteId,
       Value<String?> remoteEtag,
+      Value<String?> googleAccount,
       Value<int> rowid,
     });
 
@@ -14919,6 +15033,11 @@ class $$EventsTableFilterComposer
 
   ColumnFilters<String> get remoteEtag => $composableBuilder(
     column: $table.remoteEtag,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get googleAccount => $composableBuilder(
+    column: $table.googleAccount,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15125,6 +15244,11 @@ class $$EventsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get googleAccount => $composableBuilder(
+    column: $table.googleAccount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CalendarsTableOrderingComposer get calendarId {
     final $$CalendarsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -15261,6 +15385,11 @@ class $$EventsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get googleAccount => $composableBuilder(
+    column: $table.googleAccount,
+    builder: (column) => column,
+  );
+
   $$CalendarsTableAnnotationComposer get calendarId {
     final $$CalendarsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -15368,6 +15497,7 @@ class $$EventsTableTableManager
                 Value<bool> dirty = const Value.absent(),
                 Value<String?> remoteId = const Value.absent(),
                 Value<String?> remoteEtag = const Value.absent(),
+                Value<String?> googleAccount = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => EventsCompanion(
                 id: id,
@@ -15400,6 +15530,7 @@ class $$EventsTableTableManager
                 dirty: dirty,
                 remoteId: remoteId,
                 remoteEtag: remoteEtag,
+                googleAccount: googleAccount,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -15434,6 +15565,7 @@ class $$EventsTableTableManager
                 Value<bool> dirty = const Value.absent(),
                 Value<String?> remoteId = const Value.absent(),
                 Value<String?> remoteEtag = const Value.absent(),
+                Value<String?> googleAccount = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => EventsCompanion.insert(
                 id: id,
@@ -15466,6 +15598,7 @@ class $$EventsTableTableManager
                 dirty: dirty,
                 remoteId: remoteId,
                 remoteEtag: remoteEtag,
+                googleAccount: googleAccount,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -16624,6 +16757,7 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<bool> dirty,
       Value<String?> remoteId,
       Value<String?> remoteEtag,
+      Value<String?> googleAccount,
       Value<int> rowid,
     });
 typedef $$TasksTableUpdateCompanionBuilder =
@@ -16651,6 +16785,7 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<bool> dirty,
       Value<String?> remoteId,
       Value<String?> remoteEtag,
+      Value<String?> googleAccount,
       Value<int> rowid,
     });
 
@@ -16810,6 +16945,11 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<String> get remoteEtag => $composableBuilder(
     column: $table.remoteEtag,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get googleAccount => $composableBuilder(
+    column: $table.googleAccount,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16981,6 +17121,11 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get googleAccount => $composableBuilder(
+    column: $table.googleAccount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$TaskListsTableOrderingComposer get listId {
     final $$TaskListsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -17090,6 +17235,11 @@ class $$TasksTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get googleAccount => $composableBuilder(
+    column: $table.googleAccount,
+    builder: (column) => column,
+  );
+
   $$TaskListsTableAnnotationComposer get listId {
     final $$TaskListsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -17190,6 +17340,7 @@ class $$TasksTableTableManager
                 Value<bool> dirty = const Value.absent(),
                 Value<String?> remoteId = const Value.absent(),
                 Value<String?> remoteEtag = const Value.absent(),
+                Value<String?> googleAccount = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TasksCompanion(
                 id: id,
@@ -17215,6 +17366,7 @@ class $$TasksTableTableManager
                 dirty: dirty,
                 remoteId: remoteId,
                 remoteEtag: remoteEtag,
+                googleAccount: googleAccount,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -17242,6 +17394,7 @@ class $$TasksTableTableManager
                 Value<bool> dirty = const Value.absent(),
                 Value<String?> remoteId = const Value.absent(),
                 Value<String?> remoteEtag = const Value.absent(),
+                Value<String?> googleAccount = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TasksCompanion.insert(
                 id: id,
@@ -17267,6 +17420,7 @@ class $$TasksTableTableManager
                 dirty: dirty,
                 remoteId: remoteId,
                 remoteEtag: remoteEtag,
+                googleAccount: googleAccount,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

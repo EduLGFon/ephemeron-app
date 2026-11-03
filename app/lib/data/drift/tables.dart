@@ -54,6 +54,7 @@ class Events extends Table {
   BoolColumn get dirty => boolean().withDefault(const Constant(false))();
   TextColumn get remoteId => text().nullable()();
   TextColumn get remoteEtag => text().nullable()();
+  TextColumn get googleAccount => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -126,6 +127,7 @@ class Tasks extends Table {
   BoolColumn get dirty => boolean().withDefault(const Constant(false))();
   TextColumn get remoteId => text().nullable()();
   TextColumn get remoteEtag => text().nullable()();
+  TextColumn get googleAccount => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
