@@ -64,6 +64,10 @@ class CalendarState extends Notifier<CalendarWindow> {
   CalendarWindow build() =>
       CalendarWindow(anchor: DateTime.now(), view: CalendarViewKind.month);
 
+  void restore(CalendarViewKind view, DateTime anchor, {int dayCount = 1}) {
+    state = CalendarWindow(anchor: anchor, view: view, dayCount: dayCount);
+  }
+
   void setView(CalendarViewKind view, {int dayCount = 1}) {
     state = CalendarWindow(
       anchor: state.anchor,
