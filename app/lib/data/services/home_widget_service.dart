@@ -1,9 +1,10 @@
 // Service for pushing data to Android home-screen widgets via home_widget.
 // Widgets are rendered natively (see android/.../HomeWidgets.kt); this
 // service stores the small text/image payload each widget displays.
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:home_widget/home_widget.dart';
+
+import 'home_widget_support.dart';
 
 /// One home-screen widget shipped by the app. [provider] is the Kotlin
 /// AppWidgetProvider class name; [keyPrefix] is the SharedPreferences key
@@ -84,11 +85,15 @@ class HomeWidgetService {
 
   /// Runs a home_widget platform call, silently skipping on platforms
   /// without a widget host (e.g. Linux desktop). Never throws.
+  /// Skips before calling (not just catching) because
+  /// HomeWidget.renderFlutterWidget fires an unawaited saveWidgetData
+  /// that escapes try/catch as an unhandled async error.
   Future<void> _widgetCall(Future<void> Function() call) async {
+    if (!isHomeWidgetSupported) return;
     try {
       await call();
-    } on MissingPluginException {
-      // No widget host on this platform; degrade gracefully.
+    } catch (_) {
+      // No widget host or best-effort push failed; degrade gracefully.
     }
   }
 

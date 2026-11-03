@@ -1,4 +1,7 @@
 import 'package:ephemeron/data/services/home_widget_service.dart';
+import 'package:ephemeron/data/services/home_widget_support.dart';
+import 'package:ephemeron/data/services/widget_image_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -40,5 +43,47 @@ void main() {
       items: const [],
     );
     await service.refreshAll();
+  });
+
+  test('unsupported platforms skip channel calls entirely', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    expect(isHomeWidgetSupported, isFalse);
+    // No mock handler: any channel call would throw MissingPluginException.
+    final service = HomeWidgetService();
+    await service.updateByPrefix(
+      keyPrefix: 'pending_tasks',
+      title: 't',
+      body: 'b',
+    );
+    await service.updateCollection(
+      keyPrefix: 'pending_tasks_collection',
+      provider: 'PendingTasksCollectionProvider',
+      items: const [],
+    );
+    await service.refreshAll();
+  });
+
+  test('image renders return null without a widget host', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final images = WidgetImageService();
+    expect(
+      await images.renderMonthGrid(
+        year: 2026,
+        month: 11,
+        eventDays: const {2},
+        today: 2,
+      ),
+      isNull,
+    );
+    expect(
+      await images.renderHeatmap(done: const {}, end: DateTime(2026, 11, 2)),
+      isNull,
+    );
+    expect(
+      await images.renderWeekBars(minutes: const [1, 2, 3, 4, 5, 6, 7]),
+      isNull,
+    );
   });
 }

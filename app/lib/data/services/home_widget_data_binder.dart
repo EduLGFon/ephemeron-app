@@ -13,6 +13,7 @@ import '../../../features/focus/application/focus_providers.dart';
 import '../../../features/calendar/application/calendar_providers.dart';
 import '../../../features/alarms/application/alarm_providers.dart';
 import 'home_widget_service.dart';
+import 'home_widget_support.dart';
 import 'widget_config_store.dart';
 import 'widget_image_service.dart';
 
@@ -670,7 +671,9 @@ class HomeWidgetDataBinder {
   /// platform reports installed widgets) and at most every 15 minutes per
   /// image. Falls back to the throttle when the installed list is
   /// unavailable so images still refresh on platforms without the API.
+  /// No-op on platforms without a widget host.
   Future<void> _refreshImages() async {
+    if (!isHomeWidgetSupported) return;
     final images = WidgetImageService();
     Set<String>? installed;
     try {

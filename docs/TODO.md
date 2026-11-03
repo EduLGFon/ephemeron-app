@@ -17,6 +17,13 @@
   `MissingPluginException` on Linux (no widget host) is now skipped
   silently at the `HomeWidgetService` boundary instead of crashing
   unhandled out of `main()`.
+  Follow-up: the service-level catch was not enough. `home_widget` 0.7.0
+  `renderFlutterWidget` fires an unawaited `saveWidgetData` that escapes
+  try/catch as an unhandled async error (3x log spam on Linux, one per
+  image). Now guarded before calling via `isHomeWidgetSupported`
+  (Android/iOS only) in `home_widget_service`, `widget_image_service`,
+  `home_widget_data_binder._refreshImages`, and
+  `home_widget_refresh_service`; tests pin the Linux skip.
 
 ## Environment limits (no SDK/devices here; need owner machine)
 

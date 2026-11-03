@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ephemeron/data/services/home_widget_service.dart';
+import 'package:ephemeron/data/services/home_widget_support.dart';
 
 /// Best-effort foreground refresh of home-screen widgets. Pushes a small
 /// placeholder payload for every widget type so newly pinned widgets are
@@ -10,6 +11,7 @@ class HomeWidgetRefreshService {
   final HomeWidgetService _service;
 
   Future<void> refreshDefaults() async {
+    if (!isHomeWidgetSupported) return;
     for (final w in homeWidgets) {
       await _service.updateByPrefix(
         keyPrefix: w.keyPrefix,

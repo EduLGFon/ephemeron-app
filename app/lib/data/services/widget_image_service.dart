@@ -5,6 +5,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:home_widget/home_widget.dart';
 
+import 'home_widget_support.dart';
+
 /// Month grid with event dots. Pure widget, no app dependencies.
 class MonthGridImage extends StatelessWidget {
   const MonthGridImage({
@@ -171,12 +173,16 @@ class WidgetImageService {
   }
 
   /// Renders and stores the month grid; returns the saved path or null.
+  /// Returns null without touching the platform channel on platforms
+  /// without a widget host (renderFlutterWidget fires an unawaited
+  /// saveWidgetData that would otherwise escape as an unhandled error).
   Future<String?> renderMonthGrid({
     required int year,
     required int month,
     required Set<int> eventDays,
     required int today,
   }) async {
+    if (!isHomeWidgetSupported) return null;
     try {
       final path = await HomeWidget.renderFlutterWidget(
         MonthGridImage(
@@ -199,6 +205,7 @@ class WidgetImageService {
     required Set<String> done,
     required DateTime end,
   }) async {
+    if (!isHomeWidgetSupported) return null;
     try {
       final path = await HomeWidget.renderFlutterWidget(
         HeatmapImage(done: done, end: end),
@@ -213,6 +220,7 @@ class WidgetImageService {
   }
 
   Future<String?> renderWeekBars({required List<int> minutes}) async {
+    if (!isHomeWidgetSupported) return null;
     try {
       final path = await HomeWidget.renderFlutterWidget(
         WeekBarsImage(minutes: minutes),
