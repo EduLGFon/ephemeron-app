@@ -116,7 +116,7 @@ class GoogleAuth {
     _initialized = true;
   }
 
-  Future<String?> signIn({bool tasks = false}) async {
+  Future<String?> signIn({bool tasks = true}) async {
     debugPrint('GoogleAuth.signIn start platform=$defaultTargetPlatform');
     try {
       await _ensureInit();

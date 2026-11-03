@@ -31,7 +31,7 @@ class GoogleAccountNotifier extends Notifier<String?> {
     } catch (_) {}
   }
 
-  Future<void> signIn({bool tasks = false}) async {
+  Future<void> signIn({bool tasks = true}) async {
     state = await ref.read(googleAuthProvider).signIn(tasks: tasks);
     ref.read(googleAccountsProvider.notifier).refresh();
   }
@@ -45,6 +45,13 @@ class GoogleAccountNotifier extends Notifier<String?> {
   Future<void> setActive(String email) async {
     await ref.read(googleAuthProvider).setActiveAccount(email);
     state = email;
+  }
+
+  /// Re-authorizes Calendar + Tasks scopes for the active account. Used by
+  /// the reconnect banner for grants made before Tasks sync existed.
+  Future<void> grantTasksScope() async {
+    await ref.read(googleAuthProvider).ensureTasksScope();
+    ref.read(googleAccountsProvider.notifier).refresh();
   }
 
   void setSignedInEmail(String? email) => state = email;
