@@ -79,7 +79,7 @@ class SystemLauncher {
     }
   }
 
-  /// Home-widget tap action (new_task/search). Once.
+  /// Home-widget tap action (new_task/search/calendar day). Once.
   static Future<String?> consumeWidgetAction() async {
     if (defaultTargetPlatform != TargetPlatform.android) return null;
     try {
