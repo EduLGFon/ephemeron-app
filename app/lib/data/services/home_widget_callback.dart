@@ -4,10 +4,7 @@ import 'package:ephemeron/data/repositories/task_repository.dart';
 import 'package:ephemeron/domain/habits/date_key.dart';
 
 import 'headless_widget_push.dart'
-    show
-        cancelAlarmsForEntity,
-        pushHabitWidgets,
-        pushTaskWidgets;
+    show cancelAlarmsForEntity, pushHabitWidgets, pushTaskWidgets;
 
 /// Parsed widget toggle action. Pure and unit-testable.
 class ToggleRequest {

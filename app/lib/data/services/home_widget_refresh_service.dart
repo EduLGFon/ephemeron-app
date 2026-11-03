@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ephemeron/data/services/home_widget_service.dart';
+
 /// Best-effort foreground refresh of home-screen widgets. Pushes a small
 /// placeholder payload for every widget type so newly pinned widgets are
 /// never blank. Feature-specific data can override these via
@@ -19,7 +20,8 @@ class HomeWidgetRefreshService {
   }
 }
 
-final homeWidgetRefreshServiceProvider =
-    Provider<HomeWidgetRefreshService>((ref) {
+final homeWidgetRefreshServiceProvider = Provider<HomeWidgetRefreshService>((
+  ref,
+) {
   return HomeWidgetRefreshService(ref.read(homeWidgetServiceProvider));
 });

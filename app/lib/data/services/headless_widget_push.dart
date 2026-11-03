@@ -46,8 +46,7 @@ Future<String?> readWidgetBinding(String provider) async {
 
 Future<void> pushTaskWidgets(AppDatabase db, {String? listId}) async {
   try {
-    final tasks =
-        await TaskRepository(db).watchOpen(listId: listId).first;
+    final tasks = await TaskRepository(db).watchOpen(listId: listId).first;
     final titles = tasks.take(5).map((t) => t.title).toList();
     await _push(
       'pending_tasks',
@@ -82,8 +81,7 @@ Future<void> pushTaskWidgets(AppDatabase db, {String? listId}) async {
 /// Re-reads habits and pushes habit widgets.
 Future<void> pushHabitWidgets(AppDatabase db) async {
   try {
-    final habits =
-        await HabitRepository(db).watchHabits(archived: false).first;
+    final habits = await HabitRepository(db).watchHabits(archived: false).first;
     await _push(
       'habits_today',
       'HabitsTodayWidgetProvider',
@@ -92,7 +90,9 @@ Future<void> pushHabitWidgets(AppDatabase db) async {
     );
     try {
       final items = habits
-          .map((h) => '{"id":"${h.id}","title":"${h.name.replaceAll('"', '')}"}')
+          .map(
+            (h) => '{"id":"${h.id}","title":"${h.name.replaceAll('"', '')}"}',
+          )
           .join(',');
       await HomeWidget.saveWidgetData<String>(
         'habits_today_collection_items',
@@ -181,14 +181,15 @@ Future<void> pushFocusWidgets(AppDatabase db) async {
 /// Task reminders use a suffixed sourceId per offset; habits per date.
 Future<void> cancelAlarmsForEntity(AppDatabase db, String id) async {
   try {
-    final rows = await (db.select(db.alarmsIndex)..where(
-          (a) =>
-              a.state.equals('scheduled') &
-              (a.sourceId.equals(id) |
-                  a.sourceId.like('$id#%') |
-                  a.sourceId.like('$id@%')),
-        ))
-        .get();
+    final rows =
+        await (db.select(db.alarmsIndex)..where(
+              (a) =>
+                  a.state.equals('scheduled') &
+                  (a.sourceId.equals(id) |
+                      a.sourceId.like('$id#%') |
+                      a.sourceId.like('$id@%')),
+            ))
+            .get();
     for (final row in rows) {
       final code = row.requestCode;
       if (code != null) {
@@ -197,11 +198,8 @@ Future<void> cancelAlarmsForEntity(AppDatabase db, String id) async {
         } catch (_) {}
       }
       try {
-        await (db.update(
-          db.alarmsIndex,
-        )..where((a) => a.id.equals(row.id))).write(
-          const AlarmsIndexCompanion(state: Value('cancelled')),
-        );
+        await (db.update(db.alarmsIndex)..where((a) => a.id.equals(row.id)))
+            .write(const AlarmsIndexCompanion(state: Value('cancelled')));
       } catch (_) {}
     }
   } catch (_) {}
@@ -221,7 +219,8 @@ Future<void> rebuildOccurrenceWindowHeadless(AppDatabase db) async {
 
 Future<void> pushAllHeadlessWidgets(AppDatabase db) async {
   final listId = await readWidgetBinding('PendingTasksWidgetProvider');
-  final noteId = await readWidgetBinding('OneNoteWidgetProvider') ??
+  final noteId =
+      await readWidgetBinding('OneNoteWidgetProvider') ??
       await readWidgetBinding('PinnedNoteWidgetProvider');
   final countdownId = await readWidgetBinding('CountdownWidgetProvider');
   await pushTaskWidgets(db, listId: listId);
@@ -247,7 +246,10 @@ Future<void> pushAllHeadlessWidgets(AppDatabase db) async {
     try {
       final items = occs
           .take(5)
-          .map((o) => '{"id":"${o.id}","title":"${(o.title ?? '').replaceAll('"', '')}"}')
+          .map(
+            (o) =>
+                '{"id":"${o.id}","title":"${(o.title ?? '').replaceAll('"', '')}"}',
+          )
           .join(',');
       await HomeWidget.saveWidgetData<String>(
         'day_agenda_collection_items',

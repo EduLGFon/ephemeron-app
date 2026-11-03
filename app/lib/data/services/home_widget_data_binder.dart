@@ -125,7 +125,8 @@ class HomeWidgetDataBinder {
       final next = items.first;
       final target = DateTime.tryParse(next.targetDate ?? '') ?? DateTime.now();
       final days = target.difference(DateTime.now()).inDays;
-      await _svc.updateByPrefix(        keyPrefix: 'countdown',
+      await _svc.updateByPrefix(
+        keyPrefix: 'countdown',
         title: next.title,
         body: '$days days remaining',
       );
@@ -164,7 +165,8 @@ class HomeWidgetDataBinder {
     try {
       final repo = ref.read(noteRepositoryProvider);
       final notes = await repo.watchNotesInFolder(null).first;
-      final pinnedId = await _config('OneNoteWidgetProvider') ??
+      final pinnedId =
+          await _config('OneNoteWidgetProvider') ??
           await _config('PinnedNoteWidgetProvider');
       final shown = pinnedId == null
           ? (notes.isEmpty ? null : notes.first)
@@ -176,8 +178,9 @@ class HomeWidgetDataBinder {
           title: shown.title,
           body: (shown.body?.length ?? 0) > 120
               ? shown.body!.substring(0, 120)
-              : shown.body ?? '',        );
-      _mark('one_note');
+              : shown.body ?? '',
+        );
+        _mark('one_note');
       }
       await _svc.updateCollection(
         keyPrefix: 'recent_notes_collection',
@@ -199,9 +202,7 @@ class HomeWidgetDataBinder {
       await _svc.updateByPrefix(
         keyPrefix: 'focus_timer',
         title: session == null ? 'Focus' : 'Focusing',
-        body: session == null
-            ? 'No active session.'
-            : 'Session running',
+        body: session == null ? 'No active session.' : 'Session running',
       );
       _mark('focus_timer');
     } catch (_) {}
@@ -211,7 +212,8 @@ class HomeWidgetDataBinder {
     try {
       final repo = ref.read(occurrenceRepositoryProvider);
       final now = DateTime.now();
-      final key = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final key =
+          '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
       final occs = await repo.watchDay(key).first;
       final titles = occs.take(5).map((o) => o.title).toList();
       await _svc.updateCollection(
@@ -222,8 +224,10 @@ class HomeWidgetDataBinder {
             .take(5)
             .map((o) => {'id': o.id, 'title': o.title})
             .toList()
-            .cast<Map<String, String>>(),      );
-      _mark('day_agenda_collection');      await _svc.updateByPrefix(
+            .cast<Map<String, String>>(),
+      );
+      _mark('day_agenda_collection');
+      await _svc.updateByPrefix(
         keyPrefix: 'next_events',
         title: titles.isEmpty ? 'No events' : titles.first,
         body: titles.length > 1 ? titles.skip(1).join('\n') : '',
@@ -239,7 +243,8 @@ class HomeWidgetDataBinder {
       final tasks = await repo.watchOpen(listId: listId).first;
       final counts = <String, int>{};
       for (final t in tasks) {
-        counts[t.priority.toString()] = (counts[t.priority.toString()] ?? 0) + 1;
+        counts[t.priority.toString()] =
+            (counts[t.priority.toString()] ?? 0) + 1;
       }
       await _svc.updateByPrefix(
         keyPrefix: 'matrix',
@@ -288,7 +293,9 @@ class HomeWidgetDataBinder {
       final now = DateTime.now();
       final todayKey =
           '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      final dueToday = tasks.where((t) => (t.dueDate ?? '') == todayKey).toList();
+      final dueToday = tasks
+          .where((t) => (t.dueDate ?? '') == todayKey)
+          .toList();
       final overdue = tasks.where((t) {
         final d = t.dueDate;
         return d != null && d.compareTo(todayKey) < 0;
@@ -378,7 +385,10 @@ class HomeWidgetDataBinder {
         body: tags.isEmpty ? 'No tags.' : tags.map((t) => t.name).join(', '),
       );
       _mark('tag_shortcuts');
-      final folders = await ref.read(noteRepositoryProvider).watchChildFolders(null).first;
+      final folders = await ref
+          .read(noteRepositoryProvider)
+          .watchChildFolders(null)
+          .first;
       await _svc.updateByPrefix(
         keyPrefix: 'folder_shortcuts',
         title: 'Folders',
@@ -445,8 +455,9 @@ class HomeWidgetDataBinder {
       final titles = tasks.take(5).map((t) => t.title).toList();
       final todayKey =
           '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      final dueToday =
-          tasks.where((t) => (t.dueDate ?? '') == todayKey).toList();
+      final dueToday = tasks
+          .where((t) => (t.dueDate ?? '') == todayKey)
+          .toList();
 
       final occRepo = ref.read(occurrenceRepositoryProvider);
       final occs = await occRepo.watchDay(todayKey).first;
@@ -473,7 +484,9 @@ class HomeWidgetDataBinder {
         final k = t.priority.toString();
         counts[k] = (counts[k] ?? 0) + 1;
       }
-      final matrixBody = counts.entries.map((e) => 'P${e.key}: ${e.value}').join(' ');
+      final matrixBody = counts.entries
+          .map((e) => 'P${e.key}: ${e.value}')
+          .join(' ');
 
       // Tag-bound widget: filter open tasks by the configured tag name.
       var tagLabel = 'Tags';
@@ -514,15 +527,15 @@ class HomeWidgetDataBinder {
       }
 
       var subtaskBody = 'No subtasks.';
-      final subtaskParentId =
-          await _config('SubtaskProgressWidgetProvider');
+      final subtaskParentId = await _config('SubtaskProgressWidgetProvider');
       final subtaskParent = subtaskParentId != null
           ? tasks.where((t) => t.id == subtaskParentId).toList()
           : tasks;
       if (subtaskParent.isNotEmpty) {
         try {
-          final progress =
-              await taskRepo.subtaskProgress(subtaskParent.first.id);
+          final progress = await taskRepo.subtaskProgress(
+            subtaskParent.first.id,
+          );
           subtaskBody =
               '${subtaskParent.first.title}: ${progress[0]}/${progress[1]} done';
         } catch (_) {}
@@ -536,8 +549,7 @@ class HomeWidgetDataBinder {
       if (streakHabit.isNotEmpty) {
         try {
           final today = habitDateKey(DateTime.now());
-          final log =
-              await habitRepo.logFor(streakHabit.first.id, today);
+          final log = await habitRepo.logFor(streakHabit.first.id, today);
           streakBody =
               '${streakHabit.first.name}: ${log != null ? 'done today' : 'not done today'}';
         } catch (_) {
@@ -547,7 +559,8 @@ class HomeWidgetDataBinder {
 
       var pinnedTitle = notes.isEmpty ? 'Note' : notes.first.title;
       var pinnedBody = notes.isEmpty ? 'No notes.' : noteTitles.join('\n');
-      final pinnedNoteId = await _config('PinnedNoteWidgetProvider') ??
+      final pinnedNoteId =
+          await _config('PinnedNoteWidgetProvider') ??
           await _config('OneNoteWidgetProvider');
       if (pinnedNoteId != null) {
         try {
@@ -561,8 +574,7 @@ class HomeWidgetDataBinder {
 
       var powerBody = 'Battery-aware sync on';
       try {
-        final low =
-            await PowerSavingManager.instance.isLowBattery;
+        final low = await PowerSavingManager.instance.isLowBattery;
         powerBody = low ? 'Low battery, sync slowed' : 'OK';
       } catch (_) {}
 
@@ -580,24 +592,17 @@ class HomeWidgetDataBinder {
       final derived = <String, Map<String, String>>{
         'month_calendar': {
           'title': '$monthName ${now.year}',
-          'body': occTitles.isEmpty
-              ? 'No events today.'
-              : occTitles.join('\n'),
+          'body': occTitles.isEmpty ? 'No events today.' : occTitles.join('\n'),
         },
         'week_calendar': {
           'title': 'This week',
-          'body': occTitles.isEmpty
-              ? 'No events today.'
-              : occTitles.join('\n'),
+          'body': occTitles.isEmpty ? 'No events today.' : occTitles.join('\n'),
         },
         'day_agenda': {
           'title': 'Today',
           'body': occTitles.isEmpty ? 'No events.' : occTitles.join('\n'),
         },
-        'smart_list': {
-          'title': 'Smart list',
-          'body': smartBody,
-        },
+        'smart_list': {'title': 'Smart list', 'body': smartBody},
         'tag_tasks': {
           'title': tagLabel,
           'body': tagTitles.isEmpty ? 'No tasks.' : tagTitles.join('\n'),
@@ -611,10 +616,7 @@ class HomeWidgetDataBinder {
         'habit_completion_rate': {'title': 'Completion', 'body': streakBody},
         'habit_heatmap': {'title': 'Heatmap', 'body': streakBody},
         'pomodoro': {'title': 'Focus', 'body': '$focusMin min (24h)'},
-        'pinned_note': {
-          'title': pinnedTitle,
-          'body': pinnedBody,
-        },
+        'pinned_note': {'title': pinnedTitle, 'body': pinnedBody},
         'recent_notes': {
           'title': 'Notes',
           'body': noteTitles.isEmpty ? 'No notes.' : noteTitles.join('\n'),
@@ -642,10 +644,7 @@ class HomeWidgetDataBinder {
           'title': 'Week',
           'body': 'Focus $focusMin min (24h), ${tasks.length} open',
         },
-        'power_status': {
-          'title': 'Battery',
-          'body': powerBody,
-        },
+        'power_status': {'title': 'Battery', 'body': powerBody},
         // No vacation feature exists in the app; report honestly instead of
         // implying live state.
         'vacation_status': {
@@ -703,99 +702,99 @@ class HomeWidgetDataBinder {
       }
     }
 
-    if (want('MonthCalendarWidgetProvider') &&
-        await due('month_calendar')) {
-    try {
-      final now = DateTime.now();
-      final from = DateTime(now.year, now.month, 1);
-      final to = DateTime(now.year, now.month + 1, 0);
-      final occs = await ref
-          .read(occurrenceRepositoryProvider)
-          .watchWindow(from, to)
-          .first;
-      final days = <int>{};
-      for (final o in occs) {
-        final start = DateTime.fromMillisecondsSinceEpoch(o.startUtc);
-        if (start.year == now.year && start.month == now.month) {
-          days.add(start.day);
+    if (want('MonthCalendarWidgetProvider') && await due('month_calendar')) {
+      try {
+        final now = DateTime.now();
+        final from = DateTime(now.year, now.month, 1);
+        final to = DateTime(now.year, now.month + 1, 0);
+        final occs = await ref
+            .read(occurrenceRepositoryProvider)
+            .watchWindow(from, to)
+            .first;
+        final days = <int>{};
+        for (final o in occs) {
+          final start = DateTime.fromMillisecondsSinceEpoch(o.startUtc);
+          if (start.year == now.year && start.month == now.month) {
+            days.add(start.day);
+          }
         }
-      }
-      final path = await images.renderMonthGrid(
-        year: now.year,
-        month: now.month,
-        eventDays: days,
-        today: now.day,
-      );
-      if (path != null) {
-        await _svc.updateByPrefix(
-          keyPrefix: 'month_calendar',
-          title: 'Calendar',
-          body: days.isEmpty ? 'No events.' : '${days.length} days',
-          imagePath: path,
-        );
-      }
-    } catch (_) {}
-    }
-    if (want('HabitHeatmapWidgetProvider') &&
-        await due('habit_heatmap')) {
-    try {
-      final repo = ref.read(habitRepositoryProvider);
-      final habits = await repo.watchHabits(archived: false).first;
-      final pinnedHeatId = await _config('HabitStreakWidgetProvider');
-      final heatHabit = pinnedHeatId == null
-          ? (habits.isEmpty ? null : habits.first)
-          : (habits.any((h) => h.id == pinnedHeatId)
-              ? habits.firstWhere((h) => h.id == pinnedHeatId)
-              : (habits.isEmpty ? null : habits.first));
-      if (heatHabit != null) {
-        final logs = await repo.watchLogs(heatHabit.id).first;
-        final done = {
-          for (final l in logs)
-            if (l.done) l.dayKey,
-        };
-        final path = await images.renderHeatmap(
-          done: done,
-          end: DateTime.now(),
+        final path = await images.renderMonthGrid(
+          year: now.year,
+          month: now.month,
+          eventDays: days,
+          today: now.day,
         );
         if (path != null) {
           await _svc.updateByPrefix(
-            keyPrefix: 'habit_heatmap',
-            title: 'Heatmap',
-            body: heatHabit.name,
+            keyPrefix: 'month_calendar',
+            title: 'Calendar',
+            body: days.isEmpty ? 'No events.' : '${days.length} days',
             imagePath: path,
           );
         }
-      }
-    } catch (_) {}
+      } catch (_) {}
     }
-    if (want('WeeklyChartWidgetProvider') &&
-        await due('weekly_chart')) {
-    try {
-      final repo = ref.read(focusRepositoryProvider);
-      final now = DateTime.now();
-      final start =
-          DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
-      final minutes = <int>[];
-      for (var i = 0; i < 7; i++) {
-        final day = start.add(Duration(days: i));
-        final next = day.add(const Duration(days: 1));
-        minutes.add(
-          await repo.totalMinutes(
-            day.millisecondsSinceEpoch,
-            next.millisecondsSinceEpoch,
-          ),
-        );
-      }
-      final path = await images.renderWeekBars(minutes: minutes);
-      if (path != null) {
-        await _svc.updateByPrefix(
-          keyPrefix: 'weekly_chart',
-          title: 'Week',
-          body: 'Focus ${minutes.reduce((a, b) => a + b)} min',
-          imagePath: path,
-        );
-      }
-    } catch (_) {}
+    if (want('HabitHeatmapWidgetProvider') && await due('habit_heatmap')) {
+      try {
+        final repo = ref.read(habitRepositoryProvider);
+        final habits = await repo.watchHabits(archived: false).first;
+        final pinnedHeatId = await _config('HabitStreakWidgetProvider');
+        final heatHabit = pinnedHeatId == null
+            ? (habits.isEmpty ? null : habits.first)
+            : (habits.any((h) => h.id == pinnedHeatId)
+                  ? habits.firstWhere((h) => h.id == pinnedHeatId)
+                  : (habits.isEmpty ? null : habits.first));
+        if (heatHabit != null) {
+          final logs = await repo.watchLogs(heatHabit.id).first;
+          final done = {
+            for (final l in logs)
+              if (l.done) l.dayKey,
+          };
+          final path = await images.renderHeatmap(
+            done: done,
+            end: DateTime.now(),
+          );
+          if (path != null) {
+            await _svc.updateByPrefix(
+              keyPrefix: 'habit_heatmap',
+              title: 'Heatmap',
+              body: heatHabit.name,
+              imagePath: path,
+            );
+          }
+        }
+      } catch (_) {}
+    }
+    if (want('WeeklyChartWidgetProvider') && await due('weekly_chart')) {
+      try {
+        final repo = ref.read(focusRepositoryProvider);
+        final now = DateTime.now();
+        final start = DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(const Duration(days: 6));
+        final minutes = <int>[];
+        for (var i = 0; i < 7; i++) {
+          final day = start.add(Duration(days: i));
+          final next = day.add(const Duration(days: 1));
+          minutes.add(
+            await repo.totalMinutes(
+              day.millisecondsSinceEpoch,
+              next.millisecondsSinceEpoch,
+            ),
+          );
+        }
+        final path = await images.renderWeekBars(minutes: minutes);
+        if (path != null) {
+          await _svc.updateByPrefix(
+            keyPrefix: 'weekly_chart',
+            title: 'Week',
+            body: 'Focus ${minutes.reduce((a, b) => a + b)} min',
+            imagePath: path,
+          );
+        }
+      } catch (_) {}
     }
   }
 }
