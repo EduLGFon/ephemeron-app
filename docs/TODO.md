@@ -85,3 +85,20 @@ Remaining (not yet fixed):
 - `flutter test` full suite not run here (timed out in this env); targeted
   `auth_screen`, `focus_screen`, `countdowns_screen` tests pass.
   `flutter analyze` clean.
+
+## Build performance (2026-11-03)
+
+- `flutter build apk` on the owner laptop is I/O bound on a 5400 RPM HDD.
+  Analysis, applied Gradle settings and the single-ABI helper are in
+  `docs/BUILD_PERFORMANCE.md` and `tools/build_apk.sh`. An SSD is the only
+  large hardware fix.
+- Dev loop: `tools/run_android.sh` reuses one debug APK with
+  `--use-application-binary` and skips Gradle (about 12s instead of 37s to
+  1 min warm). It rebuilds the APK only for native or dependency changes.
+- Web: each `flutter run -d chrome` recompiles for the web (about 1:45) and a
+  warm cache does not help. Keep one session and use hot restart (`R`).
+- Deferred: AGP 9.3 + Gradle 9.5 upgrade (build-speed work; needs a migration
+  and a build-size/behavior comparison).
+- Do not run a release build while `flutter run` is active. Both rewrite
+  `GeneratedPluginRegistrant.java`; a debug registrant includes
+  `integration_test` and the release Java compile fails.
