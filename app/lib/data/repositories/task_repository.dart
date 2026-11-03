@@ -452,7 +452,7 @@ class TaskRepository {
     for (final id in ids) {
       await purgeTask(id);
     }
-    return old.length;
+    return ids.length;
   }
 
   // Tags.
