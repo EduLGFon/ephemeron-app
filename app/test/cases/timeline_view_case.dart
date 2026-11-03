@@ -94,6 +94,16 @@ class _FixedWindow extends CalendarState {
   CalendarWindow build() => window;
 }
 
+class _TimelineHost extends ConsumerWidget {
+  const _TimelineHost();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final window = ref.watch(calendarStateProvider);
+    return TimelineView(anchor: window.anchor, dayCount: window.dayCount);
+  }
+}
+
 /// Vertical distance between two adjacent hour labels.
 double _hourGap(WidgetTester tester) {
   final a = tester.getTopLeft(find.text('00:00'));
@@ -186,6 +196,64 @@ void main() {
     expect(find.text('00:00', skipOffstage: false), findsOneWidget);
     await _tearDown(tester, db);
   });
+
+  testWidgets(
+    'swipe snaps across several days and keeps the hour gutter fixed',
+    (WidgetTester tester) async {
+      final db = _db();
+      final anchor = DateTime(2027, 3, 1); // Monday
+      final window = _window(anchor, 3);
+      await OccurrenceRepository(db).rebuildWindow(
+        windowStartUtc: window.fromUtc,
+        windowEndUtc: window.toUtc,
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appDatabaseProvider.overrideWithValue(db),
+            calendarStateProvider.overrideWith(() => _FixedWindow(window)),
+          ],
+          child: const MaterialApp(home: Scaffold(body: _TimelineHost())),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final dayWidth =
+          (tester.getSize(find.byType(TimelineView)).width - 48) / 3;
+      final gutterBefore = tester.getTopLeft(find.text('00:00')).dx;
+      final firstDayBefore = tester.getTopLeft(find.text('1')).dx;
+
+      await tester.timedDrag(
+        find.byType(TimelineView),
+        Offset(-dayWidth * 1.8, 0),
+        const Duration(milliseconds: 2000),
+      );
+      await tester.pumpAndSettle();
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(_TimelineHost)),
+      );
+      expect(
+        container.read(calendarStateProvider).anchor,
+        DateTime(2027, 3, 3),
+      );
+      expect(
+        tester.getTopLeft(find.text('00:00')).dx,
+        moreOrLessEquals(gutterBefore),
+      );
+      expect(
+        tester.getTopLeft(find.text('1')).dx,
+        moreOrLessEquals(firstDayBefore - dayWidth * 2),
+      );
+      // The swipe swaps the watched occurrence window, so unmount first and
+      // let the cancelled Drift stream settle before closing the database.
+      await tester.pumpWidget(Container());
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.runAsync(() => db.close());
+    },
+  );
 
   testWidgets('keyboard Ctrl+= and Ctrl+- zoom the timeline', (
     WidgetTester tester,

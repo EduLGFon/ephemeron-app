@@ -4,6 +4,10 @@ import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// Extra days materialized on each side of day and multi-day windows so a
+/// swipe can reveal multiple adjacent days before the anchor moves.
+const int calendarDayBufferDays = 14;
+
 class CalendarWindow {
   CalendarWindow({required this.anchor, required this.view, this.dayCount = 1});
 
@@ -31,7 +35,8 @@ class CalendarWindow {
         return first.subtract(Duration(days: lead));
       case CalendarViewKind.multiDay:
       case CalendarViewKind.day:
-        return a;
+        // Include buffer days each side for the swipe transition.
+        return a.subtract(const Duration(days: calendarDayBufferDays));
       case CalendarViewKind.agenda:
         return a.subtract(const Duration(days: 30));
       case CalendarViewKind.year:
@@ -50,7 +55,7 @@ class CalendarWindow {
             .add(const Duration(days: 42));
       case CalendarViewKind.multiDay:
       case CalendarViewKind.day:
-        return a.add(Duration(days: dayCount));
+        return a.add(Duration(days: dayCount + calendarDayBufferDays));
       case CalendarViewKind.agenda:
         return a.add(const Duration(days: 90));
       case CalendarViewKind.year:

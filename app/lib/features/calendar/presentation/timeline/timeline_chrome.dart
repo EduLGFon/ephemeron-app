@@ -60,26 +60,47 @@ class TimelineDayHeader extends StatelessWidget {
       children: [
         SizedBox(width: gutterWidth),
         Expanded(
-          child: Transform.translate(
-            offset: Offset(swipeOffset, 0),
-            child: Row(
-              children: [
-                for (var i = 0; i < dayCount; i++)
-                  Expanded(child: _dayCell(context, i, now)),
-              ],
-            ),
+          child: LayoutBuilder(
+            builder: (context, cons) {
+              final dayWidth = cons.maxWidth / dayCount;
+              final stripCount = timelineStripCount(dayCount);
+              final stripAnchor = timelineStripAnchor(anchor);
+              return IntrinsicHeight(
+                child: ClipRect(
+                  child: OverflowBox(
+                    alignment: Alignment.centerLeft,
+                    minWidth: stripCount * dayWidth,
+                    maxWidth: stripCount * dayWidth,
+                    child: Transform.translate(
+                      offset: Offset(
+                        -timelineBufferDays * dayWidth + swipeOffset,
+                        0,
+                      ),
+                      child: Row(
+                        children: [
+                          for (var i = 0; i < stripCount; i++)
+                            SizedBox(
+                              width: dayWidth,
+                              child: _dayCell(
+                                context,
+                                timelineDayStart(stripAnchor, i),
+                                now,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],
     );
   }
 
-  Widget _dayCell(BuildContext context, int i, DateTime now) {
-    final day = DateTime(
-      anchor.year,
-      anchor.month,
-      anchor.day,
-    ).add(Duration(days: i));
+  Widget _dayCell(BuildContext context, DateTime day, DateTime now) {
     final isToday =
         day.year == now.year && day.month == now.month && day.day == now.day;
     final color = Theme.of(context).colorScheme;
@@ -148,27 +169,45 @@ class TimelineAllDayStrip extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: Transform.translate(
-            offset: Offset(swipeOffset, 0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (var i = 0; i < dayCount; i++)
-                  Expanded(child: _dayChips(i)),
-              ],
-            ),
+          child: LayoutBuilder(
+            builder: (context, cons) {
+              final dayWidth = cons.maxWidth / dayCount;
+              final stripCount = timelineStripCount(dayCount);
+              final stripAnchor = timelineStripAnchor(anchor);
+              return IntrinsicHeight(
+                child: ClipRect(
+                  child: OverflowBox(
+                    alignment: Alignment.centerLeft,
+                    minWidth: stripCount * dayWidth,
+                    maxWidth: stripCount * dayWidth,
+                    child: Transform.translate(
+                      offset: Offset(
+                        -timelineBufferDays * dayWidth + swipeOffset,
+                        0,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (var i = 0; i < stripCount; i++)
+                            SizedBox(
+                              width: dayWidth,
+                              child: _dayChips(stripAnchor, i),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],
     );
   }
 
-  Widget _dayChips(int i) {
-    final day = DateTime(
-      anchor.year,
-      anchor.month,
-      anchor.day,
-    ).add(Duration(days: i));
+  Widget _dayChips(DateTime stripAnchor, int i) {
+    final day = timelineDayStart(stripAnchor, i);
     final key = dateKey(day);
     final mine = occs.where((o) => o.dayKey == key).take(3).toList();
     if (mine.isEmpty) return const SizedBox(height: 8);

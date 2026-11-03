@@ -4,8 +4,17 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/time/time.dart';
 import '../../../../data/drift/app_database.dart';
+import '../../application/calendar_state.dart';
 import '../google_calendar_colors.dart';
 import 'timeline_layout.dart';
+
+/// Day columns rendered around the visible range for swipes.
+const int timelineBufferDays = calendarDayBufferDays;
+
+int timelineStripCount(int dayCount) => dayCount + timelineBufferDays * 2;
+
+DateTime timelineStripAnchor(DateTime anchor) =>
+    timelineDayStart(anchor, -timelineBufferDays);
 
 DateTime timelineDayStart(DateTime anchor, int index) {
   return DateTime(

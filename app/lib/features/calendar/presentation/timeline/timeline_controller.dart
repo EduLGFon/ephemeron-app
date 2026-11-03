@@ -91,6 +91,7 @@ mixin TimelineInteraction {
   }
 
   void onSwipeStart(DragStartDetails details) {
+    if (swipeController.isAnimating) _swipeAbort();
     if (dragId != null) {
       swipeDragging = false;
       return;
@@ -108,8 +109,9 @@ mixin TimelineInteraction {
 
   void onSwipeUpdate(DragUpdateDetails details) {
     if (!swipeDragging || swipeDisabled || dragId != null) return;
-    final width = (lastColW * dayCount).clamp(1.0, double.infinity);
-    swipeOffset = (swipeOffset + details.delta.dx).clamp(-width, width);
+    final step = lastColW.clamp(1.0, double.infinity);
+    final limit = step * timelineBufferDays;
+    swipeOffset = (swipeOffset + details.delta.dx).clamp(-limit, limit);
     setState(() {});
   }
 
@@ -123,22 +125,18 @@ mixin TimelineInteraction {
       await _swipeSnapBack();
       return;
     }
-    final width = (lastColW * dayCount).clamp(1.0, double.infinity);
+    final step = lastColW.clamp(1.0, double.infinity);
     final velocity = details.primaryVelocity ?? 0;
-    final fling = velocity.abs() > 300;
-    final passed = swipeOffset.abs() > width * 0.2;
-    if (!fling && !passed) {
+    // Project the drag with a short fling carry, then snap to whole days.
+    // A single gesture may cross several days; it is not capped at one.
+    final projected = swipeOffset + velocity * 0.12;
+    var days = (-projected / step).round();
+    days = days.clamp(-timelineBufferDays, timelineBufferDays);
+    if (days == 0) {
       await _swipeSnapBack();
       return;
     }
-    final direction = fling
-        ? -velocity.sign.toInt()
-        : -swipeOffset.sign.toInt();
-    if (direction == 0) {
-      await _swipeSnapBack();
-      return;
-    }
-    await _swipeReverse(direction, width);
+    await _swipeReverse(days, step);
   }
 
   void onSwipeCancel() {
@@ -146,18 +144,23 @@ mixin TimelineInteraction {
     if (swipeOffset != 0) _swipeSnapBack();
   }
 
-  Future<void> _swipeReverse(int direction, double width) async {
+  Future<void> _swipeReverse(int days, double step) async {
     final generation = ++_swipeGeneration;
-    await _swipeAnimateTo(-direction * width);
+    swipeController.duration = Duration(
+      milliseconds: (180 + (days.abs() - 1) * 45).clamp(180, 600),
+    );
+    // The buffered days are already rendered, so slide by the snapped day
+    // count and move the anchor in the same frame. The visible pixels do not
+    // change, and a gesture may span several days.
+    await _swipeAnimateTo(-days * step);
     if (!mounted || generation != _swipeGeneration) return;
-    ref.read(calendarStateProvider.notifier).shift(direction);
-    setState(() => swipeOffset = direction * width);
-    await _swipeAnimateTo(0);
-    if (!mounted || generation != _swipeGeneration) return;
+    ref.read(calendarStateProvider.notifier).shift(days);
+    setState(() => swipeOffset = 0);
   }
 
   Future<void> _swipeSnapBack() async {
     final generation = ++_swipeGeneration;
+    swipeController.duration = const Duration(milliseconds: 180);
     await _swipeAnimateTo(0);
     if (!mounted || generation != _swipeGeneration) return;
   }
@@ -267,12 +270,17 @@ mixin TimelineInteraction {
     if (pointers.isEmpty) swipeDisabled = false;
   }
 
-  void tapEmptyAt(Offset pos, double colW) {
-    final dayIdx = (pos.dx / colW).floor().clamp(0, dayCount - 1);
+  void tapEmptyAt(
+    Offset pos,
+    double colW,
+    DateTime stripAnchor,
+    int stripCount,
+  ) {
+    final dayIdx = (pos.dx / colW).floor().clamp(0, stripCount - 1);
     final hour = (pos.dy / hourHeight).floor().clamp(0, 23);
     showEventEditor(
       context,
-      initialDay: timelineDayStart(anchor, dayIdx),
+      initialDay: timelineDayStart(stripAnchor, dayIdx),
       initialHour: hour,
     );
   }

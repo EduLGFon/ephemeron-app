@@ -87,12 +87,19 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Mon'), findsOneWidget);
-    expect(find.text('Tue'), findsOneWidget);
-    expect(find.text('Wed'), findsOneWidget);
-    expect(find.text('Thu'), findsOneWidget);
-    for (final day in ['1', '2', '3', '4']) {
-      expect(find.text(day), findsOneWidget);
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu'];
+    for (var i = 0; i < weekdays.length; i++) {
+      final dayNumber = '${i + 1}';
+      final cell = find
+          .ancestor(of: find.text(dayNumber), matching: find.byType(Column))
+          .first;
+      final texts = tester
+          .widgetList<Text>(
+            find.descendant(of: cell, matching: find.byType(Text)),
+          )
+          .toList();
+      expect(texts.first.data, weekdays[i]);
+      expect(texts.last.data, dayNumber);
     }
   });
 
