@@ -26,6 +26,15 @@ class SyncEngine {
   bool _running = false;
   SyncStatus _status = SyncStatus.synced;
   String? _lastError;
+  bool _authFailure = false;
+
+  /// Set when any op in the last run failed with an auth/permission error.
+  /// Drives the reconnect banner; reset on every [syncNow].
+  bool get authFailure => _authFailure;
+
+  /// Cross-instance single-flight: the notifier, auto-sync timer, sign-in
+  /// flow and headless worker each build their own engine.
+  static bool _busy = false;
   final _rand = Random();
 
   SyncStatus get status => _status;
@@ -37,12 +46,14 @@ class SyncEngine {
 
   /// Runs push then pull. Concurrent calls collapse into one run.
   Future<void> syncNow() async {
-    if (_running) {
+    if (_running || _busy) {
       debugPrint('[sync] syncNow skipped: already running');
       return;
     }
     _running = true;
+    _busy = true;
     _status = SyncStatus.syncing;
+    _authFailure = false;
     debugPrint('[sync] syncNow start');
     try {
       final client = _clientFactory?.call();
@@ -65,9 +76,18 @@ class SyncEngine {
       debugPrint('[sync] calendar pull done events=$events');
       final tasks = await _pullTasks(client);
       debugPrint('[sync] tasks pull done tasks=$tasks');
-      _status = SyncStatus.synced;
-      _lastError = null;
-      debugPrint('[sync] syncNow ok');
+      if (_authFailure) {
+        // Push or pull hit an auth/permission error (expired token, revoked
+        // access, missing Tasks scope with a Calendar-only grant). The rows
+        // are kept; the user must reconnect. Never report clean success.
+        _status = SyncStatus.error;
+        _lastError = 'Google auth';
+        debugPrint('[sync] syncNow finished with auth failures');
+      } else {
+        _status = SyncStatus.synced;
+        _lastError = null;
+        debugPrint('[sync] syncNow ok');
+      }
     } on GoogleApiException catch (e) {
       debugPrint('[sync] GoogleApiException status=${e.status}');
       _status = SyncStatus.error;
@@ -78,6 +98,7 @@ class SyncEngine {
       _lastError = 'sync failed';
     } finally {
       _running = false;
+      _busy = false;
     }
   }
 
@@ -107,8 +128,13 @@ class SyncEngine {
       // Backend-owned entities (habits, focus) have their own engine and
       // cursors; the Google engine must leave their outbox rows alone.
       if (!_isGoogleEntity(op.entity)) continue;
+      // Multi-account: a row stamped with another signed-in account is
+      // left due for that account's loop. Never push it under this token:
+      // a wrong-account call 404s and must not delete the row.
+      if (!await _ownedByActiveAccount(op)) continue;
       try {
         await _applyOp(client, op);
+        await _stampAccount(op);
         await (_db.delete(_db.outbox)..where((o) => o.id.equals(op.id))).go();
         done++;
       } on GoogleApiException catch (e) {
@@ -119,6 +145,28 @@ class SyncEngine {
       }
     }
     return done;
+  }
+
+  /// Whether [op] may be pushed under the active account. Rows stamped
+  /// with a different account belong to that account's loop. Legacy rows
+  /// without a stamp keep the old single-account behavior (owned).
+  Future<bool> _ownedByActiveAccount(OutboxData op) async {
+    if (account == null) return true;
+    if (op.entity == 'event') {
+      final e = await (_db.select(
+        _db.events,
+      )..where((t) => t.id.equals(op.entityId))).getSingleOrNull();
+      if (e == null) return true;
+      return e.googleAccount == null || e.googleAccount == account;
+    }
+    if (op.entity == 'task') {
+      final t = await (_db.select(
+        _db.tasks,
+      )..where((x) => x.id.equals(op.entityId))).getSingleOrNull();
+      if (t == null) return true;
+      return t.googleAccount == null || t.googleAccount == account;
+    }
+    return true;
   }
 
   Future<void> _applyOp(GoogleApiClient client, OutboxData op) async {
@@ -256,16 +304,33 @@ class SyncEngine {
     }
   }
 
-  Future<void> _handleOpError(OutboxData op, GoogleApiException e) async {
-    if (e.isUnauthorized) {
-      // Token refresh handled by caller; retry next run.
-      return;
+  /// Records which account last pushed a row, so the next run pushes it
+  /// under the same account instead of 404ing under another token.
+  Future<void> _stampAccount(OutboxData op) async {
+    if (account == null) return;
+    if (op.entity == 'event') {
+      await (_db.update(_db.events)..where((t) => t.id.equals(op.entityId)))
+          .write(EventsCompanion(googleAccount: Value(account)));
+    } else if (op.entity == 'task') {
+      await (_db.update(_db.tasks)..where((t) => t.id.equals(op.entityId)))
+          .write(TasksCompanion(googleAccount: Value(account)));
     }
-    // Stale rows from a previous account (or deleted remote) can never
-    // succeed against the new account; drop them instead of retrying.
-    if (e.status == 403 || e.status == 404) {
-      debugPrint('[sync] dropping stale outbox op ${op.id} status=${e.status}');
-      await (_db.delete(_db.outbox)..where((o) => o.id.equals(op.id))).go();
+  }
+
+  Future<void> _handleOpError(OutboxData op, GoogleApiException e) async {
+    if (e.isPermissionDenied) {
+      // Expired/revoked token or a grant missing the needed scope (for
+      // example Calendar-only trying Tasks). The row is valid; keep it due
+      // with backoff and surface it for the reconnect banner.
+      _authFailure = true;
+      debugPrint('[sync] auth failure on op ${op.id} status=${e.status}');
+      await (_db.update(_db.outbox)..where((o) => o.id.equals(op.id))).write(
+        OutboxCompanion(
+          attempts: Value(op.attempts + 1),
+          nextTryAt: Value(_now() + _backoffMs(op.attempts)),
+          lastError: Value('auth ${e.status}: reconnect Google'),
+        ),
+      );
       return;
     }
     if (e.isRateLimited) {
@@ -279,7 +344,14 @@ class SyncEngine {
       );
       return;
     }
-    if ([400, 404, 409].contains(e.status) && op.attempts + 1 >= maxAttempts) {
+    // 404 here means the remote row is genuinely gone: the op reached the
+    // right account (wrong-account rows are skipped before any API call).
+    if (e.status == 404) {
+      debugPrint('[sync] dropping gone outbox op ${op.id} status=404');
+      await (_db.delete(_db.outbox)..where((o) => o.id.equals(op.id))).go();
+      return;
+    }
+    if ([400, 409].contains(e.status) && op.attempts + 1 >= maxAttempts) {
       await (_db.update(_db.outbox)..where((o) => o.id.equals(op.id))).write(
         OutboxCompanion(
           lastError: Value('failed: ${e.status}'),
@@ -344,9 +416,21 @@ class SyncEngine {
   // the first sync after sign-in has something to pull into. Local-only
   // rows are never touched; renamed remotes update in place when clean.
 
+  /// Remote calendar/task-list ids seen for the active account in this run.
+  /// Pull skips null-stamped rows that are absent here: they belong to an
+  /// account that is not signed in (or a deleted remote), and querying them
+  /// under this token only produces 404 noise.
+  Set<String>? _accountCalendarIds;
+  Set<String>? _accountListIds;
+
   Future<(int, int)> _syncCalendarList(GoogleApiClient client) async {
     final remote = await client.calendarList();
     debugPrint('[sync] calendarList returned ${remote.length} items');
+    _accountCalendarIds = account == null
+        ? null
+        : {
+            for (final c in remote) c['id'] as String?,
+          }.whereType<String>().toSet();
     final now = _now();
     var created = 0;
     for (final c in remote) {
@@ -370,7 +454,11 @@ class SyncEngine {
           await (_db.update(
             _db.calendars,
           )..where((t) => t.id.equals(existing!.id))).write(
-            CalendarsCompanion(remoteId: Value(id), updatedAt: Value(now)),
+            CalendarsCompanion(
+              remoteId: Value(id),
+              updatedAt: Value(now),
+              googleAccount: Value(account),
+            ),
           );
           debugPrint(
             '[sync] repaired legacy calendar remoteId id=${existing.id}',
@@ -394,17 +482,31 @@ class SyncEngine {
               ),
             );
         created++;
-      } else if (!existing.dirty && name != null && name.isNotEmpty) {
-        final color = _calendarColorOf(c);
-        final update = CalendarsCompanion(
-          name: Value(name),
-          updatedAt: Value(now),
-          color: color == null ? const Value.absent() : Value(color),
-        );
-        if (existing.name != name || existing.color != color) {
+      } else {
+        // Keep the ownership stamp current: a remote id belongs to exactly
+        // one account (shared calendars may flap; either token can pull).
+        if (account != null && existing.googleAccount != account) {
           await (_db.update(
             _db.calendars,
-          )..where((t) => t.id.equals(existing!.id))).write(update);
+          )..where((t) => t.id.equals(existing!.id))).write(
+            CalendarsCompanion(
+              googleAccount: Value(account),
+              updatedAt: Value(now),
+            ),
+          );
+        }
+        if (!existing.dirty && name != null && name.isNotEmpty) {
+          final color = _calendarColorOf(c);
+          final update = CalendarsCompanion(
+            name: Value(name),
+            updatedAt: Value(now),
+            color: color == null ? const Value.absent() : Value(color),
+          );
+          if (existing.name != name || existing.color != color) {
+            await (_db.update(
+              _db.calendars,
+            )..where((t) => t.id.equals(existing!.id))).write(update);
+          }
         }
       }
     }
@@ -422,13 +524,16 @@ class SyncEngine {
         seen.add(key);
       }
     }
-    // Disable calendars from accounts that are no longer reachable, but only
-    // when the remote list is non-empty (an empty result is ambiguous).
-    if (remote.isNotEmpty) {
+    // Disable calendars of THIS account that are no longer reachable, but
+    // only when the remote list is non-empty (an empty result is ambiguous).
+    // Never touch another account's rows: their loop owns them.
+    if (remote.isNotEmpty && account != null) {
       final remoteIds = {for (final c in remote) c['id'] as String?}
         ..removeWhere((x) => x == null);
       for (final c in all) {
-        if (c.remoteId != null && !remoteIds.contains(c.remoteId)) {
+        if (c.googleAccount == account &&
+            c.remoteId != null &&
+            !remoteIds.contains(c.remoteId)) {
           await (_db.update(_db.calendars)..where((x) => x.id.equals(c.id)))
               .write(const CalendarsCompanion(enabled: Value(false)));
         }
@@ -440,6 +545,11 @@ class SyncEngine {
   Future<(int, int)> _syncTaskLists(GoogleApiClient client) async {
     final remote = await client.taskLists();
     debugPrint('[sync] taskLists returned ${remote.length} items');
+    _accountListIds = account == null
+        ? null
+        : {
+            for (final l in remote) l['id'] as String?,
+          }.whereType<String>().toSet();
     final now = _now();
     var created = 0;
     for (final l in remote) {
@@ -457,17 +567,30 @@ class SyncEngine {
                 id: newId(),
                 remoteId: Value(id),
                 name: (name == null || name.isEmpty) ? id : name,
+                googleAccount: Value(account),
                 createdAt: now,
                 updatedAt: now,
               ),
             );
         created++;
-      } else if (!existing.dirty && name != null && name.isNotEmpty) {
-        await (_db.update(
-          _db.taskLists,
-        )..where((t) => t.id.equals(existing.id))).write(
-          TaskListsCompanion(name: Value(name), updatedAt: Value(now)),
-        );
+      } else {
+        if (account != null && existing.googleAccount != account) {
+          await (_db.update(
+            _db.taskLists,
+          )..where((t) => t.id.equals(existing.id))).write(
+            TaskListsCompanion(
+              googleAccount: Value(account),
+              updatedAt: Value(now),
+            ),
+          );
+        }
+        if (!existing.dirty && name != null && name.isNotEmpty) {
+          await (_db.update(
+            _db.taskLists,
+          )..where((t) => t.id.equals(existing.id))).write(
+            TaskListsCompanion(name: Value(name), updatedAt: Value(now)),
+          );
+        }
       }
     }
     return (remote.length, created);
@@ -498,6 +621,7 @@ class SyncEngine {
     debugPrint('[sync] pulling ${calendars.length} google calendars');
     var total = 0;
     for (final cal in calendars) {
+      if (!_pullableCalendar(cal)) continue;
       debugPrint(
         '[sync] pulling calendar id=${cal.id} remoteId=${cal.remoteId} '
         'name=${cal.name} enabled=${cal.enabled}',
@@ -524,7 +648,11 @@ class SyncEngine {
         await _setSyncMeta('cal:${cal.id}', error: null);
       } on GoogleApiException catch (e) {
         debugPrint('[sync] calendar pull failed status=${e.status}');
-        if (e.isGone) {
+        if (e.isPermissionDenied) {
+          _authFailure = true;
+          await _setSyncMeta('cal:${cal.id}', error: 'Google ${e.status}');
+          rethrow;
+        } else if (e.isGone) {
           total += await _fullCalendarResync(cal, client, keepDirty: true);
           await _setSyncMeta('cal:${cal.id}', error: null);
         } else if (e.status == 404) {
@@ -539,6 +667,17 @@ class SyncEngine {
       }
     }
     return total;
+  }
+
+  /// Whether [cal] may be pulled under the active account. Rows stamped
+  /// with another account belong to that account's loop; null-stamped rows
+  /// absent from this run's discovery belong to an unsigned-in account.
+  bool _pullableCalendar(Calendar cal) {
+    if (account == null) return true;
+    if (cal.googleAccount != null) return cal.googleAccount == account;
+    final ids = _accountCalendarIds;
+    if (ids == null) return true;
+    return cal.remoteId == null || ids.contains(cal.remoteId);
   }
 
   Future<int> _fullCalendarResync(
@@ -609,7 +748,9 @@ class SyncEngine {
       late String localId;
       if (existing == null) {
         final mapped = eventFromGoogle(g, cal.id, newId());
-        await _db.into(_db.events).insert(mapped.companion);
+        await _db
+            .into(_db.events)
+            .insert(mapped.companion.copyWith(googleAccount: Value(account)));
         localId = mapped.companion.id.value;
         n++;
       } else if (!existing.dirty) {
@@ -675,6 +816,7 @@ class SyncEngine {
       // of querying Google with a local UUID (which 404s and fails sync).
       final remoteId = list.remoteId;
       if (remoteId == null) continue;
+      if (!_pullableTaskList(list)) continue;
       var updatedMin = await _syncValue('tasks:${list.id}:updatedMin');
       try {
         var page = await client.tasksList(remoteId, updatedMin: updatedMin);
@@ -694,12 +836,29 @@ class SyncEngine {
             page.nextUpdatedMin!,
           );
         }
+        await _setSyncMeta('tasks:${list.id}', error: null);
       } on GoogleApiException catch (e) {
         debugPrint('[sync] tasks pull failed status=${e.status}');
+        if (e.isPermissionDenied) {
+          // Calendar-only grant hitting Tasks, or revoked access. Keep the
+          // rows; the reconnect banner owns this state.
+          _authFailure = true;
+        }
         await _setSyncMeta('tasks:${list.id}', error: 'Google ${e.status}');
       }
     }
     return total;
+  }
+
+  /// Whether [list] may be pulled under the active account. Same rule as
+  /// calendars: stamped rows belong to their account's loop, null-stamped
+  /// rows absent from this run's discovery belong elsewhere.
+  bool _pullableTaskList(TaskList list) {
+    if (account == null) return true;
+    if (list.googleAccount != null) return list.googleAccount == account;
+    final ids = _accountListIds;
+    if (ids == null) return true;
+    return ids.contains(list.remoteId);
   }
 
   Future<bool> _mergeTask(TaskList list, Map<String, dynamic> g) async {
@@ -710,7 +869,9 @@ class SyncEngine {
     )..where((t) => t.remoteId.equals(remoteId))).getSingleOrNull();
     if (existing == null) {
       final mapped = taskFromGoogle(g, list.id, newId());
-      await _db.into(_db.tasks).insert(mapped.companion);
+      await _db
+          .into(_db.tasks)
+          .insert(mapped.companion.copyWith(googleAccount: Value(account)));
       return true;
     } else if (!existing.dirty) {
       final mapped = taskFromGoogle(g, list.id, existing.id);
