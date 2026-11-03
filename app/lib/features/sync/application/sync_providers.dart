@@ -40,6 +40,25 @@ final syncStatusProvider = NotifierProvider<SyncStatusNotifier, SyncStatus>(
   SyncStatusNotifier.new,
 );
 
+/// Accounts whose last sync hit an auth/permission error (expired token,
+/// revoked access, or a grant missing Calendar/Tasks scope). The account
+/// screen shows a reconnect banner for these. Cleared per account after a
+/// successful re-grant; re-added by the next failing sync.
+final googleReconsentAccountsProvider =
+    NotifierProvider<GoogleReconsentAccounts, List<String>>(
+      GoogleReconsentAccounts.new,
+    );
+
+class GoogleReconsentAccounts extends Notifier<List<String>> {
+  @override
+  List<String> build() => const [];
+
+  void set(List<String> accounts) => state = List.unmodifiable(accounts);
+
+  void clear(String account) =>
+      state = state.where((a) => a != account).toList();
+}
+
 class SyncStatusNotifier extends Notifier<SyncStatus> {
   @override
   SyncStatus build() => SyncStatus.synced;
@@ -55,6 +74,7 @@ class SyncStatusNotifier extends Notifier<SyncStatus> {
       return;
     }
     SyncStatus last = SyncStatus.synced;
+    final needReconnect = <String>[];
     for (final acct in accounts) {
       await auth.setActiveAccount(acct);
       final engine = SyncEngine(
@@ -71,7 +91,9 @@ class SyncStatusNotifier extends Notifier<SyncStatus> {
       debugPrint('[sync] signed in ($acct), calling engine');
       await engine.syncNow();
       last = engine.status;
+      if (engine.authFailure) needReconnect.add(acct);
     }
+    ref.read(googleReconsentAccountsProvider.notifier).set(needReconnect);
     state = last;
     if (last == SyncStatus.synced) {
       unawaited(ref.read(lastGoogleSyncAtProvider.notifier).recordNow());
