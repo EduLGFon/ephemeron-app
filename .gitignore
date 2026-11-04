@@ -55,6 +55,26 @@ app/android/app/src/main/kotlin/com/spotnik/ephemeron/*
 !app/android/app/src/main/kotlin/com/spotnik/ephemeron/AlarmPlugin.kt
 !app/android/app/src/main/kotlin/com/spotnik/ephemeron/AlarmReceiver.kt
 !app/android/app/src/main/kotlin/com/spotnik/ephemeron/MainActivity.kt
+# Widget source is hand-written (not regenerable); keep it versioned.
+!app/android/app/src/main/kotlin/com/spotnik/ephemeron/HomeWidgets.kt
+!app/android/app/src/main/kotlin/com/spotnik/ephemeron/CollectionWidgets.kt
+!app/android/app/src/main/kotlin/com/spotnik/ephemeron/WeekCalendarWidget.kt
+!app/android/app/src/main/res/
+app/android/app/src/main/res/*
+!app/android/app/src/main/res/layout/
+app/android/app/src/main/res/layout/*
+!app/android/app/src/main/res/layout/ephemeron_widget.xml
+!app/android/app/src/main/res/layout/ephemeron_week_calendar_widget.xml
+!app/android/app/src/main/res/layout/ephemeron_collection_widget.xml
+!app/android/app/src/main/res/layout/ephemeron_collection_item.xml
+!app/android/app/src/main/res/xml/
+app/android/app/src/main/res/xml/*
+!app/android/app/src/main/res/xml/ephemeron_widget_info.xml
+!app/android/app/src/main/res/xml/ephemeron_week_calendar_widget_info.xml
+!app/android/app/src/main/res/xml/shortcuts.xml
+!app/android/app/src/main/res/values/
+app/android/app/src/main/res/values/*
+!app/android/app/src/main/res/values/strings.xml
 # android/.gradle/
 # android/local.properties
 #linux/flutter/ephemeral/
