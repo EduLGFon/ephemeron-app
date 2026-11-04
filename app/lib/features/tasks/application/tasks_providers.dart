@@ -13,6 +13,12 @@ final taskListsProvider = StreamProvider<List<TaskList>>((ref) {
   return ref.watch(taskRepositoryProvider).watchLists();
 });
 
+/// Lists keyed by id for cheap source labels in tiles and detail sheets.
+final taskListsByIdProvider = Provider<Map<String, TaskList>>((ref) {
+  final lists = ref.watch(taskListsProvider).value ?? const <TaskList>[];
+  return {for (final list in lists) list.id: list};
+});
+
 final tagsProvider = StreamProvider<List<Tag>>((ref) {
   return ref.watch(taskRepositoryProvider).watchTags();
 });

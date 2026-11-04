@@ -9,6 +9,7 @@ import 'package:ephemeron/core/ui/empty_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
+import '../../../domain/sources/source_label.dart';
 import '../../settings/application/settings_providers.dart';
 import '../../sync/application/pending_operations.dart';
 import '../../sync/presentation/sync_title.dart';
@@ -242,6 +243,14 @@ class _TaskTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final list = task.listId == null
+        ? null
+        : ref.watch(taskListsByIdProvider)[task.listId];
+    final source = sourceLabel(
+      name: list?.name,
+      account: task.googleAccount,
+      fallbackAccount: list?.googleAccount,
+    );
     return Dismissible(
       key: ValueKey(task.id),
       background: Container(
@@ -319,14 +328,14 @@ class _TaskTile extends ConsumerWidget {
           task.title,
           style: overdue ? const TextStyle(color: Colors.red) : null,
         ),
-        subtitle: _subtitle(context),
+        subtitle: _subtitle(context, source),
         trailing: _MoveButtons(task: task),
         onTap: () => showTaskEditor(context, task: task),
       ),
     );
   }
 
-  Widget? _subtitle(BuildContext context) {
+  Widget? _subtitle(BuildContext context, String? source) {
     final parts = <String>[];
     if (task.dueDate != null) {
       try {
@@ -339,8 +348,23 @@ class _TaskTile extends ConsumerWidget {
     }
     if (task.priority > 0) parts.add('P${5 - task.priority}');
     if (task.wontDo) parts.add("Won't do");
-    if (parts.isEmpty) return null;
-    return Text(parts.join('  '));
+    if (source == null && parts.isEmpty) return null;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (source != null)
+          Text(
+            source,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        if (parts.isNotEmpty) Text(parts.join('  ')),
+      ],
+    );
   }
 }
 
