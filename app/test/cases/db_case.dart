@@ -34,9 +34,9 @@ void main() {
     await db.close();
   });
 
-  test('schema version is 11', () async {
+  test('schema version is 12', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
-    expect(db.schemaVersion, 11);
+    expect(db.schemaVersion, 12);
     await db.close();
   });
 
@@ -78,6 +78,16 @@ void main() {
         .get();
     final occNames = occ.map((r) => r.read<String>('name')).toSet();
     expect(occNames, contains('source_type'));
+    await db.close();
+  });
+
+  test('v12 adds microsoft_account columns', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    for (final table in ['calendars', 'events', 'task_lists', 'tasks']) {
+      final cols = await db.customSelect('PRAGMA table_info($table)').get();
+      final names = cols.map((r) => r.read<String>('name')).toSet();
+      expect(names, contains('microsoft_account'));
+    }
     await db.close();
   });
 

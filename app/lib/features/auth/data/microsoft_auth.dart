@@ -170,9 +170,8 @@ class MicrosoftAuth {
     return email;
   }
 
-  Future<String?> accessToken() async {
-    final account = _activeEmail;
-    if (account == null) return null;
+  Future<String?> accessTokenFor(String account) async {
+    if (account.isEmpty) return null;
     final creds = _creds[account];
     final storedAccess = await _storage.microsoftAccessTokenFor(account);
     final storedRefresh = await _storage.microsoftRefreshTokenFor(account);
@@ -230,6 +229,12 @@ class MicrosoftAuth {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<String?> accessToken() async {
+    final account = _activeEmail;
+    if (account == null) return null;
+    return accessTokenFor(account);
   }
 
   Future<void> signOut(String? account) async {

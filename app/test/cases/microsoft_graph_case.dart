@@ -78,6 +78,28 @@ void main() {
     expect(cals.first.owner?.address, 'alice@example.com');
   });
 
+  test('calendarView is scoped to the requested calendar', () async {
+    Uri? seen;
+    final client = MockClient((req) async {
+      seen = req.url;
+      return http.Response(
+        jsonEncode({'value': <Object>[]}),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+    final api = HttpMicrosoftGraphClient(
+      accessToken: () async => 'tok',
+      httpClient: client,
+    );
+    await api.calendarView(
+      DateTime.utc(2026, 1, 1),
+      DateTime.utc(2026, 1, 2),
+      calendarId: 'c1',
+    );
+    expect(seen!.path, contains('/me/calendars/c1/calendarView'));
+  });
+
   test('calendarView pagination and mapping all-day/timed', () async {
     var calls = 0;
     final client = MockClient((req) async {
