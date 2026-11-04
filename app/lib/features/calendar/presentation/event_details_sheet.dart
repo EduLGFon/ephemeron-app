@@ -10,6 +10,7 @@ import '../../../core/ui/escape_to_close.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../core/db/db_provider.dart';
 import '../../../data/repositories/event_repository.dart';
+import '../../../domain/sources/source_label.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../notes/application/notes_providers.dart';
 import '../../settings/application/settings_providers.dart';
@@ -48,32 +49,69 @@ Future<void> showEventDetails(BuildContext context, String eventId) async {
   }
 }
 
+/// Event or task detail row plus the resolved source label.
+class _LoadedDetails {
+  const _LoadedDetails({this.event, this.task, this.source});
+
+  final Event? event;
+  final Task? task;
+  final String? source;
+}
+
 class _Details extends ConsumerWidget {
   const _Details({required this.eventId});
 
   final String eventId;
 
-  Future<Object?> _load(WidgetRef ref, String id) async {
-    final ev =
+  Future<_LoadedDetails?> _load(WidgetRef ref, String id) async {
+    final db = ref.read(appDatabaseProvider);
+    final event =
         await (ref.read(eventRepositoryProvider).dbSelect()
               ..where((e) => e.id.equals(id)))
             .getSingleOrNull();
-    if (ev != null) return ev;
-    return (ref
-            .read(appDatabaseProvider)
-            .select(ref.read(appDatabaseProvider).tasks)
-          ..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    if (event != null) {
+      final calendar = await (db.select(
+        db.calendars,
+      )..where((c) => c.id.equals(event.calendarId))).getSingleOrNull();
+      return _LoadedDetails(
+        event: event,
+        source: sourceLabel(
+          name: calendar?.name,
+          account: event.googleAccount,
+          fallbackAccount: calendar?.googleAccount,
+          isLocal: calendar?.source == 'device',
+        ),
+      );
+    }
+    final task = await (db.select(
+      db.tasks,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    if (task == null) return null;
+    final listId = task.listId;
+    final list = listId == null
+        ? null
+        : await (db.select(
+            db.taskLists,
+          )..where((l) => l.id.equals(listId))).getSingleOrNull();
+    return _LoadedDetails(
+      task: task,
+      source: sourceLabel(
+        name: list?.name,
+        account: task.googleAccount,
+        fallbackAccount: list?.googleAccount,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return FutureBuilder<Object?>(
+    return FutureBuilder<_LoadedDetails?>(
       future: _load(ref, eventId),
       builder: (ctx, snap) {
         final data = snap.data;
-        if (data is Event) {
-          final e = data;
+        final e = data?.event;
+        if (e != null) {
+          final source = data?.source;
           return SafeArea(
             child: SingleChildScrollView(
               child: Column(
@@ -87,6 +125,12 @@ class _Details extends ConsumerWidget {
                     ),
                     subtitle: Text(_when(context, e)),
                   ),
+                  if (source != null)
+                    _SourceTile(
+                      icon: Icons.calendar_today_outlined,
+                      kind: 'Calendar',
+                      label: source,
+                    ),
                   if (e.location != null && e.location!.isNotEmpty)
                     ListTile(
                       leading: const Icon(Icons.place_outlined),
@@ -182,8 +226,8 @@ class _Details extends ConsumerWidget {
               ),
             ),
           );
-        } else if (data is Task) {
-          final t = data;
+        } else if (data?.task case final t?) {
+          final source = data?.source;
           return SafeArea(
             child: SingleChildScrollView(
               child: Column(
@@ -201,6 +245,12 @@ class _Details extends ConsumerWidget {
                           : 'Due ${DeviceDateFormat.dateIso(context, t.dueDate!)}${t.dueTime == null ? '' : ' ${t.dueTime! ~/ 60}:${(t.dueTime! % 60).toString().padLeft(2, '0')}'}',
                     ),
                   ),
+                  if (source != null)
+                    _SourceTile(
+                      icon: Icons.list_alt_outlined,
+                      kind: 'List',
+                      label: source,
+                    ),
                   if (t.notes != null && t.notes!.isNotEmpty)
                     ListTile(
                       leading: const Icon(Icons.notes_outlined),
@@ -285,6 +335,29 @@ class _Details extends ConsumerWidget {
           );
         }
       },
+    );
+  }
+}
+
+/// Read-only source row shown under an event or task title.
+class _SourceTile extends StatelessWidget {
+  const _SourceTile({
+    required this.icon,
+    required this.kind,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String kind;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(label),
+      subtitle: Text(kind),
+      dense: true,
     );
   }
 }
