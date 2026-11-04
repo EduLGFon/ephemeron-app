@@ -30,13 +30,13 @@ import 'cases/habit_focus_case.dart' as habit_focus;
 import 'cases/habit_schedule_case.dart' as habit_schedule;
 import 'cases/habit_streak_case.dart' as habit_streak;
 import 'cases/habits_screen_case.dart' as habits_screen;
+import 'cases/habits_timer_case.dart' as habits_timer;
 import 'cases/headless_widget_push_case.dart' as headless_widget_push;
 import 'cases/home_widget_binder_case.dart' as home_widget_binder;
 import 'cases/home_widget_callback_case.dart' as home_widget_callback;
 import 'cases/home_widget_case.dart' as home_widget;
 import 'cases/l10n_case.dart' as l10n;
-import 'cases/markdown_editing_controller_case.dart'
-    as markdown_editing_controller;
+import 'cases/markdown_editing_controller_case.dart' as markdown_editing_controller;
 import 'cases/matrix_case.dart' as matrix;
 import 'cases/month_view_case.dart' as month_view;
 import 'cases/note_editor_case.dart' as note_editor;
@@ -88,6 +88,7 @@ const _included = <String>{
   'habit_schedule_case.dart',
   'habit_streak_case.dart',
   'habits_screen_case.dart',
+  'habits_timer_case.dart',
   'headless_widget_push_case.dart',
   'home_widget_binder_case.dart',
   'home_widget_callback_case.dart',
@@ -124,13 +125,9 @@ const _included = <String>{
 
 void main() {
   test('test runner includes every case file', () {
-    expect(
-      _caseFilesOnDisk(),
-      _included,
-      reason:
-          'test/all_test.dart is stale. Run: '
-          'dart run tools/gen_test_runner.dart',
-    );
+    expect(_caseFilesOnDisk(), _included,
+        reason: 'test/all_test.dart is stale. Run: '
+            'dart run tools/gen_test_runner.dart');
   });
 
   group('alarm_repository', alarm_repository.main);
@@ -156,6 +153,7 @@ void main() {
   group('habit_schedule', habit_schedule.main);
   group('habit_streak', habit_streak.main);
   group('habits_screen', habits_screen.main);
+  group('habits_timer', habits_timer.main);
   group('headless_widget_push', headless_widget_push.main);
   group('home_widget_binder', home_widget_binder.main);
   group('home_widget_callback', home_widget_callback.main);
@@ -204,12 +202,8 @@ Set<String> _caseFilesOnDisk() {
       .where((path) => path.endsWith('_test.dart'))
       .where((path) => !path.endsWith('/all_test.dart'))
       .toSet();
-  expect(
-    stray,
-    isEmpty,
-    reason:
-        'Move top-level test files under test/cases/ as '
-        '*_case.dart and regenerate this runner.',
-  );
+  expect(stray, isEmpty,
+      reason: 'Move top-level test files under test/cases/ as '
+          '*_case.dart and regenerate this runner.');
   return cases;
 }

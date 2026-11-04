@@ -43,6 +43,8 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
   late final TextEditingController _name;
   late final TextEditingController _amount;
   late final TextEditingController _unit;
+  late final TextEditingController _step;
+  String _unitPreset = 'custom';
   String? _sectionId;
   String _frequency = 'daily';
   int _weekdaysMask = 127;
@@ -61,6 +63,7 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
     'name': _name.text,
     'amount': _amount.text,
     'unit': _unit.text,
+    'step': _step.text,
     'sectionId': _sectionId,
     'frequency': _frequency,
     'weekdaysMask': _weekdaysMask,
@@ -94,6 +97,15 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
     _unit = TextEditingController(
       text: (d?['unit'] as String?) ?? h?.unit ?? '',
     );
+    _step = TextEditingController(
+      text:
+          (d?['step'] as String?) ??
+          (h?.increment != null ? '${h!.increment}' : '1'),
+    );
+    final initialUnit = (d?['unit'] as String?) ?? h?.unit ?? '';
+    _unitPreset = (initialUnit == 'count' || initialUnit == 'min')
+        ? initialUnit
+        : 'custom';
     _sectionId = (d?['sectionId'] as String?) ?? h?.sectionId;
     _frequency =
         (d?['frequency'] as String?) ??
@@ -110,7 +122,7 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
         habitDateKey(DateTime.now());
     _reminderTime = (d?['reminderTime'] as String?) ?? h?.reminderTime;
     _alarmPreset = (d?['alarmPreset'] as String?) ?? h?.alarmPreset;
-    for (final c in [_name, _amount, _unit]) {
+    for (final c in [_name, _amount, _unit, _step]) {
       c.addListener(_queueDraft);
     }
   }
@@ -160,6 +172,7 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
     _name.dispose();
     _amount.dispose();
     _unit.dispose();
+    _step.dispose();
     super.dispose();
   }
 
@@ -251,12 +264,41 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: TextField(
-                    controller: _unit,
-                    decoration: const InputDecoration(labelText: 'Unit'),
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _unitPreset,
+                    decoration: const InputDecoration(labelText: 'Unit preset'),
+                    items: const [
+                      DropdownMenuItem(value: 'count', child: Text('count')),
+                      DropdownMenuItem(value: 'min', child: Text('min')),
+                      DropdownMenuItem(value: 'custom', child: Text('custom')),
+                    ],
+                    onChanged: (v) {
+                      if (v == null) return;
+                      _changed(() {
+                        _unitPreset = v;
+                        if (v != 'custom') _unit.text = v;
+                      });
+                    },
                   ),
                 ),
               ],
+            ),
+            if (_unitPreset == 'custom') ...[
+              const SizedBox(height: 8),
+              TextField(
+                controller: _unit,
+                decoration: const InputDecoration(labelText: 'Custom unit'),
+              ),
+            ],
+            const SizedBox(height: 8),
+            TextField(
+              controller: _step,
+              decoration: const InputDecoration(
+                labelText: 'Step / increment (default 1)',
+              ),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
             ),
             const SizedBox(height: 8),
             Row(
@@ -363,6 +405,7 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
         intervalDays: _frequency == 'interval' ? _intervalDays : null,
         goalAmount: amount,
         unit: _unit.text.trim().isEmpty ? null : _unit.text.trim(),
+        increment: double.tryParse(_step.text.trim()) ?? 1,
         startDate: _startDate,
         reminderTime: _reminderTime,
         alarmPreset: _alarmPreset,
@@ -378,6 +421,7 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
         intervalDays: () => _frequency == 'interval' ? _intervalDays : null,
         goalAmount: () => amount,
         unit: () => _unit.text.trim().isEmpty ? null : _unit.text.trim(),
+        increment: () => double.tryParse(_step.text.trim()) ?? 1,
         startDate: _startDate,
         reminderTime: () => _reminderTime,
         alarmPreset: () => _alarmPreset,

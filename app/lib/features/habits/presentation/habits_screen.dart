@@ -1,5 +1,6 @@
 // Habits screen: 7-day navigator, sections, one-tap logging,
 // skip, streaks, archive with undo.
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:ephemeron/core/ui/empty_state.dart';
@@ -8,8 +9,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../../../domain/habits/date_key.dart';
+import '../../../domain/habits/habit_timer.dart';
 import '../../sync/application/pending_operations.dart';
 import '../application/habits_providers.dart';
+import '../../../data/repositories/habit_repository.dart';
+import '../../../data/services/habit_timer_store.dart';
 import 'habit_editor_sheet.dart';
 
 class HabitsScreen extends ConsumerWidget {
@@ -26,6 +30,8 @@ class HabitsScreen extends ConsumerWidget {
         title: const Text('Habits'),
         actions: [
           IconButton(
+            visualDensity: VisualDensity.compact,
+            iconSize: 20,
             icon: Icon(
               archived ? Icons.unarchive_outlined : Icons.archive_outlined,
             ),
@@ -133,9 +139,7 @@ class _DayStripState extends State<_DayStrip> {
         children: [
           for (final d in days) ...[
             ChoiceChip(
-              label: Text(
-                '${DeviceDateFormat.e(context).format(d)} ${d.day}',
-              ),
+              label: Text('${DeviceDateFormat.e(context).format(d)} ${d.day}'),
               selected: habitDateKey(d) == widget.selected,
               onSelected: (_) => widget.onSelect(habitDateKey(d)),
             ),
@@ -213,11 +217,17 @@ class _HabitTile extends ConsumerWidget {
     final day = ref.watch(selectedHabitDayProvider);
     final logsAsync = ref.watch(habitLogsProvider(habit.id));
     final streakAsync = ref.watch(habitStreakProvider(habit.id));
+    final storeAsync = ref.watch(habitTimerStoreProvider);
     return logsAsync.maybeWhen(
       data: (logs) {
         final log = _logFor(logs, day);
         final done = log?.done ?? false;
         final skipped = log?.skipped ?? false;
+        final amount = log?.amount ?? 0.0;
+        final goal = habit.goalAmount ?? 0.0;
+        final hasGoal = goal > 0;
+        final step = habit.increment ?? 1.0;
+        final repo = ref.read(habitRepositoryProvider);
         return ListTile(
           leading: Checkbox(
             value: done,
@@ -230,17 +240,53 @@ class _HabitTile extends ConsumerWidget {
                 : null,
           ),
           subtitle: streakAsync.maybeWhen(
-            data: (s) => Text(
-              skipped
-                  ? 'Skipped - streak ${s.current} - best ${s.best}'
-                  : 'Streak ${s.current} - best ${s.best}',
-            ),
-            orElse: () => null,
+            data: (st) {
+              final progress = hasGoal
+                  ? '${_fmt(amount)}/${_fmt(goal)} ${habit.unit ?? ''}'.trim()
+                  : null;
+              final streakText = skipped
+                  ? 'Skipped - streak ${st.current} - best ${st.best}'
+                  : 'Streak ${st.current} - best ${st.best}';
+              if (progress == null) return Text(streakText);
+              return Text('$progress  $streakText');
+            },
+            orElse: () => hasGoal
+                ? Text(
+                    '${_fmt(amount)}/${_fmt(goal)} ${habit.unit ?? ''}'.trim(),
+                  )
+                : null,
           ),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (hasGoal)
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 20,
+                  icon: const Icon(Icons.add),
+                  tooltip: 'Add ${_fmt(step)}',
+                  onPressed: () async {
+                    await repo.addAmount(habit.id, day, step);
+                    ref.invalidate(habitStreakProvider(habit.id));
+                  },
+                ),
+              if (isMinuteUnit(habit.unit) && storeAsync.hasValue)
+                _HabitTimerControl(
+                  habit: habit,
+                  day: day,
+                  store: storeAsync.value!,
+                  repo: repo,
+                  onMessage: (m) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(m)));
+                    }
+                  },
+                ),
               IconButton(
+                visualDensity: VisualDensity.compact,
+                iconSize: 20,
                 icon: Icon(
                   skipped ? Icons.play_arrow_outlined : Icons.pause_outlined,
                 ),
@@ -249,6 +295,8 @@ class _HabitTile extends ConsumerWidget {
                 onPressed: () => _toggleSkip(context, ref, !skipped),
               ),
               IconButton(
+                visualDensity: VisualDensity.compact,
+                iconSize: 20,
                 icon: Icon(
                   habit.archived
                       ? Icons.unarchive_outlined
@@ -312,6 +360,140 @@ class _HabitTile extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _HabitTimerControl extends StatefulWidget {
+  const _HabitTimerControl({
+    required this.habit,
+    required this.day,
+    required this.store,
+    required this.repo,
+    required this.onMessage,
+  });
+
+  final Habit habit;
+  final String day;
+  final HabitTimerStore store;
+  final HabitRepository repo;
+  final void Function(String) onMessage;
+
+  @override
+  State<_HabitTimerControl> createState() => _HabitTimerControlState();
+}
+
+class _HabitTimerControlState extends State<_HabitTimerControl> {
+  Timer? _timer;
+  final ValueNotifier<Duration> _elapsed = ValueNotifier<Duration>(
+    Duration.zero,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    widget.store.active.addListener(_onActiveChanged);
+    _sync();
+  }
+
+  @override
+  void dispose() {
+    widget.store.active.removeListener(_onActiveChanged);
+    _timer?.cancel();
+    _elapsed.dispose();
+    super.dispose();
+  }
+
+  void _onActiveChanged() => _sync();
+
+  void _sync() {
+    _timer?.cancel();
+    final t = widget.store.active.value;
+    if (t != null && t.habitId == widget.habit.id) {
+      _updateElapsed();
+      _timer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => _updateElapsed(),
+      );
+    } else {
+      _elapsed.value = Duration.zero;
+    }
+  }
+
+  void _updateElapsed() {
+    final t = widget.store.active.value;
+    if (t == null) return;
+    _elapsed.value = timerElapsed(
+      startedAtMs: t.startedAtMs,
+      nowMs: DateTime.now().millisecondsSinceEpoch,
+    );
+  }
+
+  bool get _isRunning => widget.store.active.value?.habitId == widget.habit.id;
+
+  Future<void> _toggle() async {
+    if (_isRunning) {
+      final t = widget.store.active.value!;
+      final elapsed = timerElapsed(
+        startedAtMs: t.startedAtMs,
+        nowMs: DateTime.now().millisecondsSinceEpoch,
+      );
+      await widget.repo.addAmount(
+        widget.habit.id,
+        t.dayKey,
+        elapsedMinutes(elapsed),
+      );
+      await widget.store.clear();
+    } else {
+      if (widget.day != habitTodayKey()) {
+        widget.onMessage('Timer can only start for today.');
+        return;
+      }
+      if (widget.store.active.value != null) {
+        widget.onMessage('Another habit timer is already running.');
+        return;
+      }
+      await widget.store.start(
+        widget.habit.id,
+        widget.day,
+        DateTime.now().millisecondsSinceEpoch,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<Duration>(
+      valueListenable: _elapsed,
+      builder: (_, dur, _) {
+        if (_isRunning) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(formatElapsed(dur)),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                iconSize: 20,
+                icon: const Icon(Icons.stop),
+                tooltip: 'Stop timer',
+                onPressed: _toggle,
+              ),
+            ],
+          );
+        }
+        return IconButton(
+          visualDensity: VisualDensity.compact,
+          iconSize: 20,
+          icon: const Icon(Icons.play_arrow),
+          tooltip: 'Start timer',
+          onPressed: _toggle,
+        );
+      },
+    );
+  }
+}
+
+String _fmt(double v) {
+  if (v == v.roundToDouble()) return v.toInt().toString();
+  return v.toString();
 }
 
 class _ErrorState extends StatelessWidget {
