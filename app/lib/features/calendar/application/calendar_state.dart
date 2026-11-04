@@ -1,5 +1,5 @@
 // Visible calendar window: anchor date, view kind, day count.
-// Changing it triggers a cache rebuild (see CalendarScreen).
+// Changing it may trigger a cache rebuild (see CalendarScreen).
 import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +7,40 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Extra days materialized on each side of day and multi-day windows so a
 /// swipe can reveal multiple adjacent days before the anchor moves.
 const int calendarDayBufferDays = 14;
+
+/// Half-open UTC range of occurrence cache rows.
+///
+/// Used as the stable key for occurrence streams so navigation within an
+/// already materialized range does not resubscribe or reload.
+class CalendarRange {
+  CalendarRange({required DateTime fromUtc, required DateTime toUtc})
+    : fromUtc = _utcMs(fromUtc),
+      toUtc = _utcMs(toUtc);
+
+  final DateTime fromUtc;
+  final DateTime toUtc;
+
+  static DateTime _utcMs(DateTime value) => DateTime.fromMillisecondsSinceEpoch(
+    value.toUtc().millisecondsSinceEpoch,
+    isUtc: true,
+  );
+
+  bool covers(CalendarRange other) =>
+      !fromUtc.isAfter(other.fromUtc) && !toUtc.isBefore(other.toUtc);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CalendarRange &&
+          other.fromUtc == fromUtc &&
+          other.toUtc == toUtc;
+
+  @override
+  int get hashCode => Object.hash(fromUtc, toUtc);
+
+  @override
+  String toString() => 'CalendarRange($fromUtc, $toUtc)';
+}
 
 class CalendarWindow {
   CalendarWindow({required this.anchor, required this.view, this.dayCount = 1});
@@ -60,6 +94,26 @@ class CalendarWindow {
         return a.add(const Duration(days: 90));
       case CalendarViewKind.year:
         return DateTime.utc(anchor.year + 1, 1, 1);
+    }
+  }
+
+  /// Range materialized in the occurrence cache.
+  CalendarRange get cacheRange => CalendarRange(fromUtc: fromUtc, toUtc: toUtc);
+
+  /// Range actually visible to the user, without swipe buffer days.
+  CalendarRange get visibleRange {
+    final a = DateTime.utc(anchor.year, anchor.month, anchor.day);
+    switch (view) {
+      case CalendarViewKind.month:
+      case CalendarViewKind.agenda:
+      case CalendarViewKind.year:
+        return cacheRange;
+      case CalendarViewKind.multiDay:
+      case CalendarViewKind.day:
+        return CalendarRange(
+          fromUtc: a,
+          toUtc: a.add(Duration(days: dayCount)),
+        );
     }
   }
 }

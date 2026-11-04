@@ -1,8 +1,11 @@
 // Calendar screen: view switcher, navigation, rebuild-on-window-change.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/session/session_restore.dart';
 import '../../settings/application/settings_providers.dart';
 import '../../sync/presentation/sync_title.dart';
 import '../application/calendar_providers.dart';
@@ -24,18 +27,40 @@ class CalendarScreen extends ConsumerStatefulWidget {
 }
 
 class _CalendarScreenState extends ConsumerState<CalendarScreen> {
-  DateTime? _builtFrom;
-  DateTime? _builtTo;
+  CalendarRange? _builtRange;
   CalendarWindow? _persisted;
+  bool _rebuilding = false;
+  bool _rebuildAgain = false;
+  Timer? _restoreFallback;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRebuild());
+    // Safety net: if session restore never reports completion, build the
+    // default window instead of leaving the calendar empty.
+    _restoreFallback = Timer(const Duration(seconds: 2), () {
+      if (!mounted || ref.read(initialRestoreDoneProvider)) return;
+      ref.read(initialRestoreDoneProvider.notifier).markDone();
+      _maybeRebuild();
+    });
+  }
+
+  @override
+  void dispose() {
+    _restoreFallback?.cancel();
+    super.dispose();
   }
 
   Future<void> _maybeRebuild() async {
-    if (!mounted) return;
+    if (!mounted || _rebuilding) {
+      if (_rebuilding) _rebuildAgain = true;
+      return;
+    }
+    // Wait for session restore so the default window is not materialized
+    // immediately before the saved view/anchor is applied.
+    if (!ref.read(initialRestoreDoneProvider)) return;
+
     final window = ref.read(calendarStateProvider);
     // Persist every window change (including day selection in the month
     // view) without forcing a cache rebuild for it.
@@ -48,27 +73,47 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         } catch (_) {}
       });
     }
-    final dirty = ref.read(occurrenceDirtyProvider);
-    final rangeChanged =
-        _builtFrom != window.fromUtc || _builtTo != window.toUtc;
-    if (!rangeChanged && !dirty) return;
-    _builtFrom = window.fromUtc;
-    _builtTo = window.toUtc;
-    await ref
-        .read(occurrenceRepositoryProvider)
-        .rebuildWindow(
-          windowStartUtc: window.fromUtc,
-          windowEndUtc: window.toUtc,
-        );
-    if (!mounted) return;
-    ref.read(occurrenceDirtyProvider.notifier).clear();
-    if (mounted) setState(() {});
+
+    _rebuilding = true;
+    var didRebuild = false;
+    try {
+      do {
+        _rebuildAgain = false;
+        if (!mounted) break;
+        final dirty = ref.read(occurrenceDirtyProvider);
+        final range = ref.read(calendarCacheRangeProvider);
+        if (!dirty && _builtRange == range) break;
+        final building = ref.read(calendarCacheBuildingProvider.notifier);
+        building.set(true);
+        try {
+          await ref
+              .read(occurrenceRepositoryProvider)
+              .rebuildWindow(
+                windowStartUtc: range.fromUtc,
+                windowEndUtc: range.toUtc,
+              );
+          _builtRange = range;
+          didRebuild = true;
+          if (ref.read(occurrenceDirtyProvider)) {
+            ref.read(occurrenceDirtyProvider.notifier).clear();
+          }
+        } catch (_) {
+          // Keep the previous built range so the next frame retries.
+        } finally {
+          if (mounted) building.set(false);
+        }
+      } while (_rebuildAgain && mounted);
+    } finally {
+      _rebuilding = false;
+    }
+    if (mounted && didRebuild) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     final window = ref.watch(calendarStateProvider);
     ref.watch(occurrenceDirtyProvider);
+    ref.watch(initialRestoreDoneProvider);
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRebuild());
     return Scaffold(
       appBar: AppBar(

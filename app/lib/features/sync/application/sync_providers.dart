@@ -97,18 +97,18 @@ class SyncStatusNotifier extends Notifier<SyncStatus> {
     state = last;
     if (last == SyncStatus.synced) {
       unawaited(ref.read(lastGoogleSyncAtProvider.notifier).recordNow());
-      // Pulled events land in the events table; rebuild the visible
-      // occurrence window so the calendar shows them right away.
+      // Pulled events land in the events table; rebuild the materialized
+      // occurrence range so the calendar shows them right away.
       try {
-        final window = ref.read(calendarStateProvider);
+        final range = ref.read(calendarCacheRangeProvider);
         final n = await ref
             .read(occurrenceRepositoryProvider)
             .rebuildWindow(
-              windowStartUtc: window.fromUtc,
-              windowEndUtc: window.toUtc,
+              windowStartUtc: range.fromUtc,
+              windowEndUtc: range.toUtc,
             );
         debugPrint('[sync] occurrence cache rebuilt rows=$n');
-        ref.invalidate(windowOccurrencesProvider(window));
+        ref.invalidate(windowOccurrencesProvider(range));
       } catch (e) {
         debugPrint('[sync] occurrence cache rebuild failed: $e');
         // Cache rebuild is best-effort; next navigation rebuilds anyway.

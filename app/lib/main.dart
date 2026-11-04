@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ephemeron/l10n/src/app_localizations.dart';
@@ -14,7 +16,8 @@ import 'features/settings/application/settings_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  // Do not block the first frame on a platform-channel round trip.
+  unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
   final container = ProviderContainer();
   runApp(
     UncontrolledProviderScope(
@@ -27,8 +30,13 @@ Future<void> main() async {
       homeWidgetBackgroundCallback,
     );
   } catch (_) {}
-  // Best-effort: keep home-screen widgets from being blank.
-  container.read(homeWidgetRefreshServiceProvider).refreshDefaults();
+  // Best-effort: keep home-screen widgets from being blank. Deferred so it
+  // does not compete with the first frames of the app.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    Future<void>.delayed(const Duration(seconds: 2), () {
+      container.read(homeWidgetRefreshServiceProvider).refreshDefaults();
+    });
+  });
 }
 
 class EphemeronApp extends ConsumerWidget {

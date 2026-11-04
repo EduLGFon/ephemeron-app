@@ -27,14 +27,46 @@ class OccurrenceRepository {
   }) async {
     final fromMs = windowStartUtc.toUtc().millisecondsSinceEpoch;
     final toMs = windowEndUtc.toUtc().millisecondsSinceEpoch;
-    final events = await (_db.select(
-      _db.events,
-    )..where((e) => e.deletedAt.isNull())).get();
+    final startKey = dateKey(windowStartUtc);
+    final endKey = dateKey(windowEndUtc);
+
+    // Recurring masters and their exceptions always need expansion.
+    final recurringEvents =
+        await (_db.select(_db.events)..where(
+              (e) =>
+                  e.deletedAt.isNull() &
+                  (e.recurringMasterId.isNotNull() |
+                      (e.rrule.isNotNull() & e.rrule.isNotValue(''))),
+            ))
+            .get();
+    // Only load single events that can overlap the range.
+    final singleEvents =
+        await (_db.select(_db.events)..where(
+              (e) =>
+                  e.deletedAt.isNull() &
+                  e.recurringMasterId.isNull() &
+                  (e.rrule.isNull() | e.rrule.equals('')) &
+                  (((e.startUtc.isNotNull() &
+                              e.startUtc.isSmallerOrEqualValue(toMs)) &
+                          ((e.endUtc.isNotNull() &
+                                  e.endUtc.isBiggerOrEqualValue(fromMs)) |
+                              (e.endUtc.isNull() &
+                                  e.startUtc.isBiggerOrEqualValue(fromMs)))) |
+                      ((e.startDate.isNotNull() &
+                              e.startDate.isSmallerOrEqualValue(endKey)) &
+                          ((e.endDate.isNotNull() &
+                                  e.endDate.isBiggerOrEqualValue(startKey)) |
+                              (e.endDate.isNull() &
+                                  e.startDate.isBiggerOrEqualValue(
+                                    startKey,
+                                  ))))),
+            ))
+            .get();
 
     final masters = <Event>[];
     final singles = <Event>[];
     final exceptionsByMaster = <String, List<Event>>{};
-    for (final e in events) {
+    for (final e in [...recurringEvents, ...singleEvents]) {
       if (e.recurringMasterId != null) {
         exceptionsByMaster.putIfAbsent(e.recurringMasterId!, () => []).add(e);
       } else if (e.rrule != null && e.rrule!.isNotEmpty) {
@@ -44,9 +76,17 @@ class OccurrenceRepository {
       }
     }
 
-    final tasks = await (_db.select(
-      _db.tasks,
-    )..where((t) => t.deletedAt.isNull() & t.completedAt.isNull())).get();
+    // Only tasks due inside the range become occurrences.
+    final tasks =
+        await (_db.select(_db.tasks)..where(
+              (t) =>
+                  t.deletedAt.isNull() &
+                  t.completedAt.isNull() &
+                  t.dueDate.isNotNull() &
+                  t.dueDate.isSmallerOrEqualValue(endKey) &
+                  t.dueDate.isBiggerOrEqualValue(startKey),
+            ))
+            .get();
 
     final calColors = <String, String?>{};
     for (final c in await _db.select(_db.calendars).get()) {
@@ -57,7 +97,24 @@ class OccurrenceRepository {
       listColors[l.id] = l.color;
     }
 
-    var inserted = 0;
+    final rows = <OccurrenceCacheCompanion>[];
+    for (final m in masters) {
+      _collectMaster(
+        rows,
+        m,
+        exceptionsByMaster[m.id] ?? const [],
+        windowStartUtc,
+        windowEndUtc,
+        calColors,
+      );
+    }
+    for (final s in singles) {
+      _collectSingle(rows, s, windowStartUtc, windowEndUtc, calColors);
+    }
+    for (final t in tasks) {
+      _collectTask(rows, t, windowStartUtc, windowEndUtc, listColors);
+    }
+
     await _db.transaction(() async {
       await (_db.delete(_db.occurrenceCache)..where(
             (c) =>
@@ -65,33 +122,11 @@ class OccurrenceRepository {
                 c.endUtc.isBiggerOrEqualValue(fromMs),
           ))
           .go();
-      for (final m in masters) {
-        inserted += await _expandMaster(
-          m,
-          exceptionsByMaster[m.id] ?? const [],
-          windowStartUtc,
-          windowEndUtc,
-          calColors,
-        );
-      }
-      for (final s in singles) {
-        inserted += await _insertSingle(
-          s,
-          windowStartUtc,
-          windowEndUtc,
-          calColors,
-        );
-      }
-      for (final t in tasks) {
-        inserted += await _insertTask(
-          t,
-          windowStartUtc,
-          windowEndUtc,
-          listColors,
-        );
+      if (rows.isNotEmpty) {
+        await _db.batch((batch) => batch.insertAll(_db.occurrenceCache, rows));
       }
     });
-    return inserted;
+    return rows.length;
   }
 
   /// Deletes all cached rows for a master and its exceptions.
@@ -148,17 +183,19 @@ class OccurrenceRepository {
         .get();
   }
 
-  Future<int> _expandMaster(
+  void _collectMaster(
+    List<OccurrenceCacheCompanion> rows,
     Event master,
     List<Event> exceptions,
     DateTime rangeStart,
     DateTime rangeEnd,
     Map<String, String?> calColors,
-  ) async {
+  ) {
     if (master.isAllDay) {
-      return _expandAllDayMaster(master, exceptions, calColors);
+      _collectAllDayMaster(rows, master, exceptions, calColors);
+      return;
     }
-    if (master.startUtc == null) return 0;
+    if (master.startUtc == null) return;
     final durationMs = (master.endUtc ?? master.startUtc!) - master.startUtc!;
     final cancelled = <int>{
       for (final ex in exceptions)
@@ -187,31 +224,31 @@ class OccurrenceRepository {
       exdateUtcMs: cancelled,
       cap: instanceCap,
     );
-    var n = 0;
     for (final s in starts) {
       final key = s.millisecondsSinceEpoch;
       final override = overrides[key];
       final startMs = override?.startUtc ?? key;
       final endMs = override?.endUtc ?? (key + durationMs);
-      await _insertRow(
-        master.id,
-        startMs,
-        endMs,
-        _dayKey(startMs, master.tzId),
-        title: override?.title ?? master.title,
-        colorId: override?.colorId ?? color,
+      rows.add(
+        _row(
+          master.id,
+          startMs,
+          endMs,
+          _dayKey(startMs, master.tzId),
+          title: override?.title ?? master.title,
+          colorId: override?.colorId ?? color,
+        ),
       );
-      n++;
     }
-    return n;
   }
 
-  Future<int> _expandAllDayMaster(
+  void _collectAllDayMaster(
+    List<OccurrenceCacheCompanion> rows,
     Event master,
     List<Event> exceptions,
     Map<String, String?> calColors,
-  ) async {
-    if (master.startDate == null) return 0;
+  ) {
+    if (master.startDate == null) return;
     final cancelledKeys = <String>{
       for (final ex in exceptions)
         if (ex.status == 'cancelled' && ex.originalStart != null)
@@ -243,7 +280,6 @@ class OccurrenceRepository {
       exdateDateKeys: cancelledKeys,
       cap: instanceCap,
     );
-    var n = 0;
     for (final s in starts) {
       final day = dateKey(s);
       final dayEnd = DateTime.utc(
@@ -251,80 +287,85 @@ class OccurrenceRepository {
         s.month,
         s.day,
       ).add(Duration(days: spanDays + 1));
-      await _insertRow(
-        master.id,
-        s.millisecondsSinceEpoch,
-        dayEnd.millisecondsSinceEpoch - 1,
-        day,
-        title: master.title,
-        colorId: color,
+      rows.add(
+        _row(
+          master.id,
+          s.millisecondsSinceEpoch,
+          dayEnd.millisecondsSinceEpoch - 1,
+          day,
+          title: master.title,
+          colorId: color,
+        ),
       );
-      n++;
     }
-    return n;
   }
 
-  Future<int> _insertSingle(
+  void _collectSingle(
+    List<OccurrenceCacheCompanion> rows,
     Event e,
     DateTime rangeStart,
     DateTime rangeEnd,
     Map<String, String?> calColors,
-  ) async {
+  ) {
     final color = effectiveEventColor(
       eventColorId: e.colorId,
       calendarColor: calColors[e.calendarId],
       calendarId: e.calendarId,
     );
     if (e.isAllDay) {
-      if (e.startDate == null) return 0;
-      if (e.startDate!.compareTo(dateKey(rangeEnd)) > 0) return 0;
+      if (e.startDate == null) return;
+      if (e.startDate!.compareTo(dateKey(rangeEnd)) > 0) return;
       final last = e.endDate ?? e.startDate!;
-      if (last.compareTo(dateKey(rangeStart)) < 0) return 0;
+      if (last.compareTo(dateKey(rangeStart)) < 0) return;
       var cursor = _parseDate(e.startDate!);
       final end = _parseDate(last);
       var n = 0;
       while (!cursor.isAfter(end)) {
         final next = cursor.add(const Duration(days: 1));
-        await _insertRow(
-          e.id,
-          cursor.millisecondsSinceEpoch,
-          next.millisecondsSinceEpoch - 1,
-          dateKey(cursor),
-          title: e.title,
-          colorId: color,
+        rows.add(
+          _row(
+            e.id,
+            cursor.millisecondsSinceEpoch,
+            next.millisecondsSinceEpoch - 1,
+            dateKey(cursor),
+            title: e.title,
+            colorId: color,
+          ),
         );
         n++;
         if (n > 366) break;
         cursor = next;
       }
-      return n;
+      return;
     }
-    if (e.startUtc == null) return 0;
+    if (e.startUtc == null) return;
     final endMs = e.endUtc ?? e.startUtc!;
     if (endMs < rangeStart.toUtc().millisecondsSinceEpoch ||
         e.startUtc! > rangeEnd.toUtc().millisecondsSinceEpoch) {
-      return 0;
+      return;
     }
-    await _insertRow(
-      e.id,
-      e.startUtc!,
-      endMs,
-      _dayKey(e.startUtc!, e.tzId),
-      title: e.title,
-      colorId: color,
+    rows.add(
+      _row(
+        e.id,
+        e.startUtc!,
+        endMs,
+        _dayKey(e.startUtc!, e.tzId),
+        title: e.title,
+        colorId: color,
+      ),
     );
-    return 1;
   }
 
-  Future<int> _insertTask(
+  void _collectTask(
+    List<OccurrenceCacheCompanion> rows,
     Task t,
     DateTime rangeStart,
     DateTime rangeEnd,
     Map<String, String?> listColors,
-  ) async {
-    if (t.dueDate == null) return 0;
-    if (t.dueDate!.compareTo(dateKey(rangeEnd)) > 0) return 0;
-    if (t.dueDate!.compareTo(dateKey(rangeStart)) < 0) return 0;
+  ) {
+    if (t.dueDate == null) return;
+    if (t.dueDate!.compareTo(dateKey(rangeEnd)) > 0) return;
+    if (t.dueDate!.compareTo(dateKey(rangeStart)) < 0) return;
     final color = effectiveTaskColor(
       listColor: t.listId == null ? null : listColors[t.listId],
       seed: t.listId ?? t.id,
@@ -355,18 +396,12 @@ class OccurrenceRepository {
       final dur = Duration(minutes: t.durationMin ?? 30);
       endMs = dt.add(dur).toUtc().millisecondsSinceEpoch;
     }
-    await _insertRow(
-      t.id,
-      startMs,
-      endMs,
-      t.dueDate!,
-      title: t.title,
-      colorId: color,
+    rows.add(
+      _row(t.id, startMs, endMs, t.dueDate!, title: t.title, colorId: color),
     );
-    return 1;
   }
 
-  Future<void> _insertRow(
+  OccurrenceCacheCompanion _row(
     String eventId,
     int startMs,
     int endMs,
@@ -374,19 +409,15 @@ class OccurrenceRepository {
     String? title,
     String? colorId,
   }) {
-    return _db
-        .into(_db.occurrenceCache)
-        .insert(
-          OccurrenceCacheCompanion.insert(
-            id: newId(),
-            eventId: eventId,
-            title: Value(title),
-            colorId: Value(colorId),
-            startUtc: startMs,
-            endUtc: endMs,
-            dayKey: dayKeyValue,
-          ),
-        );
+    return OccurrenceCacheCompanion.insert(
+      id: newId(),
+      eventId: eventId,
+      title: Value(title),
+      colorId: Value(colorId),
+      startUtc: startMs,
+      endUtc: endMs,
+      dayKey: dayKeyValue,
+    );
   }
 
   String _dayKey(int utcMs, String? tzId) {

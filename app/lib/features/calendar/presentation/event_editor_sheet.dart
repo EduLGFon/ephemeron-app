@@ -524,12 +524,12 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     );
     if (mounted) {
       try {
-        final window = ref.read(calendarStateProvider);
+        final range = ref.read(calendarCacheRangeProvider);
         await ref
             .read(occurrenceRepositoryProvider)
             .rebuildWindow(
-              windowStartUtc: window.fromUtc,
-              windowEndUtc: window.toUtc,
+              windowStartUtc: range.fromUtc,
+              windowEndUtc: range.toUtc,
             );
       } catch (_) {
         // Best-effort; next navigation rebuilds.

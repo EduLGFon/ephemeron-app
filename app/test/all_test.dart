@@ -15,6 +15,7 @@ import 'cases/backend_auth_case.dart' as backend_auth;
 import 'cases/backend_sync_case.dart' as backend_sync;
 import 'cases/backup_case.dart' as backup;
 import 'cases/calendar_color_case.dart' as calendar_color;
+import 'cases/calendar_perf_case.dart' as calendar_perf;
 import 'cases/calendar_swipe_case.dart' as calendar_swipe;
 import 'cases/countdowns_screen_case.dart' as countdowns_screen;
 import 'cases/db_case.dart' as db;
@@ -57,6 +58,7 @@ const _included = <String>{
   'backend_sync_case.dart',
   'backup_case.dart',
   'calendar_color_case.dart',
+  'calendar_perf_case.dart',
   'calendar_swipe_case.dart',
   'countdowns_screen_case.dart',
   'db_case.dart',
@@ -93,9 +95,13 @@ const _included = <String>{
 
 void main() {
   test('test runner includes every case file', () {
-    expect(_caseFilesOnDisk(), _included,
-        reason: 'test/all_test.dart is stale. Run: '
-            'dart run tools/gen_test_runner.dart');
+    expect(
+      _caseFilesOnDisk(),
+      _included,
+      reason:
+          'test/all_test.dart is stale. Run: '
+          'dart run tools/gen_test_runner.dart',
+    );
   });
 
   group('alarm_repository', alarm_repository.main);
@@ -106,6 +112,7 @@ void main() {
   group('backend_sync', backend_sync.main);
   group('backup', backup.main);
   group('calendar_color', calendar_color.main);
+  group('calendar_perf', calendar_perf.main);
   group('calendar_swipe', calendar_swipe.main);
   group('countdowns_screen', countdowns_screen.main);
   group('db', db.main);
@@ -154,8 +161,12 @@ Set<String> _caseFilesOnDisk() {
       .where((path) => path.endsWith('_test.dart'))
       .where((path) => !path.endsWith('/all_test.dart'))
       .toSet();
-  expect(stray, isEmpty,
-      reason: 'Move top-level test files under test/cases/ as '
-          '*_case.dart and regenerate this runner.');
+  expect(
+    stray,
+    isEmpty,
+    reason:
+        'Move top-level test files under test/cases/ as '
+        '*_case.dart and regenerate this runner.',
+  );
   return cases;
 }

@@ -388,12 +388,12 @@ mixin TimelineInteraction {
     if (context.mounted) {
       // Rebuild occurrence cache so the moved event reappears immediately.
       try {
-        final window = ref.read(calendarStateProvider);
+        final range = ref.read(calendarCacheRangeProvider);
         await ref
             .read(occurrenceRepositoryProvider)
             .rebuildWindow(
-              windowStartUtc: window.fromUtc,
-              windowEndUtc: window.toUtc,
+              windowStartUtc: range.fromUtc,
+              windowEndUtc: range.toUtc,
             );
       } catch (_) {
         // Best-effort; next navigation rebuilds.

@@ -27,14 +27,46 @@ final calendarStateProvider = NotifierProvider<CalendarState, CalendarWindow>(
   CalendarState.new,
 );
 
+/// Cache range currently materialized for the visible calendar.
+///
+/// Keeps the previous range while it still covers the visible days, so day
+/// and week swipes within the swipe buffer do not resubscribe occurrence
+/// streams or trigger a rebuild.
+class CalendarCacheRange extends Notifier<CalendarRange> {
+  @override
+  CalendarRange build() {
+    final initial = ref.read(calendarStateProvider);
+    ref.listen<CalendarWindow>(calendarStateProvider, (_, next) {
+      if (!state.covers(next.visibleRange)) {
+        state = next.cacheRange;
+      }
+    });
+    return initial.cacheRange;
+  }
+}
+
+final calendarCacheRangeProvider =
+    NotifierProvider<CalendarCacheRange, CalendarRange>(CalendarCacheRange.new);
+
+/// True while [OccurrenceRepository.rebuildWindow] is running.
+class CalendarCacheBuilding extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void set(bool value) => state = value;
+}
+
+final calendarCacheBuildingProvider =
+    NotifierProvider<CalendarCacheBuilding, bool>(CalendarCacheBuilding.new);
+
 final windowOccurrencesProvider =
-    StreamProvider.family<List<OccurrenceCacheData>, CalendarWindow>((
+    StreamProvider.family<List<OccurrenceCacheData>, CalendarRange>((
       ref,
-      window,
+      range,
     ) {
       return ref
           .watch(occurrenceRepositoryProvider)
-          .watchWindow(window.fromUtc, window.toUtc);
+          .watchWindow(range.fromUtc, range.toUtc);
     });
 
 final selfRsvpForEventProvider = FutureProvider.family<String?, String>((
