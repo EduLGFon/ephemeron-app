@@ -56,8 +56,9 @@ class _TimelineViewState extends ConsumerState<TimelineView>
 
   @override
   Widget build(BuildContext context) {
-    final window = ref.watch(calendarStateProvider);
-    final occAsync = ref.watch(windowOccurrencesProvider(window));
+    final range = ref.watch(calendarCacheRangeProvider);
+    final occAsync = ref.watch(windowOccurrencesProvider(range));
+    final building = ref.watch(calendarCacheBuildingProvider);
     // Keep the previous day rows while the shifted window reloads. The old
     // buffer already covers the days that slide in, so no empty frame shows.
     final occs = occAsync.maybeWhen(
@@ -104,6 +105,8 @@ class _TimelineViewState extends ConsumerState<TimelineView>
                 gutterWidth: timelineGutterWidth,
                 swipeOffset: swipeOffset,
               ),
+              if (timed.isEmpty && allDay.isEmpty && building)
+                const LinearProgressIndicator(minHeight: 2),
               if (allDay.isNotEmpty)
                 TimelineAllDayStrip(
                   occs: allDay,

@@ -96,6 +96,20 @@ final draftStoreProvider = Provider<DraftStore>((ref) {
   return DraftStore(ref.watch(appDatabaseProvider));
 });
 
+/// True once AppShell has restored the calendar view/anchor from settings.
+/// CalendarScreen waits for this before its first cache build so it does not
+/// materialize the default window and then immediately rebuild the saved one.
+class InitialRestoreDone extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void markDone() => state = true;
+}
+
+final initialRestoreDoneProvider = NotifierProvider<InitialRestoreDone, bool>(
+  InitialRestoreDone.new,
+);
+
 /// Debounced draft writer. Call [changed] on every form change with a
 /// snapshot closure; the write happens 500 ms after the last change and
 /// never blocks the UI thread synchronously.

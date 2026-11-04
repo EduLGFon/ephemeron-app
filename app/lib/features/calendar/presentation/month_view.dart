@@ -23,6 +23,7 @@ class MonthView extends ConsumerStatefulWidget {
 
 class _MonthViewState extends ConsumerState<MonthView> {
   late final ScrollController _scroll = ScrollController();
+  List<OccurrenceCacheData> _lastOccurrences = const [];
 
   @override
   void dispose() {
@@ -33,7 +34,16 @@ class _MonthViewState extends ConsumerState<MonthView> {
   @override
   Widget build(BuildContext context) {
     final window = ref.watch(calendarStateProvider);
-    final occAsync = ref.watch(windowOccurrencesProvider(window));
+    final range = ref.watch(calendarCacheRangeProvider);
+    final occAsync = ref.watch(windowOccurrencesProvider(range));
+    final building = ref.watch(calendarCacheBuildingProvider);
+    final occurrences = occAsync.maybeWhen(
+      data: (v) {
+        _lastOccurrences = v;
+        return v;
+      },
+      orElse: () => _lastOccurrences,
+    );
     final anchor = window.anchor;
     final selectedDay = DateTime(anchor.year, anchor.month, anchor.day);
     final first = DateTime(anchor.year, anchor.month, 1);
@@ -42,10 +52,7 @@ class _MonthViewState extends ConsumerState<MonthView> {
     final days = List.generate(42, (i) => start.add(Duration(days: i)));
 
     final byDay = <String, List<OccurrenceCacheData>>{};
-    for (final o in occAsync.maybeWhen(
-      data: (v) => v,
-      orElse: () => const <OccurrenceCacheData>[],
-    )) {
+    for (final o in occurrences) {
       byDay.putIfAbsent(o.dayKey, () => []).add(o);
     }
     for (final list in byDay.values) {
@@ -60,6 +67,9 @@ class _MonthViewState extends ConsumerState<MonthView> {
     final todayKey = dateKey(DateTime.now());
     final selectedKey = dateKey(selectedDay);
     final selectedOccs = byDay[selectedKey] ?? const <OccurrenceCacheData>[];
+    final hasVisibleOccurrences = days.any(
+      (d) => byDay.containsKey(dateKey(d)),
+    );
 
     return LayoutBuilder(
       builder: (context, cons) {
@@ -72,6 +82,8 @@ class _MonthViewState extends ConsumerState<MonthView> {
                 height: viewportHeight,
                 child: Column(
                   children: [
+                    if (!hasVisibleOccurrences && building)
+                      const LinearProgressIndicator(minHeight: 2),
                     const _WeekdayHeader(),
                     for (var week = 0; week < 6; week++)
                       Expanded(

@@ -77,6 +77,13 @@ class _AppShellState extends ConsumerState<AppShell>
     WidgetsBinding.instance.addObserver(this);
     HardwareKeyboard.instance.addHandler(_handleGlobalKey);
     _restoreSession();
+    // Everything below is non-critical for the first frame. Defer it until
+    // after Flutter has painted so launch stays responsive.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startBackgroundWork());
+  }
+
+  void _startBackgroundWork() {
+    if (!mounted) return;
     // Apply destructive operations left pending by a previous session.
     ref.read(pendingOperationsProvider);
     // Restart the persisted auto-sync schedule on every launch.
@@ -91,16 +98,12 @@ class _AppShellState extends ConsumerState<AppShell>
         await ref.read(alarmRepositoryProvider).rebuildWindow();
       } catch (_) {}
     });
-    // Refresh home-screen widgets from current app data.
-    Future.microtask(() async {
-      if (!mounted) return;
-      try {
-        await ref.read(homeWidgetDataBinderProvider).refreshAll();
-      } catch (_) {}
-    });
+    // Refresh home-screen widgets after startup settles so they do not
+    // compete with the first calendar frame.
+    _scheduleWidgetRefresh();
     // Handle Android share-target text and launcher shortcuts once the
     // first frame is up (needs a BuildContext for sheets/navigation).
-    WidgetsBinding.instance.addPostFrameCallback((_) => _handleIntents());
+    _handleIntents();
   }
 
   @override
@@ -191,17 +194,14 @@ class _AppShellState extends ConsumerState<AppShell>
   Future<void> _restoreSession() async {
     try {
       final repo = await ref.read(settingsRepositoryProvider.future);
-      // Drop expired drafts from previous sessions.
-      try {
-        await ref.read(draftStoreProvider).clearExpired();
-      } catch (_) {}
       if (!mounted) return;
       // Last tab.
       final idx = repo.lastTabIndex.clamp(0, 6);
       if (idx != widget.navigationShell.currentIndex) {
         widget.navigationShell.goBranch(idx);
       }
-      // Calendar view + anchor + day count.
+      // Calendar view + anchor + day count. This is the only restore step
+      // the calendar needs before its first cache build.
       try {
         final view = CalendarViewKind.values.firstWhere(
           (v) => v.name == repo.calendarView,
@@ -218,6 +218,13 @@ class _AppShellState extends ConsumerState<AppShell>
             .read(calendarStateProvider.notifier)
             .restore(view, anchor, dayCount: repo.calendarDayCount);
       } catch (_) {}
+      ref.read(initialRestoreDoneProvider.notifier).markDone();
+      // Drop expired drafts from previous sessions. Not needed for the
+      // first calendar frame, so it runs after the restore flag is set.
+      try {
+        await ref.read(draftStoreProvider).clearExpired();
+      } catch (_) {}
+      if (!mounted) return;
       // Task list + notes folder + search filters.
       try {
         ref
@@ -266,6 +273,7 @@ class _AppShellState extends ConsumerState<AppShell>
       }
     } catch (_) {
       // Best-effort: restore must never block startup.
+      ref.read(initialRestoreDoneProvider.notifier).markDone();
       try {
         await ref.read(googleAccountProvider.notifier).restore();
       } catch (_) {}
