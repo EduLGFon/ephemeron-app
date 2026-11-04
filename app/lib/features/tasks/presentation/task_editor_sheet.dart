@@ -309,6 +309,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
               listsAsync.maybeWhen(
                 data: (lists) => DropdownButtonFormField<String?>(
                   initialValue: _listId,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'List',
                     border: OutlineInputBorder(),
@@ -326,23 +327,31 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
                 orElse: () => const SizedBox.shrink(),
               ),
               const SizedBox(height: 8),
-              Row(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('Priority'),
-                  const SizedBox(width: 8),
-                  SegmentedButton<int>(
-                    segments: const [
-                      ButtonSegment(value: 0, label: Text('None')),
-                      ButtonSegment(value: 1, label: Text('P4')),
-                      ButtonSegment(value: 2, label: Text('P3')),
-                      ButtonSegment(value: 3, label: Text('P2')),
-                      ButtonSegment(value: 4, label: Text('P1')),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      for (final option in const [
+                        (value: 0, label: 'None'),
+                        (value: 1, label: 'P4'),
+                        (value: 2, label: 'P3'),
+                        (value: 3, label: 'P2'),
+                        (value: 4, label: 'P1'),
+                      ])
+                        ChoiceChip(
+                          label: Text(option.label),
+                          selected: _priority == option.value,
+                          onSelected: (_) {
+                            setState(() => _priority = option.value);
+                            _queueDraft();
+                          },
+                        ),
                     ],
-                    selected: {_priority},
-                    onSelectionChanged: (s) {
-                      setState(() => _priority = s.single);
-                      _queueDraft();
-                    },
                   ),
                 ],
               ),

@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/db/db_provider.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/task_repository.dart';
+import '../../../domain/tasks/eisenhower.dart';
+import '../../settings/application/settings_providers.dart';
 
 final taskRepositoryProvider = Provider<TaskRepository>((ref) {
   return TaskRepository(ref.watch(appDatabaseProvider));
@@ -68,3 +70,27 @@ class OccurrenceDirty extends Notifier<bool> {
 final occurrenceDirtyProvider = NotifierProvider<OccurrenceDirty, bool>(
   OccurrenceDirty.new,
 );
+
+/// Matrix grouping mode, persisted in shared preferences.
+final matrixModeProvider =
+    AsyncNotifierProvider<MatrixModeNotifier, MatrixMode>(
+      MatrixModeNotifier.new,
+    );
+
+class MatrixModeNotifier extends AsyncNotifier<MatrixMode> {
+  @override
+  Future<MatrixMode> build() async {
+    final repo = await ref.watch(settingsRepositoryProvider.future);
+    return matrixModeFromName(repo.matrixMode);
+  }
+
+  Future<void> select(MatrixMode mode) async {
+    state = AsyncData(mode);
+    try {
+      final repo = await ref.read(settingsRepositoryProvider.future);
+      await repo.setMatrixMode(mode.name);
+    } catch (_) {
+      // Best-effort persistence: keep the chosen mode for this session.
+    }
+  }
+}
