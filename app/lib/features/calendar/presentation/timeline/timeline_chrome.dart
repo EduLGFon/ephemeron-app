@@ -51,12 +51,14 @@ class TimelineDayHeader extends StatelessWidget {
     required this.dayCount,
     required this.gutterWidth,
     this.swipeOffset = 0,
+    this.onDayTap,
   });
 
   final DateTime anchor;
   final int dayCount;
   final double gutterWidth;
   final double swipeOffset;
+  final void Function(DateTime day)? onDayTap;
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +92,7 @@ class TimelineDayHeader extends StatelessWidget {
                                 context,
                                 timelineDayStart(stripAnchor, i),
                                 now,
+                                onDayTap,
                               ),
                             ),
                         ],
@@ -105,7 +108,12 @@ class TimelineDayHeader extends StatelessWidget {
     );
   }
 
-  Widget _dayCell(BuildContext context, DateTime day, DateTime now) {
+  Widget _dayCell(
+    BuildContext context,
+    DateTime day,
+    DateTime now,
+    void Function(DateTime day)? onDayTap,
+  ) {
     final isToday =
         day.year == now.year && day.month == now.month && day.day == now.day;
     final color = Theme.of(context).colorScheme;
@@ -120,16 +128,20 @@ class TimelineDayHeader extends StatelessWidget {
             softWrap: false,
             style: Theme.of(context).textTheme.labelSmall,
           ),
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: isToday
-                ? BoxDecoration(color: color.primary, shape: BoxShape.circle)
-                : null,
-            child: Text(
-              '${day.day}',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: isToday ? color.onPrimary : null,
-                fontWeight: isToday ? FontWeight.bold : null,
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onDayTap == null ? null : () => onDayTap(day),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: isToday
+                  ? BoxDecoration(color: color.primary, shape: BoxShape.circle)
+                  : null,
+              child: Text(
+                '${day.day}',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: isToday ? color.onPrimary : null,
+                  fontWeight: isToday ? FontWeight.bold : null,
+                ),
               ),
             ),
           ),

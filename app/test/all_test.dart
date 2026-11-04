@@ -18,6 +18,7 @@ import 'cases/calendar_color_case.dart' as calendar_color;
 import 'cases/calendar_header_case.dart' as calendar_header;
 import 'cases/calendar_perf_case.dart' as calendar_perf;
 import 'cases/calendar_swipe_case.dart' as calendar_swipe;
+import 'cases/calendar_week_nav_case.dart' as calendar_week_nav;
 import 'cases/countdowns_screen_case.dart' as countdowns_screen;
 import 'cases/db_case.dart' as db;
 import 'cases/event_rsvp_case.dart' as event_rsvp;
@@ -35,8 +36,7 @@ import 'cases/home_widget_binder_case.dart' as home_widget_binder;
 import 'cases/home_widget_callback_case.dart' as home_widget_callback;
 import 'cases/home_widget_case.dart' as home_widget;
 import 'cases/l10n_case.dart' as l10n;
-import 'cases/markdown_editing_controller_case.dart'
-    as markdown_editing_controller;
+import 'cases/markdown_editing_controller_case.dart' as markdown_editing_controller;
 import 'cases/matrix_case.dart' as matrix;
 import 'cases/month_view_case.dart' as month_view;
 import 'cases/note_editor_case.dart' as note_editor;
@@ -76,6 +76,7 @@ const _included = <String>{
   'calendar_header_case.dart',
   'calendar_perf_case.dart',
   'calendar_swipe_case.dart',
+  'calendar_week_nav_case.dart',
   'countdowns_screen_case.dart',
   'db_case.dart',
   'event_rsvp_case.dart',
@@ -124,13 +125,9 @@ const _included = <String>{
 
 void main() {
   test('test runner includes every case file', () {
-    expect(
-      _caseFilesOnDisk(),
-      _included,
-      reason:
-          'test/all_test.dart is stale. Run: '
-          'dart run tools/gen_test_runner.dart',
-    );
+    expect(_caseFilesOnDisk(), _included,
+        reason: 'test/all_test.dart is stale. Run: '
+            'dart run tools/gen_test_runner.dart');
   });
 
   group('alarm_repository', alarm_repository.main);
@@ -144,6 +141,7 @@ void main() {
   group('calendar_header', calendar_header.main);
   group('calendar_perf', calendar_perf.main);
   group('calendar_swipe', calendar_swipe.main);
+  group('calendar_week_nav', calendar_week_nav.main);
   group('countdowns_screen', countdowns_screen.main);
   group('db', db.main);
   group('event_rsvp', event_rsvp.main);
@@ -204,12 +202,8 @@ Set<String> _caseFilesOnDisk() {
       .where((path) => path.endsWith('_test.dart'))
       .where((path) => !path.endsWith('/all_test.dart'))
       .toSet();
-  expect(
-    stray,
-    isEmpty,
-    reason:
-        'Move top-level test files under test/cases/ as '
-        '*_case.dart and regenerate this runner.',
-  );
+  expect(stray, isEmpty,
+      reason: 'Move top-level test files under test/cases/ as '
+          '*_case.dart and regenerate this runner.');
   return cases;
 }
