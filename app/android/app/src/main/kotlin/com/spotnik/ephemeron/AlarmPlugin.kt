@@ -241,62 +241,67 @@ object AlarmStore {
             ?: File(context.filesDir, "ephemeron_db")
     }
 
-    fun upsert(context: Context, requestCode: Int, fireAt: Long) {
-        try {
-            val db = android.database.sqlite.SQLiteDatabase.openDatabase(
-                dbFile(context).path, null,
-                android.database.sqlite.SQLiteDatabase.OPEN_READWRITE
+    private fun openOrNull(context: Context, readOnly: Boolean): android.database.sqlite.SQLiteDatabase? {
+        return try {
+            val file = dbFile(context)
+            if (!file.exists()) return null
+            android.database.sqlite.SQLiteDatabase.openDatabase(
+                file.path, null,
+                if (readOnly) android.database.sqlite.SQLiteDatabase.OPEN_READONLY
+                else android.database.sqlite.SQLiteDatabase.OPEN_READWRITE
             )
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun upsert(context: Context, requestCode: Int, fireAt: Long) {
+        val db = openOrNull(context, false) ?: return
+        try {
             db.execSQL(
                 "UPDATE alarms_index SET fire_at_utc = ?, state = 'scheduled' WHERE request_code = ?",
                 arrayOf<Any>(fireAt, requestCode)
             )
-            db.close()
         } catch (_: Exception) {
+        } finally {
+            try { db.close() } catch (_: Exception) {}
         }
     }
 
     fun markState(context: Context, requestCode: Int, state: String) {
+        val db = openOrNull(context, false) ?: return
         try {
-            val db = android.database.sqlite.SQLiteDatabase.openDatabase(
-                dbFile(context).path, null,
-                android.database.sqlite.SQLiteDatabase.OPEN_READWRITE
-            )
             db.execSQL(
                 "UPDATE alarms_index SET state = ? WHERE request_code = ?",
                 arrayOf<Any>(state, requestCode)
             )
-            db.close()
         } catch (_: Exception) {
+        } finally {
+            try { db.close() } catch (_: Exception) {}
         }
     }
 
     fun requestCodes(context: Context): List<Int> {
         val out = mutableListOf<Int>()
+        val db = openOrNull(context, true) ?: return out
         try {
-            val db = android.database.sqlite.SQLiteDatabase.openDatabase(
-                dbFile(context).path, null,
-                android.database.sqlite.SQLiteDatabase.OPEN_READONLY
-            )
             val c = db.rawQuery(
                 "SELECT request_code FROM alarms_index WHERE state = 'scheduled' AND request_code IS NOT NULL",
                 null
             )
             while (c.moveToNext()) out.add(c.getInt(0))
             c.close()
-            db.close()
         } catch (_: Exception) {
+        } finally {
+            try { db.close() } catch (_: Exception) {}
         }
         return out
     }
 
     fun dueAlarms(context: Context, nowMs: Long): List<Triple<Int, Long, String>> {
         val out = mutableListOf<Triple<Int, Long, String>>()
+        val db = openOrNull(context, true) ?: return out
         try {
-            val db = android.database.sqlite.SQLiteDatabase.openDatabase(
-                dbFile(context).path, null,
-                android.database.sqlite.SQLiteDatabase.OPEN_READWRITE
-            )
             val c = db.rawQuery(
                 "SELECT request_code, fire_at_utc, source_id FROM alarms_index WHERE state = 'scheduled' AND fire_at_utc <= ?",
                 arrayOf(nowMs.toString())
@@ -305,8 +310,9 @@ object AlarmStore {
                 out.add(Triple(c.getInt(0), c.getLong(1), c.getString(2) ?: "Alarm"))
             }
             c.close()
-            db.close()
         } catch (_: Exception) {
+        } finally {
+            try { db.close() } catch (_: Exception) {}
         }
         return out
     }
@@ -318,15 +324,18 @@ object AlarmStore {
                 markState(context, rc, "missed")
                 continue
             }
-            val intent = PendingIntent.getBroadcast(
-                context, rc,
-                Intent(context, AlarmReceiver::class.java).apply {
-                    putExtra("requestCode", rc)
-                    putExtra("title", title)
-                },
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, intent)
+            try {
+                val intent = PendingIntent.getBroadcast(
+                    context, rc,
+                    Intent(context, AlarmReceiver::class.java).apply {
+                        putExtra("requestCode", rc)
+                        putExtra("title", title)
+                    },
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, intent)
+            } catch (_: Exception) {
+            }
         }
     }
 }
