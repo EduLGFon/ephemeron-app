@@ -35,6 +35,10 @@ Color parseHex(String hex) {
   return Color(v);
 }
 
+/// Canonical `#RRGGBB` representation used by settings and preset matching.
+String colorToHex(Color color) =>
+    '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}';
+
 /// Null when [hex] is not a valid #RRGGBB or #AARRGGBB value.
 bool isValidHex(String hex) {
   var h = hex.trim();

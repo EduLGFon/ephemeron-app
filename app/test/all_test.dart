@@ -39,6 +39,7 @@ import 'cases/recurrence_case.dart' as recurrence;
 import 'cases/search_case.dart' as search;
 import 'cases/session_restore_case.dart' as session_restore;
 import 'cases/settings_case.dart' as settings;
+import 'cases/settings_screen_case.dart' as settings_screen;
 import 'cases/sync_engine_case.dart' as sync_engine;
 import 'cases/task_repository_case.dart' as task_repository;
 import 'cases/timeline_layout_case.dart' as timeline_layout;
@@ -81,6 +82,7 @@ const _included = <String>{
   'search_case.dart',
   'session_restore_case.dart',
   'settings_case.dart',
+  'settings_screen_case.dart',
   'sync_engine_case.dart',
   'task_repository_case.dart',
   'timeline_layout_case.dart',
@@ -130,6 +132,7 @@ void main() {
   group('search', search.main);
   group('session_restore', session_restore.main);
   group('settings', settings.main);
+  group('settings_screen', settings_screen.main);
   group('sync_engine', sync_engine.main);
   group('task_repository', task_repository.main);
   group('timeline_layout', timeline_layout.main);
