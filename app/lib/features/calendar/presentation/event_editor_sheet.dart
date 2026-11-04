@@ -532,7 +532,9 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
         );
         await _persistOverflow(eventId, notesPayload.full);
       }
-      await repo.setAttendees(existing!.id, _attendees.text.split(','));
+      if (existing != null) {
+        await repo.setAttendees(existing.id, _attendees.text.split(','));
+      }
       await _clearDraftAfterSave();
       if (mounted) Navigator.of(context).pop();
       return;

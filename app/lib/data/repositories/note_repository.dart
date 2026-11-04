@@ -291,6 +291,22 @@ class NoteRepository {
         .get();
   }
 
+  /// Reactive variant of [notesForEvent] so event details can show a newly
+  /// saved note without closing the sheet.
+  Stream<List<Note>> watchNotesForEvent(String eventId) {
+    return (_db.select(_db.notes)
+          ..where(
+            (t) =>
+                t.linkedEventId.equals(eventId) &
+                t.deletedAt.isNull() &
+                t.id.isNotInQuery(
+                  pendingIdsQuery(_db, entity: 'note', ops: const {'trash'}),
+                ),
+          )
+          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
+        .watch();
+  }
+
   /// Overflow note for long event descriptions. Idempotent per event:
   /// returns the existing overflow note when present.
   Future<String?> ensureOverflowNote(String eventId, String fullText) async {

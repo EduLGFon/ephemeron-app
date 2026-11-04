@@ -1,5 +1,5 @@
-// Note editor: autosave (debounced 800 ms), Read/Edit modes, Markdown toolbar,
-// a live preview while editing, tappable checklists, word count, attachments,
+// Note editor: autosave (debounced 800 ms), Read/Edit modes, inline Markdown
+// styling while editing, tappable checklists, word count, attachments,
 // pin/duplicate/move/delete with undo.
 import 'dart:async';
 
@@ -12,6 +12,7 @@ import '../../../data/repositories/note_repository.dart';
 import '../../settings/application/settings_providers.dart';
 import '../../sync/application/pending_operations.dart';
 import '../application/notes_providers.dart';
+import 'markdown_editing_controller.dart' show MarkdownEditingController;
 import 'markdown_preview.dart' show MarkdownPreview, countWords;
 
 enum _NoteMode { read, edit }
@@ -29,11 +30,12 @@ class NoteEditorScreen extends ConsumerStatefulWidget {
 
 class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   final _titleCtl = TextEditingController();
-  final _bodyCtl = TextEditingController();
+  final _bodyCtl = MarkdownEditingController();
   Timer? _saveTimer;
   Future<void>? _activeSave;
   _NoteMode _mode = _NoteMode.read;
   _SaveStatus _saveStatus = _SaveStatus.idle;
+  bool _allowPop = false;
   bool _loaded = false;
   NoteRepository? _repo;
   dynamic _settings;
@@ -181,12 +183,16 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   Widget build(BuildContext context) {
     final noteAsync = ref.watch(_noteProvider(widget.noteId));
     return PopScope(
-      canPop: false,
+      canPop: _allowPop,
       onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
+        if (didPop || _allowPop) return;
         // Persist before a back gesture leaves the editor.
         await _flush();
-        if (context.mounted) Navigator.of(context).pop(result);
+        if (!mounted) return;
+        setState(() => _allowPop = true);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) Navigator.of(context).pop(result);
+        });
       },
       child: noteAsync.when(
         loading: () => Scaffold(
@@ -282,7 +288,21 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                   if (editing) _Toolbar(onAction: _wrap),
                   Expanded(
                     child: editing
-                        ? _EditorSplit(controller: _bodyCtl)
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: TextField(
+                              key: const Key('note-body'),
+                              controller: _bodyCtl,
+                              maxLines: null,
+                              expands: true,
+                              textAlignVertical: TextAlignVertical.top,
+                              decoration: const InputDecoration(
+                                hintText:
+                                    'Write Markdown... - [ ] task lists work',
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          )
                         : MarkdownPreview(
                             body: _bodyCtl.text,
                             onToggleTask: _toggleTask,
@@ -382,78 +402,6 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
 final _noteProvider = StreamProvider.family<Note?, String>((ref, id) {
   return ref.watch(noteRepositoryProvider).watchNote(id);
 });
-
-/// Body editor plus a live preview. Wide layouts split side by side; phone
-/// layouts stack them vertically so the keyboard never hides the preview.
-class _EditorSplit extends StatelessWidget {
-  const _EditorSplit({required this.controller});
-
-  final TextEditingController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final editor = Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: TextField(
-            key: const Key('note-body'),
-            controller: controller,
-            maxLines: null,
-            expands: true,
-            textAlignVertical: TextAlignVertical.top,
-            decoration: const InputDecoration(
-              hintText: 'Write Markdown... - [ ] task lists work',
-              border: InputBorder.none,
-            ),
-          ),
-        );
-        final preview = _LivePreview(controller: controller);
-        if (constraints.maxWidth >= 720) {
-          return Row(
-            children: [
-              Expanded(child: editor),
-              const VerticalDivider(width: 1),
-              Expanded(child: preview),
-            ],
-          );
-        }
-        return Column(
-          children: [
-            Expanded(flex: 3, child: editor),
-            const Divider(height: 1),
-            Expanded(flex: 2, child: preview),
-          ],
-        );
-      },
-    );
-  }
-}
-
-/// Rebuilds only the preview subtree as the body changes.
-class _LivePreview extends StatelessWidget {
-  const _LivePreview({required this.controller});
-
-  final TextEditingController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<TextEditingValue>(
-      valueListenable: controller,
-      builder: (context, value, _) {
-        // Editing preview is display-only so taps cannot steal focus.
-        return IgnorePointer(
-          child: RepaintBoundary(
-            child: MarkdownPreview(
-              key: const Key('note-live-preview'),
-              body: value.text,
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
 
 class _StatusLine extends StatelessWidget {
   const _StatusLine({required this.controller, required this.status});

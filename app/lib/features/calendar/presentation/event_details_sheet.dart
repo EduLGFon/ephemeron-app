@@ -60,10 +60,27 @@ class _LoadedDetails {
   final String? source;
 }
 
-class _Details extends ConsumerWidget {
+class _Details extends ConsumerStatefulWidget {
   const _Details({required this.eventId});
 
   final String eventId;
+
+  @override
+  ConsumerState<_Details> createState() => _DetailsState();
+}
+
+class _DetailsState extends ConsumerState<_Details> {
+  late Future<_LoadedDetails?> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load(ref, widget.eventId);
+  }
+
+  void _reload() {
+    setState(() => _future = _load(ref, widget.eventId));
+  }
 
   Future<_LoadedDetails?> _load(WidgetRef ref, String id) async {
     final db = ref.read(appDatabaseProvider);
@@ -106,9 +123,9 @@ class _Details extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return FutureBuilder<_LoadedDetails?>(
-      future: _load(ref, eventId),
+      future: _future,
       builder: (ctx, snap) {
         final data = snap.data;
         final e = data?.event;
@@ -195,9 +212,9 @@ class _Details extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              showEventEditor(context, event: e);
+                            onPressed: () async {
+                              await showEventEditor(context, event: e);
+                              if (mounted) _reload();
                             },
                             child: const Text('Edit'),
                           ),
@@ -221,14 +238,13 @@ class _Details extends ConsumerWidget {
                           title: 'Notes for ${e.title}',
                           linkedEventId: e.id,
                         );
-                        if (context.mounted) {
-                          Navigator.of(context).pop();
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => NoteEditorScreen(noteId: id),
-                            ),
-                          );
-                        }
+                        if (!context.mounted) return;
+                        await Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => NoteEditorScreen(noteId: id),
+                          ),
+                        );
+                        if (mounted) _reload();
                       },
                       icon: const Icon(Icons.note_add_outlined),
                       label: const Text('Add note'),
@@ -467,29 +483,24 @@ class _LinkedNotes extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return FutureBuilder<List<Note>>(
-      future: ref.read(noteRepositoryProvider).notesForEvent(eventId),
-      builder: (ctx, snap) {
-        final notes = snap.data ?? const <Note>[];
-        if (notes.isEmpty) return const SizedBox.shrink();
-        return Column(
-          children: [
-            for (final n in notes)
-              ListTile(
-                leading: const Icon(Icons.sticky_note_2_outlined),
-                title: Text(n.title.isEmpty ? '(untitled)' : n.title),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => NoteEditorScreen(noteId: n.id),
-                    ),
-                  );
-                },
-              ),
-          ],
-        );
-      },
+    final notes =
+        ref.watch(eventNotesProvider(eventId)).value ?? const <Note>[];
+    if (notes.isEmpty) return const SizedBox.shrink();
+    return Column(
+      children: [
+        for (final n in notes)
+          ListTile(
+            leading: const Icon(Icons.sticky_note_2_outlined),
+            title: Text(n.title.isEmpty ? '(untitled)' : n.title),
+            onTap: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => NoteEditorScreen(noteId: n.id),
+                ),
+              );
+            },
+          ),
+      ],
     );
   }
 }

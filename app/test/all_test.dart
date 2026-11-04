@@ -35,6 +35,8 @@ import 'cases/home_widget_binder_case.dart' as home_widget_binder;
 import 'cases/home_widget_callback_case.dart' as home_widget_callback;
 import 'cases/home_widget_case.dart' as home_widget;
 import 'cases/l10n_case.dart' as l10n;
+import 'cases/markdown_editing_controller_case.dart'
+    as markdown_editing_controller;
 import 'cases/matrix_case.dart' as matrix;
 import 'cases/month_view_case.dart' as month_view;
 import 'cases/note_editor_case.dart' as note_editor;
@@ -91,6 +93,7 @@ const _included = <String>{
   'home_widget_callback_case.dart',
   'home_widget_case.dart',
   'l10n_case.dart',
+  'markdown_editing_controller_case.dart',
   'matrix_case.dart',
   'month_view_case.dart',
   'note_editor_case.dart',
@@ -158,6 +161,7 @@ void main() {
   group('home_widget_callback', home_widget_callback.main);
   group('home_widget', home_widget.main);
   group('l10n', l10n.main);
+  group('markdown_editing_controller', markdown_editing_controller.main);
   group('matrix', matrix.main);
   group('month_view', month_view.main);
   group('note_editor', note_editor.main);

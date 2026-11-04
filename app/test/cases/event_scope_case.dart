@@ -308,4 +308,60 @@ void main() {
     final outbox = await db.select(db.outbox).get();
     expect(outbox, isNotEmpty);
   });
+  test('edit single persists notes on the exception', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final master = await _setup(db);
+    final repo = EventRepository(db, OccurrenceRepository(db));
+    await repo.editOccurrence(
+      master,
+      DateTime.utc(2026, 3, 3, 9),
+      scope: EditScope.single,
+      notes: () => 'single note',
+    );
+    final rows = await db.select(db.events).get();
+    final ex = rows.firstWhere(
+      (e) => e.recurringMasterId == master && e.originalStart != null,
+    );
+    expect(ex.notes, 'single note');
+  });
+
+  test('edit all persists notes on the master', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final master = await _setup(db);
+    final repo = EventRepository(db, OccurrenceRepository(db));
+    await repo.editOccurrence(
+      master,
+      DateTime.utc(2026, 3, 3, 9),
+      scope: EditScope.all,
+      notes: () => 'all note',
+    );
+    final row = await (db.select(
+      db.events,
+    )..where((e) => e.id.equals(master))).getSingle();
+    expect(row.notes, 'all note');
+  });
+
+  test('edit following persists notes on the split master', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final master = await _setup(db);
+    final repo = EventRepository(db, OccurrenceRepository(db));
+    await repo.editOccurrence(
+      master,
+      DateTime.utc(2026, 3, 4, 9),
+      scope: EditScope.following,
+      notes: () => 'following note',
+    );
+    final rows = await db.select(db.events).get();
+    final split = rows.firstWhere(
+      (e) =>
+          e.id != master &&
+          e.deletedAt == null &&
+          e.rrule != null &&
+          e.recurringMasterId == null,
+    );
+    expect(split.notes, 'following note');
+  });
 }

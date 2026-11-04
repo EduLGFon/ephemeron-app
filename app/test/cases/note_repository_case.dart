@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:drift/native.dart';
@@ -79,6 +80,20 @@ void main() {
     await repo.createNote(title: 'Plain');
     final linked = await repo.notesForEvent('ev1');
     expect(linked.map((n) => n.title), ['Prep']);
+  });
+
+  test('watchNotesForEvent emits a newly linked note', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final repo = NoteRepository(db, attachmentDir: null);
+    final iterator = StreamIterator(repo.watchNotesForEvent('ev1'));
+    addTearDown(iterator.cancel);
+    expect(await iterator.moveNext(), isTrue);
+    expect(iterator.current, isEmpty);
+
+    await repo.createNote(title: 'Prep', linkedEventId: 'ev1');
+    expect(await iterator.moveNext(), isTrue);
+    expect(iterator.current.map((n) => n.title), ['Prep']);
   });
 
   test('backlinks resolve [[Title]] and list incoming links', () async {

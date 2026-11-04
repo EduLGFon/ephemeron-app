@@ -27,6 +27,15 @@ final noteTrashProvider = StreamProvider<List<Note>>((ref) {
   return ref.watch(noteRepositoryProvider).watchTrash();
 });
 
+/// Notes linked to one event; reactive so event details update after the
+/// note editor closes.
+final eventNotesProvider = StreamProvider.family<List<Note>, String>((
+  ref,
+  eventId,
+) {
+  return ref.watch(noteRepositoryProvider).watchNotesForEvent(eventId);
+});
+
 /// Null means the top level (unfiled notes).
 final selectedFolderProvider = NotifierProvider<SelectedFolder, String?>(
   SelectedFolder.new,
