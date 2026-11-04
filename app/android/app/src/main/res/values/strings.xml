@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shortcut_new_task_short">New task</string>
+    <string name="shortcut_new_task_long">New task</string>
+    <string name="shortcut_new_event_short">New event</string>
+    <string name="shortcut_new_event_long">New event</string>
+    <string name="shortcut_start_focus_short">Start focus</string>
+    <string name="shortcut_start_focus_long">Start focus</string>
+    <string name="week_calendar_widget_description">Week calendar</string>
+</resources>

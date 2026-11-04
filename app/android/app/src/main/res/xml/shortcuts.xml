@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new_task"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/shortcut_new_task_short"
+        android:shortcutLongLabel="@string/shortcut_new_task_long">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="com.spotnik.ephemeron"
+            android:targetClass="com.spotnik.ephemeron.MainActivity">
+            <extra android:name="shortcut" android:value="new_task" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="new_event"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/shortcut_new_event_short"
+        android:shortcutLongLabel="@string/shortcut_new_event_long">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="com.spotnik.ephemeron"
+            android:targetClass="com.spotnik.ephemeron.MainActivity">
+            <extra android:name="shortcut" android:value="new_event" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="start_focus"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/shortcut_start_focus_short"
+        android:shortcutLongLabel="@string/shortcut_start_focus_long">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="com.spotnik.ephemeron"
+            android:targetClass="com.spotnik.ephemeron.MainActivity">
+            <extra android:name="shortcut" android:value="start_focus" />
+        </intent>
+    </shortcut>
+</shortcuts>
