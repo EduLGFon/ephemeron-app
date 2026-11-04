@@ -118,3 +118,19 @@ Checklist:
 - [ ] Store assets, staged rollout (owner)
 Acceptance: code gates pass. Status: code items done; store items are owner checks.
 Note: 24 h battery benchmark and APK/AAB/web size audit dropped (need devices + SDK).
+
+## UX and performance pass (2026-11-04)
+
+Checklist:
+- [x] Calendar cache range is stable while day/week navigation stays inside the buffered range; occurrence streams are keyed by the materialized range, not by the selected anchor.
+- [x] Occurrence rebuilds batch inserts, load only overlapping single events and due tasks, keep previous rows visible, and block duplicate in-flight builds.
+- [x] Cold start defers non-critical shell work and waits for restored calendar state before the first cache build; empty views show a progress indicator instead of a false empty state.
+- [x] Matrix is a responsive 2x2 board with Auto (Eisenhower) and Priority (P1-P4) modes, a persisted mode, an unclassified tray, and an add-task FAB.
+- [x] Task editor priority choices wrap safely on narrow screens; expanded dropdowns prevent 320 dp overflow.
+- [x] Task tiles/details show list and account; event details show calendar and account. Local sources show "On this device".
+- [x] Calendar AppBar shows only the clickable Calendar title, with the current period below it.
+- [x] Focus has an open-ended Stopwatch mode with no target end and no end alarm.
+- [x] Settings is regrouped into Appearance, Behavior, Accounts and sync, Security, Data and widgets, and Navigation; selected colors/brightness are visibly marked.
+Acceptance: analyze clean and full suite green. Status: done.
+Verification: `flutter analyze` no issues; `flutter test` 197 passed.
+Limits: startup and scroll timings were not measured on a device; see docs/TODO.md.

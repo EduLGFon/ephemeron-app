@@ -90,6 +90,25 @@ Remaining (not yet fixed):
   `auth_screen`, `focus_screen`, `countdowns_screen` tests pass.
   `flutter analyze` clean.
 
+## UX/performance pass (2026-11-04)
+
+- Startup and calendar rebuild timings were validated structurally and by tests,
+  not measured on a device. The app defers non-critical launch work and batches
+  occurrence inserts; a device profile run is still useful.
+- The 2 s session-restore fallback in CalendarScreen can trigger one duplicate
+  initial build if settings loading stalls longer than that. Normal settings
+  reads complete well before it.
+- Matrix persists its mode, but an AsyncNotifier fallback briefly renders Auto
+  on cold start before a saved Priority mode arrives.
+- Focus Stopwatch mode is intentionally not persisted; focus/break remain the
+  restored modes. Stopwatch sessions longer than 12 h show the existing
+  recovered-session banner.
+- Account/calendar source labels are shown in task tiles, task details and
+  event details. Timeline and agenda rows do not show them yet; doing that
+  without per-row queries needs source columns in the occurrence cache.
+- Matrix and task-editor layout tests cover 320 dp at default text scale; very
+  large accessibility text scaling is not covered.
+
 ## Build performance (2026-11-03)
 
 - `flutter build apk` on the owner laptop is I/O bound on a 5400 RPM HDD.

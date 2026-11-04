@@ -36,7 +36,9 @@ Visualizações (menu de visualização no AppBar):
 - Agenda: lista cronológica.
 - Ano: mapa de calor.
 
-Navegação: setas anterior/próximo, ícone "Hoje", título com mês/ano.
+Navegação: setas anterior/próximo, ícone "Hoje". O topo mostra apenas "Calendar" (toque para sincronizar), com o mês/ano atual logo abaixo.
+
+Origem: os detalhes de um evento mostram o calendário e a conta de e-mail de origem; os detalhes de uma tarefa mostram a lista e a conta.
 
 Criar/editar evento (FAB ou toque em horário vazio):
 - Título, calendário, dia inteiro (switch).
@@ -73,7 +75,10 @@ Criar/editar (editor ou adição rápida):
   - Exemplo: `Buy milk #groceries ~home -p1 tomorrow 9h`.
   - Chips de pré-visualização ao vivo; "Salvar" e "Salvar e adicionar outro".
 
-Matriz de Eisenhower (`Matrix`): quadrantes "Do first", "Schedule", "Delegate", "Eliminate" e "Unclassified", a partir de prioridade e data de vencimento, com janela de urgência configurável. Toque para editar.
+Matriz (`Matrix`): tabuleiro 2x2 com quatro campos e uma bandeja separada para tarefas sem classificação. Dois modos:
+- Auto (padrão): quadrantes "Do first", "Schedule", "Delegate" e "Eliminate", a partir de prioridade e data de vencimento.
+- Priority: cada campo mostra apenas as tarefas da prioridade correspondente, P1, P2, P3 ou P4.
+O modo escolhido é salvo. O botão flutuante cria uma tarefa; toque numa tarefa para editar. A origem (lista e conta) aparece nas tarefas.
 
 Lixeira: restaurar ou excluir definitivamente; concluídas em tela separada com reabrir.
 
@@ -96,8 +101,9 @@ Lixeira: restaurar ou excluir definitivamente; concluídas em tela separada com 
 ## 8. Foco
 
 - Presets de foco: 15, 25, 50 minutos; pausas: 5, 10, 15.
+- Modo Stopwatch sem limite de tempo: conta para cima até você finalizar, sem alarme de fim.
 - Timer baseado em timestamp (startedAt/targetEndUtc): sobrevive a fechamento do app; tick por segundo apenas com a tela visível.
-- Alarme nativo de fim de sessão (AlarmScheduler).
+- Alarme nativo de fim de sessão (AlarmScheduler); não se aplica ao Stopwatch.
 - Histórico e estatísticas: minutos de hoje e da semana.
 - Sessões podem ser associadas a hábitos/tags (conforme domínio).
 
@@ -149,24 +155,13 @@ Conta de e-mail (backend, opcional):
 
 ## 13. Ajustes
 
-Aparência:
-- Idioma: sistema, inglês, português.
-- Cor primária: 10 presets + hex customizado.
-- Cor de fundo: 6 presets + hex customizado.
-- Brilho: claro, escuro, AMOLED.
-- Reduzir animações, haptics (vibração).
-
-Energia e acessibilidade:
-- Modo economia de energia: auto (halva frequência abaixo de 15% de bateria), sempre ligado, sempre desligado.
-
-Navegação:
-- Reordenar seções.
-
-Conta e sincronização:
-- Atalho para a tela de Conta (Google + backend).
-
-Google sync:
-- Intervalo de auto-sync (0/15/30/60/120 min).
+Ajustes é organizado em grupos:
+- Aparência: brilho (claro/escuro/AMOLED), cor primária (10 presets + hex), cor de fundo (6 presets + hex) e idioma (sistema, inglês, português). A opção ativa mostra marca de seleção.
+- Comportamento e acessibilidade: modo economia de energia (auto, sempre ligado, sempre desligado), reduzir animações e haptics.
+- Conta e sincronização: conta Google/backend, intervalo do Google (0/15/30/60/120 min) e intervalo de hábitos/foco.
+- Segurança: bloqueio biométrico.
+- Dados e widgets: backup e home-screen widgets.
+- Navegação: reordenar seções.
 
 Backup:
 - Exportar: gera `ephemeron-backup-<timestamp>.json` com 21 tabelas, validado e transacional. Anexos (bytes) não incluídos.
