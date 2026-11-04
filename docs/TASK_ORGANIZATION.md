@@ -33,8 +33,8 @@ This design closes those gaps without changing the Drift schema.
   - With no other list, the only option is **Delete tasks**.
   - Moving keeps tasks alive in the destination list. Tasks that had no
     destination (the repository's null-list path) go to the unlisted bucket.
-  - Deleting tasks soft-deletes them, so they remain restorable from Trash for
-    30 days.
+  - Deleting tasks soft-deletes them; they stay in Trash until the user
+    restores or permanently deletes them. There is no automatic expiry.
   - The list itself is only soft-deleted (`deletedAt`) and a `task_list`
     `delete` outbox row is queued. The row and its `remoteId` survive until the
     sync engine has deleted the remote list.

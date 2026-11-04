@@ -273,8 +273,8 @@ Future<void> showDeleteTaskListDialog(
               const SizedBox(height: 12),
               Text(
                 deleteTasks
-                    ? 'The list is removed. Its tasks go to Trash and can be '
-                          'restored for 30 days.'
+                    ? 'The list is removed. Its tasks go to Trash and stay '
+                          'there until you restore or permanently delete them.'
                     : 'Tasks keep their details and move to the selected '
                           'list. The empty list is removed.',
               ),
