@@ -552,13 +552,35 @@ class _TaskTile extends ConsumerWidget {
     }
   }
 
+  String _formatDateTime(BuildContext context, String value) {
+    try {
+      final dt = DateTime.parse(value);
+      return '${DeviceDateFormat.yMMMd(context).format(dt)} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return value;
+    }
+  }
+
   Widget? _subtitle(BuildContext context, WidgetRef ref, String? source) {
     final parts = <String>[];
-    if (task.plannedDate != null) {
+    if (task.plannedStart != null || task.plannedEnd != null) {
+      final start = task.plannedStart;
+      final end = task.plannedEnd;
+      parts.add(
+        'Planned ${start == null ? '' : _formatDateTime(context, start)}'
+            '${end == null ? '' : ' - ${_formatDateTime(context, end)}'}',
+      );
+    } else if (task.plannedDate != null) {
       parts.add('Planned ${_formatDate(context, task.plannedDate!)}');
     }
     if (task.dueDate != null) {
-      parts.add('Due ${_formatDate(context, task.dueDate!)}');
+      var due = 'Due ${_formatDate(context, task.dueDate!)}';
+      if (task.dueTime != null) {
+        final h = task.dueTime! ~/ 60;
+        final m = task.dueTime! % 60;
+        due += ' ${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
+      }
+      parts.add(due);
     }
     if (task.priority > 0) parts.add('P${5 - task.priority}');
     if (task.wontDo) parts.add("Won't do");
