@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/backend_auth.dart';
 import '../data/google_auth.dart';
+import '../data/microsoft_auth.dart';
 
 final googleAuthProvider = Provider<GoogleAuth>((ref) => GoogleAuth());
 
@@ -93,5 +94,56 @@ class BackendAccountNotifier extends Notifier<String?> {
   Future<void> signOut() async {
     await ref.read(backendAuthProvider).signOut();
     state = null;
+  }
+}
+
+final microsoftAuthProvider = Provider<MicrosoftAuth>((ref) => MicrosoftAuth());
+
+final microsoftAccountProvider =
+    NotifierProvider<MicrosoftAccountNotifier, String?>(
+      MicrosoftAccountNotifier.new,
+    );
+
+final microsoftAccountsProvider =
+    NotifierProvider<MicrosoftAccountsNotifier, List<String>>(
+      MicrosoftAccountsNotifier.new,
+    );
+
+class MicrosoftAccountNotifier extends Notifier<String?> {
+  @override
+  String? build() {
+    unawaited(restore());
+    return null;
+  }
+
+  Future<void> restore() async {
+    try {
+      state = await ref.read(microsoftAuthProvider).restore();
+      ref.read(microsoftAccountsProvider.notifier).refresh();
+    } catch (_) {}
+  }
+
+  Future<void> signIn() async {
+    state = await ref.read(microsoftAuthProvider).signIn();
+    ref.read(microsoftAccountsProvider.notifier).refresh();
+  }
+
+  Future<void> signOut([String? account]) async {
+    await ref.read(microsoftAuthProvider).signOut(account);
+    state = ref.read(microsoftAuthProvider).activeEmail;
+    ref.read(microsoftAccountsProvider.notifier).refresh();
+  }
+
+  Future<void> setActive(String email) async {
+    await ref.read(microsoftAuthProvider).setActiveAccount(email);
+    state = email;
+  }
+}
+
+class MicrosoftAccountsNotifier extends Notifier<List<String>> {
+  @override
+  List<String> build() => const [];
+  void refresh() {
+    state = ref.read(microsoftAuthProvider).accounts;
   }
 }

@@ -38,6 +38,8 @@ void main() {
       find.widgetWithText(TextField, 'Password (8+ characters)'),
       'password123',
     );
+    await tester.ensureVisible(find.text('Sign in'));
+    await tester.pump();
     await tester.tap(find.text('Sign in'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
