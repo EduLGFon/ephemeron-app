@@ -139,6 +139,34 @@ void main() {
     });
   }
 
+  testWidgets('week image fills logical size when constraints are unbounded', (
+    tester,
+  ) async {
+    final days = buildWeekCalendar(
+      occurrences: const [],
+      weekStart: DateTime(2026, 11, 2),
+    );
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: Center(
+          child: UnconstrainedBox(
+            child: WeekCalendarImage(
+              days: days,
+              now: DateTime(2026, 11, 3),
+              logicalSize: const Size(720, 360),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(
+      tester.getSize(find.byType(WeekCalendarImage)),
+      const Size(720, 360),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('week image paints 3-day range', (tester) async {
     final days = buildWeekCalendar(
       occurrences: const [],
