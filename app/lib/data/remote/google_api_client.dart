@@ -75,6 +75,9 @@ abstract class GoogleApiClient {
   );
   Future<void> eventDelete(String calendarId, String eventId);
   Future<List<Map<String, dynamic>>> taskLists();
+  Future<Map<String, dynamic>> taskListCreate(String title);
+  Future<Map<String, dynamic>> taskListPatch(String listId, String title);
+  Future<void> taskListDelete(String listId);
   Future<TasksPage> tasksList(String taskListId, {String? updatedMin});
   Future<Map<String, dynamic>> taskInsert(
     String taskListId,
@@ -242,6 +245,44 @@ class HttpGoogleApiClient implements GoogleApiClient {
     if (r.statusCode != 200) _throw(r);
     return (((jsonDecode(r.body) as Map)['items'] as List?) ?? [])
         .cast<Map<String, dynamic>>();
+  }
+
+  @override
+  Future<Map<String, dynamic>> taskListCreate(String title) async {
+    final r = await _http.post(
+      Uri.parse('${AppConfig.tasksApiBase}/users/@me/lists'),
+      headers: await _headers(),
+      body: jsonEncode({'title': title}),
+    );
+    if (r.statusCode != 200) _throw(r);
+    return jsonDecode(r.body) as Map<String, dynamic>;
+  }
+
+  @override
+  Future<Map<String, dynamic>> taskListPatch(
+    String listId,
+    String title,
+  ) async {
+    final r = await _http.patch(
+      Uri.parse(
+        '${AppConfig.tasksApiBase}/users/@me/lists/${Uri.encodeComponent(listId)}',
+      ),
+      headers: await _headers(),
+      body: jsonEncode({'title': title}),
+    );
+    if (r.statusCode != 200) _throw(r);
+    return jsonDecode(r.body) as Map<String, dynamic>;
+  }
+
+  @override
+  Future<void> taskListDelete(String listId) async {
+    final r = await _http.delete(
+      Uri.parse(
+        '${AppConfig.tasksApiBase}/users/@me/lists/${Uri.encodeComponent(listId)}',
+      ),
+      headers: await _headers(),
+    );
+    if (r.statusCode != 204 && r.statusCode != 200) _throw(r);
   }
 
   @override

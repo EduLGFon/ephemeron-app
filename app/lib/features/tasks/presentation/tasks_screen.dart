@@ -2,7 +2,6 @@
 // trash, completed view, quick add FAB.
 import 'package:flutter/material.dart';
 import 'package:ephemeron/core/time/device_date_format.dart';
-import 'package:ephemeron/core/ui/dialogs.dart';
 
 import 'package:ephemeron/core/ui/empty_state.dart';
 
@@ -15,7 +14,11 @@ import '../../sync/application/pending_operations.dart';
 import '../../sync/presentation/sync_title.dart';
 import '../application/tasks_providers.dart';
 import 'quick_add_sheet.dart';
+import 'smart_list_editor_sheet.dart';
+import 'smart_lists_screen.dart';
 import 'task_editor_sheet.dart';
+import 'task_list_dialogs.dart';
+import 'task_lists_screen.dart';
 import 'task_source_picker.dart';
 import 'trash_screen.dart';
 
@@ -24,16 +27,34 @@ class TasksScreen extends ConsumerWidget {
 
   Future<void> _select(WidgetRef ref, String? id) async {
     ref.read(selectedTaskListProvider.notifier).select(id);
+    ref.read(selectedSmartListProvider.notifier).select(null);
     try {
       final repo = await ref.read(settingsRepositoryProvider.future);
       await repo.setSelectedTaskListId(id);
     } catch (_) {}
   }
 
+  Future<void> _selectSmart(WidgetRef ref, String id) async {
+    ref.read(selectedSmartListProvider.notifier).select(id);
+    ref.read(selectedTaskListProvider.notifier).select(null);
+    try {
+      final repo = await ref.read(settingsRepositoryProvider.future);
+      await repo.setSelectedTaskListId(null);
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final listId = ref.watch(selectedTaskListProvider);
-    final tasksAsync = ref.watch(openTasksProvider(listId));
+    final selectedSmartId = ref.watch(selectedSmartListProvider);
+    final smartLists =
+        ref.watch(smartListsProvider).value ?? const <SmartList>[];
+    final smart = selectedSmartId == null
+        ? null
+        : smartLists.where((s) => s.id == selectedSmartId).firstOrNull;
+    final tasksAsync = smart == null
+        ? ref.watch(openTasksProvider(listId))
+        : ref.watch(smartListTasksProvider(smart));
     final listsAsync = ref.watch(taskListsProvider);
     return Scaffold(
       appBar: AppBar(
@@ -51,6 +72,35 @@ class TasksScreen extends ConsumerWidget {
               MaterialPageRoute<void>(builder: (_) => const TrashScreen()),
             ),
           ),
+          PopupMenuButton<_TasksAction>(
+            tooltip: 'Task organization',
+            onSelected: (action) {
+              switch (action) {
+                case _TasksAction.manageLists:
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const TaskListsScreen(),
+                    ),
+                  );
+                case _TasksAction.manageSmartLists:
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SmartListsScreen(),
+                    ),
+                  );
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: _TasksAction.manageLists,
+                child: Text('Manage lists'),
+              ),
+              PopupMenuItem(
+                value: _TasksAction.manageSmartLists,
+                child: Text('Manage smart lists'),
+              ),
+            ],
+          ),
         ],
       ),
       body: Column(
@@ -63,27 +113,50 @@ class TasksScreen extends ConsumerWidget {
                 children: [
                   ChoiceChip(
                     label: const Text('All'),
-                    selected: listId == null,
+                    selected: smart == null && listId == null,
                     onSelected: (_) => _select(ref, null),
                   ),
                   const SizedBox(width: 8),
                   for (final l in lists) ...[
-                    ChoiceChip(
-                      label: Text(l.name),
-                      selected: listId == l.id,
-                      onSelected: (_) => _select(ref, l.id),
+                    GestureDetector(
+                      onLongPress: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const TaskListsScreen(),
+                        ),
+                      ),
+                      child: Tooltip(
+                        message:
+                            taskListAccountLabel(l) ??
+                            (l.remoteId == null ? localSourceLabel : 'Google'),
+                        child: ChoiceChip(
+                          avatar: TaskListColorDot(list: l, size: 10),
+                          label: Text(l.name),
+                          selected: smart == null && listId == l.id,
+                          onSelected: (_) => _select(ref, l.id),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  for (final s in smartLists) ...[
+                    _SmartListChip(
+                      smartList: s,
+                      selected: smart?.id == s.id,
+                      onSelected: () => _selectSmart(ref, s.id),
+                      onLongPress: () => _smartActions(context, ref, s),
                     ),
                     const SizedBox(width: 8),
                   ],
                   ActionChip(
                     label: const Text('+ List'),
-                    onPressed: () => _addList(context, ref),
+                    onPressed: () => showCreateTaskListDialog(context, ref),
                   ),
                   const SizedBox(width: 8),
                   ActionChip(
                     label: const Text('+ Smart list'),
-                    onPressed: () => _addSmartList(context, ref),
+                    onPressed: () => showSmartListEditor(context),
                   ),
+                  const SizedBox(width: 8),
                 ],
               ),
             ),
@@ -94,10 +167,26 @@ class TasksScreen extends ConsumerWidget {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => _ErrorState(
                 message: 'Could not load tasks.',
-                onRetry: () => ref.invalidate(openTasksProvider(listId)),
+                onRetry: () {
+                  if (smart == null) {
+                    ref.invalidate(openTasksProvider(listId));
+                  } else {
+                    ref.invalidate(smartListTasksProvider(smart));
+                  }
+                },
               ),
               data: (tasks) {
                 if (tasks.isEmpty) {
+                  if (smart != null) {
+                    return EmptyState(
+                      icon: Icons.filter_alt_off,
+                      title: 'No tasks match',
+                      subtitle: 'Nothing matches "${smart.name}" right now.',
+                      actionLabel: 'Edit smart list',
+                      onAction: () =>
+                          showSmartListEditor(context, smartList: smart),
+                    );
+                  }
                   return EmptyState(
                     icon: Icons.checklist_outlined,
                     title: 'No tasks here',
@@ -151,65 +240,47 @@ class TasksScreen extends ConsumerWidget {
     );
   }
 
-  String _today() {
-    final n = DateTime.now();
-    return '${n.year.toString().padLeft(4, '0')}-'
-        '${n.month.toString().padLeft(2, '0')}-'
-        '${n.day.toString().padLeft(2, '0')}';
-  }
-
-  Future<void> _addSmartList(BuildContext context, WidgetRef ref) async {
-    final nameCtrl = TextEditingController();
-    bool showCompleted = false;
-    final ok = await showDialog<bool>(
+  Future<void> _smartActions(
+    BuildContext context,
+    WidgetRef ref,
+    SmartList smart,
+  ) async {
+    final action = await showModalBottomSheet<_SmartAction>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
-          title: const Text('New smart list'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: 'Name'),
-              ),
-              CheckboxListTile(
-                value: showCompleted,
-                onChanged: (v) => setState(() => showCompleted = v ?? false),
-                title: const Text('Include completed'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel'),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit smart list'),
+              onTap: () => Navigator.of(ctx).pop(_SmartAction.edit),
             ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Create'),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('Delete smart list'),
+              onTap: () => Navigator.of(ctx).pop(_SmartAction.delete),
             ),
           ],
         ),
       ),
     );
-    final name = nameCtrl.text.trim();
-    if (ok == true && name.isNotEmpty) {
-      await ref.read(taskRepositoryProvider).createSmartList(name, {
-        'showCompleted': showCompleted,
-      });
+    if (action == null || !context.mounted) return;
+    if (action == _SmartAction.edit) {
+      await showSmartListEditor(context, smartList: smart);
+      return;
+    }
+    await ref.read(taskRepositoryProvider).deleteSmartList(smart.id);
+    if (ref.read(selectedSmartListProvider) == smart.id) {
+      ref.read(selectedSmartListProvider.notifier).select(null);
     }
   }
 
-  Future<void> _addList(BuildContext context, WidgetRef ref) async {
-    final name = await showPromptDialog(
-      context,
-      title: 'New list',
-      hint: 'List name',
-    );
-    if (name != null && name.isNotEmpty) {
-      await ref.read(taskRepositoryProvider).createList(name);
-    }
+  String _today() {
+    final n = DateTime.now();
+    return '${n.year.toString().padLeft(4, '0')}-'
+        '${n.month.toString().padLeft(2, '0')}-'
+        '${n.day.toString().padLeft(2, '0')}';
   }
 
   Future<void> _rescheduleAll(
@@ -233,6 +304,44 @@ class TasksScreen extends ConsumerWidget {
     Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => const _CompletedScreen()));
+  }
+}
+
+enum _TasksAction { manageLists, manageSmartLists }
+
+enum _SmartAction { edit, delete }
+
+class _SmartListChip extends ConsumerWidget {
+  const _SmartListChip({
+    required this.smartList,
+    required this.selected,
+    required this.onSelected,
+    required this.onLongPress,
+  });
+
+  final SmartList smartList;
+  final bool selected;
+  final VoidCallback onSelected;
+  final VoidCallback onLongPress;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final results = ref.watch(smartListTasksProvider(smartList));
+    final count = results.maybeWhen(
+      data: (tasks) => tasks.length,
+      orElse: () => null,
+    );
+    return GestureDetector(
+      onLongPress: onLongPress,
+      child: ChoiceChip(
+        avatar: const Icon(Icons.filter_alt_outlined, size: 16),
+        label: Text(
+          count == null ? smartList.name : '${smartList.name} ($count)',
+        ),
+        selected: selected,
+        onSelected: (_) => onSelected(),
+      ),
+    );
   }
 }
 

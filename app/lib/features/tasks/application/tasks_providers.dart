@@ -5,6 +5,7 @@ import '../../../core/db/db_provider.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../domain/tasks/eisenhower.dart';
+import '../../../domain/tasks/smart_filter.dart';
 import '../../settings/application/settings_providers.dart';
 
 final taskRepositoryProvider = Provider<TaskRepository>((ref) {
@@ -27,6 +28,16 @@ final tagsProvider = StreamProvider<List<Tag>>((ref) {
 
 final smartListsProvider = StreamProvider<List<SmartList>>((ref) {
   return ref.watch(taskRepositoryProvider).watchSmartLists();
+});
+
+/// Reactive results for one saved view. Chips and the manage screen may watch
+/// several of these; keep each one a single indexed Drift query.
+final smartListTasksProvider = StreamProvider.family<List<Task>, SmartList>((
+  ref,
+  smartList,
+) {
+  final filter = SmartFilter.fromJson(smartList.filterJson);
+  return ref.watch(taskRepositoryProvider).watchSmartList(filter.toMap());
 });
 
 final openTasksProvider = StreamProvider.family<List<Task>, String?>((
@@ -60,6 +71,19 @@ final selectedTaskListProvider = NotifierProvider<SelectedTaskList, String?>(
 );
 
 class SelectedTaskList extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void select(String? id) => state = id;
+}
+
+/// Saved smart list currently filtering the Tasks screen. Null means normal
+/// list mode. Selecting a normal list clears this in the UI.
+final selectedSmartListProvider = NotifierProvider<SelectedSmartList, String?>(
+  SelectedSmartList.new,
+);
+
+class SelectedSmartList extends Notifier<String?> {
   @override
   String? build() => null;
 

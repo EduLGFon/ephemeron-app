@@ -171,6 +171,13 @@ class SyncEngine {
       if (t == null) return true;
       return t.googleAccount == null || t.googleAccount == account;
     }
+    if (op.entity == 'task_list') {
+      final l = await (_db.select(
+        _db.taskLists,
+      )..where((x) => x.id.equals(op.entityId))).getSingleOrNull();
+      if (l == null) return true;
+      return l.googleAccount == null || l.googleAccount == account;
+    }
     return true;
   }
 
@@ -374,9 +381,49 @@ class SyncEngine {
         );
       }
     } else if (op.entity == 'task_list') {
-      // Task-list create/delete mirrors when the remote list exists.
-      return;
+      final list = await (_db.select(
+        _db.taskLists,
+      )..where((l) => l.id.equals(op.entityId))).getSingleOrNull();
+      if (list == null) return;
+      if (op.op == 'delete' || list.deletedAt != null) {
+        if (list.remoteId != null) {
+          await client.taskListDelete(list.remoteId!);
+        }
+        await _hardDeleteTaskList(list.id);
+        return;
+      }
+      if (list.remoteId == null) {
+        final created = await client.taskListCreate(list.name);
+        await (_db.update(
+          _db.taskLists,
+        )..where((l) => l.id.equals(list.id))).write(
+          TaskListsCompanion(
+            remoteId: Value(created['id'] as String?),
+            remoteEtag: Value(created['etag'] as String?),
+            dirty: const Value(false),
+          ),
+        );
+      } else {
+        final updated = await client.taskListPatch(list.remoteId!, list.name);
+        await (_db.update(
+          _db.taskLists,
+        )..where((l) => l.id.equals(list.id))).write(
+          TaskListsCompanion(
+            remoteEtag: Value(updated['etag'] as String?),
+            dirty: const Value(false),
+          ),
+        );
+      }
     }
+  }
+
+  /// Removes a task list only after its remote delete succeeded. Detaches any
+  /// remaining tasks (including trashed ones) so the foreign key stays valid.
+  Future<void> _hardDeleteTaskList(String id) async {
+    await (_db.update(_db.tasks)..where((t) => t.listId.equals(id))).write(
+      const TasksCompanion(listId: Value(null)),
+    );
+    await (_db.delete(_db.taskLists)..where((l) => l.id.equals(id))).go();
   }
 
   /// Records which account last pushed a row, so the next run pushes it
@@ -389,6 +436,9 @@ class SyncEngine {
     } else if (op.entity == 'task') {
       await (_db.update(_db.tasks)..where((t) => t.id.equals(op.entityId)))
           .write(TasksCompanion(googleAccount: Value(account)));
+    } else if (op.entity == 'task_list') {
+      await (_db.update(_db.taskLists)..where((l) => l.id.equals(op.entityId)))
+          .write(TaskListsCompanion(googleAccount: Value(account)));
     }
   }
 
@@ -423,6 +473,11 @@ class SyncEngine {
     // right account (wrong-account rows are skipped before any API call).
     if (e.status == 404) {
       debugPrint('[sync] dropping gone outbox op ${op.id} status=404');
+      if (op.entity == 'task_list' && op.op == 'delete') {
+        // The remote list is gone; clear the local tombstone so discovery
+        // cannot revive it forever.
+        await _hardDeleteTaskList(op.entityId);
+      }
       await (_db.delete(_db.outbox)..where((o) => o.id.equals(op.id))).go();
       return;
     }
@@ -646,10 +701,18 @@ class SyncEngine {
       final id = l['id'] as String?;
       if (id == null) continue;
       final name = (l['title'] as String?)?.trim();
-      final existing = await (_db.select(
+      // A remote id belongs to exactly one local row. Duplicate rows from
+      // older runs must not make discovery throw or insert another copy.
+      final linked = await (_db.select(
         _db.taskLists,
-      )..where((t) => t.remoteId.equals(id))).getSingleOrNull();
+      )..where((t) => t.remoteId.equals(id))).get();
+      final existing = linked.where((row) => row.deletedAt == null).firstOrNull;
       if (existing == null) {
+        if (linked.isNotEmpty) {
+          // The only local copy is a tombstone awaiting remote delete. Do not
+          // resurrect it; the queued delete (or the next sync) owns it.
+          continue;
+        }
         await _db
             .into(_db.taskLists)
             .insert(

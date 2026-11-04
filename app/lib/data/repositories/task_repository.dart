@@ -12,6 +12,7 @@ import 'package:ephemeron/data/repositories/outbox_helper.dart';
 import 'package:ephemeron/data/repositories/pending_operations_repository.dart';
 import 'package:ephemeron/domain/sources/source_move.dart';
 import 'package:ephemeron/domain/tasks/recurring_task.dart';
+import 'package:ephemeron/domain/tasks/smart_filter.dart';
 
 class TaskRepository {
   TaskRepository(this._db);
@@ -71,19 +72,73 @@ class TaskRepository {
   }
 
   Stream<List<TaskList>> watchLists() {
-    return (_db.select(
-      _db.taskLists,
-    )..orderBy([(l) => OrderingTerm.asc(l.sortOrder)])).watch();
+    return (_db.select(_db.taskLists)
+          ..where((l) => l.deletedAt.isNull())
+          ..orderBy([(l) => OrderingTerm.asc(l.sortOrder)]))
+        .watch();
   }
 
-  Future<void> deleteList(String id) async {
+  /// Renames and/or recolors a list locally and queues the remote patch.
+  /// Google Tasks lists have no color, so color stays device-local.
+  Future<void> updateList(String id, {String? name, String? color}) async {
+    final existing = await _list(id);
+    if (existing == null || existing.deletedAt != null) return;
+    if (name == null && color == null) return;
+    await (_db.update(_db.taskLists)..where((l) => l.id.equals(id))).write(
+      TaskListsCompanion(
+        name: name == null ? const Value.absent() : Value(name),
+        color: color == null ? const Value.absent() : Value(color),
+        updatedAt: Value(nowMs()),
+        dirty: const Value(true),
+      ),
+    );
+    await _enqueue('task_list', id, 'update');
+  }
+
+  /// Soft-deletes [id]. Its tasks move to [moveTasksToListId] (null means the
+  /// unlisted bucket) or, when [deleteTasks] is true, go to Trash with it.
+  ///
+  /// The list row is kept until the remote delete is pushed: deleting a
+  /// remote-backed list only locally would resurrect it on the next discovery.
+  Future<void> deleteList(
+    String id, {
+    String? moveTasksToListId,
+    bool deleteTasks = false,
+  }) async {
+    final list = await _list(id);
+    if (list == null || list.deletedAt != null) return;
+    if (!deleteTasks && moveTasksToListId != null) {
+      if (moveTasksToListId == id) {
+        throw SourceMoveException('Choose another list.');
+      }
+      final target = await _list(moveTasksToListId);
+      if (target == null || target.deletedAt != null) {
+        throw SourceMoveException('Task list not found.');
+      }
+    }
+    final rows = await (_db.select(
+      _db.tasks,
+    )..where((t) => t.listId.equals(id))).get();
+    final ids = [for (final task in rows) task.id];
+    if (deleteTasks) {
+      final active = [
+        for (final task in rows)
+          if (task.deletedAt == null) task.id,
+      ];
+      if (active.isNotEmpty) await softDeleteTasks(active);
+    } else if (ids.isNotEmpty) {
+      await moveTasks(ids, moveTasksToListId);
+    }
     await _db.transaction(() async {
-      await (_db.update(_db.tasks)..where((t) => t.listId.equals(id))).write(
-        const TasksCompanion(listId: Value(null)),
+      await (_db.update(_db.taskLists)..where((l) => l.id.equals(id))).write(
+        TaskListsCompanion(
+          deletedAt: Value(nowMs()),
+          updatedAt: Value(nowMs()),
+          dirty: const Value(true),
+        ),
       );
-      await (_db.delete(_db.taskLists)..where((l) => l.id.equals(id))).go();
+      await _enqueue('task_list', id, 'delete');
     });
-    await _enqueue('task_list', id, 'delete');
   }
 
   // Tasks.
@@ -141,6 +196,7 @@ class TaskRepository {
   Future<String?> _defaultListId() async {
     final lists =
         await (_db.select(_db.taskLists)
+              ..where((l) => l.deletedAt.isNull())
               ..orderBy([(l) => OrderingTerm.asc(l.sortOrder)])
               ..limit(1))
             .get();
@@ -448,7 +504,7 @@ class TaskRepository {
     String? listId,
   ) async {
     final target = listId == null ? null : await _list(listId);
-    if (listId != null && target == null) {
+    if (listId != null && (target == null || target.deletedAt != null)) {
       throw SourceMoveException('Task list not found.');
     }
     final targetAccount = target?.googleAccount;
@@ -663,10 +719,41 @@ class TaskRepository {
     )..orderBy([(s) => OrderingTerm.asc(s.name)])).watch();
   }
 
-  /// Evaluates a filter: listIds, tagIds, priorities, dueFrom/dueTo
-  /// (YYYY-MM-DD), showCompleted, query.
-  Future<List<Task>> evalSmartList(Map<String, Object?> filter) async {
-    final showCompleted = filter['showCompleted'] == true;
+  Future<void> updateSmartList(
+    String id, {
+    String? name,
+    Map<String, Object?>? filter,
+  }) async {
+    await (_db.update(_db.smartLists)..where((s) => s.id.equals(id))).write(
+      SmartListsCompanion(
+        name: name == null ? const Value.absent() : Value(name),
+        filterJson: filter == null
+            ? const Value.absent()
+            : Value(jsonEncode(filter)),
+        updatedAt: Value(nowMs()),
+      ),
+    );
+  }
+
+  Future<void> deleteSmartList(String id) async {
+    await (_db.delete(_db.smartLists)..where((s) => s.id.equals(id))).go();
+  }
+
+  /// Reactive view of a smart list. Unknown or malformed filter keys are
+  /// ignored by [SmartFilter.fromMap].
+  Stream<List<Task>> watchSmartList(Map<String, Object?> filter) {
+    return _smartQuery(filter).watch();
+  }
+
+  /// Evaluates a smart-list filter. See [SmartFilter] for supported keys.
+  Future<List<Task>> evalSmartList(Map<String, Object?> filter) {
+    return _smartQuery(filter).get();
+  }
+
+  SimpleSelectStatement<$TasksTable, Task> _smartQuery(
+    Map<String, Object?> rawFilter,
+  ) {
+    final filter = SmartFilter.fromMap(rawFilter);
     final q = _db.select(_db.tasks)
       ..where(
         (t) =>
@@ -675,43 +762,55 @@ class TaskRepository {
               pendingIdsQuery(_db, entity: 'task', ops: const {'delete'}),
             ),
       );
-    if (!showCompleted) {
+    if (!filter.showCompleted) {
       q.where((t) => t.completedAt.isNull());
     }
-    final listIds = (filter['listIds'] as List?)?.cast<String>() ?? const [];
-    if (listIds.isNotEmpty) {
-      q.where((t) => t.listId.isIn(listIds));
+    if (filter.listIds.isNotEmpty) {
+      q.where((t) => t.listId.isIn(filter.listIds));
     }
-    final pris = (filter['priorities'] as List?)?.cast<int>() ?? const [];
-    if (pris.isNotEmpty) {
-      q.where((t) => t.priority.isIn(pris));
+    if (filter.priorities.isNotEmpty) {
+      q.where((t) => t.priority.isIn(filter.priorities));
     }
-    final dueFrom = filter['dueFrom'] as String?;
-    if (dueFrom != null) {
-      q.where((t) => t.dueDate.isBiggerOrEqualValue(dueFrom));
+    final range = filter.dueRange();
+    if (range.from != null) {
+      q.where((t) => t.dueDate.isBiggerOrEqualValue(range.from!));
     }
-    final dueTo = filter['dueTo'] as String?;
-    if (dueTo != null) {
-      q.where((t) => t.dueDate.isSmallerOrEqualValue(dueTo));
+    if (range.to != null) {
+      q.where((t) => t.dueDate.isSmallerOrEqualValue(range.to!));
     }
-    final tagIds = (filter['tagIds'] as List?)?.cast<String>() ?? const [];
-    if (tagIds.isNotEmpty) {
-      final tagged = await (_db.select(
-        _db.taskTags,
-      )..where((tt) => tt.tagId.isIn(tagIds))).get();
-      final taskIds = tagged.map((r) => r.taskId).toSet().toList();
-      if (taskIds.isEmpty) return [];
-      q.where((t) => t.id.isIn(taskIds));
+    if (filter.tagIds.isNotEmpty) {
+      final tagged = _db.selectOnly(_db.taskTags)
+        ..addColumns([_db.taskTags.taskId])
+        ..where(_db.taskTags.tagId.isIn(filter.tagIds));
+      q.where((t) => t.id.isInQuery(tagged));
     }
-    final query = (filter['query'] as String?)?.trim().toLowerCase();
-    if (query != null && query.isNotEmpty) {
-      q.where((t) => t.title.like('%$query%') | t.notes.like('%$query%'));
+    final query = sanitizeSearch(filter.query);
+    if (query.isNotEmpty) {
+      final like = '%$query%';
+      q.where((t) => t.title.like(like) | t.notes.like(like));
     }
-    q.orderBy([
-      (t) => OrderingTerm.desc(t.pinned),
-      (t) => OrderingTerm.asc(t.dueDate),
-      (t) => OrderingTerm.asc(t.sortOrder),
-    ]);
-    return q.get();
+    q.orderBy(switch (filter.sort) {
+      SmartSort.due => [
+        (t) => OrderingTerm.desc(t.pinned),
+        (t) => OrderingTerm.asc(t.dueDate),
+        (t) => OrderingTerm.asc(t.sortOrder),
+        (t) => OrderingTerm.asc(t.id),
+      ],
+      SmartSort.priority => [
+        (t) => OrderingTerm.desc(t.pinned),
+        (t) => OrderingTerm.desc(t.priority),
+        (t) => OrderingTerm.asc(t.dueDate),
+        (t) => OrderingTerm.asc(t.id),
+      ],
+      SmartSort.created => [
+        (t) => OrderingTerm.desc(t.createdAt),
+        (t) => OrderingTerm.asc(t.id),
+      ],
+      SmartSort.title => [
+        (t) => OrderingTerm.asc(t.title),
+        (t) => OrderingTerm.asc(t.id),
+      ],
+    });
+    return q;
   }
 }
