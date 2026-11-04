@@ -105,6 +105,11 @@ class SettingsRepository {
   Future<void> setSelectedTaskListId(String? v) =>
       v == null ? _prefs.remove(_kTaskList) : _prefs.setString(_kTaskList, v);
 
+  /// Matrix board grouping: 'auto' (default) or 'priority'.
+  static const _kMatrixMode = 'matrix.mode';
+  String get matrixMode => _prefs.getString(_kMatrixMode) ?? 'auto';
+  Future<void> setMatrixMode(String v) => _prefs.setString(_kMatrixMode, v);
+
   static const _kNotesFolder = 'notes.selectedFolder';
   String? get selectedNotesFolderId => _prefs.getString(_kNotesFolder);
   Future<void> setSelectedNotesFolderId(String? v) => v == null

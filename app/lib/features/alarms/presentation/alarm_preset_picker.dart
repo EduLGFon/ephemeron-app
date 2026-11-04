@@ -23,6 +23,7 @@ class AlarmPresetPicker extends StatelessWidget {
       children: [
         DropdownButtonFormField<String?>(
           initialValue: current?.id,
+          isExpanded: true,
           decoration: const InputDecoration(
             labelText: 'Alarm',
             border: OutlineInputBorder(),

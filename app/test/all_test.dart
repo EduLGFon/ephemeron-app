@@ -31,6 +31,7 @@ import 'cases/home_widget_binder_case.dart' as home_widget_binder;
 import 'cases/home_widget_callback_case.dart' as home_widget_callback;
 import 'cases/home_widget_case.dart' as home_widget;
 import 'cases/l10n_case.dart' as l10n;
+import 'cases/matrix_case.dart' as matrix;
 import 'cases/month_view_case.dart' as month_view;
 import 'cases/note_repository_case.dart' as note_repository;
 import 'cases/occurrence_cache_case.dart' as occurrence_cache;
@@ -42,6 +43,7 @@ import 'cases/search_case.dart' as search;
 import 'cases/session_restore_case.dart' as session_restore;
 import 'cases/settings_case.dart' as settings;
 import 'cases/sync_engine_case.dart' as sync_engine;
+import 'cases/task_editor_case.dart' as task_editor;
 import 'cases/task_repository_case.dart' as task_repository;
 import 'cases/timeline_layout_case.dart' as timeline_layout;
 import 'cases/timeline_view_case.dart' as timeline_view;
@@ -75,6 +77,7 @@ const _included = <String>{
   'home_widget_callback_case.dart',
   'home_widget_case.dart',
   'l10n_case.dart',
+  'matrix_case.dart',
   'month_view_case.dart',
   'note_repository_case.dart',
   'occurrence_cache_case.dart',
@@ -86,6 +89,7 @@ const _included = <String>{
   'session_restore_case.dart',
   'settings_case.dart',
   'sync_engine_case.dart',
+  'task_editor_case.dart',
   'task_repository_case.dart',
   'timeline_layout_case.dart',
   'timeline_view_case.dart',
@@ -126,6 +130,7 @@ void main() {
   group('home_widget_callback', home_widget_callback.main);
   group('home_widget', home_widget.main);
   group('l10n', l10n.main);
+  group('matrix', matrix.main);
   group('month_view', month_view.main);
   group('note_repository', note_repository.main);
   group('occurrence_cache', occurrence_cache.main);
@@ -137,6 +142,7 @@ void main() {
   group('session_restore', session_restore.main);
   group('settings', settings.main);
   group('sync_engine', sync_engine.main);
+  group('task_editor', task_editor.main);
   group('task_repository', task_repository.main);
   group('timeline_layout', timeline_layout.main);
   group('timeline_view', timeline_view.main);
