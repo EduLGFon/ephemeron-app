@@ -20,6 +20,16 @@ import 'week_calendar_data.dart';
 import 'widget_config_store.dart';
 import 'widget_image_service.dart';
 
+/// True when [className] is [provider] either as an exact short name
+/// (e.g. `WeekCalendarWidgetProvider`) or as a fully qualified Android class
+/// name ending in `.<provider>` (e.g.
+/// `com.spotnik.ephemeron.WeekCalendarWidgetProvider`).
+bool widgetProviderMatches(String? className, String provider) {
+  if (className == null) return false;
+  if (className == provider) return true;
+  return className.endsWith('.$provider');
+}
+
 class HomeWidgetDataBinder {
   HomeWidgetDataBinder(this.ref);
   final Ref ref;
@@ -733,7 +743,7 @@ class HomeWidgetDataBinder {
     } catch (_) {}
     bool want(String provider) {
       if (installed == null) return true;
-      return installed.contains(provider);
+      return installed.any((c) => widgetProviderMatches(c, provider));
     }
 
     Future<bool> due(String key) async {
