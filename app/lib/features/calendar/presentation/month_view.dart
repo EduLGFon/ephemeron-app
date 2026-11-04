@@ -10,6 +10,7 @@ import '../../../core/time/time.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../domain/habits/habit_calendar_entry.dart';
 import '../application/calendar_providers.dart';
+import '../application/calendar_state.dart';
 import 'agenda_event_tile.dart';
 import 'event_details_sheet.dart';
 import 'google_calendar_colors.dart';
@@ -130,6 +131,19 @@ class _MonthViewState extends ConsumerState<MonthView> {
                                   onTap: () => ref
                                       .read(calendarStateProvider.notifier)
                                       .goTo(days[week * 7 + dow]),
+                                  onDoubleTap: () {
+                                    final notifier = ref.read(
+                                      calendarStateProvider.notifier,
+                                    );
+                                    final target = days[week * 7 + dow];
+                                    notifier.setView(
+                                      CalendarViewKind.multiDay,
+                                      dayCount: 7,
+                                    );
+                                    notifier.goTo(
+                                      target.subtract(const Duration(days: 3)),
+                                    );
+                                  },
                                 ),
                               ),
                           ],
@@ -212,6 +226,7 @@ class _MonthDayCell extends StatelessWidget {
     required this.occurrences,
     this.habits = const <HabitCalendarEntry>[],
     required this.onTap,
+    this.onDoubleTap,
   });
 
   final DateTime day;
@@ -221,6 +236,7 @@ class _MonthDayCell extends StatelessWidget {
   final List<OccurrenceCacheData> occurrences;
   final List<HabitCalendarEntry> habits;
   final VoidCallback onTap;
+  final VoidCallback? onDoubleTap;
 
   @override
   Widget build(BuildContext context) {
@@ -266,7 +282,14 @@ class _MonthDayCell extends StatelessWidget {
                 children: [
                   SizedBox(
                     height: dayNumberHeight,
-                    child: Center(child: _DayNumber(day: day)),
+                    child: Center(
+                      child: GestureDetector(
+                        key: Key('month-day-number-${dateKey(day)}'),
+                        behavior: HitTestBehavior.opaque,
+                        onDoubleTap: onDoubleTap,
+                        child: _DayNumber(day: day),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 2),
                   for (var i = 0; i < visible.length; i++) ...[

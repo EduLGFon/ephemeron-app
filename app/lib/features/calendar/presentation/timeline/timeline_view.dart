@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../data/drift/app_database.dart';
 import '../../../../domain/habits/habit_calendar_entry.dart';
 import '../../application/calendar_providers.dart';
+import '../../application/calendar_state.dart';
 import '../event_details_sheet.dart';
 import '../habit_action_sheet.dart';
 import 'habit_timeline_block.dart';
@@ -152,6 +153,15 @@ class _TimelineViewState extends ConsumerState<TimelineView>
                 dayCount: widget.dayCount,
                 gutterWidth: timelineGutterWidth,
                 swipeOffset: swipeOffset,
+                onDayTap: widget.dayCount == 7
+                    ? (day) {
+                        final notifier = ref.read(
+                          calendarStateProvider.notifier,
+                        );
+                        notifier.setView(CalendarViewKind.day);
+                        notifier.goTo(day);
+                      }
+                    : null,
               ),
               if (timed.isEmpty &&
                   allDay.isEmpty &&

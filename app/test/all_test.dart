@@ -18,6 +18,7 @@ import 'cases/calendar_color_case.dart' as calendar_color;
 import 'cases/calendar_header_case.dart' as calendar_header;
 import 'cases/calendar_perf_case.dart' as calendar_perf;
 import 'cases/calendar_swipe_case.dart' as calendar_swipe;
+import 'cases/calendar_week_nav_case.dart' as calendar_week_nav;
 import 'cases/countdowns_screen_case.dart' as countdowns_screen;
 import 'cases/db_case.dart' as db;
 import 'cases/event_rsvp_case.dart' as event_rsvp;
@@ -76,6 +77,7 @@ const _included = <String>{
   'calendar_header_case.dart',
   'calendar_perf_case.dart',
   'calendar_swipe_case.dart',
+  'calendar_week_nav_case.dart',
   'countdowns_screen_case.dart',
   'db_case.dart',
   'event_rsvp_case.dart',
@@ -141,6 +143,7 @@ void main() {
   group('calendar_header', calendar_header.main);
   group('calendar_perf', calendar_perf.main);
   group('calendar_swipe', calendar_swipe.main);
+  group('calendar_week_nav', calendar_week_nav.main);
   group('countdowns_screen', countdowns_screen.main);
   group('db', db.main);
   group('event_rsvp', event_rsvp.main);
