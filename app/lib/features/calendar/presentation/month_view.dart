@@ -13,6 +13,7 @@ import '../application/calendar_providers.dart';
 import '../application/calendar_state.dart';
 import 'agenda_event_tile.dart';
 import 'event_details_sheet.dart';
+import 'task_action_sheet.dart';
 import 'google_calendar_colors.dart';
 import 'habit_calendar_marker.dart';
 import 'timeline/timeline_utils.dart';
@@ -185,7 +186,17 @@ class _MonthViewState extends ConsumerState<MonthView> {
                   return AgendaEventTile(
                     key: ValueKey('month-agenda-${o.eventId}'),
                     occurrence: o,
-                    onTap: (id) => showEventDetails(context, id),
+                    onTap: () {
+                      if (o.sourceType == 'task') {
+                        showTaskActionSheet(
+                          context,
+                          taskId: o.eventId,
+                          occurrenceDate: o.dayKey,
+                        );
+                      } else {
+                        showEventDetails(context, o.eventId);
+                      }
+                    },
                   );
                 },
               ),

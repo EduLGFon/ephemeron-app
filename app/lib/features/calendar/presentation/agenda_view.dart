@@ -10,6 +10,7 @@ import '../application/calendar_providers.dart';
 import '../application/calendar_state.dart';
 import 'agenda_event_tile.dart';
 import 'event_details_sheet.dart';
+import 'task_action_sheet.dart';
 import 'habit_calendar_marker.dart';
 
 class AgendaView extends ConsumerStatefulWidget {
@@ -149,7 +150,17 @@ class _AgendaViewState extends ConsumerState<AgendaView> {
           AgendaEventTile(
             key: ValueKey('agenda-${o.id}'),
             occurrence: o,
-            onTap: (id) => showEventDetails(context, id),
+            onTap: () {
+              if (o.sourceType == 'task') {
+                showTaskActionSheet(
+                  context,
+                  taskId: o.eventId,
+                  occurrenceDate: o.dayKey,
+                );
+              } else {
+                showEventDetails(context, o.eventId);
+              }
+            },
           ),
         );
       }

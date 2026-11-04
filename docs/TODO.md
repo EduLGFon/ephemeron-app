@@ -154,3 +154,5 @@ Remaining (not yet fixed):
 ## Microsoft sync foundation (2026-11-04)
 
 - Web sign-in still needs `app/web/auth.html` (or equivalent redirect page) and the Entra SPA redirect registration for `http://localhost:8080/auth.html`; the service already uses `AppConfig.microsoftWebRedirectUri`. Android is the primary verification target until then.
+
+- Task action sheet: projected future occurrences are read-only until per-occurrence completion is implemented (no completion/won't-do actions shown).

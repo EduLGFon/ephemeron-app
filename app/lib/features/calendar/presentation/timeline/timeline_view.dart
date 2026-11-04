@@ -11,6 +11,7 @@ import '../../application/calendar_providers.dart';
 import '../../application/calendar_state.dart';
 import '../event_details_sheet.dart';
 import '../habit_action_sheet.dart';
+import '../task_action_sheet.dart';
 import 'habit_timeline_block.dart';
 import 'timeline_chrome.dart';
 import 'timeline_controller.dart';
@@ -177,7 +178,17 @@ class _TimelineViewState extends ConsumerState<TimelineView>
                   dayCount: widget.dayCount,
                   gutterWidth: timelineGutterWidth,
                   swipeOffset: swipeOffset,
-                  onTap: (id) => showEventDetails(context, id),
+                  onTap: (o) {
+                    if (o.sourceType == 'task') {
+                      showTaskActionSheet(
+                        context,
+                        taskId: o.eventId,
+                        occurrenceDate: o.dayKey,
+                      );
+                    } else {
+                      showEventDetails(context, o.eventId);
+                    }
+                  },
                 ),
               Expanded(
                 child: LayoutBuilder(
@@ -294,12 +305,23 @@ class _TimelineViewState extends ConsumerState<TimelineView>
                                                                 o.eventId
                                                             ? dragXOffset
                                                             : 0.0),
-                                                  onTap: () => showEventDetails(
-                                                    context,
-                                                    o.eventId,
-                                                  ),
-                                                  onLongPressStart: () =>
-                                                      beginDrag(o.eventId),
+                                                  onTap: () {
+                                                    if (o.sourceType == 'task') {
+                                                      showTaskActionSheet(
+                                                        context,
+                                                        taskId: o.eventId,
+                                                        occurrenceDate: o.dayKey,
+                                                      );
+                                                    } else {
+                                                      showEventDetails(
+                                                        context,
+                                                        o.eventId,
+                                                      );
+                                                    }
+                                                  },
+                                                  onLongPressStart: o.sourceType == 'task'
+                                                      ? () {}
+                                                      : () => beginDrag(o.eventId),
                                                   onLongPressMoveUpdate: (d) =>
                                                       updateDrag(o.eventId, d),
                                                   onLongPressEnd: () =>
