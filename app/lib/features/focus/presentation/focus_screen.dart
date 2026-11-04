@@ -24,6 +24,8 @@ import 'focus_stats_screen.dart';
 const _focusPresets = [15, 25, 50];
 const _breakPresets = [5, 10, 15];
 
+enum _FocusMode { focus, breakTime, stopwatch }
+
 Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
   final sessions = ref.read(recentFocusSessionsProvider).value ?? const [];
   final buf = StringBuffer('start,end,minutes,phase,note\n');
@@ -113,7 +115,7 @@ class _StartView extends ConsumerStatefulWidget {
 class _StartViewState extends ConsumerState<_StartView> {
   int _focusMin = 25;
   int _breakMin = 5;
-  bool _isBreak = false;
+  _FocusMode _mode = _FocusMode.focus;
   String? _taskId;
   String? _habitId;
   String? _alarmPreset = AlarmPreset.notification.id;
@@ -131,7 +133,8 @@ class _StartViewState extends ConsumerState<_StartView> {
           setState(() {
             _focusMin = repo.focusSetupMin;
             _breakMin = repo.focusBreakMin;
-            _isBreak = repo.focusIsBreak;
+            // Stopwatch is not persisted; only focus/break survive restart.
+            _mode = repo.focusIsBreak ? _FocusMode.breakTime : _FocusMode.focus;
             _taskId = repo.focusTaskId;
             _habitId = repo.focusHabitId;
           });
@@ -146,7 +149,7 @@ class _StartViewState extends ConsumerState<_StartView> {
       await repo.setFocusSetup(
         focusMin: _focusMin,
         breakMin: _breakMin,
-        isBreak: _isBreak,
+        isBreak: _mode == _FocusMode.breakTime,
         taskId: () => _taskId,
         habitId: () => _habitId,
       );
@@ -164,39 +167,52 @@ class _StartViewState extends ConsumerState<_StartView> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          SegmentedButton<bool>(
+          SegmentedButton<_FocusMode>(
             segments: const [
-              ButtonSegment(value: false, label: Text('Focus')),
-              ButtonSegment(value: true, label: Text('Break')),
+              ButtonSegment(value: _FocusMode.focus, label: Text('Focus')),
+              ButtonSegment(value: _FocusMode.breakTime, label: Text('Break')),
+              ButtonSegment(
+                value: _FocusMode.stopwatch,
+                label: Text('Stopwatch'),
+              ),
             ],
-            selected: {_isBreak},
+            selected: {_mode},
             onSelectionChanged: (s) {
-              setState(() => _isBreak = s.single);
+              setState(() => _mode = s.single);
               _persistSetup();
             },
           ),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final m in (_isBreak ? _breakPresets : _focusPresets))
-                ChoiceChip(
-                  label: Text('$m min'),
-                  selected: (_isBreak ? _breakMin : _focusMin) == m,
-                  onSelected: (_) {
-                    setState(() {
-                      if (_isBreak) {
-                        _breakMin = m;
-                      } else {
-                        _focusMin = m;
-                      }
-                    });
-                    _persistSetup();
-                  },
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
+          if (_mode != _FocusMode.stopwatch) ...[
+            Wrap(
+              spacing: 8,
+              children: [
+                for (final m
+                    in (_mode == _FocusMode.breakTime
+                        ? _breakPresets
+                        : _focusPresets))
+                  ChoiceChip(
+                    label: Text('$m min'),
+                    selected:
+                        (_mode == _FocusMode.breakTime
+                            ? _breakMin
+                            : _focusMin) ==
+                        m,
+                    onSelected: (_) {
+                      setState(() {
+                        if (_mode == _FocusMode.breakTime) {
+                          _breakMin = m;
+                        } else {
+                          _focusMin = m;
+                        }
+                      });
+                      _persistSetup();
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
           tasksAsync.maybeWhen(
             data: (tasks) => DropdownButtonFormField<String?>(
               initialValue: _taskId,
@@ -240,18 +256,22 @@ class _StartViewState extends ConsumerState<_StartView> {
             orElse: () => const SizedBox.shrink(),
           ),
           const SizedBox(height: 12),
-          AlarmPresetPicker(
-            value: _alarmPreset,
-            onChanged: (v) => setState(
-              () => _alarmPreset = v,
-            ), // alarm preset is per-session, not persisted
-          ),
-          const SizedBox(height: 12),
+          if (_mode != _FocusMode.stopwatch) ...[
+            AlarmPresetPicker(
+              value: _alarmPreset,
+              onChanged: (v) => setState(
+                () => _alarmPreset = v,
+              ), // alarm preset is per-session, not persisted
+            ),
+            const SizedBox(height: 12),
+          ],
           FilledButton.icon(
             onPressed: _start,
             icon: const Icon(Icons.play_arrow),
             label: Text(
-              'Start ${_isBreak ? _breakMin : _focusMin} min ${_isBreak ? 'break' : 'focus'}',
+              _mode == _FocusMode.stopwatch
+                  ? 'Start stopwatch'
+                  : 'Start ${_mode == _FocusMode.breakTime ? _breakMin : _focusMin} min ${_mode == _FocusMode.breakTime ? 'break' : 'focus'}',
             ),
           ),
           const SizedBox(height: 16),
@@ -284,25 +304,34 @@ class _StartViewState extends ConsumerState<_StartView> {
   }
 
   Future<void> _start() async {
+    final isStopwatch = _mode == _FocusMode.stopwatch;
     // Moment of need: the end-of-phase alarm needs notifications, and
-    // clock presets need exact-alarm access. Advisory only.
+    // clock presets need exact-alarm access. Advisory only. Stopwatch has
+    // no end alarm, so it asks for nothing.
     final preset = AlarmPreset.tryParse(_alarmPreset);
-    await AppPermissions.ensureAlarmPrereqs(
-      context,
-      exactAlarm: preset?.needsAlarmClock ?? false,
-      fullScreen: preset?.usesFullScreen ?? false,
-    );
-    if (!mounted) return;
+    if (!isStopwatch) {
+      await AppPermissions.ensureAlarmPrereqs(
+        context,
+        exactAlarm: preset?.needsAlarmClock ?? false,
+        fullScreen: preset?.usesFullScreen ?? false,
+      );
+      if (!mounted) return;
+    }
     final repo = ref.read(focusRepositoryProvider);
     final id = await repo.startSession(
       taskId: _taskId,
       habitId: _habitId,
-      durationMin: _isBreak ? _breakMin : _focusMin,
-      phase: _isBreak ? 'break' : 'focus',
-      alarmPreset: _alarmPreset,
+      durationMin: isStopwatch
+          ? null
+          : (_mode == _FocusMode.breakTime ? _breakMin : _focusMin),
+      phase: isStopwatch
+          ? 'stopwatch'
+          : (_mode == _FocusMode.breakTime ? 'break' : 'focus'),
+      alarmPreset: isStopwatch ? null : _alarmPreset,
     );
     final session = await repo.currentSession();
     if (session != null && session.id == id) {
+      // No-op for stopwatch sessions (targetEndUtc is null).
       await _scheduleEndAlarm(session);
       await SystemLauncher.startFocusChronometer(
         '${session.phase ?? 'focus'} session',
@@ -357,13 +386,16 @@ class _RunningViewState extends ConsumerState<_RunningView> {
       valueListenable: _now,
       builder: (context, now, _) {
         final target = widget.session.targetEndUtc;
-        final elapsedMin = ((now - widget.session.startUtc) / msPerMinute)
-            .floor();
-        final remainingMs = target == null ? 0 : target - now;
-        final finished = target != null && remainingMs <= 0;
+        final isStopwatch = target == null;
+        final elapsedMs = now - widget.session.startUtc;
+        final elapsedMin = (elapsedMs / msPerMinute).floor();
+        final remainingMs = isStopwatch ? 0 : target - now;
+        final finished = !isStopwatch && remainingMs <= 0;
+        final elapsed = _formatElapsed(elapsedMs);
         final remaining = finished
             ? '00:00'
             : '${(remainingMs ~/ msPerMinute).toString().padLeft(2, '0')}:${((remainingMs % msPerMinute) ~/ 1000).toString().padLeft(2, '0')}';
+        final display = isStopwatch ? elapsed : remaining;
         return Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -391,9 +423,11 @@ class _RunningViewState extends ConsumerState<_RunningView> {
               const SizedBox(height: 24),
               Center(
                 child: Semantics(
-                  label: 'Focus time remaining: $remaining',
+                  label: isStopwatch
+                      ? 'Focus elapsed time: $display'
+                      : 'Focus time remaining: $display',
                   child: Text(
-                    remaining,
+                    display,
                     style: Theme.of(context).textTheme.displayLarge,
                   ),
                 ),
@@ -522,6 +556,16 @@ Future<String?> _askNote(BuildContext context) async {
       ],
     ),
   );
+}
+
+String _formatElapsed(int elapsedMs) {
+  final totalSec = (elapsedMs < 0 ? 0 : elapsedMs) ~/ 1000;
+  final h = totalSec ~/ 3600;
+  final m = (totalSec % 3600) ~/ 60;
+  final s = totalSec % 60;
+  final mm = m.toString().padLeft(2, '0');
+  final ss = s.toString().padLeft(2, '0');
+  return h > 0 ? '${h.toString().padLeft(2, '0')}:$mm:$ss' : '$mm:$ss';
 }
 
 String _formatMin(int min) {

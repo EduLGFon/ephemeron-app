@@ -13,15 +13,19 @@ class FocusRepository {
   int _now() => DateTime.now().toUtc().millisecondsSinceEpoch;
 
   /// Starts a session targeting [durationMin]; returns the session id.
+  /// A null [durationMin] starts an open-ended stopwatch session with no
+  /// target end and no end alarm (unless a [phase] is supplied).
   Future<String> startSession({
     String? taskId,
     String? habitId,
-    required int durationMin,
-    String phase = 'focus',
+    int? durationMin,
+    String? phase,
     String? alarmPreset,
   }) async {
     final id = newId();
     final now = _now();
+    final resolvedPhase =
+        phase ?? (durationMin == null ? 'stopwatch' : 'focus');
     await _db
         .into(_db.focusSessions)
         .insert(
@@ -30,8 +34,10 @@ class FocusRepository {
             taskId: Value(taskId),
             habitId: Value(habitId),
             startUtc: now,
-            targetEndUtc: Value(now + durationMin * msPerMinute),
-            phase: Value(phase),
+            targetEndUtc: Value(
+              durationMin == null ? null : now + durationMin * msPerMinute,
+            ),
+            phase: Value(resolvedPhase),
             alarmPreset: Value(alarmPreset),
             createdAt: now,
             updatedAt: now,
