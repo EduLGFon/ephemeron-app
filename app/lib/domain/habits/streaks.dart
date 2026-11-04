@@ -17,15 +17,19 @@ class HabitSpec {
   final String? startDate;
 }
 
-bool _isScheduled(HabitSpec spec, DateTime day) {
+bool isHabitScheduled(HabitSpec spec, DateTime day) {
+  final start = spec.startDate == null ? null : parseKey(spec.startDate!);
+  if (start != null && day.isBefore(start)) return false;
   switch (spec.frequency) {
     case 'weekdays':
       return (spec.weekdaysMask & (1 << ((day.weekday - 1) % 7))) != 0;
     case 'interval':
-      if (spec.startDate == null || spec.intervalDays < 1) return true;
-      return day.difference(parseKey(spec.startDate!)).inDays %
-              spec.intervalDays ==
-          0;
+      if (spec.intervalDays < 1 || spec.startDate == null) return true;
+      return day.difference(start!).inDays % spec.intervalDays == 0;
+    case 'weekly':
+      // Weekly-target habits are available every day so the user can log
+      // any day of the week.
+      return true;
     default:
       return true;
   }
@@ -45,7 +49,7 @@ int currentStreak(
   final start = spec.startDate == null ? null : parseKey(spec.startDate!);
   while (true) {
     if (start != null && cur.isBefore(start)) break;
-    if (!_isScheduled(spec, cur)) {
+    if (!isHabitScheduled(spec, cur)) {
       cur = cur.subtract(const Duration(days: 1));
       continue;
     }
@@ -79,7 +83,7 @@ int bestStreak(
       : parseKey(spec.startDate!);
   final end = parseKey(todayKey);
   while (!cur.isAfter(end)) {
-    if (!_isScheduled(spec, cur)) {
+    if (!isHabitScheduled(spec, cur)) {
       cur = cur.add(const Duration(days: 1));
       continue;
     }

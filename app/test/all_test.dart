@@ -25,7 +25,9 @@ import 'cases/event_scope_case.dart' as event_scope;
 import 'cases/event_source_case.dart' as event_source;
 import 'cases/focus_screen_case.dart' as focus_screen;
 import 'cases/focus_stopwatch_case.dart' as focus_stopwatch;
+import 'cases/habit_calendar_repository_case.dart' as habit_calendar_repository;
 import 'cases/habit_focus_case.dart' as habit_focus;
+import 'cases/habit_schedule_case.dart' as habit_schedule;
 import 'cases/habit_streak_case.dart' as habit_streak;
 import 'cases/habits_screen_case.dart' as habits_screen;
 import 'cases/headless_widget_push_case.dart' as headless_widget_push;
@@ -79,7 +81,9 @@ const _included = <String>{
   'event_source_case.dart',
   'focus_screen_case.dart',
   'focus_stopwatch_case.dart',
+  'habit_calendar_repository_case.dart',
   'habit_focus_case.dart',
+  'habit_schedule_case.dart',
   'habit_streak_case.dart',
   'habits_screen_case.dart',
   'headless_widget_push_case.dart',
@@ -144,7 +148,9 @@ void main() {
   group('event_source', event_source.main);
   group('focus_screen', focus_screen.main);
   group('focus_stopwatch', focus_stopwatch.main);
+  group('habit_calendar_repository', habit_calendar_repository.main);
   group('habit_focus', habit_focus.main);
+  group('habit_schedule', habit_schedule.main);
   group('habit_streak', habit_streak.main);
   group('habits_screen', habits_screen.main);
   group('headless_widget_push', headless_widget_push.main);

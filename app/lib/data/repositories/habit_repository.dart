@@ -7,6 +7,7 @@ import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:ephemeron/data/repositories/outbox_helper.dart';
 import 'package:ephemeron/data/repositories/pending_operations_repository.dart';
 import 'package:ephemeron/domain/habits/date_key.dart';
+import 'package:ephemeron/domain/habits/habit_calendar_entry.dart';
 import 'package:ephemeron/domain/habits/streaks.dart';
 
 class HabitRepository {
@@ -149,6 +150,58 @@ class HabitRepository {
     return q.watch();
   }
 
+  /// Reactive stream of scheduled habit entries with their log state for a
+  /// date-key range (inclusive). One Drift query; reads habits + habitLogs.
+  Stream<List<HabitCalendarEntry>> watchCalendarEntries(
+    String fromKey,
+    String toKey,
+  ) {
+    final query = _db.customSelect(
+      'WITH RECURSIVE days(d) AS ('
+      "SELECT ?1 UNION ALL SELECT date(d, '+1 day') FROM days WHERE d < ?2"
+      ') '
+      'SELECT h.id AS habit_id, h.name AS habit_name, '
+      'h.frequency AS frequency, h.weekdays_mask AS weekdays_mask, '
+      'h.weekly_target AS weekly_target, h.interval_days AS interval_days, '
+      'h.start_date AS start_date, '
+      'l.done AS log_done, l.skipped AS log_skipped, days.d AS day '
+      'FROM days CROSS JOIN habits h '
+      'LEFT JOIN habit_logs l ON l.habit_id = h.id AND l.day_key = days.d '
+      'WHERE h.archived = 0 AND h.deleted_at IS NULL',
+      variables: [Variable<String>(fromKey), Variable<String>(toKey)],
+      readsFrom: {_db.habits, _db.habitLogs},
+    );
+    return query.watch().map((rows) {
+      final out = <HabitCalendarEntry>[];
+      for (final r in rows) {
+        final day = r.read<String>('day');
+        final spec = HabitSpec(
+          frequency: r.read<String>('frequency'),
+          weekdaysMask: r.read<int>('weekdays_mask'),
+          weeklyTarget: r.readNullable<int>('weekly_target') ?? 0,
+          intervalDays: r.readNullable<int>('interval_days') ?? 0,
+          startDate: r.readNullable<String>('start_date'),
+        );
+        if (!isHabitScheduled(spec, parseKey(day))) continue;
+        out.add(
+          HabitCalendarEntry(
+            habitId: r.read<String>('habit_id'),
+            habitName: r.read<String>('habit_name'),
+            dayKey: day,
+            done: (r.readNullable<int>('log_done') ?? 0) == 1,
+            skipped: (r.readNullable<int>('log_skipped') ?? 0) == 1,
+          ),
+        );
+      }
+      out.sort((a, b) {
+        final c = a.dayKey.compareTo(b.dayKey);
+        if (c != 0) return c;
+        return a.habitName.compareTo(b.habitName);
+      });
+      return out;
+    });
+  }
+
   Future<void> updateHabit(
     String id, {
     String? name,
@@ -270,6 +323,46 @@ class HabitRepository {
       );
     }
     await _touchHabit(habitId);
+  }
+
+  Future<void> setDone(String habitId, String dayKey, bool done) async {
+    final existing = await logFor(habitId, dayKey);
+    if (existing == null) {
+      await _db
+          .into(_db.habitLogs)
+          .insert(
+            HabitLogsCompanion.insert(
+              id: newId(),
+              habitId: habitId,
+              dayKey: dayKey,
+              done: Value(done),
+              skipped: Value(false),
+              createdAt: nowMs(),
+              updatedAt: nowMs(),
+            ),
+          );
+    } else {
+      await (_db.update(
+        _db.habitLogs,
+      )..where((l) => l.id.equals(existing.id))).write(
+        HabitLogsCompanion(
+          done: Value(done),
+          skipped: done ? const Value(false) : const Value.absent(),
+          updatedAt: Value(nowMs()),
+        ),
+      );
+    }
+    await _enqueue('habit_log:$habitId', '$habitId@$dayKey', 'update');
+    await _touchHabit(habitId);
+  }
+
+  Future<void> toggleHabitDone(String habitId, String dayKey) async {
+    final existing = await logFor(habitId, dayKey);
+    if (existing != null && existing.done) {
+      await setDone(habitId, dayKey, false);
+    } else {
+      await logDone(habitId, dayKey);
+    }
   }
 
   Future<void> backfill(

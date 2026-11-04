@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:ephemeron/core/db/db_provider.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
+import 'package:ephemeron/data/repositories/habit_repository.dart';
 import 'package:ephemeron/data/repositories/occurrence_repository.dart';
 import 'package:ephemeron/features/calendar/application/calendar_providers.dart';
 import 'package:ephemeron/features/calendar/application/calendar_state.dart';
@@ -166,6 +167,56 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Edit'), findsOneWidget);
+    await _tearDown(tester, db);
+  });
+
+  testWidgets('habit markers fit a 320dp timeline strip', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final db = _db();
+    final repo = HabitRepository(db);
+    await repo.createHabit(
+      name: 'A long habit name',
+      frequency: 'daily',
+      startDate: '2020-01-01',
+    );
+    await _seed(db);
+    await _pump(tester, db, DateTime.now(), 1);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('A long habit name'), findsWidgets);
+    expect(tester.takeException(), null);
+    await _tearDown(tester, db);
+  });
+
+  testWidgets('timeline strip caps habits and shows overflow', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final db = _db();
+    final repo = HabitRepository(db);
+    for (var i = 1; i <= 5; i++) {
+      await repo.createHabit(
+        name: 'Habit $i',
+        frequency: 'daily',
+        startDate: '2020-01-01',
+      );
+    }
+    await _seed(db);
+    await _pump(tester, db, DateTime.now(), 1);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('+2 habits'), findsWidgets);
+    expect(find.text('Habit 4'), findsNothing);
+    expect(find.text('Habit 5'), findsNothing);
+    expect(tester.takeException(), null);
     await _tearDown(tester, db);
   });
 

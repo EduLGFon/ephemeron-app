@@ -1,14 +1,16 @@
 // Agenda: list grouped by day over the loaded (cache) window, filtered to
-// the visible agenda range.
+// the visible agenda range. Habit entries appear above events for each day.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/time/time.dart';
 import '../../../data/drift/app_database.dart';
+import '../../../domain/habits/habit_calendar_entry.dart';
 import '../application/calendar_providers.dart';
 import '../application/calendar_state.dart';
 import 'agenda_event_tile.dart';
 import 'event_details_sheet.dart';
+import 'habit_calendar_marker.dart';
 
 class AgendaView extends ConsumerStatefulWidget {
   const AgendaView({super.key});
@@ -26,13 +28,19 @@ class _AgendaViewState extends ConsumerState<AgendaView> {
     final range = ref.watch(calendarCacheRangeProvider);
     final occAsync = ref.watch(windowOccurrencesProvider(range));
     final building = ref.watch(calendarCacheBuildingProvider);
+    final habits = ref
+        .watch(calendarHabitEntriesProvider)
+        .maybeWhen(data: (v) => v, orElse: () => const <HabitCalendarEntry>[]);
+    final visibleHabits = _visibleHabits(window, habits);
     return occAsync.when(
       loading: () {
         final filtered = _visible(window, _lastOccurrences);
-        if (filtered.isEmpty && (building || _lastOccurrences.isEmpty)) {
+        if (filtered.isEmpty &&
+            visibleHabits.isEmpty &&
+            (building || _lastOccurrences.isEmpty)) {
           return const Center(child: CircularProgressIndicator());
         }
-        return _body(context, filtered);
+        return _body(context, filtered, visibleHabits);
       },
       error: (e, _) => Center(
         child: Column(
@@ -49,10 +57,10 @@ class _AgendaViewState extends ConsumerState<AgendaView> {
       data: (occs) {
         _lastOccurrences = occs;
         final filtered = _visible(window, occs);
-        if (filtered.isEmpty && building) {
+        if (filtered.isEmpty && visibleHabits.isEmpty && building) {
           return const Center(child: CircularProgressIndicator());
         }
-        return _body(context, filtered);
+        return _body(context, filtered, visibleHabits);
       },
     );
   }
@@ -61,11 +69,7 @@ class _AgendaViewState extends ConsumerState<AgendaView> {
     CalendarWindow window,
     List<OccurrenceCacheData> occs,
   ) {
-    final visible = window.visibleRange;
-    final fromKey = dateKey(visible.fromUtc);
-    final toKey = dateKey(
-      visible.toUtc.subtract(const Duration(milliseconds: 1)),
-    );
+    final (fromKey, toKey) = _visibleKeys(window);
     return [
       for (final o in occs)
         if (o.dayKey.compareTo(fromKey) >= 0 && o.dayKey.compareTo(toKey) <= 0)
@@ -73,8 +77,32 @@ class _AgendaViewState extends ConsumerState<AgendaView> {
     ];
   }
 
-  Widget _body(BuildContext context, List<OccurrenceCacheData> occs) {
-    if (occs.isEmpty) {
+  List<HabitCalendarEntry> _visibleHabits(
+    CalendarWindow window,
+    List<HabitCalendarEntry> habits,
+  ) {
+    final (fromKey, toKey) = _visibleKeys(window);
+    return [
+      for (final h in habits)
+        if (h.dayKey.compareTo(fromKey) >= 0 && h.dayKey.compareTo(toKey) <= 0)
+          h,
+    ];
+  }
+
+  (String, String) _visibleKeys(CalendarWindow window) {
+    final visible = window.visibleRange;
+    return (
+      dateKey(visible.fromUtc),
+      dateKey(visible.toUtc.subtract(const Duration(milliseconds: 1))),
+    );
+  }
+
+  Widget _body(
+    BuildContext context,
+    List<OccurrenceCacheData> occs,
+    List<HabitCalendarEntry> habits,
+  ) {
+    if (occs.isEmpty && habits.isEmpty) {
       return const Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -86,11 +114,15 @@ class _AgendaViewState extends ConsumerState<AgendaView> {
         ),
       );
     }
-    final byDay = <String, List<OccurrenceCacheData>>{};
+    final occByDay = <String, List<OccurrenceCacheData>>{};
     for (final o in occs) {
-      byDay.putIfAbsent(o.dayKey, () => []).add(o);
+      occByDay.putIfAbsent(o.dayKey, () => []).add(o);
     }
-    final days = byDay.keys.toList()..sort();
+    final habitByDay = <String, List<HabitCalendarEntry>>{};
+    for (final h in habits) {
+      habitByDay.putIfAbsent(h.dayKey, () => []).add(h);
+    }
+    final days = {...occByDay.keys, ...habitByDay.keys}.toList()..sort();
     final items = <Widget>[];
     for (final d in days) {
       items.add(
@@ -99,7 +131,20 @@ class _AgendaViewState extends ConsumerState<AgendaView> {
           child: Text(d, style: Theme.of(context).textTheme.titleSmall),
         ),
       );
-      for (final o in byDay[d]!) {
+      final dayHabits = habitByDay[d] ?? const <HabitCalendarEntry>[];
+      dayHabits.sort((a, b) => a.habitName.compareTo(b.habitName));
+      for (final h in dayHabits) {
+        items.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            child: HabitCalendarMarker(
+              key: ValueKey('agenda-habit-${h.habitId}-${h.dayKey}'),
+              entry: h,
+            ),
+          ),
+        );
+      }
+      for (final o in occByDay[d] ?? const <OccurrenceCacheData>[]) {
         items.add(
           AgendaEventTile(
             key: ValueKey('agenda-${o.id}'),

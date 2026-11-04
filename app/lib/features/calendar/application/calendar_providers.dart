@@ -2,11 +2,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/db/db_provider.dart';
+import '../../../core/time/time.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/event_repository.dart';
 import '../../../data/repositories/occurrence_repository.dart';
+import '../../../domain/habits/habit_calendar_entry.dart';
 import '../../../domain/sources/source_label.dart';
 import '../../auth/application/auth_providers.dart';
+import '../../habits/application/habits_providers.dart';
 import '../application/calendar_state.dart';
 
 final occurrenceRepositoryProvider = Provider<OccurrenceRepository>((ref) {
@@ -69,6 +72,18 @@ final windowOccurrencesProvider =
           .watch(occurrenceRepositoryProvider)
           .watchWindow(range.fromUtc, range.toUtc);
     });
+
+/// Scheduled habits with their log state for the materialized calendar range.
+final calendarHabitEntriesProvider = StreamProvider<List<HabitCalendarEntry>>((
+  ref,
+) {
+  final range = ref.watch(calendarCacheRangeProvider);
+  final fromKey = dateKey(range.fromUtc);
+  final toKey = dateKey(range.toUtc.subtract(const Duration(milliseconds: 1)));
+  return ref
+      .watch(habitRepositoryProvider)
+      .watchCalendarEntries(fromKey, toKey);
+});
 
 /// Display source for an event occurrence. Loaded once per cache range so
 /// timeline, agenda and month views can show labels without per-row queries.

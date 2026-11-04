@@ -6,10 +6,12 @@ import 'package:drift/native.dart';
 import 'package:ephemeron/core/db/db_provider.dart';
 import 'package:ephemeron/core/time/time.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
+import 'package:ephemeron/data/repositories/habit_repository.dart';
 import 'package:ephemeron/data/repositories/occurrence_repository.dart';
 import 'package:ephemeron/features/calendar/application/calendar_providers.dart';
 import 'package:ephemeron/features/calendar/application/calendar_state.dart';
 import 'package:ephemeron/features/calendar/presentation/month_view.dart';
+import 'package:ephemeron/domain/habits/date_key.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -181,6 +183,61 @@ void main() {
 
     expect(find.byKey(const Key('month-agenda-empty')), findsOneWidget);
     expect(find.text('Nothing scheduled'), findsOneWidget);
+    await _tearDown(tester, db);
+  });
+
+  testWidgets('habit markers fit a 320dp month grid', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final db = _db();
+    final repo = HabitRepository(db);
+    final today = DateTime.now();
+    await repo.createHabit(
+      name: 'A long habit name',
+      frequency: 'daily',
+      startDate: '2020-01-01',
+    );
+    await _seed(db, [
+      (
+        id: 'e1',
+        title: 'Standup',
+        day: DateTime(today.year, today.month, today.day),
+        hour: 10,
+      ),
+    ]);
+    await _pumpMonth(tester, db, today);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('A long habit name'), findsWidgets);
+    expect(tester.takeException(), null);
+    await _tearDown(tester, db);
+  });
+
+  testWidgets('habit marker toggles done for the day', (
+    WidgetTester tester,
+  ) async {
+    final db = _db();
+    final repo = HabitRepository(db);
+    final id = await repo.createHabit(
+      name: 'Read',
+      frequency: 'daily',
+      startDate: '2020-01-01',
+    );
+    await _pumpMonth(tester, db, DateTime.now());
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final today = habitDateKey(DateTime.now());
+    final marker = find.byKey(ValueKey('month-habit-$id-$today'));
+    expect(marker, findsOneWidget);
+    await tester.tap(marker);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect((await repo.logFor(id, today))?.done, isTrue);
     await _tearDown(tester, db);
   });
 

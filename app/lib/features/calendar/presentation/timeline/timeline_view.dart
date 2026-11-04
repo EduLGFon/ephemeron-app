@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../data/drift/app_database.dart';
+import '../../../../domain/habits/habit_calendar_entry.dart';
 import '../../application/calendar_providers.dart';
 import '../event_details_sheet.dart';
 import 'timeline_chrome.dart';
@@ -93,6 +94,9 @@ class _TimelineViewState extends ConsumerState<TimelineView>
       },
       orElse: () => _lastOccurrences,
     );
+    final habitEntries = ref
+        .watch(calendarHabitEntriesProvider)
+        .maybeWhen(data: (v) => v, orElse: () => const <HabitCalendarEntry>[]);
     final stripAnchor = timelineStripAnchor(widget.anchor);
     final stripCount = timelineStripCount(widget.dayCount);
     final timed = <OccurrenceCacheData>[];
@@ -107,6 +111,10 @@ class _TimelineViewState extends ConsumerState<TimelineView>
         timed.add(o);
       }
     }
+    final stripHabits = [
+      for (final h in habitEntries)
+        if (timelineIsVisibleDay(stripAnchor, stripCount, h.dayKey)) h,
+    ];
 
     return Focus(
       autofocus: true,
@@ -130,11 +138,15 @@ class _TimelineViewState extends ConsumerState<TimelineView>
                 gutterWidth: timelineGutterWidth,
                 swipeOffset: swipeOffset,
               ),
-              if (timed.isEmpty && allDay.isEmpty && building)
+              if (timed.isEmpty &&
+                  allDay.isEmpty &&
+                  stripHabits.isEmpty &&
+                  building)
                 const LinearProgressIndicator(minHeight: 2),
-              if (allDay.isNotEmpty)
+              if (allDay.isNotEmpty || stripHabits.isNotEmpty)
                 TimelineAllDayStrip(
                   occs: allDay,
+                  habits: stripHabits,
                   anchor: widget.anchor,
                   dayCount: widget.dayCount,
                   gutterWidth: timelineGutterWidth,

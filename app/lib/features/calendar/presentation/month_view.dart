@@ -8,10 +8,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/time/time.dart';
 import '../../../data/drift/app_database.dart';
+import '../../../domain/habits/habit_calendar_entry.dart';
 import '../application/calendar_providers.dart';
 import 'agenda_event_tile.dart';
 import 'event_details_sheet.dart';
 import 'google_calendar_colors.dart';
+import 'habit_calendar_marker.dart';
 import 'timeline/timeline_utils.dart';
 
 class MonthView extends ConsumerStatefulWidget {
@@ -44,6 +46,13 @@ class _MonthViewState extends ConsumerState<MonthView> {
       },
       orElse: () => _lastOccurrences,
     );
+    final habitEntries = ref
+        .watch(calendarHabitEntriesProvider)
+        .maybeWhen(data: (v) => v, orElse: () => const <HabitCalendarEntry>[]);
+    final habitsByDay = <String, List<HabitCalendarEntry>>{};
+    for (final h in habitEntries) {
+      habitsByDay.putIfAbsent(h.dayKey, () => []).add(h);
+    }
     final anchor = window.anchor;
     final selectedDay = DateTime(anchor.year, anchor.month, anchor.day);
     final first = DateTime(anchor.year, anchor.month, 1);
@@ -67,6 +76,8 @@ class _MonthViewState extends ConsumerState<MonthView> {
     final todayKey = dateKey(DateTime.now());
     final selectedKey = dateKey(selectedDay);
     final selectedOccs = byDay[selectedKey] ?? const <OccurrenceCacheData>[];
+    final selectedHabits =
+        habitsByDay[selectedKey] ?? const <HabitCalendarEntry>[];
     final hasVisibleOccurrences = days.any(
       (d) => byDay.containsKey(dateKey(d)),
     );
@@ -111,6 +122,11 @@ class _MonthViewState extends ConsumerState<MonthView> {
                                   occurrences:
                                       byDay[dateKey(days[week * 7 + dow])] ??
                                       const <OccurrenceCacheData>[],
+                                  habits:
+                                      habitsByDay[dateKey(
+                                        days[week * 7 + dow],
+                                      )] ??
+                                      const <HabitCalendarEntry>[],
                                   onTap: () => ref
                                       .read(calendarStateProvider.notifier)
                                       .goTo(days[week * 7 + dow]),
@@ -126,12 +142,28 @@ class _MonthViewState extends ConsumerState<MonthView> {
             SliverToBoxAdapter(
               child: _AgendaHeader(
                 day: selectedDay,
-                count: selectedOccs.length,
+                count: selectedOccs.length + selectedHabits.length,
               ),
             ),
-            if (selectedOccs.isEmpty)
+            if (selectedOccs.isEmpty && selectedHabits.isEmpty)
               const SliverToBoxAdapter(child: _EmptyAgenda())
-            else
+            else ...[
+              if (selectedHabits.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final h in selectedHabits)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: HabitCalendarMarker(entry: h),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
               SliverList.builder(
                 itemCount: selectedOccs.length,
                 itemBuilder: (ctx, i) {
@@ -143,6 +175,7 @@ class _MonthViewState extends ConsumerState<MonthView> {
                   );
                 },
               ),
+            ],
             const SliverToBoxAdapter(child: SizedBox(height: 96)),
           ],
         );
@@ -177,6 +210,7 @@ class _MonthDayCell extends StatelessWidget {
     required this.selected,
     required this.isPastDay,
     required this.occurrences,
+    this.habits = const <HabitCalendarEntry>[],
     required this.onTap,
   });
 
@@ -185,6 +219,7 @@ class _MonthDayCell extends StatelessWidget {
   final bool selected;
   final bool isPastDay;
   final List<OccurrenceCacheData> occurrences;
+  final List<HabitCalendarEntry> habits;
   final VoidCallback onTap;
 
   @override
@@ -220,10 +255,11 @@ class _MonthDayCell extends StatelessWidget {
                   ((c.maxHeight - dayNumberHeight - 4) / (pillHeight + pillGap))
                       .floor();
               if (slots < 1) slots = 1;
-              final total = occurrences.length;
+              final items = <Object>[...occurrences, ...habits];
+              final total = items.length;
               final overflow = total > slots;
               final visibleCount = overflow ? slots - 1 : total;
-              final visible = occurrences.take(visibleCount).toList();
+              final visible = items.take(visibleCount).toList();
               final hidden = total - visibleCount;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -234,7 +270,21 @@ class _MonthDayCell extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   for (var i = 0; i < visible.length; i++) ...[
-                    _MonthPill(occurrence: visible[i], dimmed: dimmed),
+                    if (visible[i] is OccurrenceCacheData)
+                      _MonthPill(
+                        occurrence: visible[i] as OccurrenceCacheData,
+                        dimmed: dimmed,
+                      )
+                    else
+                      HabitCalendarMarker(
+                        key: ValueKey(
+                          'month-habit-'
+                          '${(visible[i] as HabitCalendarEntry).habitId}-'
+                          '${(visible[i] as HabitCalendarEntry).dayKey}',
+                        ),
+                        entry: visible[i] as HabitCalendarEntry,
+                        compact: true,
+                      ),
                     if (i != visible.length - 1 || overflow)
                       const SizedBox(height: pillGap),
                   ],
