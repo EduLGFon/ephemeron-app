@@ -1,5 +1,5 @@
-// Note editor: autosave (debounced 800 ms), Markdown toolbar,
-// edit/preview toggle, tappable checklists, word count, attachments,
+// Note editor: autosave (debounced 800 ms), Read/Edit modes, Markdown toolbar,
+// a live preview while editing, tappable checklists, word count, attachments,
 // pin/duplicate/move/delete with undo.
 import 'dart:async';
 
@@ -14,6 +14,10 @@ import '../../sync/application/pending_operations.dart';
 import '../application/notes_providers.dart';
 import 'markdown_preview.dart' show MarkdownPreview, countWords;
 
+enum _NoteMode { read, edit }
+
+enum _SaveStatus { idle, saving, saved, failed }
+
 class NoteEditorScreen extends ConsumerStatefulWidget {
   const NoteEditorScreen({super.key, required this.noteId});
 
@@ -27,7 +31,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   final _titleCtl = TextEditingController();
   final _bodyCtl = TextEditingController();
   Timer? _saveTimer;
-  bool _preview = false;
+  Future<void>? _activeSave;
+  _NoteMode _mode = _NoteMode.read;
+  _SaveStatus _saveStatus = _SaveStatus.idle;
   bool _loaded = false;
   NoteRepository? _repo;
   dynamic _settings;
@@ -50,13 +56,21 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   @override
   void dispose() {
     _saveTimer?.cancel();
+    // Best-effort fallback for process teardown. Normal back navigation is
+    // flushed and awaited by the PopScope below.
     // Never use ref after unmount: flush via the cached repository.
     final repo = _repo;
     if (_loaded && repo != null) {
       final id = widget.noteId;
       final title = _titleCtl.text;
       final body = _bodyCtl.text;
-      unawaited(repo.updateNote(id, title: title, body: () => body));
+      unawaited(() async {
+        try {
+          await repo.updateNote(id, title: title, body: () => body);
+        } catch (_) {
+          // Nothing actionable after the widget is gone.
+        }
+      }());
     }
     final settings = _settings;
     if (settings != null) {
@@ -78,14 +92,52 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     _saveTimer = Timer(const Duration(milliseconds: 800), _flush);
   }
 
-  Future<void> _flush() async {
+  void _setSaveStatus(_SaveStatus status) {
+    if (!mounted || _saveStatus == status) return;
+    setState(() => _saveStatus = status);
+  }
+
+  Future<void> _flush() {
     final repo = _repo;
-    if (!_loaded || repo == null) return;
-    await repo.updateNote(
-      widget.noteId,
-      title: _titleCtl.text,
-      body: () => _bodyCtl.text,
-    );
+    if (!_loaded || repo == null) return Future<void>.value();
+    // Chain every save so a back gesture always waits for the newest
+    // controller text, even while an earlier save is still in flight.
+    final save = _saveAfter(_activeSave, repo);
+    _activeSave = save;
+    return save;
+  }
+
+  Future<void> _saveAfter(Future<void>? previous, NoteRepository repo) async {
+    if (previous != null) {
+      try {
+        await previous;
+      } catch (_) {
+        // The chained save must still run after an earlier failure.
+      }
+    }
+    if (!mounted) return;
+    _setSaveStatus(_SaveStatus.saving);
+    try {
+      await repo.updateNote(
+        widget.noteId,
+        title: _titleCtl.text,
+        body: () => _bodyCtl.text,
+      );
+      _setSaveStatus(_SaveStatus.saved);
+    } catch (_) {
+      _setSaveStatus(_SaveStatus.failed);
+    }
+  }
+
+  void _toggleMode() {
+    if (_mode == _NoteMode.edit) {
+      // Switching to Read shows the controller text immediately while the
+      // flush persists it in the background.
+      unawaited(_flush());
+    }
+    setState(() {
+      _mode = _mode == _NoteMode.read ? _NoteMode.edit : _NoteMode.read;
+    });
   }
 
   void _toggleTask(int blockIndex) {
@@ -128,123 +180,124 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   @override
   Widget build(BuildContext context) {
     final noteAsync = ref.watch(_noteProvider(widget.noteId));
-    return noteAsync.when(
-      loading: () => Scaffold(
-        appBar: AppBar(),
-        body: const Center(child: CircularProgressIndicator()),
-      ),
-      error: (e, _) => Scaffold(
-        appBar: AppBar(),
-        body: const Center(child: Text('Could not load note.')),
-      ),
-      data: (note) {
-        if (note == null) {
-          return Scaffold(
-            appBar: AppBar(),
-            body: const Center(child: Text('Note not found.')),
-          );
-        }
-        if (!_loaded) {
-          _loaded = true;
-          _repo ??= ref.read(noteRepositoryProvider);
-          _titleCtl.text = note.title;
-          _bodyCtl.text = note.body ?? '';
-          _titleCtl.addListener(_scheduleSave);
-          _bodyCtl.addListener(_scheduleSave);
-        }
-        final counts = countWords(_bodyCtl.text);
-        return CallbackShortcuts(
-          bindings: {
-            SingleActivator(LogicalKeyboardKey.enter, control: true): () {
-              if (!mounted) return;
-              _flush();
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        // Persist before a back gesture leaves the editor.
+        await _flush();
+        if (context.mounted) Navigator.of(context).pop(result);
+      },
+      child: noteAsync.when(
+        loading: () => Scaffold(
+          appBar: AppBar(),
+          body: const Center(child: CircularProgressIndicator()),
+        ),
+        error: (e, _) => Scaffold(
+          appBar: AppBar(),
+          body: const Center(child: Text('Could not load note.')),
+        ),
+        data: (note) {
+          if (note == null) {
+            return Scaffold(
+              appBar: AppBar(),
+              body: const Center(child: Text('Note not found.')),
+            );
+          }
+          if (!_loaded) {
+            _loaded = true;
+            _repo ??= ref.read(noteRepositoryProvider);
+            _titleCtl.text = note.title;
+            _bodyCtl.text = note.body ?? '';
+            _titleCtl.addListener(_scheduleSave);
+            _bodyCtl.addListener(_scheduleSave);
+          }
+          final editing = _mode == _NoteMode.edit;
+          final title = _titleCtl.text.trim();
+          return CallbackShortcuts(
+            bindings: {
+              SingleActivator(LogicalKeyboardKey.enter, control: true): () {
+                if (!mounted) return;
+                _flush();
+              },
+              SingleActivator(LogicalKeyboardKey.escape): () {
+                if (!mounted) return;
+                Navigator.of(context).maybePop();
+              },
             },
-            SingleActivator(LogicalKeyboardKey.escape): () {
-              if (!mounted) return;
-              Navigator.of(context).maybePop();
-            },
-          },
-          child: Scaffold(
-            appBar: AppBar(
-              title: const Text('Note'),
-              actions: [
-                IconButton(
-                  icon: Icon(
-                    _preview ? Icons.edit_outlined : Icons.preview_outlined,
-                  ),
-                  tooltip: _preview ? 'Edit' : 'Preview',
-                  onPressed: () => setState(() => _preview = !_preview),
-                ),
-                PopupMenuButton<String>(
-                  onSelected: (v) => _menu(v, note),
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'pin', child: Text('Pin / unpin')),
-                    PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
-                    PopupMenuItem(value: 'move', child: Text('Move to folder')),
-                    PopupMenuItem(
-                      value: 'share',
-                      child: Text('Share as Markdown'),
+            child: Scaffold(
+              appBar: AppBar(
+                title: const Text('Note'),
+                actions: [
+                  IconButton(
+                    icon: Icon(
+                      editing ? Icons.menu_book_outlined : Icons.edit_outlined,
                     ),
-                    PopupMenuItem(value: 'delete', child: Text('Delete')),
-                  ],
-                ),
-              ],
-            ),
-            body: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: TextField(
-                    controller: _titleCtl,
-                    decoration: const InputDecoration(
-                      hintText: 'Title',
-                      border: InputBorder.none,
-                    ),
-                    style: Theme.of(context).textTheme.headlineSmall,
+                    tooltip: editing ? 'Read' : 'Edit',
+                    onPressed: _toggleMode,
                   ),
-                ),
-                if (!_preview) _Toolbar(onAction: _wrap),
-                Expanded(
-                  child: _preview
-                      ? MarkdownPreview(
-                          body: _bodyCtl.text,
-                          onToggleTask: (i) =>
-                              _toggleTask(0 - 0 + _taskIndex(i)),
-                        )
-                      : Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: TextField(
-                            controller: _bodyCtl,
-                            maxLines: null,
-                            expands: true,
-                            textAlignVertical: TextAlignVertical.top,
+                  PopupMenuButton<String>(
+                    onSelected: (v) => _menu(v, note),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'pin', child: Text('Pin / unpin')),
+                      PopupMenuItem(
+                        value: 'duplicate',
+                        child: Text('Duplicate'),
+                      ),
+                      PopupMenuItem(
+                        value: 'move',
+                        child: Text('Move to folder'),
+                      ),
+                      PopupMenuItem(
+                        value: 'share',
+                        child: Text('Share as Markdown'),
+                      ),
+                      PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    ],
+                  ),
+                ],
+              ),
+              body: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: editing
+                        ? TextField(
+                            key: const Key('note-title'),
+                            controller: _titleCtl,
                             decoration: const InputDecoration(
-                              hintText:
-                                  'Write Markdown... - [ ] task lists work',
+                              hintText: 'Title',
                               border: InputBorder.none,
                             ),
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          )
+                        : Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              title.isEmpty ? 'Untitled' : title,
+                              style: Theme.of(context).textTheme.headlineSmall,
+                            ),
                           ),
-                        ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Text(
-                    '${counts.words} words, ${counts.chars} chars - autosaved',
-                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                ),
-                _LinksSection(noteId: widget.noteId),
-              ],
-            ), // Column
-          ), // Scaffold
-        ); // CallbackShortcuts
-      },
+                  if (editing) _Toolbar(onAction: _wrap),
+                  Expanded(
+                    child: editing
+                        ? _EditorSplit(controller: _bodyCtl)
+                        : MarkdownPreview(
+                            body: _bodyCtl.text,
+                            onToggleTask: _toggleTask,
+                          ),
+                  ),
+                  _StatusLine(controller: _bodyCtl, status: _saveStatus),
+                  _LinksSection(noteId: widget.noteId),
+                ],
+              ), // Column
+            ), // Scaffold
+          ); // CallbackShortcuts
+        },
+      ),
     );
   }
-
-  /// Preview lists one CheckboxListTile per task line in order; the block
-  /// index maps directly to the Nth task line in the source.
-  int _taskIndex(int blockIndex) => blockIndex;
 
   Future<void> _menu(String action, Note note) async {
     final repo = ref.read(noteRepositoryProvider);
@@ -329,6 +382,113 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
 final _noteProvider = StreamProvider.family<Note?, String>((ref, id) {
   return ref.watch(noteRepositoryProvider).watchNote(id);
 });
+
+/// Body editor plus a live preview. Wide layouts split side by side; phone
+/// layouts stack them vertically so the keyboard never hides the preview.
+class _EditorSplit extends StatelessWidget {
+  const _EditorSplit({required this.controller});
+
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final editor = Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: TextField(
+            key: const Key('note-body'),
+            controller: controller,
+            maxLines: null,
+            expands: true,
+            textAlignVertical: TextAlignVertical.top,
+            decoration: const InputDecoration(
+              hintText: 'Write Markdown... - [ ] task lists work',
+              border: InputBorder.none,
+            ),
+          ),
+        );
+        final preview = _LivePreview(controller: controller);
+        if (constraints.maxWidth >= 720) {
+          return Row(
+            children: [
+              Expanded(child: editor),
+              const VerticalDivider(width: 1),
+              Expanded(child: preview),
+            ],
+          );
+        }
+        return Column(
+          children: [
+            Expanded(flex: 3, child: editor),
+            const Divider(height: 1),
+            Expanded(flex: 2, child: preview),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Rebuilds only the preview subtree as the body changes.
+class _LivePreview extends StatelessWidget {
+  const _LivePreview({required this.controller});
+
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, value, _) {
+        // Editing preview is display-only so taps cannot steal focus.
+        return IgnorePointer(
+          child: RepaintBoundary(
+            child: MarkdownPreview(
+              key: const Key('note-live-preview'),
+              body: value.text,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _StatusLine extends StatelessWidget {
+  const _StatusLine({required this.controller, required this.status});
+
+  final TextEditingController controller;
+  final _SaveStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, value, _) {
+        final counts = countWords(value.text);
+        final label = switch (status) {
+          _SaveStatus.idle => 'Autosave on',
+          _SaveStatus.saving => 'Saving...',
+          _SaveStatus.saved => 'Saved',
+          _SaveStatus.failed => 'Save failed',
+        };
+        return Padding(
+          padding: const EdgeInsets.all(8),
+          child: Text(
+            '${counts.words} words, ${counts.chars} chars - $label',
+            key: const Key('note-save-status'),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: status == _SaveStatus.failed
+                  ? Theme.of(context).colorScheme.error
+                  : null,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
 
 class _Toolbar extends StatelessWidget {
   const _Toolbar({required this.onAction});

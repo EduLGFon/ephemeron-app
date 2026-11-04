@@ -88,7 +88,7 @@ class DeviceCalendarImportService {
             calendarId: targetCalendarId,
             title: title,
             startDate: _dateStr(e.startDate),
-            endDate: _dateStr(e.endDate),
+            endDate: _exclusiveImportEnd(e.startDate, e.endDate),
             allDay: true,
             location: e.location,
             notes: e.description,
@@ -127,4 +127,13 @@ class DeviceCalendarImportService {
 
   String _dateStr(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  // device_calendar_plus reports all-day end as EXCLUSIVE (half-open
+  // [start, end)); keep it. Fall back to a single day when end <= start.
+  String _exclusiveImportEnd(DateTime start, DateTime end) {
+    if (!end.isAfter(start)) {
+      return _dateStr(start.add(const Duration(days: 1)));
+    }
+    return _dateStr(end);
+  }
 }

@@ -167,6 +167,132 @@ void main() {
     expect(await _count(db), 1);
   });
 
+  test('edit follows split series keeps notes on the new master', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final master = await _setup(db);
+    final repo = EventRepository(db, OccurrenceRepository(db));
+    await repo.editOccurrence(
+      master,
+      DateTime.utc(2026, 3, 4, 9),
+      scope: EditScope.following,
+      notes: () => 'Later agenda',
+    );
+    final rows = (await db.select(db.events).get()).where(
+      (e) => e.deletedAt == null,
+    );
+    final split = rows.firstWhere((e) => e.id != master);
+    expect(split.notes, 'Later agenda');
+  });
+
+  test('edit single saves notes on the exception and can clear them', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final master = await _setup(db);
+    final repo = EventRepository(db, OccurrenceRepository(db));
+    await repo.editOccurrence(
+      master,
+      DateTime.utc(2026, 3, 3, 9),
+      scope: EditScope.single,
+      notes: () => 'Bring slides',
+    );
+    var rows = await db.select(db.events).get();
+    var ex = rows.firstWhere((e) => e.id != master);
+    expect(ex.notes, 'Bring slides');
+    await repo.editOccurrence(
+      master,
+      DateTime.utc(2026, 3, 3, 9),
+      scope: EditScope.single,
+      notes: () => null,
+    );
+    rows = await db.select(db.events).get();
+    ex = rows.firstWhere((e) => e.id != master);
+    expect(ex.notes, isNull);
+  });
+
+  test('edit all saves and clears master notes', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final master = await _setup(db);
+    final repo = EventRepository(db, OccurrenceRepository(db));
+    await repo.editOccurrence(
+      master,
+      DateTime.utc(2026, 3, 2, 9),
+      scope: EditScope.all,
+      notes: () => 'Updated notes',
+    );
+    var m = await (db.select(
+      db.events,
+    )..where((e) => e.id.equals(master))).getSingle();
+    expect(m.notes, 'Updated notes');
+    await repo.editOccurrence(
+      master,
+      DateTime.utc(2026, 3, 2, 9),
+      scope: EditScope.all,
+      notes: () => null,
+    );
+    m = await (db.select(
+      db.events,
+    )..where((e) => e.id.equals(master))).getSingle();
+    expect(m.notes, isNull);
+  });
+
+  test(
+    'all-day create stores exclusive end date and edit updates range',
+    () async {
+      final db = _db();
+      addTearDown(db.close);
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      await db
+          .into(db.calendars)
+          .insert(
+            CalendarsCompanion.insert(
+              id: 'cal1',
+              name: 'c',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      final repo = EventRepository(db, OccurrenceRepository(db));
+      final single = await repo.createEvent(
+        calendarId: 'cal1',
+        title: 'Holiday',
+        allDay: true,
+        startDate: '2026-04-10',
+      );
+      var row = await (db.select(
+        db.events,
+      )..where((e) => e.id.equals(single))).getSingle();
+      expect(row.startDate, '2026-04-10');
+      expect(row.endDate, '2026-04-11');
+
+      final multi = await repo.createEvent(
+        calendarId: 'cal1',
+        title: 'Trip',
+        allDay: true,
+        startDate: '2026-05-01',
+        endDate: '2026-05-04',
+      );
+      row = await (db.select(
+        db.events,
+      )..where((e) => e.id.equals(multi))).getSingle();
+      expect(row.endDate, '2026-05-04');
+
+      await repo.editOccurrence(
+        multi,
+        DateTime.utc(2026, 5, 1),
+        scope: EditScope.all,
+        startDate: '2026-05-02',
+        endDate: '2026-05-06',
+      );
+      row = await (db.select(
+        db.events,
+      )..where((e) => e.id.equals(multi))).getSingle();
+      expect(row.startDate, '2026-05-02');
+      expect(row.endDate, '2026-05-06');
+    },
+  );
+
   test('rsvp updates attendee and queues sync', () async {
     final db = _db();
     addTearDown(db.close);

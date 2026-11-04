@@ -263,11 +263,14 @@ class OccurrenceRepository {
       int.parse(parts[2]),
     );
     final endParts = (master.endDate ?? master.startDate)!.split('-');
-    final spanDays = DateTime.utc(
+    // All-day endDate is EXCLUSIVE (Google-style). spanDays is the number
+    // of days the event spans; legacy rows with end==start count as one day.
+    final spanDaysRaw = DateTime.utc(
       int.parse(endParts[0]),
       int.parse(endParts[1]),
       int.parse(endParts[2]),
     ).difference(cursor).inDays;
+    final spanDays = spanDaysRaw < 1 ? 1 : spanDaysRaw;
     final color = effectiveEventColor(
       eventColorId: master.colorId,
       calendarColor: calColors[master.calendarId],
@@ -286,7 +289,7 @@ class OccurrenceRepository {
         s.year,
         s.month,
         s.day,
-      ).add(Duration(days: spanDays + 1));
+      ).add(Duration(days: spanDays));
       rows.add(
         _row(
           master.id,
@@ -314,13 +317,18 @@ class OccurrenceRepository {
     );
     if (e.isAllDay) {
       if (e.startDate == null) return;
-      if (e.startDate!.compareTo(dateKey(rangeEnd)) > 0) return;
-      final last = e.endDate ?? e.startDate!;
-      if (last.compareTo(dateKey(rangeStart)) < 0) return;
+      // All-day endDate is EXCLUSIVE (Google-style). Legacy local rows may
+      // have end==start; treat those as a single day.
+      final lastRaw = e.endDate ?? e.startDate!;
       var cursor = _parseDate(e.startDate!);
-      final end = _parseDate(last);
+      var end = _parseDate(lastRaw);
+      if (!end.isAfter(cursor)) {
+        end = cursor.add(const Duration(days: 1));
+      }
+      if (e.startDate!.compareTo(dateKey(rangeEnd)) > 0) return;
+      if (dateKey(end).compareTo(dateKey(rangeStart)) <= 0) return;
       var n = 0;
-      while (!cursor.isAfter(end)) {
+      while (cursor.isBefore(end)) {
         final next = cursor.add(const Duration(days: 1));
         rows.add(
           _row(

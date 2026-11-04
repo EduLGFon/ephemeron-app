@@ -17,6 +17,7 @@ import '../../features/calendar/application/calendar_providers.dart';
 import '../../features/calendar/application/calendar_state.dart';
 import '../../features/calendar/presentation/event_details_sheet.dart';
 import '../../features/calendar/presentation/event_editor_sheet.dart';
+import '../../features/calendar/presentation/timeline/timeline_now_controller.dart';
 import '../../features/countdowns/presentation/countdown_editor_sheet.dart';
 import '../../features/habits/presentation/habit_editor_sheet.dart';
 import '../../features/notes/presentation/note_editor_screen.dart';
@@ -506,6 +507,9 @@ class _AppShellState extends ConsumerState<AppShell>
 
   Future<void> _onTabSelected(int branchIndex) async {
     widget.navigationShell.goBranch(branchIndex);
+    if (branchIndex == AppSection.calendar.index) {
+      ref.read(timelineNowControllerProvider).refresh();
+    }
     try {
       final repo = await ref.read(settingsRepositoryProvider.future);
       await repo.setLastTabIndex(branchIndex);

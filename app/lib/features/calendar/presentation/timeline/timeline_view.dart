@@ -11,6 +11,7 @@ import '../event_details_sheet.dart';
 import 'timeline_chrome.dart';
 import 'timeline_controller.dart';
 import 'timeline_event_block.dart';
+import 'timeline_now_controller.dart';
 import 'timeline_painters.dart';
 import 'timeline_utils.dart';
 
@@ -25,8 +26,12 @@ class TimelineView extends ConsumerStatefulWidget {
 }
 
 class _TimelineViewState extends ConsumerState<TimelineView>
-    with TimelineInteraction, SingleTickerProviderStateMixin {
+    with
+        TimelineInteraction,
+        SingleTickerProviderStateMixin,
+        WidgetsBindingObserver {
   List<OccurrenceCacheData> _lastOccurrences = const [];
+  bool _tickerEnabled = true;
 
   @override
   DateTime get anchor => widget.anchor;
@@ -38,6 +43,24 @@ class _TimelineViewState extends ConsumerState<TimelineView>
   void initState() {
     super.initState();
     initTimelineInteraction();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final enabled = TickerMode.valuesOf(context).enabled;
+    if (enabled && !_tickerEnabled) {
+      ref.read(timelineNowControllerProvider).refresh();
+    }
+    _tickerEnabled = enabled;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(timelineNowControllerProvider).refresh();
+    }
   }
 
   @override
@@ -50,6 +73,7 @@ class _TimelineViewState extends ConsumerState<TimelineView>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     disposeTimelineInteraction();
     super.dispose();
   }
@@ -59,6 +83,7 @@ class _TimelineViewState extends ConsumerState<TimelineView>
     final range = ref.watch(calendarCacheRangeProvider);
     final occAsync = ref.watch(windowOccurrencesProvider(range));
     final building = ref.watch(calendarCacheBuildingProvider);
+    final nowController = ref.watch(timelineNowControllerProvider);
     // Keep the previous day rows while the shifted window reloads. The old
     // buffer already covers the days that slide in, so no empty frame shows.
     final occs = occAsync.maybeWhen(
@@ -243,20 +268,33 @@ class _TimelineViewState extends ConsumerState<TimelineView>
                                                 ),
                                               IgnorePointer(
                                                 child: RepaintBoundary(
-                                                  child: CustomPaint(
-                                                    size: Size(
-                                                      stripWidth,
-                                                      24 * hourHeight,
-                                                    ),
-                                                    painter:
-                                                        TimelineNowLinePainter(
-                                                          anchor: stripAnchor,
-                                                          dayCount: stripCount,
-                                                          hourHeight:
-                                                              hourHeight,
-                                                          now: DateTime.now(),
-                                                        ),
-                                                  ),
+                                                  child:
+                                                      ValueListenableBuilder<
+                                                        DateTime
+                                                      >(
+                                                        valueListenable:
+                                                            nowController,
+                                                        builder:
+                                                            (
+                                                              context,
+                                                              now,
+                                                              child,
+                                                            ) => CustomPaint(
+                                                              size: Size(
+                                                                stripWidth,
+                                                                24 * hourHeight,
+                                                              ),
+                                                              painter: TimelineNowLinePainter(
+                                                                anchor:
+                                                                    stripAnchor,
+                                                                dayCount:
+                                                                    stripCount,
+                                                                hourHeight:
+                                                                    hourHeight,
+                                                                now: now,
+                                                              ),
+                                                            ),
+                                                      ),
                                                 ),
                                               ),
                                             ],

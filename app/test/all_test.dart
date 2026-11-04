@@ -35,6 +35,7 @@ import 'cases/home_widget_case.dart' as home_widget;
 import 'cases/l10n_case.dart' as l10n;
 import 'cases/matrix_case.dart' as matrix;
 import 'cases/month_view_case.dart' as month_view;
+import 'cases/note_editor_case.dart' as note_editor;
 import 'cases/note_repository_case.dart' as note_repository;
 import 'cases/occurrence_cache_case.dart' as occurrence_cache;
 import 'cases/onboarding_case.dart' as onboarding;
@@ -51,6 +52,7 @@ import 'cases/sync_engine_case.dart' as sync_engine;
 import 'cases/task_editor_case.dart' as task_editor;
 import 'cases/task_repository_case.dart' as task_repository;
 import 'cases/timeline_layout_case.dart' as timeline_layout;
+import 'cases/timeline_now_controller_case.dart' as timeline_now_controller;
 import 'cases/timeline_view_case.dart' as timeline_view;
 import 'cases/week_calendar_case.dart' as week_calendar;
 import 'cases/widget_case.dart' as widget;
@@ -86,6 +88,7 @@ const _included = <String>{
   'l10n_case.dart',
   'matrix_case.dart',
   'month_view_case.dart',
+  'note_editor_case.dart',
   'note_repository_case.dart',
   'occurrence_cache_case.dart',
   'onboarding_case.dart',
@@ -102,6 +105,7 @@ const _included = <String>{
   'task_editor_case.dart',
   'task_repository_case.dart',
   'timeline_layout_case.dart',
+  'timeline_now_controller_case.dart',
   'timeline_view_case.dart',
   'week_calendar_case.dart',
   'widget_case.dart',
@@ -111,9 +115,13 @@ const _included = <String>{
 
 void main() {
   test('test runner includes every case file', () {
-    expect(_caseFilesOnDisk(), _included,
-        reason: 'test/all_test.dart is stale. Run: '
-            'dart run tools/gen_test_runner.dart');
+    expect(
+      _caseFilesOnDisk(),
+      _included,
+      reason:
+          'test/all_test.dart is stale. Run: '
+          'dart run tools/gen_test_runner.dart',
+    );
   });
 
   group('alarm_repository', alarm_repository.main);
@@ -144,6 +152,7 @@ void main() {
   group('l10n', l10n.main);
   group('matrix', matrix.main);
   group('month_view', month_view.main);
+  group('note_editor', note_editor.main);
   group('note_repository', note_repository.main);
   group('occurrence_cache', occurrence_cache.main);
   group('onboarding', onboarding.main);
@@ -160,6 +169,7 @@ void main() {
   group('task_editor', task_editor.main);
   group('task_repository', task_repository.main);
   group('timeline_layout', timeline_layout.main);
+  group('timeline_now_controller', timeline_now_controller.main);
   group('timeline_view', timeline_view.main);
   group('week_calendar', week_calendar.main);
   group('widget', widget.main);
@@ -181,8 +191,12 @@ Set<String> _caseFilesOnDisk() {
       .where((path) => path.endsWith('_test.dart'))
       .where((path) => !path.endsWith('/all_test.dart'))
       .toSet();
-  expect(stray, isEmpty,
-      reason: 'Move top-level test files under test/cases/ as '
-          '*_case.dart and regenerate this runner.');
+  expect(
+    stray,
+    isEmpty,
+    reason:
+        'Move top-level test files under test/cases/ as '
+        '*_case.dart and regenerate this runner.',
+  );
   return cases;
 }

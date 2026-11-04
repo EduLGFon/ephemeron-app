@@ -46,6 +46,18 @@ Future<void> showEventEditor(
   );
 }
 
+/// Parses an all-day `YYYY-MM-DD` key into local midnight.
+DateTime? _parseDateKey(String? value) {
+  if (value == null) return null;
+  final parts = value.split('-');
+  if (parts.length != 3) return null;
+  final year = int.tryParse(parts[0]);
+  final month = int.tryParse(parts[1]);
+  final day = int.tryParse(parts[2]);
+  if (year == null || month == null || day == null) return null;
+  return DateTime(year, month, day);
+}
+
 String _summarizeRrule(BuildContext context, String rrule) {
   try {
     final r = RecurrenceRule.parse(rrule);
@@ -142,7 +154,20 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
         draftReminders ??
         parseReminderOffsets(e?.reminders, allDay: e?.isAllDay ?? false);
     _alarmPreset = (d?['alarmPreset'] as String?) ?? e?.alarmPreset;
-    if (e?.startUtc != null && d?['startMs'] == null) {
+    if (e != null &&
+        e.isAllDay &&
+        e.startDate != null &&
+        d?['startMs'] == null) {
+      // Internally endDate is exclusive; show the inclusive last day.
+      final start = _parseDateKey(e.startDate) ?? DateTime.now();
+      _start = DateTime(start.year, start.month, start.day);
+      final exclusiveEnd =
+          _parseDateKey(e.endDate) ?? _start.add(const Duration(days: 1));
+      var last = exclusiveEnd.subtract(const Duration(days: 1));
+      // Legacy all-day rows stored endDate == startDate for one day.
+      if (last.isBefore(_start)) last = _start;
+      _end = DateTime(last.year, last.month, last.day);
+    } else if (e?.startUtc != null && d?['startMs'] == null) {
       _start = DateTime.fromMillisecondsSinceEpoch(
         e!.startUtc!,
         isUtc: true,
@@ -301,6 +326,27 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     } catch (_) {}
   }
 
+  /// Trims the description and caps the event column at 8000 chars so the
+  /// full text can live in a linked overflow note.
+  ({String? full, String? stored}) _notesPayload() {
+    final full = _notes.text.trim();
+    if (full.isEmpty) return (full: null, stored: null);
+    return (
+      full: full,
+      stored: full.length > 8000
+          ? '${full.substring(0, 8000)}\n(continued in Ephemeron)'
+          : full,
+    );
+  }
+
+  Future<void> _persistOverflow(String eventId, String? fullNotes) async {
+    if (fullNotes == null || fullNotes.length <= 8000) return;
+    final noteId = await ref
+        .read(noteRepositoryProvider)
+        .ensureOverflowNote(eventId, fullNotes);
+    await ref.read(eventRepositoryProvider).setNotesOverflow(eventId, noteId);
+  }
+
   Future<void> _pickDate(bool isStart) async {
     final d = await showDatePicker(
       context: context,
@@ -311,14 +357,26 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     if (d == null) return;
     _changed(() {
       if (isStart) {
-        _start = DateTime(d.year, d.month, d.day, _start.hour, _start.minute);
+        _start = DateTime(
+          d.year,
+          d.month,
+          d.day,
+          _allDay ? 0 : _start.hour,
+          _allDay ? 0 : _start.minute,
+        );
         if (_end.isBefore(_start)) {
-          _end = _start.add(const Duration(hours: 1));
+          _end = _allDay ? _start : _start.add(const Duration(hours: 1));
         }
       } else {
-        _end = DateTime(d.year, d.month, d.day, _end.hour, _end.minute);
+        _end = DateTime(
+          d.year,
+          d.month,
+          d.day,
+          _allDay ? 0 : _end.hour,
+          _allDay ? 0 : _end.minute,
+        );
         if (_end.isBefore(_start)) {
-          _end = _start.add(const Duration(hours: 1));
+          _end = _allDay ? _start : _start.add(const Duration(hours: 1));
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('End was before start; adjusted.')),
           );
@@ -419,20 +477,22 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
         if (proceed != true) return;
       }
     }
-    final noteRepo = ref.read(noteRepositoryProvider);
     final settings = await ref.read(settingsRepositoryProvider.future);
     _calendarId ??= settings.defaultCalendarId;
+    final notesPayload = _notesPayload();
+    final startDateKey = _allDay ? _fmtDate(_start) : null;
+    final endDateKey = _allDay
+        ? _fmtDate(DateTime(_end.year, _end.month, _end.day + 1))
+        : null;
     if (existing == null || existing.rrule == null) {
       if (existing == null) {
-        final fullNotes = _notes.text.trim().isEmpty
-            ? null
-            : _notes.text.trim();
         final eventId = await repo.createEvent(
           calendarId: _calendarId!,
           title: title,
           startUtc: _allDay ? null : _start.toUtc(),
           endUtc: _allDay ? null : _end.toUtc(),
-          startDate: _allDay ? _fmtDate(_start) : null,
+          startDate: startDateKey,
+          endDate: endDateKey,
           allDay: _allDay,
           // SECURITY: store null (floating local time) for device-created
           // events. DateTime.now().timeZoneName yields abbreviations like
@@ -444,30 +504,22 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
           location: _location.text.trim().isEmpty
               ? null
               : _location.text.trim(),
-          notes: fullNotes != null && fullNotes.length > 8000
-              ? '${fullNotes.substring(0, 8000)}\n(continued in Ephemeron)'
-              : fullNotes,
+          notes: notesPayload.stored,
           reminders: encodeReminderOffsets(_reminders),
           alarmPreset: _alarmPreset,
         );
-        if (fullNotes != null && fullNotes.length > 8000) {
-          final noteId = await noteRepo.ensureOverflowNote(eventId, fullNotes);
-          await repo.setNotesOverflow(eventId, noteId);
-        }
+        await _persistOverflow(eventId, notesPayload.full);
         await repo.setAttendees(eventId, _attendees.text.split(','));
       } else {
-        await repo.editOccurrence(
+        final eventId = await repo.editOccurrence(
           existing.id,
-          existing.startUtc == null
-              ? DateTime.now().toUtc()
-              : DateTime.fromMillisecondsSinceEpoch(
-                  existing.startUtc!,
-                  isUtc: true,
-                ),
+          _originalStartOf(existing),
           scope: EditScope.all,
           title: title,
           startUtc: _allDay ? null : _start.toUtc(),
           endUtc: _allDay ? null : _end.toUtc(),
+          startDate: startDateKey,
+          endDate: endDateKey,
           location: _location.text.trim().isEmpty
               ? null
               : _location.text.trim(),
@@ -476,7 +528,9 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
           createMeet: _addMeet,
           reminders: () => encodeReminderOffsets(_reminders),
           alarmPreset: () => _alarmPreset,
+          notes: () => notesPayload.stored,
         );
+        await _persistOverflow(eventId, notesPayload.full);
       }
       await repo.setAttendees(existing!.id, _attendees.text.split(','));
       await _clearDraftAfterSave();
@@ -490,9 +544,11 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     );
     if (scope == null) return;
     if (!mounted) return;
-    if (scope == EditScope.all &&
-        (_start.toUtc().millisecondsSinceEpoch != existing.startUtc ||
-            _end.toUtc().millisecondsSinceEpoch != existing.endUtc)) {
+    final datesChanged = _allDay
+        ? startDateKey != existing.startDate || endDateKey != existing.endDate
+        : _start.toUtc().millisecondsSinceEpoch != existing.startUtc ||
+              _end.toUtc().millisecondsSinceEpoch != existing.endUtc;
+    if (scope == EditScope.all && datesChanged) {
       final keep =
           await showDialog<bool>(
             context: context,
@@ -515,31 +571,39 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
           ) ??
           true;
       if (!mounted) return;
-      await repo.editOccurrence(
+      final eventId = await repo.editOccurrence(
         existing.id,
-        DateTime.fromMillisecondsSinceEpoch(existing.startUtc!, isUtc: true),
+        _originalStartOf(existing),
         scope: EditScope.all,
         title: title,
         startUtc: _allDay ? null : _start.toUtc(),
         endUtc: _allDay ? null : _end.toUtc(),
+        startDate: startDateKey,
+        endDate: endDateKey,
         rrule: () => _rrule,
         resetExceptions: !keep,
+        notes: () => notesPayload.stored,
       );
+      await _persistOverflow(eventId, notesPayload.full);
       await repo.setAttendees(existing.id, _attendees.text.split(','));
       await _clearDraftAfterSave();
       if (mounted) Navigator.of(context).pop();
       return;
     }
-    await repo.editOccurrence(
+    final eventId = await repo.editOccurrence(
       existing.id,
-      DateTime.fromMillisecondsSinceEpoch(existing.startUtc!, isUtc: true),
+      _originalStartOf(existing),
       scope: scope,
       title: title,
       startUtc: _allDay ? null : _start.toUtc(),
       endUtc: _allDay ? null : _end.toUtc(),
+      startDate: startDateKey,
+      endDate: endDateKey,
       rrule: scope == EditScope.single ? null : () => _rrule,
+      notes: () => notesPayload.stored,
     );
     if (mounted) {
+      await _persistOverflow(eventId, notesPayload.full);
       try {
         final range = ref.read(calendarCacheRangeProvider);
         await ref
@@ -611,7 +675,18 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
               const SizedBox(height: 8),
               SwitchListTile(
                 value: _allDay,
-                onChanged: (v) => _changed(() => _allDay = v),
+                onChanged: (v) => _changed(() {
+                  _allDay = v;
+                  if (v) {
+                    _start = DateTime(_start.year, _start.month, _start.day);
+                    _end = DateTime(_end.year, _end.month, _end.day);
+                    if (_end.isBefore(_start)) _end = _start;
+                  } else {
+                    if (!_end.isAfter(_start)) {
+                      _end = _start.add(const Duration(hours: 1));
+                    }
+                  }
+                }),
                 title: const Text('All day'),
                 contentPadding: EdgeInsets.zero,
               ),
@@ -1055,6 +1130,15 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
         ),
       ),
     );
+  }
+
+  DateTime _originalStartOf(Event event) {
+    if (event.startUtc != null) {
+      return DateTime.fromMillisecondsSinceEpoch(event.startUtc!, isUtc: true);
+    }
+    final date = _parseDateKey(event.startDate);
+    if (date != null) return DateTime.utc(date.year, date.month, date.day);
+    return DateTime.now().toUtc();
   }
 
   String _fmtDate(DateTime d) =>

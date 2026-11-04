@@ -30,6 +30,9 @@ Future<void> _event(
   int? startUtc,
   int? endUtc,
   String? tzId,
+  String? startDate,
+  String? endDate,
+  bool isAllDay = false,
 }) async {
   final now = DateTime.now().toUtc().millisecondsSinceEpoch;
   await db
@@ -42,6 +45,9 @@ Future<void> _event(
           updatedAt: now,
           startUtc: Value(startUtc),
           endUtc: Value(endUtc),
+          startDate: Value(startDate),
+          endDate: Value(endDate),
+          isAllDay: Value(isAllDay),
           rrule: Value(rrule),
           recurringMasterId: Value(masterId),
           originalStart: Value(originalStart),
@@ -103,6 +109,68 @@ void main() {
     );
     expect(await repo.occurrencesForDay('2026-03-03'), isEmpty);
     expect((await repo.occurrencesForDay('2026-03-04')).length, 1);
+  });
+
+  test('all-day exclusive end spans only the covered days', () async {
+    final db = _db();
+    addTearDown(db.close);
+    await _cal(db);
+    await _event(
+      db,
+      id: 'single',
+      startDate: '2026-11-03',
+      endDate: '2026-11-04',
+      isAllDay: true,
+    );
+    final repo = OccurrenceRepository(db);
+    await repo.rebuildWindow(
+      windowStartUtc: DateTime.utc(2026, 11, 1),
+      windowEndUtc: DateTime.utc(2026, 11, 30),
+    );
+    expect((await repo.occurrencesForDay('2026-11-03')).length, 1);
+    expect(await repo.occurrencesForDay('2026-11-04'), isEmpty);
+  });
+
+  test('all-day multi-day exclusive end excludes the end date', () async {
+    final db = _db();
+    addTearDown(db.close);
+    await _cal(db);
+    await _event(
+      db,
+      id: 'multi',
+      startDate: '2026-11-03',
+      endDate: '2026-11-06',
+      isAllDay: true,
+    );
+    final repo = OccurrenceRepository(db);
+    await repo.rebuildWindow(
+      windowStartUtc: DateTime.utc(2026, 11, 1),
+      windowEndUtc: DateTime.utc(2026, 11, 30),
+    );
+    for (final day in ['2026-11-03', '2026-11-04', '2026-11-05']) {
+      expect((await repo.occurrencesForDay(day)).length, 1);
+    }
+    expect(await repo.occurrencesForDay('2026-11-06'), isEmpty);
+  });
+
+  test('legacy all-day row with end==start stays one day', () async {
+    final db = _db();
+    addTearDown(db.close);
+    await _cal(db);
+    await _event(
+      db,
+      id: 'legacy',
+      startDate: '2026-11-03',
+      endDate: '2026-11-03',
+      isAllDay: true,
+    );
+    final repo = OccurrenceRepository(db);
+    await repo.rebuildWindow(
+      windowStartUtc: DateTime.utc(2026, 11, 1),
+      windowEndUtc: DateTime.utc(2026, 11, 30),
+    );
+    expect((await repo.occurrencesForDay('2026-11-03')).length, 1);
+    expect(await repo.occurrencesForDay('2026-11-04'), isEmpty);
   });
 
   test('invalidateEvent clears rows for master and exceptions', () async {

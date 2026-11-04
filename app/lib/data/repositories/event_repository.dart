@@ -78,7 +78,13 @@ class EventRepository {
             startUtc: Value(startUtc?.toUtc().millisecondsSinceEpoch),
             endUtc: Value(endUtc?.toUtc().millisecondsSinceEpoch),
             startDate: Value(startDate),
-            endDate: Value(endDate ?? startDate),
+            // Internally all-day endDate is exclusive (last day + 1).
+            endDate: Value(
+              endDate ??
+                  (allDay && startDate != null
+                      ? _nextDate(startDate)
+                      : startDate),
+            ),
             isAllDay: Value(allDay),
             tzId: Value(tzId),
             rrule: Value(rrule),
@@ -96,6 +102,17 @@ class EventRepository {
         );
     await _enqueue(id, 'create');
     return id;
+  }
+
+  /// Next calendar day for a `YYYY-MM-DD` string.
+  String _nextDate(String date) {
+    final parts = date.split('-');
+    if (parts.length != 3) return date;
+    final year = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final day = int.tryParse(parts[2]);
+    if (year == null || month == null || day == null) return date;
+    return _dateOf(DateTime.utc(year, month, day + 1).millisecondsSinceEpoch);
   }
 
   Future<String?> _accountOfCalendar(String calendarId) async {
@@ -369,13 +386,19 @@ class EventRepository {
   }
 
   /// Edits one occurrence, following ones (split), or the whole series.
-  Future<void> editOccurrence(
+  ///
+  /// Returns the id of the row that received the edit: the master for
+  /// [EditScope.all], the exception for [EditScope.single], or the new split
+  /// master for [EditScope.following].
+  Future<String> editOccurrence(
     String masterId,
     DateTime originalStartUtc, {
     required EditScope scope,
     String? title,
     DateTime? startUtc,
     DateTime? endUtc,
+    String? startDate,
+    String? endDate,
     String? location,
     String? colorId,
     String? tzId,
@@ -384,12 +407,17 @@ class EventRepository {
     bool resetExceptions = false,
     String? Function()? reminders,
     String? Function()? alarmPreset,
+    String? Function()? notes,
   }) async {
     final master = await _master(masterId);
     final cutMs = originalStartUtc.toUtc().millisecondsSinceEpoch;
+    final notePatch = notes == null
+        ? const Value<String?>.absent()
+        : Value<String?>(notes());
+    String affectedId;
     switch (scope) {
       case EditScope.single:
-        await _upsertException(
+        affectedId = await _upsertException(
           master,
           cutMs,
           EventsCompanion(
@@ -400,17 +428,22 @@ class EventRepository {
             endUtc: endUtc == null
                 ? const Value.absent()
                 : Value(endUtc.toUtc().millisecondsSinceEpoch),
+            startDate: startDate == null
+                ? const Value.absent()
+                : Value(startDate),
+            endDate: endDate == null ? const Value.absent() : Value(endDate),
             location: location == null ? const Value.absent() : Value(location),
             colorId: colorId == null ? const Value.absent() : Value(colorId),
             tzId: tzId == null ? const Value.absent() : Value(tzId),
             createMeet: createMeet == null
                 ? const Value.absent()
                 : Value(createMeet),
+            notes: notePatch,
           ),
         );
         await _enqueue(masterId, 'update');
       case EditScope.following:
-        await _splitMaster(
+        affectedId = await _splitMaster(
           master,
           cutMs,
           title: title,
@@ -418,6 +451,9 @@ class EventRepository {
           endUtc: endUtc,
           location: location,
           rrule: rrule == null ? null : rrule(),
+          startDate: startDate,
+          endDate: endDate,
+          notes: notePatch,
         );
         await _enqueue(masterId, 'update');
       case EditScope.all:
@@ -432,6 +468,10 @@ class EventRepository {
             endUtc: endUtc == null
                 ? const Value.absent()
                 : Value(endUtc.toUtc().millisecondsSinceEpoch),
+            startDate: startDate == null
+                ? const Value.absent()
+                : Value(startDate),
+            endDate: endDate == null ? const Value.absent() : Value(endDate),
             location: location == null ? const Value.absent() : Value(location),
             colorId: colorId == null ? const Value.absent() : Value(colorId),
             tzId: tzId == null ? const Value.absent() : Value(tzId),
@@ -445,6 +485,7 @@ class EventRepository {
             alarmPreset: alarmPreset == null
                 ? const Value.absent()
                 : Value(alarmPreset()),
+            notes: notePatch,
             updatedAt: Value(nowMs()),
             dirty: const Value(true),
           ),
@@ -462,11 +503,13 @@ class EventRepository {
           }
         }
         await _enqueue(masterId, 'update');
+        affectedId = masterId;
     }
     await _occ.invalidateEvent(masterId);
+    return affectedId;
   }
 
-  Future<void> _upsertException(
+  Future<String> _upsertException(
     Event master,
     int originalStartMs,
     EventsCompanion changes,
@@ -481,16 +524,20 @@ class EventRepository {
             .getSingleOrNull();
     final now = nowMs();
     if (existing == null) {
+      final id = newId();
       await _db
           .into(_db.events)
           .insert(
             changes.copyWith(
-              id: Value(newId()),
+              id: Value(id),
               calendarId: Value(master.calendarId),
               googleAccount: Value(master.googleAccount),
               title: changes.title.present
                   ? changes.title
                   : Value(master.title),
+              notes: changes.notes.present
+                  ? changes.notes
+                  : Value(master.notes),
               recurringMasterId: Value(master.id),
               originalStart: Value(originalStartMs),
               startUtc: changes.startUtc.present
@@ -503,6 +550,12 @@ class EventRepository {
                           ((master.endUtc ?? originalStartMs) -
                               (master.startUtc ?? originalStartMs)),
                     ),
+              startDate: changes.startDate.present
+                  ? changes.startDate
+                  : Value(master.startDate),
+              endDate: changes.endDate.present
+                  ? changes.endDate
+                  : Value(master.endDate),
               status: changes.status.present
                   ? changes.status
                   : const Value('confirmed'),
@@ -512,12 +565,14 @@ class EventRepository {
               updatedAt: Value(now),
             ),
           );
+      return id;
     } else {
       await (_db.update(
         _db.events,
       )..where((e) => e.id.equals(existing.id))).write(
         changes.copyWith(updatedAt: Value(now), dirty: const Value(true)),
       );
+      return existing.id;
     }
   }
 
@@ -546,14 +601,17 @@ class EventRepository {
     }
   }
 
-  Future<void> _splitMaster(
+  Future<String> _splitMaster(
     Event master,
     int cutMs, {
     String? title,
     DateTime? startUtc,
     DateTime? endUtc,
+    String? startDate,
+    String? endDate,
     String? location,
     String? rrule,
+    Value<String?> notes = const Value.absent(),
   }) async {
     await _truncateMaster(master, cutMs);
     final durationMs =
@@ -573,10 +631,13 @@ class EventRepository {
             title: Value(title ?? master.title),
             startUtc: Value(newStart),
             endUtc: Value(newEnd),
+            startDate: Value(startDate ?? master.startDate),
+            endDate: Value(endDate ?? master.endDate),
             isAllDay: Value(master.isAllDay),
             tzId: Value(master.tzId),
             rrule: Value(rrule ?? _stripCount(master.rrule ?? '')),
             location: Value(location ?? master.location),
+            notes: notes.present ? notes : Value(master.notes),
             dirty: const Value(true),
             googleAccount: Value(master.googleAccount),
             createdAt: now,
@@ -584,6 +645,7 @@ class EventRepository {
           ),
         );
     await _enqueue(id, 'create');
+    return id;
   }
 
   int? _seriesFirstStart(Event master) => master.startUtc;

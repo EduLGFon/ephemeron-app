@@ -2,6 +2,7 @@
 // overwritten by remote data; last-writer-wins applies to shared fields.
 import 'package:drift/drift.dart';
 
+import '../../core/time/time.dart';
 import '../../data/drift/app_database.dart';
 
 class MappedEvent {
@@ -23,6 +24,7 @@ MappedEvent eventFromGoogle(
   String? startDate;
   String? endDate;
   if (isAllDay) {
+    // Google all-day end.date is EXCLUSIVE; store it unchanged.
     startDate = start['date'] as String?;
     endDate = end['date'] as String?;
   } else {
@@ -95,7 +97,7 @@ Map<String, dynamic> eventToGoogle(Event e) {
         if (e.tzId != null) 'timeZone': e.tzId,
       },
     if (e.isAllDay)
-      'end': {'date': e.endDate ?? e.startDate}
+      'end': {'date': _exclusiveAllDayEnd(e)}
     else
       'end': {
         'dateTime': e.endUtc == null
@@ -159,6 +161,24 @@ MappedTask taskFromGoogle(
     ),
     remoteEtag: g['etag'] as String?,
   );
+}
+
+/// Ensures an all-day event's end date is EXCLUSIVE (Google-style) when
+/// serializing to the Calendar API. Legacy rows with end==start become a
+/// single day.
+String? _exclusiveAllDayEnd(Event e) {
+  final start = e.startDate;
+  var end = e.endDate ?? start;
+  if (start != null && (end == null || end.compareTo(start) <= 0)) {
+    final p = start.split('-');
+    final d = DateTime.utc(
+      int.parse(p[0]),
+      int.parse(p[1]),
+      int.parse(p[2]),
+    ).add(const Duration(days: 1));
+    end = dateKey(d);
+  }
+  return end;
 }
 
 Map<String, dynamic> taskToGoogle(Task t) => {
