@@ -8,11 +8,15 @@ class TimelineItem {
     required this.id,
     required this.startMin,
     required this.endMin,
+    this.canContain = true,
   });
 
   final String id;
   final double startMin;
   final double endMin;
+
+  /// False for short items (habit blocks) that must never nest events.
+  final bool canContain;
 
   double get duration => endMin - startMin;
 }
@@ -38,6 +42,7 @@ bool _overlaps(TimelineItem a, TimelineItem b) {
 }
 
 bool _contains(TimelineItem parent, TimelineItem child) {
+  if (!parent.canContain) return false;
   if (identical(parent, child) || parent.id == child.id) return false;
   if (parent.startMin > child.startMin || child.endMin > parent.endMin) {
     return false;
@@ -56,7 +61,14 @@ Map<String, TimelinePlacement> layoutDayEvents(List<TimelineItem> input) {
     var s = it.startMin;
     var e = it.endMin;
     if (e <= s) e = s + 30;
-    items.add(TimelineItem(id: it.id, startMin: s, endMin: e));
+    items.add(
+      TimelineItem(
+        id: it.id,
+        startMin: s,
+        endMin: e,
+        canContain: it.canContain,
+      ),
+    );
   }
   final out = <String, TimelinePlacement>{};
   if (items.isEmpty) return out;

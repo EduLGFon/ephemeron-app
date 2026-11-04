@@ -85,6 +85,18 @@ void main() {
     expect(out['h2']!.left, greaterThan(out['h4']!.left));
   });
 
+  test('items that cannot contain never nest overlapping events', () {
+    final out = layoutDayEvents(const [
+      TimelineItem(id: 'habit', startMin: 60, endMin: 90, canContain: false),
+      TimelineItem(id: 'event', startMin: 70, endMin: 85),
+    ]);
+    expect(out['habit']!.depth, 0);
+    expect(out['event']!.depth, 0);
+    expect(out['habit']!.left, isNot(out['event']!.left));
+    expect(out['habit']!.width, lessThan(1));
+    expect(out['event']!.width, lessThan(1));
+  });
+
   test('contained siblings split inside the parent', () {
     final out = layoutDayEvents(const [
       TimelineItem(id: 'big', startMin: 60, endMin: 400),

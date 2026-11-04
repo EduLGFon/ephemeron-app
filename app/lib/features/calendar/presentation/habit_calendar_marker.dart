@@ -1,13 +1,11 @@
 // Compact habit marker for calendar surfaces: name plus done/skipped icon.
-// Tap toggles done for the day; long-press opens skip/open actions.
+// Tap or long-press opens the shared habit action sheet.
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../domain/habits/habit_calendar_entry.dart';
-import '../../habits/application/habits_providers.dart';
+import 'habit_action_sheet.dart';
 
-class HabitCalendarMarker extends ConsumerWidget {
+class HabitCalendarMarker extends StatelessWidget {
   const HabitCalendarMarker({
     super.key,
     required this.entry,
@@ -18,7 +16,7 @@ class HabitCalendarMarker extends ConsumerWidget {
   final bool compact;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final done = entry.done;
     final skipped = entry.skipped;
@@ -29,10 +27,8 @@ class HabitCalendarMarker extends ConsumerWidget {
         ? scheme.primary
         : (skipped ? scheme.onSurfaceVariant : scheme.secondary);
     return InkWell(
-      onTap: () => ref
-          .read(habitRepositoryProvider)
-          .toggleHabitDone(entry.habitId, entry.dayKey),
-      onLongPress: () => _showActions(context, ref),
+      onTap: () => showHabitActionSheet(context, entry),
+      onLongPress: () => showHabitActionSheet(context, entry),
       borderRadius: BorderRadius.circular(4),
       child: Container(
         height: compact ? 14 : 18,
@@ -70,40 +66,6 @@ class HabitCalendarMarker extends ConsumerWidget {
                   ),
                 ),
               ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showActions(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(
-                entry.skipped ? Icons.check_rounded : Icons.remove_rounded,
-              ),
-              title: Text(entry.skipped ? 'Unskip' : 'Skip'),
-              onTap: () {
-                ref
-                    .read(habitRepositoryProvider)
-                    .setSkipped(entry.habitId, entry.dayKey, !entry.skipped);
-                Navigator.of(ctx).pop();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.open_in_new_rounded),
-              title: const Text('Open habits'),
-              onTap: () {
-                final router = GoRouter.maybeOf(context);
-                Navigator.of(ctx).pop();
-                router?.go('/tab3');
-              },
-            ),
           ],
         ),
       ),

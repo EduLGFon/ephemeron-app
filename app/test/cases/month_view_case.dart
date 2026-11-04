@@ -217,7 +217,7 @@ void main() {
     await _tearDown(tester, db);
   });
 
-  testWidgets('habit marker toggles done for the day', (
+  testWidgets('habit marker opens the action sheet and logs done', (
     WidgetTester tester,
   ) async {
     final db = _db();
@@ -235,7 +235,12 @@ void main() {
     expect(marker, findsOneWidget);
     await tester.tap(marker);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Mark as concluded'), findsOneWidget);
+
+    await tester.tap(find.text('Mark as concluded'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect((await repo.logFor(id, today))?.done, isTrue);
     await _tearDown(tester, db);

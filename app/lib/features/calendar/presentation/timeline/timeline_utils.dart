@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/time/time.dart';
 import '../../../../data/drift/app_database.dart';
+import '../../../../domain/habits/habit_calendar_entry.dart';
 import '../../application/calendar_state.dart';
 import '../google_calendar_colors.dart';
 import 'timeline_layout.dart';
@@ -72,22 +73,39 @@ Color timelineEventColor(BuildContext context, String? colorId) {
   return Theme.of(context).colorScheme.primary;
 }
 
+/// Height used for a timed habit block in the hourly grid.
+const double timelineHabitBlockMinutes = 30;
+
+/// Distinct layout key for a habit entry. Event ids come from occurrence row
+/// ids, so the prefix keeps habit and event placements from colliding.
+String timelineHabitItemId(HabitCalendarEntry entry) =>
+    'habit:${entry.habitId}@${entry.dayKey}';
+
 /// Normalized [0, 1] horizontal rects for one day column, keyed by
-/// occurrence row id (not event id, so recurring instances stay distinct).
+/// occurrence row id (not event id, so recurring instances stay distinct)
+/// and by [timelineHabitItemId] for timed habit entries. Events and habits
+/// share one lane layout so overlaps split the same width.
 Map<String, TimelinePlacement> timelinePlacementsFor({
   required DateTime anchor,
   required int dayCount,
   required List<OccurrenceCacheData> timed,
+  List<HabitCalendarEntry> timedHabits = const [],
 }) {
   final out = <String, TimelinePlacement>{};
   final byDay = <String, List<OccurrenceCacheData>>{};
   for (final o in timed) {
     byDay.putIfAbsent(o.dayKey, () => []).add(o);
   }
-  for (final entry in byDay.entries) {
-    final midnight = timelineDayStartForKey(anchor, dayCount, entry.key);
+  final habitsByDay = <String, List<HabitCalendarEntry>>{};
+  for (final h in timedHabits) {
+    if (h.timeMinutes == null) continue;
+    habitsByDay.putIfAbsent(h.dayKey, () => []).add(h);
+  }
+  final days = {...byDay.keys, ...habitsByDay.keys};
+  for (final dayKeyValue in days) {
+    final midnight = timelineDayStartForKey(anchor, dayCount, dayKeyValue);
     final items = <TimelineItem>[];
-    for (final o in entry.value) {
+    for (final o in byDay[dayKeyValue] ?? const <OccurrenceCacheData>[]) {
       final s = DateTime.fromMillisecondsSinceEpoch(o.startUtc);
       final e = DateTime.fromMillisecondsSinceEpoch(o.endUtc);
       var sMin = timelineMinutesOf(s, midnight).clamp(0.0, 1440.0);
@@ -98,6 +116,18 @@ Map<String, TimelinePlacement> timelinePlacementsFor({
         if (eMin <= sMin) eMin = 1440.0;
       }
       items.add(TimelineItem(id: o.id, startMin: sMin, endMin: eMin));
+    }
+    for (final h in habitsByDay[dayKeyValue] ?? const <HabitCalendarEntry>[]) {
+      final sMin = (h.timeMinutes ?? 0).clamp(0, 1440).toDouble();
+      final eMin = (sMin + timelineHabitBlockMinutes).clamp(0.0, 1440.0);
+      items.add(
+        TimelineItem(
+          id: timelineHabitItemId(h),
+          startMin: sMin,
+          endMin: eMin,
+          canContain: false,
+        ),
+      );
     }
     out.addAll(layoutDayEvents(items));
   }

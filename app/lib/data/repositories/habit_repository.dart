@@ -163,8 +163,11 @@ class HabitRepository {
       'SELECT h.id AS habit_id, h.name AS habit_name, '
       'h.frequency AS frequency, h.weekdays_mask AS weekdays_mask, '
       'h.weekly_target AS weekly_target, h.interval_days AS interval_days, '
-      'h.start_date AS start_date, '
-      'l.done AS log_done, l.skipped AS log_skipped, days.d AS day '
+      'h.start_date AS start_date, h.reminder_time AS reminder_time, '
+      'h.unit AS unit, h.goal_amount AS goal_amount, '
+      'h.increment AS increment, '
+      'l.amount AS log_amount, l.done AS log_done, '
+      'l.skipped AS log_skipped, days.d AS day '
       'FROM days CROSS JOIN habits h '
       'LEFT JOIN habit_logs l ON l.habit_id = h.id AND l.day_key = days.d '
       'WHERE h.archived = 0 AND h.deleted_at IS NULL',
@@ -188,6 +191,13 @@ class HabitRepository {
             habitId: r.read<String>('habit_id'),
             habitName: r.read<String>('habit_name'),
             dayKey: day,
+            timeMinutes: parseHabitTimeMinutes(
+              r.readNullable<String>('reminder_time'),
+            ),
+            unit: r.readNullable<String>('unit'),
+            goalAmount: r.readNullable<double>('goal_amount'),
+            increment: r.readNullable<double>('increment'),
+            amount: r.readNullable<double>('log_amount') ?? 0,
             done: (r.readNullable<int>('log_done') ?? 0) == 1,
             skipped: (r.readNullable<int>('log_skipped') ?? 0) == 1,
           ),
@@ -300,6 +310,46 @@ class HabitRepository {
     await _touchHabit(habitId);
   }
 
+  /// Adds [amount] to the day's goal progress, creating the log if needed.
+  /// Done and skipped are preserved; the log is marked done when a positive
+  /// goal amount is reached.
+  Future<void> addAmount(String habitId, String dayKey, double amount) async {
+    final habit = await (_db.select(
+      _db.habits,
+    )..where((h) => h.id.equals(habitId))).getSingleOrNull();
+    final goal = habit?.goalAmount ?? 0;
+    final existing = await logFor(habitId, dayKey);
+    if (existing == null) {
+      final next = amount;
+      await _db
+          .into(_db.habitLogs)
+          .insert(
+            HabitLogsCompanion.insert(
+              id: newId(),
+              habitId: habitId,
+              dayKey: dayKey,
+              amount: Value(next),
+              done: Value(goal > 0 && next >= goal),
+              createdAt: nowMs(),
+              updatedAt: nowMs(),
+            ),
+          );
+    } else {
+      final next = existing.amount + amount;
+      await (_db.update(
+        _db.habitLogs,
+      )..where((l) => l.id.equals(existing.id))).write(
+        HabitLogsCompanion(
+          amount: Value(next),
+          done: Value(existing.done || (goal > 0 && next >= goal)),
+          updatedAt: Value(nowMs()),
+        ),
+      );
+    }
+    await _enqueue('habit_log:$habitId', '$habitId@$dayKey', 'update');
+    await _touchHabit(habitId);
+  }
+
   Future<void> setSkipped(String habitId, String dayKey, bool skipped) async {
     final existing = await logFor(habitId, dayKey);
     if (existing == null) {
@@ -322,6 +372,7 @@ class HabitRepository {
         HabitLogsCompanion(skipped: Value(skipped), updatedAt: Value(nowMs())),
       );
     }
+    await _enqueue('habit_log:$habitId', '$habitId@$dayKey', 'update');
     await _touchHabit(habitId);
   }
 
@@ -397,6 +448,7 @@ class HabitRepository {
         ),
       );
     }
+    await _enqueue('habit_log:$habitId', '$habitId@$dayKey', 'update');
     await _touchHabit(habitId);
   }
 

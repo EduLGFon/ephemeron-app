@@ -9,6 +9,8 @@ import '../../../../data/drift/app_database.dart';
 import '../../../../domain/habits/habit_calendar_entry.dart';
 import '../../application/calendar_providers.dart';
 import '../event_details_sheet.dart';
+import '../habit_action_sheet.dart';
+import 'habit_timeline_block.dart';
 import 'timeline_chrome.dart';
 import 'timeline_controller.dart';
 import 'timeline_event_block.dart';
@@ -111,10 +113,23 @@ class _TimelineViewState extends ConsumerState<TimelineView>
         timed.add(o);
       }
     }
-    final stripHabits = [
-      for (final h in habitEntries)
-        if (timelineIsVisibleDay(stripAnchor, stripCount, h.dayKey)) h,
-    ];
+    final timedHabits = <HabitCalendarEntry>[];
+    final allDayHabits = <HabitCalendarEntry>[];
+    for (final h in habitEntries) {
+      if (!timelineIsVisibleDay(stripAnchor, stripCount, h.dayKey)) continue;
+      if (h.isTimed) {
+        timedHabits.add(h);
+      } else {
+        allDayHabits.add(h);
+      }
+    }
+    timedHabits.sort((a, b) {
+      final byTime = a.timeMinutes!.compareTo(b.timeMinutes!);
+      if (byTime != 0) return byTime;
+      final byName = a.habitName.compareTo(b.habitName);
+      if (byName != 0) return byName;
+      return a.habitId.compareTo(b.habitId);
+    });
 
     return Focus(
       autofocus: true,
@@ -140,13 +155,14 @@ class _TimelineViewState extends ConsumerState<TimelineView>
               ),
               if (timed.isEmpty &&
                   allDay.isEmpty &&
-                  stripHabits.isEmpty &&
+                  timedHabits.isEmpty &&
+                  allDayHabits.isEmpty &&
                   building)
                 const LinearProgressIndicator(minHeight: 2),
-              if (allDay.isNotEmpty || stripHabits.isNotEmpty)
+              if (allDay.isNotEmpty || allDayHabits.isNotEmpty)
                 TimelineAllDayStrip(
                   occs: allDay,
-                  habits: stripHabits,
+                  habits: allDayHabits,
                   anchor: widget.anchor,
                   dayCount: widget.dayCount,
                   gutterWidth: timelineGutterWidth,
@@ -187,6 +203,7 @@ class _TimelineViewState extends ConsumerState<TimelineView>
                                     anchor: stripAnchor,
                                     dayCount: stripCount,
                                     timed: timed,
+                                    timedHabits: timedHabits,
                                   );
                                   final ordered =
                                       List<OccurrenceCacheData>.of(
@@ -277,6 +294,30 @@ class _TimelineViewState extends ConsumerState<TimelineView>
                                                       updateDrag(o.eventId, d),
                                                   onLongPressEnd: () =>
                                                       endDrag(o.eventId),
+                                                ),
+                                              for (final h in timedHabits)
+                                                HabitTimelineBlock(
+                                                  key: ValueKey(
+                                                    'timeline-habit-'
+                                                    '${h.habitId}-${h.dayKey}',
+                                                  ),
+                                                  entry: h,
+                                                  dayIndex: timelineDayIndex(
+                                                    stripAnchor,
+                                                    stripCount,
+                                                    h.dayKey,
+                                                  ),
+                                                  columnWidth: dayWidth,
+                                                  hourHeight: hourHeight,
+                                                  placement:
+                                                      placements[timelineHabitItemId(
+                                                        h,
+                                                      )],
+                                                  onTap: () =>
+                                                      showHabitActionSheet(
+                                                        context,
+                                                        h,
+                                                      ),
                                                 ),
                                               IgnorePointer(
                                                 child: RepaintBoundary(

@@ -4,8 +4,10 @@ import 'package:ephemeron/core/db/db_provider.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:ephemeron/data/repositories/habit_repository.dart';
 import 'package:ephemeron/data/repositories/occurrence_repository.dart';
+import 'package:ephemeron/domain/habits/date_key.dart';
 import 'package:ephemeron/features/calendar/application/calendar_providers.dart';
 import 'package:ephemeron/features/calendar/application/calendar_state.dart';
+import 'package:ephemeron/features/calendar/presentation/timeline/timeline_chrome.dart';
 import 'package:ephemeron/features/calendar/presentation/timeline/timeline_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -217,6 +219,63 @@ void main() {
     expect(find.text('Habit 4'), findsNothing);
     expect(find.text('Habit 5'), findsNothing);
     expect(tester.takeException(), null);
+    await _tearDown(tester, db);
+  });
+
+  testWidgets('timed habits use the hour grid and untimed stay all-day', (
+    WidgetTester tester,
+  ) async {
+    final db = _db();
+    final repo = HabitRepository(db);
+    final timedId = await repo.createHabit(
+      name: 'Timed habit',
+      frequency: 'daily',
+      startDate: '2020-01-01',
+      reminderTime: '09:30',
+      goalAmount: 4,
+      unit: 'pages',
+    );
+    final allDayId = await repo.createHabit(
+      name: 'All-day habit',
+      frequency: 'daily',
+      startDate: '2020-01-01',
+    );
+    final today = DateTime.now();
+    await _seed(db);
+    await _pump(tester, db, today, 1);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final dayKey = habitDateKey(today);
+    final block = find.byKey(ValueKey('timeline-habit-$timedId-$dayKey'));
+    expect(block, findsOneWidget);
+    expect(
+      find.descendant(of: block, matching: find.textContaining('Timed habit')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(ValueKey('timeline-habit-$allDayId-$dayKey')),
+      findsNothing,
+    );
+    final allDayStrip = find.byType(TimelineAllDayStrip);
+    expect(
+      find.descendant(of: allDayStrip, matching: find.text('All-day habit')),
+      findsWidgets,
+    );
+    expect(
+      find.descendant(of: allDayStrip, matching: find.text('Timed habit')),
+      findsNothing,
+    );
+
+    final hourHeight =
+        tester.getTopLeft(find.text('10:00')).dy -
+        tester.getTopLeft(find.text('09:00')).dy;
+    expect(
+      tester.getTopLeft(block).dy,
+      moreOrLessEquals(
+        tester.getTopLeft(find.text('09:00')).dy + 7 + hourHeight * 0.5,
+        epsilon: 2,
+      ),
+    );
     await _tearDown(tester, db);
   });
 
