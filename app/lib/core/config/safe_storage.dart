@@ -135,4 +135,75 @@ class SafeSecureStorage {
     }
     await _storage.delete(key: _kAccounts);
   }
+
+  // Microsoft helpers (mirror of Google helpers).
+  static const _kMsAccounts = 'microsoft.accounts';
+  static const _kMsActive = 'microsoft.activeAccount';
+  String _m(String account, String key) => 'microsoft.$account.$key';
+
+  Future<List<String>> microsoftAccounts() async {
+    final v = await _storage.read(key: _kMsAccounts);
+    if (v == null || v.isEmpty) return const [];
+    return v.split(',').where((e) => e.isNotEmpty).toList();
+  }
+
+  Future<void> saveMicrosoftAccounts(List<String> accounts) async {
+    await _storage.write(key: _kMsAccounts, value: accounts.join(','));
+  }
+
+  Future<String?> microsoftActiveAccount() => _storage.read(key: _kMsActive);
+
+  Future<void> saveMicrosoftActiveAccount(String? email) async {
+    if (email == null || email.isEmpty) {
+      await _storage.delete(key: _kMsActive);
+    } else {
+      await _storage.write(key: _kMsActive, value: email);
+    }
+  }
+
+  Future<void> saveMicrosoftTokensFor({
+    required String account,
+    required String accessToken,
+    String? refreshToken,
+    required int expiryMs,
+  }) async {
+    await _storage.write(key: _m(account, 'accessToken'), value: accessToken);
+    if (refreshToken != null) {
+      await _storage.write(
+        key: _m(account, 'refreshToken'),
+        value: refreshToken,
+      );
+    }
+    await _storage.write(
+      key: _m(account, 'expiryMs'),
+      value: expiryMs.toString(),
+    );
+  }
+
+  Future<String?> microsoftAccessTokenFor(String account) =>
+      _storage.read(key: _m(account, 'accessToken'));
+
+  Future<String?> microsoftRefreshTokenFor(String account) =>
+      _storage.read(key: _m(account, 'refreshToken'));
+
+  Future<int?> microsoftExpiryMsFor(String account) async {
+    final v = await _storage.read(key: _m(account, 'expiryMs'));
+    if (v == null) return null;
+    return int.tryParse(v);
+  }
+
+  Future<void> clearMicrosoftFor(String account) async {
+    await _storage.delete(key: _m(account, 'accessToken'));
+    await _storage.delete(key: _m(account, 'refreshToken'));
+    await _storage.delete(key: _m(account, 'expiryMs'));
+  }
+
+  Future<void> clearMicrosoft() async {
+    final accs = await microsoftAccounts();
+    for (final a in accs) {
+      await clearMicrosoftFor(a);
+    }
+    await _storage.delete(key: _kMsAccounts);
+    await _storage.delete(key: _kMsActive);
+  }
 }

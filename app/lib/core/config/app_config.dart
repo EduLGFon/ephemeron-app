@@ -36,6 +36,39 @@ class AppConfig {
     'BACKEND_BASE_URL',
     defaultValue: '',
   );
+
+  // Microsoft (Entra ID / Graph). Public client; PKCE required, no secret.
+  static const String microsoftClientId = String.fromEnvironment(
+    'MICROSOFT_CLIENT_ID',
+    defaultValue: '2e02837a-7f2b-4314-a9e8-38cb964d85f1',
+  );
+  static const String microsoftTenantId = String.fromEnvironment(
+    'MICROSOFT_TENANT_ID',
+    defaultValue: 'd54ac00c-05c4-4757-86cf-e2fb4a6ff894',
+  );
+  static const String microsoftAuthority = String.fromEnvironment(
+    'MICROSOFT_AUTHORITY',
+    defaultValue: 'https://login.microsoftonline.com/common',
+  );
+  static const String microsoftNativeRedirectUri = String.fromEnvironment(
+    'MICROSOFT_NATIVE_REDIRECT_URI',
+    defaultValue: 'com.spotnik.ephemeron://oauth/microsoft',
+  );
+  static const String microsoftWebRedirectUri = String.fromEnvironment(
+    'MICROSOFT_WEB_REDIRECT_URI',
+    defaultValue: 'http://localhost:8080/auth.html',
+  );
+  static const List<String> microsoftScopes = [
+    'openid',
+    'profile',
+    'email',
+    'offline_access',
+    'https://graph.microsoft.com/User.Read',
+    'https://graph.microsoft.com/Calendars.ReadWrite',
+    'https://graph.microsoft.com/Tasks.ReadWrite',
+  ];
+  static const String microsoftGraphBase = 'https://graph.microsoft.com/v1.0';
+
   static const int syncIntervalMin = 30;
   static const int syncDebounceSec = 5;
 }

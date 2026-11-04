@@ -150,3 +150,7 @@ Remaining (not yet fixed):
 - Do not run a release build while `flutter run` is active. Both rewrite
   `GeneratedPluginRegistrant.java`; a debug registrant includes
   `integration_test` and the release Java compile fails.
+
+## Microsoft sync foundation (2026-11-04)
+
+- Web sign-in still needs `app/web/auth.html` (or equivalent redirect page) and the Entra SPA redirect registration for `http://localhost:8080/auth.html`; the service already uses `AppConfig.microsoftWebRedirectUri`. Android is the primary verification target until then.
