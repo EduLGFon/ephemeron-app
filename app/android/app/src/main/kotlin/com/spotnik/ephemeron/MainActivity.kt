@@ -250,7 +250,9 @@ class MainActivity : FlutterFragmentActivity() {
         intent.getStringExtra("shortcut")?.let { pendingShortcut = it }
         intent.data?.let { uri ->
             if (uri.scheme == "ephemeron" && uri.host == "widget") {
-                pendingWidgetAction = uri.lastPathSegment
+                // Preserve the full action path so day links such as
+                // calendar/2026-11-03 survive the trip to Dart.
+                pendingWidgetAction = uri.pathSegments.joinToString("/")
             }
         }
     }
