@@ -21,11 +21,12 @@ class AlarmRepository {
 
   /// Rebuilds the rolling window: next 48 h plus next 60 future alarms.
   /// Called on app open, after occurrence rebuilds, and by the daily job.
-  Future<int> rebuildWindow() async {
+  Future<int> rebuildWindow({bool dueTomorrowEnabled = true}) async {
     final now = _now();
     final candidates = <AlarmCandidate>[
       ...await _eventCandidates(now),
       ...await _taskCandidates(),
+      if (dueTomorrowEnabled) ...await _dueTomorrowCandidates(now),
       ...await _countdownCandidates(now),
       ...await _habitCandidates(now),
     ];
@@ -85,7 +86,11 @@ class AlarmRepository {
   Future<List<AlarmCandidate>> _eventCandidates(int now) async {
     final occs =
         await (_db.select(_db.occurrenceCache)
-              ..where((c) => c.startUtc.isBiggerThanValue(now - msPerDay))
+              ..where(
+                (c) =>
+                    c.startUtc.isBiggerThanValue(now - msPerDay) &
+                    c.sourceType.equals('event'),
+              )
               ..orderBy([(c) => OrderingTerm.asc(c.startUtc)])
               ..limit(500))
             .get();
@@ -194,6 +199,59 @@ class AlarmRepository {
       }
     }
     return out;
+  }
+
+  Future<List<AlarmCandidate>> _dueTomorrowCandidates(int now) async {
+    final tasks =
+        await (_db.select(_db.tasks)..where(
+              (t) =>
+                  t.deletedAt.isNull() &
+                  t.completedAt.isNull() &
+                  t.dueDate.isNotNull(),
+            ))
+            .get();
+    final out = <AlarmCandidate>[];
+    for (final t in tasks) {
+      final p = t.dueDate!.split('-');
+      if (p.length != 3) continue;
+      final y = int.tryParse(p[0]);
+      final m = int.tryParse(p[1]);
+      final d = int.tryParse(p[2]);
+      if (y == null || m == null || d == null) continue;
+      final mins = t.dueTime;
+      final dueLocal = mins == null
+          ? DateTime(y, m, d, 9, 0)
+          : DateTime(y, m, d, mins ~/ 60, mins % 60);
+      final dueUtcMs = dueLocal.toUtc().millisecondsSinceEpoch;
+      final fireLocalRaw = dueLocal.subtract(const Duration(hours: 24));
+      final fireLocal = clampDueTomorrow(fireLocalRaw);
+      final fireUtcMs = fireLocal.toUtc().millisecondsSinceEpoch;
+      if (fireUtcMs <= now) continue;
+      if (fireUtcMs >= dueUtcMs) continue;
+      final title = t.title.isEmpty ? 'Task' : t.title;
+      out.add(
+        AlarmCandidate(
+          sourceType: 'task_due_tomorrow',
+          sourceId: '${t.id}#tomorrow',
+          fireAtUtcMs: fireUtcMs,
+          preset: AlarmPreset.notification.id,
+          kind: 'reminder',
+          title: 'Due tomorrow: $title',
+        ),
+      );
+    }
+    return out;
+  }
+
+  static DateTime clampDueTomorrow(DateTime localFire) {
+    var dt = localFire;
+    final tod = dt.hour * 60 + dt.minute;
+    if (tod < 9 * 60) {
+      dt = DateTime(dt.year, dt.month, dt.day, 9, 0);
+    } else if (tod > 17 * 60) {
+      dt = DateTime(dt.year, dt.month, dt.day, 17, 0);
+    }
+    return dt;
   }
 
   Future<List<AlarmCandidate>> _countdownCandidates(int now) async {

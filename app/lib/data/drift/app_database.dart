@@ -39,7 +39,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -101,6 +101,21 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 10) {
         await m.addColumn(tasks, tasks.plannedDate);
+      }
+      if (from < 11) {
+        await m.addColumn(tasks, tasks.plannedStart);
+        await m.addColumn(tasks, tasks.plannedEnd);
+        await m.addColumn(tasks, tasks.seriesId);
+        await m.addColumn(tasks, tasks.recurrenceKey);
+        await m.addColumn(occurrenceCache, occurrenceCache.sourceType);
+        await customStatement(
+          "UPDATE tasks SET series_id = id, recurrence_key = COALESCE(planned_date, due_date) WHERE rrule IS NOT NULL AND rrule <> '';",
+        );
+        await m.deleteTable('occurrence_cache');
+        await m.createTable(occurrenceCache);
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_occurrence_cache_day ON occurrence_cache(day_key);',
+        );
       }
     },
     beforeOpen: (details) async {

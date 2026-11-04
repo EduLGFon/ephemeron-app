@@ -34,9 +34,9 @@ void main() {
     await db.close();
   });
 
-  test('schema version is 10', () async {
+  test('schema version is 11', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
-    expect(db.schemaVersion, 10);
+    expect(db.schemaVersion, 11);
     await db.close();
   });
 
@@ -58,6 +58,26 @@ void main() {
     final planned = cols.where((r) => r.read<String>('name') == 'planned_date');
     expect(planned, hasLength(1));
     expect(planned.single.read<int>('notnull'), 0);
+    await db.close();
+  });
+
+  test('tasks carry v11 columns', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final cols = await db.customSelect('PRAGMA table_info(tasks)').get();
+    final names = cols.map((r) => r.read<String>('name')).toSet();
+    for (final c in [
+      'planned_start',
+      'planned_end',
+      'series_id',
+      'recurrence_key',
+    ]) {
+      expect(names, contains(c));
+    }
+    final occ = await db
+        .customSelect('PRAGMA table_info(occurrence_cache)')
+        .get();
+    final occNames = occ.map((r) => r.read<String>('name')).toSet();
+    expect(occNames, contains('source_type'));
     await db.close();
   });
 

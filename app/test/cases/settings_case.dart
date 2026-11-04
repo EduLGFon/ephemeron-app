@@ -17,6 +17,12 @@ void main() {
 
     expect(repo.taskSort, 'due');
     expect(repo.taskListSort, 'custom');
+
+    expect(repo.taskDueTomorrowReminder, isTrue);
+    await repo.setTaskDueTomorrowReminder(false);
+    expect(repo.taskDueTomorrowReminder, isFalse);
+    await repo.setTaskDueTomorrowReminder(true);
+    expect(repo.taskDueTomorrowReminder, isTrue);
     await repo.setTaskSort('name');
     await repo.setTaskListSort('created');
     expect(repo.taskSort, 'name');
