@@ -437,8 +437,41 @@ class EventRepository {
     )..where((a) => a.eventId.equals(eventId))).get();
   }
 
+  /// Resolves the signed-in user's own attendee row for RSVP display.
+  /// Prefers the synced `isSelf` flag, then matches attendee email against
+  /// [accountEmails]. When no account identity is known (signed out or not
+  /// restored yet), falls back to the first non-organizer row so local-only
+  /// invites keep a respond target. Returns null when the event has no
+  /// attendees or the signed-in user is not among them.
+  Future<EventAttendee?> selfAttendeeOf(
+    String eventId,
+    List<String> accountEmails,
+  ) async {
+    return resolveSelf(await attendeesOf(eventId), accountEmails);
+  }
+
+  /// Pure self-resolution over already-loaded rows (see [selfAttendeeOf]).
+  static EventAttendee? resolveSelf(
+    List<EventAttendee> atts,
+    List<String> accountEmails,
+  ) {
+    if (atts.isEmpty) return null;
+    final flagged = atts.where((a) => a.isSelf).firstOrNull;
+    if (flagged != null) return flagged;
+    if (accountEmails.isNotEmpty) {
+      final known = {for (final e in accountEmails) e.toLowerCase()};
+      return atts
+          .where((a) => known.contains(a.email.toLowerCase()))
+          .firstOrNull;
+    }
+    final guest = atts.where((a) => !a.isOrganizer).firstOrNull;
+    return guest ?? atts.first;
+  }
+
   /// Sets the RSVP status of one attendee row and queues a sync update.
   /// Accepted values: accepted, tentative, declined.
+  /// Also marks the row as self: the chips only ever target the resolved
+  /// self row, so responding heals rows imported before self flags existed.
   Future<void> setRsvp(String attendeeId, String rsvp) async {
     assert(
       rsvp == 'accepted' || rsvp == 'tentative' || rsvp == 'declined',
@@ -451,9 +484,11 @@ class EventRepository {
       )..where((a) => a.id.equals(attendeeId))).getSingleOrNull();
       if (row == null) return;
       eventId = row.eventId;
-      await (_db.update(_db.eventAttendees)
-            ..where((a) => a.id.equals(attendeeId)))
-          .write(EventAttendeesCompanion(rsvp: Value(rsvp)));
+      await (_db.update(
+        _db.eventAttendees,
+      )..where((a) => a.id.equals(attendeeId))).write(
+        EventAttendeesCompanion(rsvp: Value(rsvp), isSelf: const Value(true)),
+      );
       await (_db.update(
         _db.events,
       )..where((e) => e.id.equals(row.eventId))).write(

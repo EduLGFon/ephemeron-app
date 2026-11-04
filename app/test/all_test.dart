@@ -18,6 +18,7 @@ import 'cases/calendar_color_case.dart' as calendar_color;
 import 'cases/calendar_swipe_case.dart' as calendar_swipe;
 import 'cases/countdowns_screen_case.dart' as countdowns_screen;
 import 'cases/db_case.dart' as db;
+import 'cases/event_rsvp_case.dart' as event_rsvp;
 import 'cases/event_scope_case.dart' as event_scope;
 import 'cases/focus_screen_case.dart' as focus_screen;
 import 'cases/habit_focus_case.dart' as habit_focus;
@@ -58,6 +59,7 @@ const _included = <String>{
   'calendar_swipe_case.dart',
   'countdowns_screen_case.dart',
   'db_case.dart',
+  'event_rsvp_case.dart',
   'event_scope_case.dart',
   'focus_screen_case.dart',
   'habit_focus_case.dart',
@@ -105,6 +107,7 @@ void main() {
   group('calendar_swipe', calendar_swipe.main);
   group('countdowns_screen', countdowns_screen.main);
   group('db', db.main);
+  group('event_rsvp', event_rsvp.main);
   group('event_scope', event_scope.main);
   group('focus_screen', focus_screen.main);
   group('habit_focus', habit_focus.main);

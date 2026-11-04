@@ -780,6 +780,7 @@ class SyncEngine {
   Future<void> _mergeAttendees(String eventId, Map<String, dynamic> g) async {
     final atts = g['attendees'] as List?;
     if (atts == null) return;
+    final organizerEmail = (g['organizer'] as Map?)?['email'] as String?;
     await _db.transaction(() async {
       await (_db.delete(
         _db.eventAttendees,
@@ -788,6 +789,15 @@ class SyncEngine {
         final m = a as Map<String, dynamic>;
         final email = m['email'] as String?;
         if (email == null || email.isEmpty) continue;
+        // SECURITY: isSelf/isOrganizer come from the signed-in user's own
+        // Google data; never trust client-side state for access control.
+        final isSelfFlag =
+            m['self'] == true ||
+            (account != null && email.toLowerCase() == account!.toLowerCase());
+        final isOrganizerFlag =
+            m['organizer'] == true ||
+            (organizerEmail != null &&
+                email.toLowerCase() == organizerEmail.toLowerCase());
         await _db
             .into(_db.eventAttendees)
             .insert(
@@ -795,7 +805,10 @@ class SyncEngine {
                 id: newId(),
                 eventId: eventId,
                 email: email,
+                name: Value(m['displayName'] as String?),
                 rsvp: Value(m['responseStatus'] as String?),
+                isOrganizer: Value(isOrganizerFlag),
+                isSelf: Value(isSelfFlag),
               ),
             );
       }

@@ -10,6 +10,7 @@ import '../../../core/ui/escape_to_close.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../core/db/db_provider.dart';
 import '../../../data/repositories/event_repository.dart';
+import '../../auth/application/auth_providers.dart';
 import '../../notes/application/notes_providers.dart';
 import '../../settings/application/settings_providers.dart';
 import '../../sync/application/pending_operations.dart';
@@ -295,12 +296,17 @@ class _Attendees extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Same self-resolution as the timeline/agenda styling: flagged row,
+    // then account-email match, so pre-flag rows keep their response chips.
+    final accounts = ref.watch(googleAccountsProvider);
+    final active = ref.watch(googleAccountProvider);
+    final emails = active == null ? accounts : [active, ...accounts];
     return FutureBuilder<List<EventAttendee>>(
       future: ref.read(eventRepositoryProvider).attendeesOf(eventId),
       builder: (ctx, snap) {
         final atts = snap.data ?? const [];
         if (atts.isEmpty) return const SizedBox.shrink();
-        final self = atts.where((a) => a.isSelf).firstOrNull;
+        final self = EventRepository.resolveSelf(atts, emails);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

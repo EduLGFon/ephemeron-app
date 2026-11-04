@@ -57,6 +57,13 @@ bool timelineIsAllDay(OccurrenceCacheData o) {
   return (o.endUtc - o.startUtc) >= const Duration(hours: 23).inMilliseconds;
 }
 
+/// True when the occurrence has fully ended (attended/past).
+/// Synchronous on cached timestamps so styling works with no attendee data.
+bool timelineIsPast(OccurrenceCacheData o, {int? nowMs}) {
+  final now = nowMs ?? DateTime.now().toUtc().millisecondsSinceEpoch;
+  return o.endUtc < now;
+}
+
 Color timelineEventColor(BuildContext context, String? colorId) {
   if (colorId != null && colorId.isNotEmpty) {
     final parsed = googleCalendarColors[colorId] ?? tryParseCssHex(colorId);

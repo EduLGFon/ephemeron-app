@@ -1,10 +1,12 @@
 // Static timeline chrome: hour gutter, day headers, all-day strip.
 // Pure presentation; dragging and tapping arrive via callbacks.
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/time/device_date_format.dart';
 import '../../../../core/time/time.dart';
 import '../../../../data/drift/app_database.dart';
+import '../../application/calendar_providers.dart';
 import 'timeline_utils.dart';
 
 class TimelineHourGutter extends StatelessWidget {
@@ -214,38 +216,64 @@ class TimelineAllDayStrip extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        for (final o in mine)
-          Builder(
-            builder: (ctx) => Padding(
-              padding: const EdgeInsets.fromLTRB(2, 2, 2, 0),
-              child: InkWell(
-                onTap: () => onTap(o.eventId),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: timelineEventColor(
-                      ctx,
-                      o.colorId,
-                    ).withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    o.title ?? 'All-day',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(ctx).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(ctx).colorScheme.onPrimary,
-                    ),
-                  ),
-                ),
-              ),
+        for (final o in mine) _AllDayChip(occurrence: o, onTap: onTap),
+      ],
+    );
+  }
+}
+
+/// Single all-day chip: past chips are dimmed, declined ones stay hollow
+/// (blank inside, border + title only), matching the timed event blocks.
+class _AllDayChip extends ConsumerWidget {
+  const _AllDayChip({required this.occurrence, required this.onTap});
+
+  final OccurrenceCacheData occurrence;
+  final ValueChanged<String> onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rsvpAsync = ref.watch(selfRsvpForEventProvider(occurrence.eventId));
+    final rsvp = rsvpAsync.maybeWhen(data: (v) => v, orElse: () => null);
+    final past = timelineIsPast(occurrence);
+    final hollow = rsvp == 'declined';
+    final c = timelineEventColor(context, occurrence.colorId);
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 2, 2, 0),
+      child: InkWell(
+        onTap: () => onTap(occurrence.eventId),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          decoration: BoxDecoration(
+            color: hollow
+                ? Colors.transparent
+                : c.withValues(alpha: past ? 0.35 : 0.85),
+            borderRadius: BorderRadius.circular(4),
+            border: hollow
+                ? Border.all(
+                    color: c.withValues(alpha: past ? 0.3 : 0.6),
+                    width: 1,
+                  )
+                : past
+                ? Border.all(color: c.withValues(alpha: 0.25), width: 1)
+                : null,
+          ),
+          child: Text(
+            occurrence.title ?? 'All-day',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: hollow
+                  ? scheme.onSurface.withValues(alpha: past ? 0.5 : 0.7)
+                  : past
+                  ? scheme.onSurface.withValues(alpha: 0.6)
+                  : scheme.onPrimary,
+              decoration: hollow ? TextDecoration.lineThrough : null,
             ),
           ),
-      ],
+        ),
+      ),
     );
   }
 }
