@@ -41,12 +41,15 @@
 - Task-list and smart-list chips use long-press for management. No widget test
   covers the long-press gesture yet; the manager screens and repository paths
   are covered.
-- Habit markers are widget-tested in the month grid and timeline strip. Agenda
-  habit rows and the "Open habits" navigation are covered by repository and
-  static checks only.
+- Habit markers are widget-tested in the month grid and timeline strip, and the
+  tap action sheet is covered by a month widget test. Agenda habit rows and the
+  "Open habits" navigation are covered by repository and static checks only.
 - Task sort menus and planned/due date fields are covered by repository,
   occurrence and settings tests. Long-press drag reorder has no dedicated
   widget test; see `docs/TASK_DATES_AND_SORTING.md`.
+- The note editor styles Markdown inline in the same field but keeps the
+  markers visible and dimmed. It is not a full WYSIWYG editor that hides
+  markers; this preserves cursor and Android IME offsets.
 
 ## Open work
 
