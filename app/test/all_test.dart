@@ -31,6 +31,7 @@ import 'cases/habit_focus_case.dart' as habit_focus;
 import 'cases/habit_schedule_case.dart' as habit_schedule;
 import 'cases/habit_streak_case.dart' as habit_streak;
 import 'cases/habits_screen_case.dart' as habits_screen;
+import 'cases/habits_timer_case.dart' as habits_timer;
 import 'cases/headless_widget_push_case.dart' as headless_widget_push;
 import 'cases/home_widget_binder_case.dart' as home_widget_binder;
 import 'cases/home_widget_callback_case.dart' as home_widget_callback;
@@ -90,6 +91,7 @@ const _included = <String>{
   'habit_schedule_case.dart',
   'habit_streak_case.dart',
   'habits_screen_case.dart',
+  'habits_timer_case.dart',
   'headless_widget_push_case.dart',
   'home_widget_binder_case.dart',
   'home_widget_callback_case.dart',
@@ -156,6 +158,7 @@ void main() {
   group('habit_schedule', habit_schedule.main);
   group('habit_streak', habit_streak.main);
   group('habits_screen', habits_screen.main);
+  group('habits_timer', habits_timer.main);
   group('headless_widget_push', headless_widget_push.main);
   group('home_widget_binder', home_widget_binder.main);
   group('home_widget_callback', home_widget_callback.main);

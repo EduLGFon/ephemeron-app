@@ -6,6 +6,8 @@ import '../../../core/db/db_provider.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/habit_repository.dart';
 import '../../../domain/habits/date_key.dart';
+import '../../settings/application/settings_providers.dart';
+import '../../../data/services/habit_timer_store.dart';
 
 final habitRepositoryProvider = Provider<HabitRepository>((ref) {
   return HabitRepository(ref.watch(appDatabaseProvider));
@@ -60,3 +62,8 @@ class ShowArchivedHabits extends Notifier<bool> {
 
   void toggle() => state = !state;
 }
+
+final habitTimerStoreProvider = FutureProvider<HabitTimerStore>((ref) async {
+  final prefs = await ref.watch(sharedPreferencesProvider.future);
+  return HabitTimerStore(prefs);
+});
