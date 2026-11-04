@@ -33,6 +33,18 @@
   No Android SDK/device here, so the native build and launcher behavior are
   not verified yet.
 
+## Calendar and task UX pass (2026-11-04)
+
+- All-day `Events.endDate` is now exclusive, matching Google Calendar. Legacy
+  rows with `endDate == startDate` render as one day; no data migration was
+  needed. Device-calendar imports are normalized to the same invariant.
+- Task-list and smart-list chips use long-press for management. No widget test
+  covers the long-press gesture yet; the manager screens and repository paths
+  are covered.
+- Habit markers are widget-tested in the month grid and timeline strip. Agenda
+  habit rows and the "Open habits" navigation are covered by repository and
+  static checks only.
+
 ## Open work
 
 - iOS home-screen widgets: add WidgetKit extension target, App Group, and SwiftUI widgets mirroring Android types.
