@@ -10,6 +10,7 @@ import 'package:ephemeron/core/time/time.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:ephemeron/data/repositories/outbox_helper.dart';
 import 'package:ephemeron/data/repositories/pending_operations_repository.dart';
+import 'package:ephemeron/domain/sources/source_move.dart';
 import 'package:ephemeron/domain/tasks/recurring_task.dart';
 
 class TaskRepository {
@@ -17,8 +18,37 @@ class TaskRepository {
 
   final AppDatabase _db;
 
-  Future<void> _enqueue(String entity, String entityId, String op) =>
-      enqueueOutbox(_db, entity: entity, entityId: entityId, op: op);
+  Future<void> _enqueue(
+    String entity,
+    String entityId,
+    String op, {
+    String? payload,
+  }) => enqueueOutbox(
+    _db,
+    entity: entity,
+    entityId: entityId,
+    op: op,
+    payload: payload,
+  );
+
+  Future<void> _enqueueRemoteDelete({
+    required String taskId,
+    required String listRemoteId,
+    required String taskRemoteId,
+    required String account,
+  }) {
+    return enqueueOutbox(
+      _db,
+      entity: 'task_remote',
+      entityId: taskId,
+      op: 'delete',
+      payload: jsonEncode({
+        'account': account,
+        'listRemoteId': listRemoteId,
+        'taskRemoteId': taskRemoteId,
+      }),
+    );
+  }
 
   // Lists.
 
@@ -119,10 +149,13 @@ class TaskRepository {
 
   Future<String?> _accountOfList(String? listId) async {
     if (listId == null) return null;
-    final list = await (_db.select(
+    return (await _list(listId))?.googleAccount;
+  }
+
+  Future<TaskList?> _list(String listId) {
+    return (_db.select(
       _db.taskLists,
     )..where((l) => l.id.equals(listId))).getSingleOrNull();
-    return list?.googleAccount;
   }
 
   Stream<List<Task>> watchOpen({String? listId}) {
@@ -404,32 +437,111 @@ class TaskRepository {
     }
   }
 
-  /// Moves tasks; returns previous list ids for undo.
+  /// Moves tasks to [listId]; returns previous list ids for undo.
+  ///
+  /// Same-account Google lists use the Tasks API move endpoint. A move to
+  /// another account, to a local list, or from a local list becomes a local
+  /// copy plus a queued delete of the old remote row. A null [listId] moves
+  /// the tasks to the local unlisted bucket.
   Future<Map<String, String?>> moveTasks(
     List<String> ids,
     String? listId,
   ) async {
+    final target = listId == null ? null : await _list(listId);
+    if (listId != null && target == null) {
+      throw SourceMoveException('Task list not found.');
+    }
+    final targetAccount = target?.googleAccount;
+    final targetRemoteList = target?.remoteId;
+    final targetIsGoogle = targetRemoteList != null;
     final prev = <String, String?>{};
+
     await _db.transaction(() async {
       for (final id in ids) {
         final task = await (_db.select(
           _db.tasks,
         )..where((t) => t.id.equals(id))).getSingle();
         prev[id] = task.listId;
-        final account = await _accountOfList(listId);
+        if (task.listId == listId) continue;
+        final source = task.listId == null ? null : await _list(task.listId!);
+        final sourceAccount = task.googleAccount ?? source?.googleAccount;
+        final sourceRemoteList = source?.remoteId;
+        final sourceRemoteId = task.remoteId;
+        final wasDirty = task.dirty;
+        // Preserve the first source when a move is still queued.
+        var remoteFrom = sourceRemoteList;
+        final pendingMove =
+            await (_db.select(_db.outbox)..where(
+                  (o) =>
+                      o.entity.equals('task') &
+                      o.entityId.equals(id) &
+                      o.op.equals('move'),
+                ))
+                .getSingleOrNull();
+        if (pendingMove?.payload != null) {
+          try {
+            final p = jsonDecode(pendingMove!.payload!) as Map<String, dynamic>;
+            remoteFrom = (p['fromRemoteListId'] as String?) ?? remoteFrom;
+          } catch (_) {
+            // Keep the current list as the source.
+          }
+        }
+        final useRemoteMove =
+            sourceAccount == targetAccount &&
+            targetRemoteList != null &&
+            remoteFrom != null &&
+            sourceRemoteId != null;
+        final now = nowMs();
+        await (_db.delete(
+          _db.outbox,
+        )..where((o) => o.entity.equals('task') & o.entityId.equals(id))).go();
+        if (useRemoteMove) {
+          await (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(
+            TasksCompanion(
+              listId: Value(listId),
+              googleAccount: Value(targetAccount),
+              updatedAt: Value(now),
+              dirty: const Value(true),
+            ),
+          );
+          await _enqueue(
+            'task',
+            id,
+            'move',
+            payload: jsonEncode({
+              'fromListId': task.listId,
+              'fromRemoteListId': remoteFrom,
+            }),
+          );
+          if (wasDirty) await _enqueue('task', id, 'update');
+          continue;
+        }
+
         await (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(
           TasksCompanion(
             listId: Value(listId),
-            updatedAt: Value(nowMs()),
-            dirty: const Value(true),
-            googleAccount: Value(account),
+            googleAccount: Value(targetAccount),
+            remoteId: const Value(null),
+            remoteEtag: const Value(null),
+            updatedAt: Value(now),
+            dirty: Value(targetIsGoogle),
           ),
         );
+        if (targetIsGoogle) {
+          await _enqueue('task', id, 'update');
+        }
+        if (remoteFrom != null &&
+            sourceRemoteId != null &&
+            sourceAccount != null) {
+          await _enqueueRemoteDelete(
+            taskId: id,
+            listRemoteId: remoteFrom,
+            taskRemoteId: sourceRemoteId,
+            account: sourceAccount,
+          );
+        }
       }
     });
-    for (final id in ids) {
-      await _enqueue('task', id, 'update');
-    }
     return prev;
   }
 

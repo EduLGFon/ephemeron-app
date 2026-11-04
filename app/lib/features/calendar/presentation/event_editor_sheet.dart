@@ -14,12 +14,15 @@ import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/event_repository.dart';
 import '../../../domain/alarms/alarm_preset.dart';
 import '../../../domain/alarms/reminder.dart';
+import '../../../domain/sources/source_label.dart';
+import '../../../domain/sources/source_move.dart';
 import '../../../core/platform/app_permissions.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../../settings/application/settings_providers.dart';
 import '../../notes/application/notes_providers.dart';
 import '../application/calendar_providers.dart';
 import '../../../domain/recurrence/recurrence_rule.dart';
+import 'calendar_source_picker.dart';
 import 'scope_sheet.dart';
 import 'google_calendar_colors.dart';
 
@@ -370,6 +373,21 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
       if (!mounted) return;
     }
     final repo = ref.read(eventRepositoryProvider);
+    final existing = widget.event;
+    if (existing != null &&
+        _calendarId != null &&
+        _calendarId != existing.calendarId) {
+      try {
+        await repo.moveEventToCalendar(existing.id, _calendarId!);
+      } on SourceMoveException catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(e.message)));
+        }
+        return;
+      }
+    }
     // Conflict hint: warn if overlapping a busy event.
     if (!_allDay) {
       final overlaps = await repo.overlappingEvents(
@@ -404,7 +422,6 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     final noteRepo = ref.read(noteRepositoryProvider);
     final settings = await ref.read(settingsRepositoryProvider.future);
     _calendarId ??= settings.defaultCalendarId;
-    final existing = widget.event;
     if (existing == null || existing.rrule == null) {
       if (existing == null) {
         final fullNotes = _notes.text.trim().isEmpty
@@ -562,45 +579,31 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
               const SizedBox(height: 8),
               calsAsync.maybeWhen(
                 data: (cals) {
-                  final groups = <String, List<Calendar>>{};
-                  for (final c in cals) {
-                    groups
-                        .putIfAbsent(
-                          c.source == 'google'
-                              ? (c.googleAccount ?? 'Google')
-                              : 'Device',
-                          () => [],
-                        )
-                        .add(c);
-                  }
-                  final items = <DropdownMenuItem<String?>>[];
-                  for (final entry in groups.entries) {
-                    items.add(
-                      DropdownMenuItem<String?>(
-                        enabled: false,
-                        child: Text(
-                          entry.key,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    );
-                    for (final c in entry.value) {
-                      items.add(
-                        DropdownMenuItem<String?>(
-                          value: c.id,
-                          child: Text('  ${c.name}'),
-                        ),
+                  final calendar = _calendarId == null
+                      ? null
+                      : cals.where((c) => c.id == _calendarId).firstOrNull;
+                  final source = calendar == null
+                      ? 'Select calendar'
+                      : sourceLabel(
+                              name: calendar.name,
+                              account: calendar.googleAccount,
+                              isLocal: calendar.source != 'google',
+                            ) ??
+                            calendar.name;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.calendar_today_outlined),
+                    title: Text(source),
+                    subtitle: const Text('Calendar source'),
+                    trailing: const Icon(Icons.swap_horiz),
+                    onTap: () async {
+                      final picked = await showCalendarSourcePicker(
+                        context,
+                        ref,
+                        selectedId: _calendarId,
                       );
-                    }
-                  }
-                  return DropdownButtonFormField<String?>(
-                    initialValue: _calendarId,
-                    decoration: const InputDecoration(
-                      labelText: 'Calendar',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: items,
-                    onChanged: (v) => _changed(() => _calendarId = v),
+                      if (picked != null) _changed(() => _calendarId = picked);
+                    },
                   );
                 },
                 orElse: () => const SizedBox.shrink(),

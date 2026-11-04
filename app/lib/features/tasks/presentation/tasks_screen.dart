@@ -16,6 +16,7 @@ import '../../sync/presentation/sync_title.dart';
 import '../application/tasks_providers.dart';
 import 'quick_add_sheet.dart';
 import 'task_editor_sheet.dart';
+import 'task_source_picker.dart';
 import 'trash_screen.dart';
 
 class TasksScreen extends ConsumerWidget {
@@ -328,14 +329,14 @@ class _TaskTile extends ConsumerWidget {
           task.title,
           style: overdue ? const TextStyle(color: Colors.red) : null,
         ),
-        subtitle: _subtitle(context, source),
+        subtitle: _subtitle(context, ref, source),
         trailing: _MoveButtons(task: task),
         onTap: () => showTaskEditor(context, task: task),
       ),
     );
   }
 
-  Widget? _subtitle(BuildContext context, String? source) {
+  Widget? _subtitle(BuildContext context, WidgetRef ref, String? source) {
     final parts = <String>[];
     if (task.dueDate != null) {
       try {
@@ -354,12 +355,36 @@ class _TaskTile extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (source != null)
-          Text(
-            source,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+          Align(
+            alignment: Alignment.centerLeft,
+            child: InkWell(
+              onTap: () => pickAndMoveTask(
+                context,
+                ref,
+                taskId: task.id,
+                currentListId: task.listId,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      source,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.swap_horiz,
+                    size: 14,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
             ),
           ),
         if (parts.isNotEmpty) Text(parts.join('  ')),
@@ -485,17 +510,50 @@ class _CompletedScreen extends ConsumerWidget {
               ),
             );
           }
+          final listsById = ref.watch(taskListsByIdProvider);
           return RepaintBoundary(
             child: ListView.builder(
               itemCount: tasks.length,
               itemBuilder: (context, i) {
                 final t = tasks[i];
+                final list = t.listId == null ? null : listsById[t.listId];
+                final source = sourceLabel(
+                  name: list?.name,
+                  account: t.googleAccount,
+                  fallbackAccount: list?.googleAccount,
+                );
                 return ListTile(
                   leading: const Icon(Icons.check_circle_outline),
                   title: Text(t.title),
-                  subtitle: t.dueDate == null
+                  subtitle: (source == null && t.dueDate == null)
                       ? null
-                      : Text(DeviceDateFormat.dateIso(context, t.dueDate!)),
+                      : Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (source != null)
+                              InkWell(
+                                onTap: () => pickAndMoveTask(
+                                  context,
+                                  ref,
+                                  taskId: t.id,
+                                  currentListId: t.listId,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Flexible(child: Text(source)),
+                                    const SizedBox(width: 4),
+                                    const Icon(Icons.swap_horiz, size: 14),
+                                  ],
+                                ),
+                              ),
+                            if (t.dueDate != null)
+                              Text(
+                                DeviceDateFormat.dateIso(context, t.dueDate!),
+                              ),
+                          ],
+                        ),
                   trailing: IconButton(
                     icon: const Icon(Icons.undo),
                     tooltip: 'Reopen',

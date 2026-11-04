@@ -17,9 +17,11 @@ import '../../settings/application/settings_providers.dart';
 import '../../sync/application/pending_operations.dart';
 import '../../tasks/application/tasks_providers.dart';
 import '../../notes/presentation/note_editor_screen.dart';
-import '../application/calendar_providers.dart';
-import 'event_editor_sheet.dart';
 import '../../tasks/presentation/task_editor_sheet.dart';
+import '../../tasks/presentation/task_source_picker.dart';
+import '../application/calendar_providers.dart';
+import 'calendar_source_picker.dart';
+import 'event_editor_sheet.dart';
 import 'scope_sheet.dart';
 
 Future<void> showEventDetails(BuildContext context, String eventId) async {
@@ -125,12 +127,22 @@ class _Details extends ConsumerWidget {
                     ),
                     subtitle: Text(_when(context, e)),
                   ),
-                  if (source != null)
-                    _SourceTile(
-                      icon: Icons.calendar_today_outlined,
-                      kind: 'Calendar',
-                      label: source,
-                    ),
+                  _SourceTile(
+                    icon: Icons.calendar_today_outlined,
+                    kind: 'Calendar',
+                    label: source ?? 'Unknown calendar',
+                    onTap: () async {
+                      final moved = await pickAndMoveEvent(
+                        context,
+                        ref,
+                        eventId: e.id,
+                        currentCalendarId: e.calendarId,
+                      );
+                      if (moved && context.mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  ),
                   if (e.location != null && e.location!.isNotEmpty)
                     ListTile(
                       leading: const Icon(Icons.place_outlined),
@@ -245,12 +257,22 @@ class _Details extends ConsumerWidget {
                           : 'Due ${DeviceDateFormat.dateIso(context, t.dueDate!)}${t.dueTime == null ? '' : ' ${t.dueTime! ~/ 60}:${(t.dueTime! % 60).toString().padLeft(2, '0')}'}',
                     ),
                   ),
-                  if (source != null)
-                    _SourceTile(
-                      icon: Icons.list_alt_outlined,
-                      kind: 'List',
-                      label: source,
-                    ),
+                  _SourceTile(
+                    icon: Icons.list_alt_outlined,
+                    kind: 'List',
+                    label: source ?? 'No list',
+                    onTap: () async {
+                      final moved = await pickAndMoveTask(
+                        context,
+                        ref,
+                        taskId: t.id,
+                        currentListId: t.listId,
+                      );
+                      if (moved && context.mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  ),
                   if (t.notes != null && t.notes!.isNotEmpty)
                     ListTile(
                       leading: const Icon(Icons.notes_outlined),
@@ -345,11 +367,13 @@ class _SourceTile extends StatelessWidget {
     required this.icon,
     required this.kind,
     required this.label,
+    this.onTap,
   });
 
   final IconData icon;
   final String kind;
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -358,6 +382,8 @@ class _SourceTile extends StatelessWidget {
       title: Text(label),
       subtitle: Text(kind),
       dense: true,
+      trailing: onTap == null ? null : const Icon(Icons.swap_horiz),
+      onTap: onTap,
     );
   }
 }

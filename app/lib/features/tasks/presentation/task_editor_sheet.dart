@@ -12,10 +12,13 @@ import '../../../app/session/session_restore.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../domain/alarms/alarm_preset.dart';
 import '../../../domain/alarms/reminder.dart';
+import '../../../domain/sources/source_label.dart';
+import '../../../domain/sources/source_move.dart';
 import '../../../core/platform/app_permissions.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../../settings/application/settings_providers.dart';
 import '../application/tasks_providers.dart';
+import 'task_source_picker.dart';
 
 Future<void> showTaskEditor(
   BuildContext context, {
@@ -245,6 +248,18 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         reminders: encodeReminderOffsets(_reminders),
       );
     } else {
+      if (existing.listId != _listId) {
+        try {
+          await repo.moveTasks([existing.id], _listId);
+        } on SourceMoveException catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(e.message)));
+          }
+          return;
+        }
+      }
       await repo.updateTask(
         existing.id,
         title: title,
@@ -252,7 +267,6 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         priority: _priority,
         dueDate: () => _dueDate,
         dueTime: () => _dueTime,
-        listId: _listId,
         pinned: _pinned,
         alarmPreset: () => _alarmPreset,
         reminders: () => encodeReminderOffsets(_reminders),
@@ -307,23 +321,50 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
               ),
               const SizedBox(height: 8),
               listsAsync.maybeWhen(
-                data: (lists) => DropdownButtonFormField<String?>(
-                  initialValue: _listId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'List',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('No list')),
-                    for (final l in lists)
-                      DropdownMenuItem(value: l.id, child: Text(l.name)),
-                  ],
-                  onChanged: (v) {
-                    setState(() => _listId = v);
-                    _queueDraft();
-                  },
-                ),
+                data: (lists) {
+                  final list = _listId == null
+                      ? null
+                      : lists.where((l) => l.id == _listId).firstOrNull;
+                  final source = list == null
+                      ? 'No list'
+                      : sourceLabel(
+                              name: list.name,
+                              account: list.googleAccount,
+                              isLocal: list.googleAccount == null,
+                            ) ??
+                            list.name;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.list_alt_outlined),
+                    title: Text(source),
+                    subtitle: const Text('List source'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_listId != null)
+                          IconButton(
+                            icon: const Icon(Icons.clear),
+                            tooltip: 'No list',
+                            onPressed: () {
+                              setState(() => _listId = null);
+                              _queueDraft();
+                            },
+                          ),
+                        const Icon(Icons.swap_horiz),
+                      ],
+                    ),
+                    onTap: () async {
+                      final picked = await showTaskListSourcePicker(
+                        context,
+                        ref,
+                        selectedId: _listId,
+                      );
+                      if (picked == null) return;
+                      setState(() => _listId = picked);
+                      _queueDraft();
+                    },
+                  );
+                },
                 orElse: () => const SizedBox.shrink(),
               ),
               const SizedBox(height: 8),

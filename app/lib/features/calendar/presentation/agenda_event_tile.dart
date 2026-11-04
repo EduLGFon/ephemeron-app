@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../application/calendar_providers.dart';
+import 'calendar_source_picker.dart';
 import 'timeline/timeline_utils.dart';
 
 class AgendaEventTile extends ConsumerWidget {
@@ -18,6 +19,9 @@ class AgendaEventTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final rsvpAsync = ref.watch(selfRsvpForEventProvider(occurrence.eventId));
     final rsvp = rsvpAsync.maybeWhen(data: (v) => v, orElse: () => null);
+    final source = ref
+        .watch(occurrenceSourceMapProvider)
+        .maybeWhen(data: (map) => map[occurrence.eventId], orElse: () => null);
     final baseColor = timelineEventColor(context, occurrence.colorId);
     final isPast = timelineIsPast(occurrence);
     final scheme = Theme.of(context).colorScheme;
@@ -67,6 +71,30 @@ class AgendaEventTile extends ConsumerWidget {
         ),
       ),
       title: Text(occurrence.title ?? '…', style: titleStyle),
+      subtitle: source == null
+          ? null
+          : InkWell(
+              onTap: () => pickAndMoveEvent(
+                context,
+                ref,
+                eventId: occurrence.eventId,
+                currentCalendarId: source.calendarId,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      source.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.swap_horiz, size: 14),
+                ],
+              ),
+            ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

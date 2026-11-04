@@ -68,6 +68,11 @@ abstract class GoogleApiClient {
     Map<String, dynamic> body, {
     String? etag,
   });
+  Future<Map<String, dynamic>> eventMove(
+    String sourceCalendarId,
+    String eventId,
+    String destinationCalendarId,
+  );
   Future<void> eventDelete(String calendarId, String eventId);
   Future<List<Map<String, dynamic>>> taskLists();
   Future<TasksPage> tasksList(String taskListId, {String? updatedMin});
@@ -81,6 +86,11 @@ abstract class GoogleApiClient {
     Map<String, dynamic> body, {
     String? etag,
   });
+  Future<Map<String, dynamic>> taskMove(
+    String sourceTaskListId,
+    String taskId,
+    String destinationTaskListId,
+  );
   Future<void> taskDelete(String taskListId, String taskId);
 }
 
@@ -197,6 +207,22 @@ class HttpGoogleApiClient implements GoogleApiClient {
   }
 
   @override
+  Future<Map<String, dynamic>> eventMove(
+    String sourceCalendarId,
+    String eventId,
+    String destinationCalendarId,
+  ) async {
+    final r = await _http.post(
+      Uri.parse(
+        '${AppConfig.calendarApiBase}/calendars/${Uri.encodeComponent(sourceCalendarId)}/events/${Uri.encodeComponent(eventId)}/move',
+      ).replace(queryParameters: {'destination': destinationCalendarId}),
+      headers: await _headers(),
+    );
+    if (r.statusCode != 200) _throw(r);
+    return jsonDecode(r.body) as Map<String, dynamic>;
+  }
+
+  @override
   Future<void> eventDelete(String calendarId, String eventId) async {
     final r = await _http.delete(
       Uri.parse(
@@ -279,6 +305,24 @@ class HttpGoogleApiClient implements GoogleApiClient {
       ),
       headers: await _headers(etag: etag),
       body: jsonEncode(body),
+    );
+    if (r.statusCode != 200) _throw(r);
+    return jsonDecode(r.body) as Map<String, dynamic>;
+  }
+
+  @override
+  Future<Map<String, dynamic>> taskMove(
+    String sourceTaskListId,
+    String taskId,
+    String destinationTaskListId,
+  ) async {
+    final r = await _http.post(
+      Uri.parse(
+        '${AppConfig.tasksApiBase}/lists/${Uri.encodeComponent(sourceTaskListId)}/tasks/${Uri.encodeComponent(taskId)}/move',
+      ).replace(
+        queryParameters: {'destinationTasklist': destinationTaskListId},
+      ),
+      headers: await _headers(),
     );
     if (r.statusCode != 200) _throw(r);
     return jsonDecode(r.body) as Map<String, dynamic>;

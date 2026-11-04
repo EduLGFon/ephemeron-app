@@ -8,7 +8,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:ephemeron/data/repositories/note_repository.dart';
+import 'package:ephemeron/domain/sources/source_label.dart';
+import 'package:ephemeron/features/calendar/application/calendar_providers.dart';
 import 'package:ephemeron/features/settings/application/settings_providers.dart';
+import 'package:ephemeron/features/tasks/application/tasks_providers.dart';
 import '../application/search_providers.dart';
 
 Map<SearchScope, String> _scopeLabels(AppLocalizations l) => {
@@ -141,19 +144,38 @@ class _Results extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final listsById = ref.watch(taskListsByIdProvider);
+    final calendars = ref.watch(calendarsProvider).value ?? const <Calendar>[];
+    final calendarsById = {for (final c in calendars) c.id: c};
     final items = <Widget>[];
     if (_show(scope, SearchScope.tasks)) {
       items.add(
         _Group<Task>(
           title: l.searchTasks,
           async: ref.watch(searchTasksProvider),
-          tile: (t) => ListTile(
-            leading: const Icon(Icons.checklist_outlined),
-            title: Text(t.title),
-            subtitle: t.dueDate == null
-                ? null
-                : Text(DeviceDateFormat.dateIso(context, t.dueDate!)),
-          ),
+          tile: (t) {
+            final list = t.listId == null ? null : listsById[t.listId];
+            final source = sourceLabel(
+              name: list?.name,
+              account: t.googleAccount,
+              fallbackAccount: list?.googleAccount,
+            );
+            return ListTile(
+              leading: const Icon(Icons.checklist_outlined),
+              title: Text(t.title),
+              subtitle: (source == null && t.dueDate == null)
+                  ? null
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (source != null) Text(source),
+                        if (t.dueDate != null)
+                          Text(DeviceDateFormat.dateIso(context, t.dueDate!)),
+                      ],
+                    ),
+            );
+          },
         ),
       );
     }
@@ -162,11 +184,29 @@ class _Results extends ConsumerWidget {
         _Group<Event>(
           title: l.searchEvents,
           async: ref.watch(searchEventsProvider),
-          tile: (e) => ListTile(
-            leading: const Icon(Icons.calendar_month_outlined),
-            title: Text(e.title.isEmpty ? '(no title)' : e.title),
-            subtitle: e.location == null ? null : Text(e.location!),
-          ),
+          tile: (e) {
+            final calendar = calendarsById[e.calendarId];
+            final source = sourceLabel(
+              name: calendar?.name,
+              account: e.googleAccount,
+              fallbackAccount: calendar?.googleAccount,
+              isLocal: calendar == null || calendar.source != 'google',
+            );
+            return ListTile(
+              leading: const Icon(Icons.calendar_month_outlined),
+              title: Text(e.title.isEmpty ? '(no title)' : e.title),
+              subtitle: (source == null && e.location == null)
+                  ? null
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (source != null) Text(source),
+                        if (e.location != null) Text(e.location!),
+                      ],
+                    ),
+            );
+          },
         ),
       );
     }

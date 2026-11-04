@@ -134,3 +134,15 @@ Checklist:
 Acceptance: analyze clean and full suite green. Status: done.
 Verification: `flutter analyze` no issues; `flutter test` 197 passed.
 Limits: startup and scroll timings were not measured on a device; see docs/TODO.md.
+
+## Source switching (2026-11-04)
+
+Checklist:
+- [x] Event and task source labels are visible on open/completed tasks, event details, agenda rows, month pills and tall timeline blocks.
+- [x] Tapping a source opens a two-step account then calendar/list picker.
+- [x] Event and task editors use the same source picker.
+- [x] Same-account Google moves use Calendar/Tasks move endpoints.
+- [x] Cross-account and local moves copy locally, queue a destination create when needed, and queue deletion of the old remote row under its source account.
+- [x] Recurring event series are guarded against cross-account Google moves.
+Acceptance: local moves are immediate and remote moves are queued offline-first. Status: done.
+Verification: `flutter analyze` clean; targeted move/picker/sync tests green; full suite in final verification.

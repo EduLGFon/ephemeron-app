@@ -1,6 +1,7 @@
 // Single-flight sync coordinator. Offline-first: optimistic local writes
 // plus outbox; the user never waits on the network. Safe to kill anytime:
 // remote upserts key on remoteId, outbox rows clear only after success.
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:drift/drift.dart';
@@ -152,6 +153,10 @@ class SyncEngine {
   /// without a stamp keep the old single-account behavior (owned).
   Future<bool> _ownedByActiveAccount(OutboxData op) async {
     if (account == null) return true;
+    if (op.entity == 'event_remote' || op.entity == 'task_remote') {
+      final owner = _opPayload(op)['account'] as String?;
+      return owner == null || owner == account;
+    }
     if (op.entity == 'event') {
       final e = await (_db.select(
         _db.events,
@@ -170,6 +175,24 @@ class SyncEngine {
   }
 
   Future<void> _applyOp(GoogleApiClient client, OutboxData op) async {
+    if (op.entity == 'event_remote') {
+      final p = _opPayload(op);
+      final calendarRemoteId = p['calendarRemoteId'] as String?;
+      final eventRemoteId = p['eventRemoteId'] as String?;
+      if (calendarRemoteId != null && eventRemoteId != null) {
+        await client.eventDelete(calendarRemoteId, eventRemoteId);
+      }
+      return;
+    }
+    if (op.entity == 'task_remote') {
+      final p = _opPayload(op);
+      final listRemoteId = p['listRemoteId'] as String?;
+      final taskRemoteId = p['taskRemoteId'] as String?;
+      if (listRemoteId != null && taskRemoteId != null) {
+        await client.taskDelete(listRemoteId, taskRemoteId);
+      }
+      return;
+    }
     if (op.entity == 'event') {
       final e = await (_db.select(
         _db.events,
@@ -182,6 +205,32 @@ class SyncEngine {
           await client.eventDelete(calId, e.remoteId!);
         }
         return;
+      }
+      if (op.op == 'move' && e.remoteId != null) {
+        final p = _opPayload(op);
+        final fromRemote =
+            p['fromRemoteCalendarId'] as String? ??
+            (p['fromCalendarId'] == null
+                ? null
+                : await _remoteCalendarId(p['fromCalendarId'] as String));
+        final destinationRemote = await _remoteCalendarId(e.calendarId);
+        if (fromRemote != null &&
+            destinationRemote != null &&
+            fromRemote != destinationRemote) {
+          final moved = await client.eventMove(
+            fromRemote,
+            e.remoteId!,
+            destinationRemote,
+          );
+          await (_db.update(_db.events)..where((t) => t.id.equals(e.id))).write(
+            EventsCompanion(
+              remoteId: Value(moved['id'] as String? ?? e.remoteId),
+              remoteEtag: Value(moved['etag'] as String?),
+              dirty: const Value(false),
+            ),
+          );
+          return;
+        }
       }
       if (e.remoteId == null) {
         final body = eventToGoogle(e);
@@ -274,6 +323,32 @@ class SyncEngine {
           await client.taskDelete(listId, t.remoteId!);
         }
         return;
+      }
+      if (op.op == 'move' && t.remoteId != null) {
+        final p = _opPayload(op);
+        final fromRemote =
+            p['fromRemoteListId'] as String? ??
+            (p['fromListId'] == null
+                ? null
+                : await _remoteTaskListId(p['fromListId'] as String));
+        final destinationRemote = await _remoteTaskListId(t.listId);
+        if (fromRemote != null &&
+            destinationRemote != null &&
+            fromRemote != destinationRemote) {
+          final moved = await client.taskMove(
+            fromRemote,
+            t.remoteId!,
+            destinationRemote,
+          );
+          await (_db.update(_db.tasks)..where((x) => x.id.equals(t.id))).write(
+            TasksCompanion(
+              remoteId: Value(moved['id'] as String? ?? t.remoteId),
+              remoteEtag: Value(moved['etag'] as String?),
+              dirty: const Value(false),
+            ),
+          );
+          return;
+        }
       }
       if (t.remoteId == null) {
         final created = await client.taskInsert(listId, taskToGoogle(t));
@@ -385,7 +460,22 @@ class SyncEngine {
   }
 
   static bool _isGoogleEntity(String entity) =>
-      entity == 'event' || entity == 'task' || entity == 'task_list';
+      entity == 'event' ||
+      entity == 'task' ||
+      entity == 'task_list' ||
+      entity == 'event_remote' ||
+      entity == 'task_remote';
+
+  Map<String, dynamic> _opPayload(OutboxData op) {
+    final raw = op.payload;
+    if (raw == null || raw.isEmpty) return const {};
+    try {
+      final decoded = jsonDecode(raw);
+      return decoded is Map<String, dynamic> ? decoded : const {};
+    } catch (_) {
+      return const {};
+    }
+  }
 
   Future<void> retryFailed(String outboxId) async {
     await (_db.update(_db.outbox)..where((o) => o.id.equals(outboxId))).write(

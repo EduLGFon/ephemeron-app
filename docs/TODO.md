@@ -108,6 +108,13 @@ Remaining (not yet fixed):
   without per-row queries needs source columns in the occurrence cache.
 - Matrix and task-editor layout tests cover 320 dp at default text scale; very
   large accessibility text scaling is not covered.
+- Source moves: recurring Google series cannot move between Google accounts
+  (Google has no single-token cross-account move); moving such a series to a
+  local calendar is supported. Cross-account copy/delete requires both source
+  and destination accounts to sync at least once; if the source account is
+  removed before its delete op runs, the old remote row can remain.
+- Task subtasks keep their own list/source when a parent task is moved; moving
+  a whole subtask tree is not automatic.
 
 ## Build performance (2026-11-03)
 

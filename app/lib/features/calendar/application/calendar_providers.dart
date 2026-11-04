@@ -5,6 +5,7 @@ import '../../../core/db/db_provider.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/event_repository.dart';
 import '../../../data/repositories/occurrence_repository.dart';
+import '../../../domain/sources/source_label.dart';
 import '../../auth/application/auth_providers.dart';
 import '../application/calendar_state.dart';
 
@@ -67,6 +68,66 @@ final windowOccurrencesProvider =
       return ref
           .watch(occurrenceRepositoryProvider)
           .watchWindow(range.fromUtc, range.toUtc);
+    });
+
+/// Display source for an event occurrence. Loaded once per cache range so
+/// timeline, agenda and month views can show labels without per-row queries.
+class OccurrenceSource {
+  const OccurrenceSource({
+    required this.calendarId,
+    required this.label,
+    this.calendarName,
+    this.account,
+    this.isLocal = false,
+  });
+
+  final String calendarId;
+  final String label;
+  final String? calendarName;
+  final String? account;
+  final bool isLocal;
+}
+
+final occurrenceSourceMapProvider =
+    FutureProvider<Map<String, OccurrenceSource>>((ref) async {
+      final range = ref.watch(calendarCacheRangeProvider);
+      final occurrences = await ref.watch(
+        windowOccurrencesProvider(range).future,
+      );
+      final eventIds = {for (final o in occurrences) o.eventId};
+      if (eventIds.isEmpty) return const {};
+      final db = ref.watch(appDatabaseProvider);
+      final ids = eventIds.toList();
+      final events = <Event>[];
+      // Keep each IN clause below SQLite's bind-variable limit.
+      for (var i = 0; i < ids.length; i += 500) {
+        final chunk = ids.sublist(
+          i,
+          i + 500 > ids.length ? ids.length : i + 500,
+        );
+        events.addAll(
+          await (db.select(db.events)..where((e) => e.id.isIn(chunk))).get(),
+        );
+      }
+      final calendars = await (db.select(db.calendars)).get();
+      final calendarById = {for (final c in calendars) c.id: c};
+      final out = <String, OccurrenceSource>{};
+      for (final event in events) {
+        final calendar = calendarById[event.calendarId];
+        final isLocal = calendar == null || calendar.source != 'google';
+        final account = event.googleAccount ?? calendar?.googleAccount;
+        final name = calendar?.name;
+        out[event.id] = OccurrenceSource(
+          calendarId: event.calendarId,
+          label:
+              sourceLabel(name: name, account: account, isLocal: isLocal) ??
+              'Source',
+          calendarName: name,
+          account: account,
+          isLocal: isLocal,
+        );
+      }
+      return out;
     });
 
 final selfRsvpForEventProvider = FutureProvider.family<String?, String>((

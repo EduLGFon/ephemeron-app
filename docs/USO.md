@@ -38,7 +38,7 @@ Visualizações (menu de visualização no AppBar):
 
 Navegação: setas anterior/próximo, ícone "Hoje". O topo mostra apenas "Calendar" (toque para sincronizar), com o mês/ano atual logo abaixo.
 
-Origem: os detalhes de um evento mostram o calendário e a conta de e-mail de origem; os detalhes de uma tarefa mostram a lista e a conta.
+Origem: os detalhes de um evento mostram o calendário e a conta de e-mail de origem; os detalhes de uma tarefa mostram a lista e a conta. Toque nessa origem para escolher a conta e depois o calendário. O evento é movido na hora; ao sincronizar, a mesma conta usa o endpoint de mover do Google, e contas diferentes copiam para o destino e apagam a origem. Séries recorrentes só podem mudar de conta pela cópia local quando o destino é local; entre contas Google, mantenha a série na mesma conta.
 
 Criar/editar evento (FAB ou toque em horário vazio):
 - Título, calendário, dia inteiro (switch).
@@ -78,7 +78,7 @@ Criar/editar (editor ou adição rápida):
 Matriz (`Matrix`): tabuleiro 2x2 com quatro campos e uma bandeja separada para tarefas sem classificação. Dois modos:
 - Auto (padrão): quadrantes "Do first", "Schedule", "Delegate" e "Eliminate", a partir de prioridade e data de vencimento.
 - Priority: cada campo mostra apenas as tarefas da prioridade correspondente, P1, P2, P3 ou P4.
-O modo escolhido é salvo. O botão flutuante cria uma tarefa; toque numa tarefa para editar. A origem (lista e conta) aparece nas tarefas.
+O modo escolhido é salvo. O botão flutuante cria uma tarefa; toque numa tarefa para editar. A origem (lista e conta) aparece nas tarefas e pode ser trocada no toque: escolha a conta e depois a lista. A tarefa é movida na hora e a sincronização usa mover na mesma conta ou copiar/apagar entre contas.
 
 Lixeira: restaurar ou excluir definitivamente; concluídas em tela separada com reabrir.
 
@@ -146,6 +146,7 @@ Google (Calendário e Tarefas):
 - Gatilhos: tocar no título de Calendário, Tarefas ou Matriz sincroniza agora e reinicia a contagem; intervalo automático configurável (Desligado, 15 min, 30 min, 1 h, 2 h).
 - Lista de alterações que falharam com "Repetir"/"Descartar".
 - Dados do Google vão direto do app para o Google; nunca tocam o servidor.
+- Mudanças de conta/calendário/lista são otimistas. Na mesma conta, o push usa mover; entre contas, o app cria no destino e apaga a origem quando as duas contas estão conectadas.
 
 Conta de e-mail (backend, opcional):
 - Criar conta ou entrar (e-mail + senha de 8+ caracteres).
