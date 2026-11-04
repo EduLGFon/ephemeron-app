@@ -72,7 +72,28 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRebuild());
     return Scaffold(
       appBar: AppBar(
-        title: SyncTitle(text: 'Calendar ${_title(context, window)}'),
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Scale the sync target down instead of wrapping when the
+            // toolbar is narrow (leading plus four actions).
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: const SyncTitle(text: 'Calendar'),
+            ),
+            Text(
+              _title(context, window),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
         leading: IconButton(
           icon: const Icon(Icons.today),
           tooltip: 'Today',
