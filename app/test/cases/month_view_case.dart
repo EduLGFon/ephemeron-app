@@ -83,13 +83,17 @@ Future<void> _pumpMonth(
 
 Future<void> _revealAgenda(WidgetTester tester) async {
   await tester.drag(find.byType(CustomScrollView), const Offset(0, -800));
-  await tester.pumpAndSettle();
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 500));
 }
 
 Future<void> _tearDown(WidgetTester tester, AppDatabase db) async {
-  await db.close();
+  // Unmount and flush Drift's stream-cache timers before closing: closing
+  // while a watched stream is still cached deadlocks on fake async.
   await tester.pumpWidget(Container());
   await tester.pump();
+  await tester.pump(const Duration(seconds: 1));
+  await db.close();
 }
 
 void main() {
