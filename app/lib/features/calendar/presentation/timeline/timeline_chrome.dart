@@ -168,7 +168,7 @@ class TimelineAllDayStrip extends StatelessWidget {
   final DateTime anchor;
   final int dayCount;
   final double gutterWidth;
-  final ValueChanged<String> onTap;
+  final ValueChanged<OccurrenceCacheData> onTap;
   final double swipeOffset;
 
   @override
@@ -266,7 +266,7 @@ class _AllDayChip extends ConsumerWidget {
   const _AllDayChip({required this.occurrence, required this.onTap});
 
   final OccurrenceCacheData occurrence;
-  final ValueChanged<String> onTap;
+  final ValueChanged<OccurrenceCacheData> onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -279,7 +279,7 @@ class _AllDayChip extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(2, 2, 2, 0),
       child: InkWell(
-        onTap: () => onTap(occurrence.eventId),
+        onTap: () => onTap(occurrence),
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),

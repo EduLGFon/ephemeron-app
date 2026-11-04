@@ -13,7 +13,7 @@ class AgendaEventTile extends ConsumerWidget {
   const AgendaEventTile({super.key, required this.occurrence, this.onTap});
 
   final OccurrenceCacheData occurrence;
-  final ValueChanged<String>? onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -58,7 +58,7 @@ class AgendaEventTile extends ConsumerWidget {
           );
 
     return ListTile(
-      onTap: onTap == null ? null : () => onTap!(occurrence.eventId),
+      onTap: onTap,
       leading: Container(
         width: 4,
         height: 36,

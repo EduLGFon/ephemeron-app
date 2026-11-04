@@ -57,6 +57,7 @@ import 'cases/smart_filter_case.dart' as smart_filter;
 import 'cases/source_move_case.dart' as source_move;
 import 'cases/source_picker_case.dart' as source_picker;
 import 'cases/sync_engine_case.dart' as sync_engine;
+import 'cases/task_action_sheet_case.dart' as task_action_sheet;
 import 'cases/task_editor_case.dart' as task_editor;
 import 'cases/task_repository_case.dart' as task_repository;
 import 'cases/timeline_layout_case.dart' as timeline_layout;
@@ -119,6 +120,7 @@ const _included = <String>{
   'source_move_case.dart',
   'source_picker_case.dart',
   'sync_engine_case.dart',
+  'task_action_sheet_case.dart',
   'task_editor_case.dart',
   'task_repository_case.dart',
   'timeline_layout_case.dart',
@@ -188,6 +190,7 @@ void main() {
   group('source_move', source_move.main);
   group('source_picker', source_picker.main);
   group('sync_engine', sync_engine.main);
+  group('task_action_sheet', task_action_sheet.main);
   group('task_editor', task_editor.main);
   group('task_repository', task_repository.main);
   group('timeline_layout', timeline_layout.main);
