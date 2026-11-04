@@ -43,6 +43,7 @@ class MatrixScreen extends ConsumerWidget {
                 child: MatrixBoard(
                   fields: grouped.fields,
                   unclassified: grouped.unclassified,
+                  mode: mode,
                 ),
               ),
             ],

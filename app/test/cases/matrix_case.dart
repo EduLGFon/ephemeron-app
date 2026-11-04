@@ -89,6 +89,186 @@ void main() {
 
     await _dispose(tester, db);
   });
+
+  testWidgets('priority mode drag moves a P4 task into P1', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final repo = TaskRepository(db);
+    await repo.createTask(title: 'P1 task', priority: 4);
+    final p4Id = await repo.createTask(title: 'P4 task', priority: 1);
+
+    await _pumpMatrix(tester, db);
+    await tester.tap(find.text('Priority'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(_inField('p4', 'P4 task'), findsOneWidget);
+    expect(_count('p1'), '1');
+
+    final row = find.byKey(ValueKey('matrix-task-$p4Id'));
+    final target = find.byKey(const ValueKey('matrix-field-p1'));
+    final gesture = await tester.startGesture(tester.getCenter(row));
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.moveTo(tester.getCenter(target));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(_inField('p1', 'P4 task'), findsOneWidget);
+    expect(_inField('p4', 'P4 task'), findsNothing);
+    expect(_count('p1'), '2');
+    expect(_count('p4'), '0');
+
+    await _dispose(tester, db);
+  });
+
+  testWidgets('priority mode drag moves a field task to unclassified', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final repo = TaskRepository(db);
+    final id = await repo.createTask(title: 'P1 task', priority: 4);
+    await repo.createTask(title: 'P2 task', priority: 3);
+
+    await _pumpMatrix(tester, db);
+    await tester.tap(find.text('Priority'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(_inField('p1', 'P1 task'), findsOneWidget);
+    expect(_trayCount(), '0');
+
+    final row = find.byKey(ValueKey('matrix-task-$id'));
+    final target = find.byKey(const ValueKey('matrix-unclassified'));
+    final gesture = await tester.startGesture(tester.getCenter(row));
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.moveTo(tester.getCenter(target));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(_inTray('P1 task'), findsOneWidget);
+    expect(_inField('p1', 'P1 task'), findsNothing);
+    expect(_count('p1'), '0');
+    expect(_trayCount(), '1');
+
+    await _dispose(tester, db);
+  });
+
+  testWidgets('dropping a task on its own field is a no-op', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final repo = TaskRepository(db);
+    final id = await repo.createTask(title: 'P1 task', priority: 4);
+
+    await _pumpMatrix(tester, db);
+    await tester.tap(find.text('Priority'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    final row = find.byKey(ValueKey('matrix-task-$id'));
+    final target = find.byKey(const ValueKey('matrix-field-p1'));
+    final gesture = await tester.startGesture(tester.getCenter(row));
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.moveTo(tester.getCenter(target));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(find.text('P1 task'), findsOneWidget);
+    expect(_inField('p1', 'P1 task'), findsOneWidget);
+    expect(_count('p1'), '1');
+    expect(_trayCount(), '0');
+
+    await _dispose(tester, db);
+  });
+
+  testWidgets('tapping task text opens the editor', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final repo = TaskRepository(db);
+    final id = await repo.createTask(title: 'P1 task', priority: 4);
+
+    await _pumpMatrix(tester, db);
+    await tester.tap(find.text('Priority'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    final text = find.descendant(
+      of: find.byKey(ValueKey('matrix-task-$id')),
+      matching: find.text('P1 task'),
+    );
+    await tester.tap(text);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsWidgets);
+    expect(find.text('Notes'), findsOneWidget);
+
+    await _dispose(tester, db);
+  });
+
+  testWidgets('priority mode checkbox completes a task and undo restores it', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final repo = TaskRepository(db);
+    final id = await repo.createTask(title: 'P1 task', priority: 4);
+
+    await _pumpMatrix(tester, db);
+    await tester.tap(find.text('Priority'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    await tester.tap(find.byKey(ValueKey('matrix-complete-$id')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('P1 task'), findsNothing);
+    expect(find.text('Completed "P1 task"'), findsOneWidget);
+    expect(_count('p1'), '0');
+
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+
+    expect(_inField('p1', 'P1 task'), findsOneWidget);
+    expect(_count('p1'), '1');
+
+    await _dispose(tester, db);
+  });
+
+  testWidgets('auto mode has no draggable rows or drop targets', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final repo = TaskRepository(db);
+    await repo.createTask(
+      title: 'Auto task',
+      priority: 3,
+      dueDate: _date(DateTime.now().add(const Duration(days: 1))),
+    );
+
+    await _pumpMatrix(tester, db);
+
+    expect(find.byType(LongPressDraggable<Task>), findsNothing);
+    expect(find.byType(DragTarget<Task>), findsNothing);
+
+    await _dispose(tester, db);
+  });
+
   testWidgets('board scrolls at 320dp without overflow', (
     WidgetTester tester,
   ) async {
