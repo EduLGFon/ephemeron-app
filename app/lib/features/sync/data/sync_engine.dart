@@ -1050,6 +1050,10 @@ class SyncEngine {
           priority: Value(existing.priority),
           durationMin: Value(existing.durationMin),
           rrule: Value(existing.rrule),
+          plannedStart: Value(existing.plannedStart),
+          plannedEnd: Value(existing.plannedEnd),
+          seriesId: Value(existing.seriesId),
+          recurrenceKey: Value(existing.recurrenceKey),
         ),
       );
       return true;

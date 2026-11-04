@@ -30,6 +30,7 @@ void main() {
               .add(const Duration(minutes: 30))
               .millisecondsSinceEpoch,
           dayKey: '2026-11-03',
+          sourceType: 'event',
         ),
         OccurrenceCacheData(
           id: '2',
@@ -42,6 +43,7 @@ void main() {
               .subtract(const Duration(milliseconds: 1))
               .millisecondsSinceEpoch,
           dayKey: '2026-11-05',
+          sourceType: 'event',
         ),
       ],
       weekStart: start,
@@ -68,6 +70,7 @@ void main() {
           startUtc: DateTime(2026, 11, 3, 9).millisecondsSinceEpoch,
           endUtc: DateTime(2026, 11, 3, 10).millisecondsSinceEpoch,
           dayKey: '2026-11-03',
+          sourceType: 'event',
         ),
       ],
       weekStart: start,

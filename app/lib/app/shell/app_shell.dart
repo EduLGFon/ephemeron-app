@@ -96,7 +96,12 @@ class _AppShellState extends ConsumerState<AppShell>
     Future.microtask(() async {
       if (!mounted) return;
       try {
-        await ref.read(alarmRepositoryProvider).rebuildWindow();
+        final settings = await ref.read(settingsRepositoryProvider.future);
+        await ref
+            .read(alarmRepositoryProvider)
+            .rebuildWindow(
+              dueTomorrowEnabled: settings.taskDueTomorrowReminder,
+            );
       } catch (_) {}
     });
     // Refresh home-screen widgets after startup settles so they do not

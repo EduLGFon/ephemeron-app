@@ -244,4 +244,46 @@ void main() {
     );
     expect(await db.select(db.habits).get(), hasLength(1));
   });
+
+  test('backup preserves planned scheduling fields', () async {
+    final db1 = _db();
+    addTearDown(db1.close);
+    const now = 1700000000000;
+    await db1
+        .into(db1.taskLists)
+        .insert(
+          TaskListsCompanion.insert(
+            id: 'list1',
+            name: 'Inbox',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+    await db1
+        .into(db1.tasks)
+        .insert(
+          TasksCompanion.insert(
+            id: 'task1',
+            listId: const Value('list1'),
+            title: const Value('Plan'),
+            plannedStart: const Value('2026-03-01T10:00'),
+            plannedEnd: const Value('2026-03-01T11:00'),
+            seriesId: const Value('series-1'),
+            recurrenceKey: const Value('2026-03-02'),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+    final svc1 = BackupService(db1);
+    final raw = svc1.encode(await svc1.exportJson());
+
+    final db2 = _db();
+    addTearDown(db2.close);
+    await BackupService(db2).restoreJson(BackupService(db2).decode(raw));
+    final row = await (db2.select(db2.tasks)).getSingle();
+    expect(row.plannedStart, '2026-03-01T10:00');
+    expect(row.plannedEnd, '2026-03-01T11:00');
+    expect(row.seriesId, 'series-1');
+    expect(row.recurrenceKey, '2026-03-02');
+  });
 }

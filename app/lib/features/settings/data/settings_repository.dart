@@ -209,8 +209,13 @@ class SettingsRepository {
 
   /// Optional biometric app lock (PLAN 8.4). Gate only, no datasegregation change.
   static const _kBiometricLock = 'security.biometricLock';
+  static const _kTaskDueTomorrow = 'alarms.taskDueTomorrowReminder';
   bool get biometricLock => _prefs.getBool(_kBiometricLock) ?? false;
   Future<void> setBiometricLock(bool v) => _prefs.setBool(_kBiometricLock, v);
+
+  bool get taskDueTomorrowReminder => _prefs.getBool(_kTaskDueTomorrow) ?? true;
+  Future<void> setTaskDueTomorrowReminder(bool v) =>
+      _prefs.setBool(_kTaskDueTomorrow, v);
 
   /// Last successful Google sync, for title freshness + scheduling.
   static const _kLastGoogleSync = 'sync.lastGoogleSyncAtMs';

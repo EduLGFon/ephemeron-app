@@ -162,6 +162,10 @@ class TaskRepository {
     int priority = 0,
     String? dueDate,
     String? plannedDate,
+    String? plannedStart,
+    String? plannedEnd,
+    String? seriesId,
+    String? recurrenceKey,
     int? dueTime,
     int? durationMin,
     String? rrule,
@@ -177,6 +181,16 @@ class TaskRepository {
     var list = listId;
     list ??= await _defaultListId();
     final account = await _accountOfList(list);
+    String? sid = seriesId;
+    String? rkey = recurrenceKey;
+    if (rrule != null && rrule.isNotEmpty) {
+      sid ??= id;
+      rkey ??= _effectiveOccurrenceDate(
+        plannedStart: plannedStart,
+        plannedDate: plannedDate,
+        dueDate: dueDate,
+      );
+    }
     await _db
         .into(_db.tasks)
         .insert(
@@ -188,6 +202,10 @@ class TaskRepository {
             priority: Value(priority),
             dueDate: Value(dueDate),
             plannedDate: Value(plannedDate),
+            plannedStart: Value(plannedStart),
+            plannedEnd: Value(plannedEnd),
+            seriesId: Value(sid),
+            recurrenceKey: Value(rkey),
             dueTime: Value(dueTime),
             durationMin: Value(durationMin),
             rrule: Value(rrule),
@@ -352,6 +370,8 @@ class TaskRepository {
     int? priority,
     String? Function()? dueDate,
     String? Function()? plannedDate,
+    String? Function()? plannedStart,
+    String? Function()? plannedEnd,
     int? Function()? dueTime,
     int? Function()? durationMin,
     String? Function()? rrule,
@@ -371,6 +391,12 @@ class TaskRepository {
         plannedDate: plannedDate == null
             ? const Value.absent()
             : Value(plannedDate()),
+        plannedStart: plannedStart == null
+            ? const Value.absent()
+            : Value(plannedStart()),
+        plannedEnd: plannedEnd == null
+            ? const Value.absent()
+            : Value(plannedEnd()),
         dueTime: dueTime == null ? const Value.absent() : Value(dueTime()),
         durationMin: durationMin == null
             ? const Value.absent()
@@ -407,8 +433,8 @@ class TaskRepository {
         ),
       );
       if (task.rrule != null && task.rrule!.isNotEmpty) {
-        final next = nextTaskDueDate(
-          currentDueUtc: _taskDueUtc(task),
+        var next = nextTaskDueDate(
+          currentDueUtc: _taskBaseUtc(task),
           completedAtUtc: DateTime.fromMillisecondsSinceEpoch(
             completedMs,
             isUtc: true,
@@ -416,6 +442,16 @@ class TaskRepository {
           rrule: task.rrule,
           mode: task.repeatMode ?? 'from_due_date',
         );
+        // Skip occurrence dates that already have a sibling row.
+        while (next != null &&
+            await _hasSiblingOccurrence(task.seriesId ?? id, dateKey(next))) {
+          next = nextTaskDueDate(
+            currentDueUtc: _taskBaseUtcForDate(next),
+            completedAtUtc: next,
+            rrule: task.rrule,
+            mode: 'from_due_date',
+          );
+        }
         if (next != null) {
           final tagIds = await taskTagIds(id);
           final tagNames = <String>[];
@@ -430,20 +466,123 @@ class TaskRepository {
             listId: task.listId,
             notes: task.notes,
             priority: task.priority,
-            dueDate: dateKey(next),
+            dueDate: task.dueDate == null ? null : dateKey(next),
             plannedDate: _shiftPlannedDate(
               task.plannedDate,
-              task.dueDate,
+              _shiftBaseDate(task),
               next,
             ),
-            dueTime: (next.hour == 0 && next.minute == 0)
+            plannedStart: _shiftPlannedStart(
+              task.plannedStart,
+              _shiftBaseDate(task),
+              next,
+            ),
+            plannedEnd: _shiftPlannedEnd(
+              task.plannedEnd,
+              _shiftBaseDate(task),
+              next,
+            ),
+            seriesId: task.seriesId,
+            recurrenceKey: dateKey(next),
+            dueTime: task.dueDate == null
                 ? null
-                : next.hour * 60 + next.minute,
+                : ((next.hour == 0 && next.minute == 0)
+                      ? null
+                      : next.hour * 60 + next.minute),
             durationMin: task.durationMin,
             rrule: task.rrule,
             repeatMode: task.repeatMode,
             parentId: task.parentId,
             tags: tagNames,
+            alarmPreset: task.alarmPreset,
+            reminders: task.reminders,
+          );
+          // Set seriesId/recurrenceKey on the newly created row.
+          // createTask sets them when rrule provided; but ensure seriesId preserved.
+          // Already handled in createTask because rrule set.
+        }
+      }
+    });
+    await _enqueue('task', id, 'update');
+  }
+
+  Future<void> markWontDo(String id, {DateTime? at}) async {
+    final task = await (_db.select(
+      _db.tasks,
+    )..where((t) => t.id.equals(id))).getSingle();
+    final completedMs = (at ?? DateTime.now()).toUtc().millisecondsSinceEpoch;
+    await _db.transaction(() async {
+      await (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(
+        TasksCompanion(
+          wontDo: const Value(true),
+          completedAt: Value(completedMs),
+          updatedAt: Value(nowMs()),
+          dirty: const Value(true),
+        ),
+      );
+      if (task.rrule != null && task.rrule!.isNotEmpty) {
+        var next = nextTaskDueDate(
+          currentDueUtc: _taskBaseUtc(task),
+          completedAtUtc: DateTime.fromMillisecondsSinceEpoch(
+            completedMs,
+            isUtc: true,
+          ),
+          rrule: task.rrule,
+          mode: task.repeatMode ?? 'from_due_date',
+        );
+        while (next != null &&
+            await _hasSiblingOccurrence(task.seriesId ?? id, dateKey(next))) {
+          next = nextTaskDueDate(
+            currentDueUtc: _taskBaseUtcForDate(next),
+            completedAtUtc: next,
+            rrule: task.rrule,
+            mode: 'from_due_date',
+          );
+        }
+        if (next != null) {
+          final tagIds = await taskTagIds(id);
+          final tagNames = <String>[];
+          for (final tid in tagIds) {
+            final tag = await (_db.select(
+              _db.tags,
+            )..where((g) => g.id.equals(tid))).getSingleOrNull();
+            if (tag != null) tagNames.add(tag.name);
+          }
+          await createTask(
+            title: task.title,
+            listId: task.listId,
+            notes: task.notes,
+            priority: task.priority,
+            dueDate: task.dueDate == null ? null : dateKey(next),
+            plannedDate: _shiftPlannedDate(
+              task.plannedDate,
+              _shiftBaseDate(task),
+              next,
+            ),
+            plannedStart: _shiftPlannedStart(
+              task.plannedStart,
+              _shiftBaseDate(task),
+              next,
+            ),
+            plannedEnd: _shiftPlannedEnd(
+              task.plannedEnd,
+              _shiftBaseDate(task),
+              next,
+            ),
+            seriesId: task.seriesId,
+            recurrenceKey: dateKey(next),
+            dueTime: task.dueDate == null
+                ? null
+                : ((next.hour == 0 && next.minute == 0)
+                      ? null
+                      : next.hour * 60 + next.minute),
+            durationMin: task.durationMin,
+            rrule: task.rrule,
+            repeatMode: task.repeatMode,
+            parentId: task.parentId,
+            tags: tagNames,
+            alarmPreset: task.alarmPreset,
+            reminders: task.reminders,
           );
         }
       }
@@ -468,22 +607,47 @@ class TaskRepository {
       _db.tasks,
     )..where((t) => t.id.equals(id))).getSingle();
     if (task.rrule == null || task.rrule!.isEmpty) return;
-    final base = _taskDueUtc(task) ?? DateTime.now().toUtc();
-    final next = nextTaskDueDate(
+    var base = _taskBaseUtc(task);
+    var next = nextTaskDueDate(
       currentDueUtc: base,
       completedAtUtc: base,
       rrule: task.rrule,
       mode: 'from_due_date',
     );
+    while (next != null &&
+        await _hasSiblingOccurrence(task.seriesId ?? id, dateKey(next))) {
+      base = _taskBaseUtcForDate(next);
+      next = nextTaskDueDate(
+        currentDueUtc: base,
+        completedAtUtc: base,
+        rrule: task.rrule,
+        mode: 'from_due_date',
+      );
+    }
     if (next == null) return;
+    final n = next;
     await updateTask(
       id,
-      dueDate: () => dateKey(next),
-      dueTime: () => (next.hour == 0 && next.minute == 0)
+      dueDate: () => task.dueDate == null ? null : dateKey(n),
+      plannedDate: () =>
+          _shiftPlannedDate(task.plannedDate, _shiftBaseDate(task), n),
+      plannedStart: () =>
+          _shiftPlannedStart(task.plannedStart, _shiftBaseDate(task), n),
+      plannedEnd: () =>
+          _shiftPlannedEnd(task.plannedEnd, _shiftBaseDate(task), n),
+      dueTime: () => task.dueDate == null
           ? null
-          : next.hour * 60 + next.minute,
+          : ((n.hour == 0 && n.minute == 0) ? null : n.hour * 60 + n.minute),
+    );
+    await (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(
+      TasksCompanion(
+        seriesId: Value(task.seriesId),
+        recurrenceKey: Value(dateKey(next)),
+      ),
     );
   }
+
+  String _shiftBaseDate(Task task) => task.dueDate ?? _baseDateKey(task);
 
   /// Recurring completion keeps the planned date offset from the due date.
   String? _shiftPlannedDate(
@@ -493,8 +657,98 @@ class TaskRepository {
   ) {
     if (plannedDate == null || dueDate == null) return plannedDate;
     final nextKey = dateKey(nextDue);
-    final delta = _parseDateKey(nextKey).difference(_parseDateKey(dueDate));
-    return dateKey(_parseDateKey(plannedDate).add(delta));
+    final deltaDays = _parseDateKey(
+      nextKey,
+    ).difference(_parseDateKey(dueDate)).inDays;
+    final p = plannedDate.split('-');
+    return dateKey(
+      DateTime.utc(
+        int.parse(p[0]),
+        int.parse(p[1]),
+        int.parse(p[2]) + deltaDays,
+      ),
+    );
+  }
+
+  String? _shiftPlannedStart(
+    String? plannedStart,
+    String? dueDate,
+    DateTime nextDue,
+  ) {
+    if (plannedStart == null || dueDate == null) return plannedStart;
+    final nextKey = dateKey(nextDue);
+    final deltaDays = _parseDateKey(
+      nextKey,
+    ).difference(_parseDateKey(dueDate)).inDays;
+    final dt = DateTime.parse(plannedStart);
+    final shifted = DateTime(
+      dt.year,
+      dt.month,
+      dt.day + deltaDays,
+      dt.hour,
+      dt.minute,
+    );
+    return _formatLocalIso(shifted);
+  }
+
+  String? _shiftPlannedEnd(
+    String? plannedEnd,
+    String? dueDate,
+    DateTime nextDue,
+  ) {
+    if (plannedEnd == null || dueDate == null) return plannedEnd;
+    final nextKey = dateKey(nextDue);
+    final deltaDays = _parseDateKey(
+      nextKey,
+    ).difference(_parseDateKey(dueDate)).inDays;
+    final dt = DateTime.parse(plannedEnd);
+    final shifted = DateTime(
+      dt.year,
+      dt.month,
+      dt.day + deltaDays,
+      dt.hour,
+      dt.minute,
+    );
+    return _formatLocalIso(shifted);
+  }
+
+  String _formatLocalIso(DateTime dt) =>
+      '${dt.year.toString().padLeft(4, '0')}-'
+      '${dt.month.toString().padLeft(2, '0')}-'
+      '${dt.day.toString().padLeft(2, '0')}T'
+      '${dt.hour.toString().padLeft(2, '0')}:'
+      '${dt.minute.toString().padLeft(2, '0')}';
+
+  Future<bool> _hasSiblingOccurrence(
+    String seriesId,
+    String occurrenceDate,
+  ) async {
+    final rows =
+        await (_db.select(_db.tasks)..where(
+              (t) =>
+                  t.seriesId.equals(seriesId) &
+                  t.recurrenceKey.equals(occurrenceDate) &
+                  t.deletedAt.isNull(),
+            ))
+            .get();
+    return rows.isNotEmpty;
+  }
+
+  DateTime _taskBaseUtcForDate(DateTime d) {
+    return DateTime.utc(d.year, d.month, d.day, d.hour, d.minute);
+  }
+
+  String _effectiveOccurrenceDate({
+    String? plannedStart,
+    String? plannedDate,
+    String? dueDate,
+  }) {
+    if (plannedStart != null && plannedStart.length >= 10) {
+      return plannedStart.substring(0, 10);
+    }
+    if (plannedDate != null) return plannedDate;
+    if (dueDate != null) return dueDate;
+    return dateKey(DateTime.now());
   }
 
   DateTime _parseDateKey(String value) {
@@ -502,17 +756,35 @@ class TaskRepository {
     return DateTime.utc(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
   }
 
-  DateTime? _taskDueUtc(Task task) {
-    if (task.dueDate == null) return null;
-    final p = task.dueDate!.split('-');
-    final mins = task.dueTime ?? 0;
-    return DateTime.utc(
-      int.parse(p[0]),
-      int.parse(p[1]),
-      int.parse(p[2]),
-      mins ~/ 60,
-      mins % 60,
-    );
+  DateTime _taskBaseUtc(Task task) {
+    if (task.dueDate != null) {
+      final p = task.dueDate!.split('-');
+      final mins = task.dueTime ?? 0;
+      return DateTime.utc(
+        int.parse(p[0]),
+        int.parse(p[1]),
+        int.parse(p[2]),
+        mins ~/ 60,
+        mins % 60,
+      );
+    }
+    if (task.plannedStart != null && task.plannedStart!.isNotEmpty) {
+      return DateTime.parse(task.plannedStart!).toUtc();
+    }
+    if (task.plannedDate != null) {
+      final p = task.plannedDate!.split('-');
+      return DateTime.utc(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
+    }
+    return DateTime.now().toUtc();
+  }
+
+  String _baseDateKey(Task task) {
+    if (task.plannedStart != null && task.plannedStart!.isNotEmpty) {
+      return task.plannedStart!.substring(0, 10);
+    }
+    if (task.plannedDate != null) return task.plannedDate!;
+    if (task.dueDate != null) return task.dueDate!;
+    return dateKey(DateTime.now());
   }
 
   /// Soft-deletes; returns ids for undo snackbars.

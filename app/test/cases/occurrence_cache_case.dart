@@ -261,4 +261,128 @@ void main() {
     await repo.invalidateEvent('m1');
     expect(await repo.occurrencesForDay('2026-03-04'), isEmpty);
   });
+
+  test(
+    'non-recurring plannedStart/plannedEnd becomes timed task block',
+    () async {
+      final db = _db();
+      addTearDown(db.close);
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      await db
+          .into(db.tasks)
+          .insert(
+            TasksCompanion.insert(
+              id: 't1',
+              title: const Value('Timed'),
+              plannedStart: const Value('2026-03-05T09:00'),
+              plannedEnd: const Value('2026-03-05T10:00'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      final repo = OccurrenceRepository(db);
+      await repo.rebuildWindow(
+        windowStartUtc: DateTime.utc(2026, 3, 1),
+        windowEndUtc: DateTime.utc(2026, 3, 31),
+      );
+      final rows = await db.select(db.occurrenceCache).get();
+      expect(rows, hasLength(1));
+      expect(rows.single.sourceType, 'task');
+      expect(
+        rows.single.startUtc,
+        DateTime(2026, 3, 5, 9).toUtc().millisecondsSinceEpoch,
+      );
+      expect(
+        rows.single.endUtc,
+        DateTime(2026, 3, 5, 10).toUtc().millisecondsSinceEpoch,
+      );
+    },
+  );
+
+  test(
+    'recurring open task projects future and skips completed sibling',
+    () async {
+      final db = _db();
+      addTearDown(db.close);
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      await db
+          .into(db.tasks)
+          .insert(
+            TasksCompanion.insert(
+              id: 'master',
+              title: const Value('Recur'),
+              plannedStart: const Value('2026-03-02T09:00'),
+              plannedEnd: const Value('2026-03-02T10:00'),
+              rrule: const Value('FREQ=DAILY;COUNT=3'),
+              seriesId: const Value('s1'),
+              recurrenceKey: const Value('2026-03-02'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      // completed sibling occurrence for 2026-03-03
+      await db
+          .into(db.tasks)
+          .insert(
+            TasksCompanion.insert(
+              id: 'sib',
+              title: const Value('Recur'),
+              plannedStart: const Value('2026-03-03T09:00'),
+              plannedEnd: const Value('2026-03-03T10:00'),
+              rrule: const Value('FREQ=DAILY;COUNT=3'),
+              seriesId: const Value('s1'),
+              recurrenceKey: const Value('2026-03-03'),
+              completedAt: Value(now),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      final repo = OccurrenceRepository(db);
+      await repo.rebuildWindow(
+        windowStartUtc: DateTime.utc(2026, 3, 1),
+        windowEndUtc: DateTime.utc(2026, 3, 10),
+      );
+      final days = [
+        for (final r in await db.select(db.occurrenceCache).get()) r.dayKey,
+      ];
+      expect(days, contains('2026-03-02'));
+      expect(days, isNot(contains('2026-03-03')));
+    },
+  );
+
+  test('event cache rows sourceType event, task rows task', () async {
+    final db = _db();
+    addTearDown(db.close);
+    await _cal(db);
+    final start = DateTime.utc(2026, 3, 2, 9);
+    await _event(
+      db,
+      id: 'e1',
+      startUtc: start.millisecondsSinceEpoch,
+      endUtc: start.add(const Duration(hours: 1)).millisecondsSinceEpoch,
+      tzId: 'UTC',
+    );
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    await db
+        .into(db.tasks)
+        .insert(
+          TasksCompanion.insert(
+            id: 't1',
+            title: const Value('Task'),
+            plannedDate: const Value('2026-03-02'),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+    final repo = OccurrenceRepository(db);
+    await repo.rebuildWindow(
+      windowStartUtc: DateTime.utc(2026, 3, 1),
+      windowEndUtc: DateTime.utc(2026, 3, 5),
+    );
+    final rows = await db.select(db.occurrenceCache).get();
+    final byEvent = rows.firstWhere((r) => r.eventId == 'e1');
+    final byTask = rows.firstWhere((r) => r.eventId == 't1');
+    expect(byEvent.sourceType, 'event');
+    expect(byTask.sourceType, 'task');
+  });
 }

@@ -81,6 +81,8 @@ class OccurrenceCache extends Table {
   IntColumn get startUtc => integer()();
   IntColumn get endUtc => integer()();
   TextColumn get dayKey => text()();
+  TextColumn get sourceType =>
+      text().withDefault(const Constant('event'))(); // event/task
 
   @override
   Set<Column> get primaryKey => {id};
@@ -111,6 +113,13 @@ class Tasks extends Table {
   IntColumn get priority => integer().withDefault(const Constant(0))();
   TextColumn get dueDate => text().nullable()(); // YYYY-MM-DD
   TextColumn get plannedDate => text().nullable()(); // YYYY-MM-DD
+  TextColumn get plannedStart =>
+      text().nullable()(); // local ISO YYYY-MM-DDTHH:mm
+  TextColumn get plannedEnd =>
+      text().nullable()(); // local ISO YYYY-MM-DDTHH:mm
+  TextColumn get seriesId => text().nullable()();
+  TextColumn get recurrenceKey =>
+      text().nullable()(); // YYYY-MM-DD occurrence date
   IntColumn get dueTime => integer().nullable()(); // ms of day? store minutes
   IntColumn get durationMin => integer().nullable()();
   TextColumn get rrule => text().nullable()();

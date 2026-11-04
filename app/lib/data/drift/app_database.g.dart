@@ -2971,6 +2971,18 @@ class $OccurrenceCacheTable extends OccurrenceCache
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _sourceTypeMeta = const VerificationMeta(
+    'sourceType',
+  );
+  @override
+  late final GeneratedColumn<String> sourceType = GeneratedColumn<String>(
+    'source_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('event'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2980,6 +2992,7 @@ class $OccurrenceCacheTable extends OccurrenceCache
     startUtc,
     endUtc,
     dayKey,
+    sourceType,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3042,6 +3055,12 @@ class $OccurrenceCacheTable extends OccurrenceCache
     } else if (isInserting) {
       context.missing(_dayKeyMeta);
     }
+    if (data.containsKey('source_type')) {
+      context.handle(
+        _sourceTypeMeta,
+        sourceType.isAcceptableOrUnknown(data['source_type']!, _sourceTypeMeta),
+      );
+    }
     return context;
   }
 
@@ -3079,6 +3098,10 @@ class $OccurrenceCacheTable extends OccurrenceCache
         DriftSqlType.string,
         data['${effectivePrefix}day_key'],
       )!,
+      sourceType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_type'],
+      )!,
     );
   }
 
@@ -3097,6 +3120,7 @@ class OccurrenceCacheData extends DataClass
   final int startUtc;
   final int endUtc;
   final String dayKey;
+  final String sourceType;
   const OccurrenceCacheData({
     required this.id,
     required this.eventId,
@@ -3105,6 +3129,7 @@ class OccurrenceCacheData extends DataClass
     required this.startUtc,
     required this.endUtc,
     required this.dayKey,
+    required this.sourceType,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3120,6 +3145,7 @@ class OccurrenceCacheData extends DataClass
     map['start_utc'] = Variable<int>(startUtc);
     map['end_utc'] = Variable<int>(endUtc);
     map['day_key'] = Variable<String>(dayKey);
+    map['source_type'] = Variable<String>(sourceType);
     return map;
   }
 
@@ -3136,6 +3162,7 @@ class OccurrenceCacheData extends DataClass
       startUtc: Value(startUtc),
       endUtc: Value(endUtc),
       dayKey: Value(dayKey),
+      sourceType: Value(sourceType),
     );
   }
 
@@ -3152,6 +3179,7 @@ class OccurrenceCacheData extends DataClass
       startUtc: serializer.fromJson<int>(json['startUtc']),
       endUtc: serializer.fromJson<int>(json['endUtc']),
       dayKey: serializer.fromJson<String>(json['dayKey']),
+      sourceType: serializer.fromJson<String>(json['sourceType']),
     );
   }
   @override
@@ -3165,6 +3193,7 @@ class OccurrenceCacheData extends DataClass
       'startUtc': serializer.toJson<int>(startUtc),
       'endUtc': serializer.toJson<int>(endUtc),
       'dayKey': serializer.toJson<String>(dayKey),
+      'sourceType': serializer.toJson<String>(sourceType),
     };
   }
 
@@ -3176,6 +3205,7 @@ class OccurrenceCacheData extends DataClass
     int? startUtc,
     int? endUtc,
     String? dayKey,
+    String? sourceType,
   }) => OccurrenceCacheData(
     id: id ?? this.id,
     eventId: eventId ?? this.eventId,
@@ -3184,6 +3214,7 @@ class OccurrenceCacheData extends DataClass
     startUtc: startUtc ?? this.startUtc,
     endUtc: endUtc ?? this.endUtc,
     dayKey: dayKey ?? this.dayKey,
+    sourceType: sourceType ?? this.sourceType,
   );
   OccurrenceCacheData copyWithCompanion(OccurrenceCacheCompanion data) {
     return OccurrenceCacheData(
@@ -3194,6 +3225,9 @@ class OccurrenceCacheData extends DataClass
       startUtc: data.startUtc.present ? data.startUtc.value : this.startUtc,
       endUtc: data.endUtc.present ? data.endUtc.value : this.endUtc,
       dayKey: data.dayKey.present ? data.dayKey.value : this.dayKey,
+      sourceType: data.sourceType.present
+          ? data.sourceType.value
+          : this.sourceType,
     );
   }
 
@@ -3206,14 +3240,23 @@ class OccurrenceCacheData extends DataClass
           ..write('colorId: $colorId, ')
           ..write('startUtc: $startUtc, ')
           ..write('endUtc: $endUtc, ')
-          ..write('dayKey: $dayKey')
+          ..write('dayKey: $dayKey, ')
+          ..write('sourceType: $sourceType')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, eventId, title, colorId, startUtc, endUtc, dayKey);
+  int get hashCode => Object.hash(
+    id,
+    eventId,
+    title,
+    colorId,
+    startUtc,
+    endUtc,
+    dayKey,
+    sourceType,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3224,7 +3267,8 @@ class OccurrenceCacheData extends DataClass
           other.colorId == this.colorId &&
           other.startUtc == this.startUtc &&
           other.endUtc == this.endUtc &&
-          other.dayKey == this.dayKey);
+          other.dayKey == this.dayKey &&
+          other.sourceType == this.sourceType);
 }
 
 class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
@@ -3235,6 +3279,7 @@ class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
   final Value<int> startUtc;
   final Value<int> endUtc;
   final Value<String> dayKey;
+  final Value<String> sourceType;
   final Value<int> rowid;
   const OccurrenceCacheCompanion({
     this.id = const Value.absent(),
@@ -3244,6 +3289,7 @@ class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
     this.startUtc = const Value.absent(),
     this.endUtc = const Value.absent(),
     this.dayKey = const Value.absent(),
+    this.sourceType = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   OccurrenceCacheCompanion.insert({
@@ -3254,6 +3300,7 @@ class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
     required int startUtc,
     required int endUtc,
     required String dayKey,
+    this.sourceType = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        eventId = Value(eventId),
@@ -3268,6 +3315,7 @@ class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
     Expression<int>? startUtc,
     Expression<int>? endUtc,
     Expression<String>? dayKey,
+    Expression<String>? sourceType,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3278,6 +3326,7 @@ class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
       if (startUtc != null) 'start_utc': startUtc,
       if (endUtc != null) 'end_utc': endUtc,
       if (dayKey != null) 'day_key': dayKey,
+      if (sourceType != null) 'source_type': sourceType,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3290,6 +3339,7 @@ class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
     Value<int>? startUtc,
     Value<int>? endUtc,
     Value<String>? dayKey,
+    Value<String>? sourceType,
     Value<int>? rowid,
   }) {
     return OccurrenceCacheCompanion(
@@ -3300,6 +3350,7 @@ class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
       startUtc: startUtc ?? this.startUtc,
       endUtc: endUtc ?? this.endUtc,
       dayKey: dayKey ?? this.dayKey,
+      sourceType: sourceType ?? this.sourceType,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3328,6 +3379,9 @@ class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
     if (dayKey.present) {
       map['day_key'] = Variable<String>(dayKey.value);
     }
+    if (sourceType.present) {
+      map['source_type'] = Variable<String>(sourceType.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3344,6 +3398,7 @@ class OccurrenceCacheCompanion extends UpdateCompanion<OccurrenceCacheData> {
           ..write('startUtc: $startUtc, ')
           ..write('endUtc: $endUtc, ')
           ..write('dayKey: $dayKey, ')
+          ..write('sourceType: $sourceType, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4092,6 +4147,50 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _plannedStartMeta = const VerificationMeta(
+    'plannedStart',
+  );
+  @override
+  late final GeneratedColumn<String> plannedStart = GeneratedColumn<String>(
+    'planned_start',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _plannedEndMeta = const VerificationMeta(
+    'plannedEnd',
+  );
+  @override
+  late final GeneratedColumn<String> plannedEnd = GeneratedColumn<String>(
+    'planned_end',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _seriesIdMeta = const VerificationMeta(
+    'seriesId',
+  );
+  @override
+  late final GeneratedColumn<String> seriesId = GeneratedColumn<String>(
+    'series_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _recurrenceKeyMeta = const VerificationMeta(
+    'recurrenceKey',
+  );
+  @override
+  late final GeneratedColumn<String> recurrenceKey = GeneratedColumn<String>(
+    'recurrence_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _dueTimeMeta = const VerificationMeta(
     'dueTime',
   );
@@ -4304,6 +4403,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     priority,
     dueDate,
     plannedDate,
+    plannedStart,
+    plannedEnd,
+    seriesId,
+    recurrenceKey,
     dueTime,
     durationMin,
     rrule,
@@ -4376,6 +4479,36 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         plannedDate.isAcceptableOrUnknown(
           data['planned_date']!,
           _plannedDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('planned_start')) {
+      context.handle(
+        _plannedStartMeta,
+        plannedStart.isAcceptableOrUnknown(
+          data['planned_start']!,
+          _plannedStartMeta,
+        ),
+      );
+    }
+    if (data.containsKey('planned_end')) {
+      context.handle(
+        _plannedEndMeta,
+        plannedEnd.isAcceptableOrUnknown(data['planned_end']!, _plannedEndMeta),
+      );
+    }
+    if (data.containsKey('series_id')) {
+      context.handle(
+        _seriesIdMeta,
+        seriesId.isAcceptableOrUnknown(data['series_id']!, _seriesIdMeta),
+      );
+    }
+    if (data.containsKey('recurrence_key')) {
+      context.handle(
+        _recurrenceKeyMeta,
+        recurrenceKey.isAcceptableOrUnknown(
+          data['recurrence_key']!,
+          _recurrenceKeyMeta,
         ),
       );
     }
@@ -4540,6 +4673,22 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.string,
         data['${effectivePrefix}planned_date'],
       ),
+      plannedStart: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}planned_start'],
+      ),
+      plannedEnd: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}planned_end'],
+      ),
+      seriesId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}series_id'],
+      ),
+      recurrenceKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recurrence_key'],
+      ),
       dueTime: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}due_time'],
@@ -4629,6 +4778,10 @@ class Task extends DataClass implements Insertable<Task> {
   final int priority;
   final String? dueDate;
   final String? plannedDate;
+  final String? plannedStart;
+  final String? plannedEnd;
+  final String? seriesId;
+  final String? recurrenceKey;
   final int? dueTime;
   final int? durationMin;
   final String? rrule;
@@ -4655,6 +4808,10 @@ class Task extends DataClass implements Insertable<Task> {
     required this.priority,
     this.dueDate,
     this.plannedDate,
+    this.plannedStart,
+    this.plannedEnd,
+    this.seriesId,
+    this.recurrenceKey,
     this.dueTime,
     this.durationMin,
     this.rrule,
@@ -4691,6 +4848,18 @@ class Task extends DataClass implements Insertable<Task> {
     }
     if (!nullToAbsent || plannedDate != null) {
       map['planned_date'] = Variable<String>(plannedDate);
+    }
+    if (!nullToAbsent || plannedStart != null) {
+      map['planned_start'] = Variable<String>(plannedStart);
+    }
+    if (!nullToAbsent || plannedEnd != null) {
+      map['planned_end'] = Variable<String>(plannedEnd);
+    }
+    if (!nullToAbsent || seriesId != null) {
+      map['series_id'] = Variable<String>(seriesId);
+    }
+    if (!nullToAbsent || recurrenceKey != null) {
+      map['recurrence_key'] = Variable<String>(recurrenceKey);
     }
     if (!nullToAbsent || dueTime != null) {
       map['due_time'] = Variable<int>(dueTime);
@@ -4754,6 +4923,18 @@ class Task extends DataClass implements Insertable<Task> {
       plannedDate: plannedDate == null && nullToAbsent
           ? const Value.absent()
           : Value(plannedDate),
+      plannedStart: plannedStart == null && nullToAbsent
+          ? const Value.absent()
+          : Value(plannedStart),
+      plannedEnd: plannedEnd == null && nullToAbsent
+          ? const Value.absent()
+          : Value(plannedEnd),
+      seriesId: seriesId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(seriesId),
+      recurrenceKey: recurrenceKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recurrenceKey),
       dueTime: dueTime == null && nullToAbsent
           ? const Value.absent()
           : Value(dueTime),
@@ -4812,6 +4993,10 @@ class Task extends DataClass implements Insertable<Task> {
       priority: serializer.fromJson<int>(json['priority']),
       dueDate: serializer.fromJson<String?>(json['dueDate']),
       plannedDate: serializer.fromJson<String?>(json['plannedDate']),
+      plannedStart: serializer.fromJson<String?>(json['plannedStart']),
+      plannedEnd: serializer.fromJson<String?>(json['plannedEnd']),
+      seriesId: serializer.fromJson<String?>(json['seriesId']),
+      recurrenceKey: serializer.fromJson<String?>(json['recurrenceKey']),
       dueTime: serializer.fromJson<int?>(json['dueTime']),
       durationMin: serializer.fromJson<int?>(json['durationMin']),
       rrule: serializer.fromJson<String?>(json['rrule']),
@@ -4843,6 +5028,10 @@ class Task extends DataClass implements Insertable<Task> {
       'priority': serializer.toJson<int>(priority),
       'dueDate': serializer.toJson<String?>(dueDate),
       'plannedDate': serializer.toJson<String?>(plannedDate),
+      'plannedStart': serializer.toJson<String?>(plannedStart),
+      'plannedEnd': serializer.toJson<String?>(plannedEnd),
+      'seriesId': serializer.toJson<String?>(seriesId),
+      'recurrenceKey': serializer.toJson<String?>(recurrenceKey),
       'dueTime': serializer.toJson<int?>(dueTime),
       'durationMin': serializer.toJson<int?>(durationMin),
       'rrule': serializer.toJson<String?>(rrule),
@@ -4872,6 +5061,10 @@ class Task extends DataClass implements Insertable<Task> {
     int? priority,
     Value<String?> dueDate = const Value.absent(),
     Value<String?> plannedDate = const Value.absent(),
+    Value<String?> plannedStart = const Value.absent(),
+    Value<String?> plannedEnd = const Value.absent(),
+    Value<String?> seriesId = const Value.absent(),
+    Value<String?> recurrenceKey = const Value.absent(),
     Value<int?> dueTime = const Value.absent(),
     Value<int?> durationMin = const Value.absent(),
     Value<String?> rrule = const Value.absent(),
@@ -4898,6 +5091,12 @@ class Task extends DataClass implements Insertable<Task> {
     priority: priority ?? this.priority,
     dueDate: dueDate.present ? dueDate.value : this.dueDate,
     plannedDate: plannedDate.present ? plannedDate.value : this.plannedDate,
+    plannedStart: plannedStart.present ? plannedStart.value : this.plannedStart,
+    plannedEnd: plannedEnd.present ? plannedEnd.value : this.plannedEnd,
+    seriesId: seriesId.present ? seriesId.value : this.seriesId,
+    recurrenceKey: recurrenceKey.present
+        ? recurrenceKey.value
+        : this.recurrenceKey,
     dueTime: dueTime.present ? dueTime.value : this.dueTime,
     durationMin: durationMin.present ? durationMin.value : this.durationMin,
     rrule: rrule.present ? rrule.value : this.rrule,
@@ -4930,6 +5129,16 @@ class Task extends DataClass implements Insertable<Task> {
       plannedDate: data.plannedDate.present
           ? data.plannedDate.value
           : this.plannedDate,
+      plannedStart: data.plannedStart.present
+          ? data.plannedStart.value
+          : this.plannedStart,
+      plannedEnd: data.plannedEnd.present
+          ? data.plannedEnd.value
+          : this.plannedEnd,
+      seriesId: data.seriesId.present ? data.seriesId.value : this.seriesId,
+      recurrenceKey: data.recurrenceKey.present
+          ? data.recurrenceKey.value
+          : this.recurrenceKey,
       dueTime: data.dueTime.present ? data.dueTime.value : this.dueTime,
       durationMin: data.durationMin.present
           ? data.durationMin.value
@@ -4973,6 +5182,10 @@ class Task extends DataClass implements Insertable<Task> {
           ..write('priority: $priority, ')
           ..write('dueDate: $dueDate, ')
           ..write('plannedDate: $plannedDate, ')
+          ..write('plannedStart: $plannedStart, ')
+          ..write('plannedEnd: $plannedEnd, ')
+          ..write('seriesId: $seriesId, ')
+          ..write('recurrenceKey: $recurrenceKey, ')
           ..write('dueTime: $dueTime, ')
           ..write('durationMin: $durationMin, ')
           ..write('rrule: $rrule, ')
@@ -5004,6 +5217,10 @@ class Task extends DataClass implements Insertable<Task> {
     priority,
     dueDate,
     plannedDate,
+    plannedStart,
+    plannedEnd,
+    seriesId,
+    recurrenceKey,
     dueTime,
     durationMin,
     rrule,
@@ -5034,6 +5251,10 @@ class Task extends DataClass implements Insertable<Task> {
           other.priority == this.priority &&
           other.dueDate == this.dueDate &&
           other.plannedDate == this.plannedDate &&
+          other.plannedStart == this.plannedStart &&
+          other.plannedEnd == this.plannedEnd &&
+          other.seriesId == this.seriesId &&
+          other.recurrenceKey == this.recurrenceKey &&
           other.dueTime == this.dueTime &&
           other.durationMin == this.durationMin &&
           other.rrule == this.rrule &&
@@ -5062,6 +5283,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<int> priority;
   final Value<String?> dueDate;
   final Value<String?> plannedDate;
+  final Value<String?> plannedStart;
+  final Value<String?> plannedEnd;
+  final Value<String?> seriesId;
+  final Value<String?> recurrenceKey;
   final Value<int?> dueTime;
   final Value<int?> durationMin;
   final Value<String?> rrule;
@@ -5089,6 +5314,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.priority = const Value.absent(),
     this.dueDate = const Value.absent(),
     this.plannedDate = const Value.absent(),
+    this.plannedStart = const Value.absent(),
+    this.plannedEnd = const Value.absent(),
+    this.seriesId = const Value.absent(),
+    this.recurrenceKey = const Value.absent(),
     this.dueTime = const Value.absent(),
     this.durationMin = const Value.absent(),
     this.rrule = const Value.absent(),
@@ -5117,6 +5346,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.priority = const Value.absent(),
     this.dueDate = const Value.absent(),
     this.plannedDate = const Value.absent(),
+    this.plannedStart = const Value.absent(),
+    this.plannedEnd = const Value.absent(),
+    this.seriesId = const Value.absent(),
+    this.recurrenceKey = const Value.absent(),
     this.dueTime = const Value.absent(),
     this.durationMin = const Value.absent(),
     this.rrule = const Value.absent(),
@@ -5147,6 +5380,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<int>? priority,
     Expression<String>? dueDate,
     Expression<String>? plannedDate,
+    Expression<String>? plannedStart,
+    Expression<String>? plannedEnd,
+    Expression<String>? seriesId,
+    Expression<String>? recurrenceKey,
     Expression<int>? dueTime,
     Expression<int>? durationMin,
     Expression<String>? rrule,
@@ -5175,6 +5412,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (priority != null) 'priority': priority,
       if (dueDate != null) 'due_date': dueDate,
       if (plannedDate != null) 'planned_date': plannedDate,
+      if (plannedStart != null) 'planned_start': plannedStart,
+      if (plannedEnd != null) 'planned_end': plannedEnd,
+      if (seriesId != null) 'series_id': seriesId,
+      if (recurrenceKey != null) 'recurrence_key': recurrenceKey,
       if (dueTime != null) 'due_time': dueTime,
       if (durationMin != null) 'duration_min': durationMin,
       if (rrule != null) 'rrule': rrule,
@@ -5205,6 +5446,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<int>? priority,
     Value<String?>? dueDate,
     Value<String?>? plannedDate,
+    Value<String?>? plannedStart,
+    Value<String?>? plannedEnd,
+    Value<String?>? seriesId,
+    Value<String?>? recurrenceKey,
     Value<int?>? dueTime,
     Value<int?>? durationMin,
     Value<String?>? rrule,
@@ -5233,6 +5478,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
       priority: priority ?? this.priority,
       dueDate: dueDate ?? this.dueDate,
       plannedDate: plannedDate ?? this.plannedDate,
+      plannedStart: plannedStart ?? this.plannedStart,
+      plannedEnd: plannedEnd ?? this.plannedEnd,
+      seriesId: seriesId ?? this.seriesId,
+      recurrenceKey: recurrenceKey ?? this.recurrenceKey,
       dueTime: dueTime ?? this.dueTime,
       durationMin: durationMin ?? this.durationMin,
       rrule: rrule ?? this.rrule,
@@ -5278,6 +5527,18 @@ class TasksCompanion extends UpdateCompanion<Task> {
     }
     if (plannedDate.present) {
       map['planned_date'] = Variable<String>(plannedDate.value);
+    }
+    if (plannedStart.present) {
+      map['planned_start'] = Variable<String>(plannedStart.value);
+    }
+    if (plannedEnd.present) {
+      map['planned_end'] = Variable<String>(plannedEnd.value);
+    }
+    if (seriesId.present) {
+      map['series_id'] = Variable<String>(seriesId.value);
+    }
+    if (recurrenceKey.present) {
+      map['recurrence_key'] = Variable<String>(recurrenceKey.value);
     }
     if (dueTime.present) {
       map['due_time'] = Variable<int>(dueTime.value);
@@ -5349,6 +5610,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
           ..write('priority: $priority, ')
           ..write('dueDate: $dueDate, ')
           ..write('plannedDate: $plannedDate, ')
+          ..write('plannedStart: $plannedStart, ')
+          ..write('plannedEnd: $plannedEnd, ')
+          ..write('seriesId: $seriesId, ')
+          ..write('recurrenceKey: $recurrenceKey, ')
           ..write('dueTime: $dueTime, ')
           ..write('durationMin: $durationMin, ')
           ..write('rrule: $rrule, ')
@@ -16119,6 +16384,7 @@ typedef $$OccurrenceCacheTableCreateCompanionBuilder =
       required int startUtc,
       required int endUtc,
       required String dayKey,
+      Value<String> sourceType,
       Value<int> rowid,
     });
 typedef $$OccurrenceCacheTableUpdateCompanionBuilder =
@@ -16130,6 +16396,7 @@ typedef $$OccurrenceCacheTableUpdateCompanionBuilder =
       Value<int> startUtc,
       Value<int> endUtc,
       Value<String> dayKey,
+      Value<String> sourceType,
       Value<int> rowid,
     });
 
@@ -16174,6 +16441,11 @@ class $$OccurrenceCacheTableFilterComposer
 
   ColumnFilters<String> get dayKey => $composableBuilder(
     column: $table.dayKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -16221,6 +16493,11 @@ class $$OccurrenceCacheTableOrderingComposer
     column: $table.dayKey,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$OccurrenceCacheTableAnnotationComposer
@@ -16252,6 +16529,11 @@ class $$OccurrenceCacheTableAnnotationComposer
 
   GeneratedColumn<String> get dayKey =>
       $composableBuilder(column: $table.dayKey, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => column,
+  );
 }
 
 class $$OccurrenceCacheTableTableManager
@@ -16298,6 +16580,7 @@ class $$OccurrenceCacheTableTableManager
                 Value<int> startUtc = const Value.absent(),
                 Value<int> endUtc = const Value.absent(),
                 Value<String> dayKey = const Value.absent(),
+                Value<String> sourceType = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OccurrenceCacheCompanion(
                 id: id,
@@ -16307,6 +16590,7 @@ class $$OccurrenceCacheTableTableManager
                 startUtc: startUtc,
                 endUtc: endUtc,
                 dayKey: dayKey,
+                sourceType: sourceType,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -16318,6 +16602,7 @@ class $$OccurrenceCacheTableTableManager
                 required int startUtc,
                 required int endUtc,
                 required String dayKey,
+                Value<String> sourceType = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OccurrenceCacheCompanion.insert(
                 id: id,
@@ -16327,6 +16612,7 @@ class $$OccurrenceCacheTableTableManager
                 startUtc: startUtc,
                 endUtc: endUtc,
                 dayKey: dayKey,
+                sourceType: sourceType,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -16795,6 +17081,10 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<int> priority,
       Value<String?> dueDate,
       Value<String?> plannedDate,
+      Value<String?> plannedStart,
+      Value<String?> plannedEnd,
+      Value<String?> seriesId,
+      Value<String?> recurrenceKey,
       Value<int?> dueTime,
       Value<int?> durationMin,
       Value<String?> rrule,
@@ -16824,6 +17114,10 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<int> priority,
       Value<String?> dueDate,
       Value<String?> plannedDate,
+      Value<String?> plannedStart,
+      Value<String?> plannedEnd,
+      Value<String?> seriesId,
+      Value<String?> recurrenceKey,
       Value<int?> dueTime,
       Value<int?> durationMin,
       Value<String?> rrule,
@@ -16921,6 +17215,26 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<String> get plannedDate => $composableBuilder(
     column: $table.plannedDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get plannedStart => $composableBuilder(
+    column: $table.plannedStart,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get plannedEnd => $composableBuilder(
+    column: $table.plannedEnd,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get seriesId => $composableBuilder(
+    column: $table.seriesId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recurrenceKey => $composableBuilder(
+    column: $table.recurrenceKey,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -17102,6 +17416,26 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get plannedStart => $composableBuilder(
+    column: $table.plannedStart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get plannedEnd => $composableBuilder(
+    column: $table.plannedEnd,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get seriesId => $composableBuilder(
+    column: $table.seriesId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recurrenceKey => $composableBuilder(
+    column: $table.recurrenceKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get dueTime => $composableBuilder(
     column: $table.dueTime,
     builder: (column) => ColumnOrderings(column),
@@ -17242,6 +17576,24 @@ class $$TasksTableAnnotationComposer
 
   GeneratedColumn<String> get plannedDate => $composableBuilder(
     column: $table.plannedDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get plannedStart => $composableBuilder(
+    column: $table.plannedStart,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get plannedEnd => $composableBuilder(
+    column: $table.plannedEnd,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get seriesId =>
+      $composableBuilder(column: $table.seriesId, builder: (column) => column);
+
+  GeneratedColumn<String> get recurrenceKey => $composableBuilder(
+    column: $table.recurrenceKey,
     builder: (column) => column,
   );
 
@@ -17395,6 +17747,10 @@ class $$TasksTableTableManager
                 Value<int> priority = const Value.absent(),
                 Value<String?> dueDate = const Value.absent(),
                 Value<String?> plannedDate = const Value.absent(),
+                Value<String?> plannedStart = const Value.absent(),
+                Value<String?> plannedEnd = const Value.absent(),
+                Value<String?> seriesId = const Value.absent(),
+                Value<String?> recurrenceKey = const Value.absent(),
                 Value<int?> dueTime = const Value.absent(),
                 Value<int?> durationMin = const Value.absent(),
                 Value<String?> rrule = const Value.absent(),
@@ -17422,6 +17778,10 @@ class $$TasksTableTableManager
                 priority: priority,
                 dueDate: dueDate,
                 plannedDate: plannedDate,
+                plannedStart: plannedStart,
+                plannedEnd: plannedEnd,
+                seriesId: seriesId,
+                recurrenceKey: recurrenceKey,
                 dueTime: dueTime,
                 durationMin: durationMin,
                 rrule: rrule,
@@ -17451,6 +17811,10 @@ class $$TasksTableTableManager
                 Value<int> priority = const Value.absent(),
                 Value<String?> dueDate = const Value.absent(),
                 Value<String?> plannedDate = const Value.absent(),
+                Value<String?> plannedStart = const Value.absent(),
+                Value<String?> plannedEnd = const Value.absent(),
+                Value<String?> seriesId = const Value.absent(),
+                Value<String?> recurrenceKey = const Value.absent(),
                 Value<int?> dueTime = const Value.absent(),
                 Value<int?> durationMin = const Value.absent(),
                 Value<String?> rrule = const Value.absent(),
@@ -17478,6 +17842,10 @@ class $$TasksTableTableManager
                 priority: priority,
                 dueDate: dueDate,
                 plannedDate: plannedDate,
+                plannedStart: plannedStart,
+                plannedEnd: plannedEnd,
+                seriesId: seriesId,
+                recurrenceKey: recurrenceKey,
                 dueTime: dueTime,
                 durationMin: durationMin,
                 rrule: rrule,

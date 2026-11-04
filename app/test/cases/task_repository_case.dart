@@ -531,4 +531,105 @@ void main() {
       isNot(contains(later)),
     );
   });
+
+  test(
+    'recurring completion shifts planned interval and keeps series',
+    () async {
+      final db = _db();
+      addTearDown(db.close);
+      final repo = TaskRepository(db);
+      final id = await repo.createTask(
+        title: 'Plan block',
+        dueDate: '2026-03-02',
+        plannedStart: '2026-03-01T10:00',
+        plannedEnd: '2026-03-01T11:00',
+        rrule: 'FREQ=DAILY',
+        repeatMode: 'from_due_date',
+      );
+      final original = await (db.select(
+        db.tasks,
+      )..where((t) => t.id.equals(id))).getSingle();
+      await repo.completeTask(id, at: DateTime.utc(2026, 3, 2, 10));
+      final open = await repo.evalSmartList({'showCompleted': false});
+      expect(open, hasLength(1));
+      final t = open.single;
+      expect(t.dueDate, '2026-03-03');
+      expect(t.plannedStart, '2026-03-02T10:00');
+      expect(t.plannedEnd, '2026-03-02T11:00');
+      expect(t.seriesId, original.seriesId);
+      expect(t.recurrenceKey, '2026-03-03');
+    },
+  );
+
+  test(
+    'planned-only recurring completion advances series and keeps null due',
+    () async {
+      final db = _db();
+      addTearDown(db.close);
+      final repo = TaskRepository(db);
+      final id = await repo.createTask(
+        title: 'Plan only',
+        plannedStart: '2026-03-01T10:00',
+        plannedEnd: '2026-03-01T11:00',
+        rrule: 'FREQ=DAILY',
+        repeatMode: 'from_due_date',
+      );
+      final original = await (db.select(
+        db.tasks,
+      )..where((t) => t.id.equals(id))).getSingle();
+      await repo.completeTask(id, at: DateTime.utc(2026, 3, 1, 10));
+      final open = await repo.evalSmartList({'showCompleted': false});
+      expect(open, hasLength(1));
+      final t = open.single;
+      expect(t.dueDate, isNull);
+      expect(t.plannedStart, '2026-03-02T10:00');
+      expect(t.plannedEnd, '2026-03-02T11:00');
+      expect(t.seriesId, original.seriesId);
+      expect(t.recurrenceKey, isNotNull);
+    },
+  );
+
+  test('markWontDo sets wontDo and completedAt and advances series', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final repo = TaskRepository(db);
+    final id = await repo.createTask(
+      title: 'Skip me',
+      dueDate: '2026-03-02',
+      rrule: 'FREQ=DAILY',
+      repeatMode: 'from_due_date',
+    );
+    final original = await (db.select(
+      db.tasks,
+    )..where((t) => t.id.equals(id))).getSingle();
+    await repo.markWontDo(id, at: DateTime.utc(2026, 3, 2, 10));
+    final row = await (db.select(
+      db.tasks,
+    )..where((t) => t.id.equals(id))).getSingle();
+    expect(row.wontDo, isTrue);
+    expect(row.completedAt, isNotNull);
+    final open = await repo.evalSmartList({'showCompleted': false});
+    expect(open, hasLength(1));
+    expect(open.single.dueDate, '2026-03-03');
+    expect(open.single.seriesId, original.seriesId);
+  });
+
+  test('skipOccurrence advances planned interval', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final repo = TaskRepository(db);
+    final id = await repo.createTask(
+      title: 'Gym',
+      dueDate: '2026-03-02',
+      plannedStart: '2026-03-02T09:00',
+      plannedEnd: '2026-03-02T10:00',
+      rrule: 'FREQ=DAILY',
+    );
+    await repo.skipOccurrence(id);
+    final tasks = await repo.evalSmartList({'showCompleted': false});
+    expect(tasks.single.dueDate, '2026-03-03');
+    expect(tasks.single.plannedStart, '2026-03-03T09:00');
+    expect(tasks.single.plannedEnd, '2026-03-03T10:00');
+    expect(tasks.single.completedAt, isNull);
+  });
 }
