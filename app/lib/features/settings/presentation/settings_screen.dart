@@ -6,6 +6,7 @@ import 'package:ephemeron/l10n/src/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../alarms/application/alarm_providers.dart';
 import '../../auth/presentation/auth_screen.dart';
 import '../../sync/application/sync_providers.dart';
 import '../application/settings_providers.dart';
@@ -36,6 +37,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   PowerSavingMode _powerSavingMode = PowerSavingMode.auto;
   bool _reduceAnimations = false;
   bool _haptics = true;
+  bool _taskDueTomorrowReminder = true;
   bool _biometricLock = false;
   bool _biometricSupported = false;
   int _syncIntervalMin = 30;
@@ -75,6 +77,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _powerSavingMode = repo.powerSavingMode;
         _reduceAnimations = repo.reduceAnimations;
         _haptics = repo.haptics;
+        _taskDueTomorrowReminder = repo.taskDueTomorrowReminder;
         _biometricLock = repo.biometricLock;
         _syncIntervalMin = repo.syncIntervalMin;
         _backendSyncIntervalMin = repo.backendSyncIntervalMin;
@@ -164,6 +167,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _setHaptics(bool value) async {
     setState(() => _haptics = value);
     await _persist((r) => r.setHaptics(value));
+  }
+
+  Future<void> _setTaskDueTomorrowReminder(bool value) async {
+    setState(() => _taskDueTomorrowReminder = value);
+    await _persist((r) => r.setTaskDueTomorrowReminder(value));
+    try {
+      await ref
+          .read(alarmRepositoryProvider)
+          .rebuildWindow(dueTomorrowEnabled: value);
+    } catch (_) {
+      // Best-effort reschedule; failures are non-fatal.
+    }
   }
 
   Future<void> _setBiometricLock(bool value) async {
@@ -326,6 +341,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             subtitle: const Text('Vibration feedback on supported devices.'),
             value: _haptics,
             onChanged: _setHaptics,
+          ),
+          const SettingsSectionHeader(
+            title: 'Notifications',
+            description: 'Task and reminder notifications.',
+          ),
+          SwitchListTile(
+            title: const Text('Due tomorrow reminder'),
+            subtitle: const Text(
+              'Fires 24h before the due time, clamped to 09:00-17:00. '
+              'Can be disabled.',
+            ),
+            value: _taskDueTomorrowReminder,
+            onChanged: _setTaskDueTomorrowReminder,
           ),
           const SettingsSectionHeader(
             title: 'Accounts and sync',

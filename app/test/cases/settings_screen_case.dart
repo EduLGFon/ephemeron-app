@@ -1,3 +1,7 @@
+import 'package:drift/native.dart';
+import 'package:ephemeron/data/drift/app_database.dart';
+import 'package:ephemeron/features/alarms/application/alarm_providers.dart';
+import 'package:ephemeron/features/alarms/data/alarm_repository.dart';
 import 'package:ephemeron/features/settings/data/settings_repository.dart';
 import 'package:ephemeron/features/settings/presentation/settings_screen.dart';
 import 'package:ephemeron/l10n/src/app_localizations.dart';
@@ -5,6 +9,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class _FakeAlarmRepo extends AlarmRepository {
+  _FakeAlarmRepo() : super(AppDatabase.forTesting(NativeDatabase.memory()));
+
+  int rebuildCalls = 0;
+  bool? lastDueTomorrow;
+
+  @override
+  Future<int> rebuildWindow({bool dueTomorrowEnabled = true}) async {
+    rebuildCalls++;
+    lastDueTomorrow = dueTomorrowEnabled;
+    return 0;
+  }
+}
 
 Widget _settingsApp() {
   return ProviderScope(
@@ -160,5 +178,70 @@ void main() {
     await tester.drag(find.byType(ListView), const Offset(0, -2400));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('due tomorrow reminder reflects stored value', (tester) async {
+    tester.view.physicalSize = const Size(500, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({
+      'alarms.taskDueTomorrowReminder': false,
+    });
+    final fakeAlarm = _FakeAlarmRepo();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [alarmRepositoryProvider.overrideWithValue(fakeAlarm)],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const SettingsScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final tile = find.widgetWithText(SwitchListTile, 'Due tomorrow reminder');
+    expect(tester.widget<SwitchListTile>(tile).value, isFalse);
+  });
+
+  testWidgets('due tomorrow reminder toggle persists and rebuilds alarms', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(500, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({});
+    final fakeAlarm = _FakeAlarmRepo();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [alarmRepositoryProvider.overrideWithValue(fakeAlarm)],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const SettingsScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final tile = find.widgetWithText(SwitchListTile, 'Due tomorrow reminder');
+    expect(tester.widget<SwitchListTile>(tile).value, isTrue);
+
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<SwitchListTile>(tile).value, isFalse);
+    expect(
+      (await SharedPreferences.getInstance()).getBool(
+        'alarms.taskDueTomorrowReminder',
+      ),
+      isFalse,
+    );
+    expect(fakeAlarm.rebuildCalls, 1);
+    expect(fakeAlarm.lastDueTomorrow, isFalse);
   });
 }
