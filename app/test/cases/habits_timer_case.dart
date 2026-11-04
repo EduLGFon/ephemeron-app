@@ -123,17 +123,23 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pump(const Duration(milliseconds: 500));
     await tester.tap(find.byIcon(Icons.play_arrow).first);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      if (find.byIcon(Icons.stop).evaluate().isNotEmpty) break;
+    }
     expect(find.byIcon(Icons.stop), findsOneWidget);
     await tester.tap(find.byIcon(Icons.stop).first);
-    await tester.pump();
-    await tester.pump();
     final prefs = await SharedPreferences.getInstance();
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      if (prefs.getString('habit_timer.habitId') == null) break;
+    }
     // persisted timer cleared
     expect(prefs.getString('habit_timer.habitId'), isNull);
-    await db.close();
     await tester.pumpWidget(Container());
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await db.close();
     await tester.pump();
   });
 
