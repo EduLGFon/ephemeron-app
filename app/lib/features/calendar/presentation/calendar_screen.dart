@@ -44,11 +44,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           windowStartUtc: window.fromUtc,
           windowEndUtc: window.toUtc,
         );
+    if (!mounted) return;
     ref.read(occurrenceDirtyProvider.notifier).clear();
     // Persist the calendar view so restarts return to the same place.
     // Best-effort, never blocks the UI.
     Future.microtask(() async {
       try {
+        if (!mounted) return;
         await persistCalendarView(ref);
       } catch (_) {}
     });
