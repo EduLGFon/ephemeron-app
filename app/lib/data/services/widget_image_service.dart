@@ -9,6 +9,7 @@ import 'package:home_widget/home_widget.dart';
 import 'home_widget_support.dart';
 import 'week_calendar_data.dart';
 import 'week_calendar_image.dart';
+import 'week_widget_options.dart';
 
 /// Month grid with event dots. Pure widget, no app dependencies.
 class MonthGridImage extends StatelessWidget {
@@ -204,18 +205,21 @@ class WidgetImageService {
     }
   }
 
-  /// Renders the full current-week grid.
+  /// Renders the current week grid at a wide 2:1 aspect ratio that fills a
+  /// 4x2 widget cell area. 720x360 px at pixelRatio 2 keeps the Binder
+  /// transaction small.
   Future<String?> renderWeekCalendar({
     required List<WeekCalendarDay> days,
     required DateTime now,
+    WeekWidgetTheme theme = WeekWidgetTheme.light,
   }) async {
     if (!isHomeWidgetSupported) return null;
     try {
       final path = await HomeWidget.renderFlutterWidget(
-        WeekCalendarImage(days: days, now: now),
+        WeekCalendarImage(days: days, now: now, theme: theme),
         key: 'week_calendar_image',
-        logicalSize: const Size(360, 360),
-        pixelRatio: 2,
+        logicalSize: const Size(720, 360),
+        pixelRatio: 1,
       );
       return path as String?;
     } catch (_) {

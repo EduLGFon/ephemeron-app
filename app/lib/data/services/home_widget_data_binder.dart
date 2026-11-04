@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../domain/habits/date_key.dart';
 import '../../../core/power/power_saving_manager.dart';
 import '../../../core/time/time.dart';
@@ -17,6 +18,7 @@ import '../../../features/settings/application/settings_providers.dart';
 import 'home_widget_service.dart';
 import 'home_widget_support.dart';
 import 'week_calendar_data.dart';
+import 'week_widget_options.dart';
 import 'widget_config_store.dart';
 import 'widget_image_service.dart';
 
@@ -251,7 +253,10 @@ class HomeWidgetDataBinder {
     } catch (_) {}
   }
 
-  /// Seven-day payload shared by the text push and the image renderer.
+  /// Week payload shared by the text push and the image renderer.
+  /// Honors the persisted week-widget options: [WeekWidgetOptions.dayCount]
+  /// columns starting at the persisted anchor (or the current week / today
+  /// when no anchor is stored). The anchor survives restart and refresh.
   Future<
     ({
       DateTime start,
@@ -259,6 +264,7 @@ class HomeWidgetDataBinder {
       String title,
       String body,
       String dayKeys,
+      WeekWidgetTheme theme,
     })
   >
   _weekCalendarData() async {
@@ -267,20 +273,38 @@ class HomeWidgetDataBinder {
       final settings = await ref.read(settingsRepositoryProvider.future);
       firstDay = settings.weekStart;
     } catch (_) {}
+    final options = await WeekWidgetOptions.load();
+    final dayCount = WeekWidgetOptions.sanitizeDayCount(options.dayCount);
     final now = DateTime.now();
-    final start = weekStartFor(now, weekStartDay: firstDay);
-    final end = start.add(const Duration(days: 7));
+    DateTime start;
+    final anchor = options.anchorDayKey == null
+        ? null
+        : WeekWidgetOptions.tryParseDayKey(options.anchorDayKey!);
+    if (anchor != null) {
+      start = anchor;
+    } else if (dayCount == 7) {
+      start = weekStartFor(now, weekStartDay: firstDay);
+    } else {
+      final today = DateTime(now.year, now.month, now.day);
+      start = today;
+    }
+    final end = start.add(Duration(days: dayCount));
     final occs = await ref
         .read(occurrenceRepositoryProvider)
         .watchWindow(start, end)
         .first;
-    final days = buildWeekCalendar(occurrences: occs, weekStart: start);
+    final days = buildWeekCalendar(
+      occurrences: occs,
+      weekStart: start,
+      dayCount: dayCount,
+    );
     return (
       start: start,
       days: days,
-      title: weekCalendarTitle(start),
+      title: weekCalendarTitle(start, dayCount: dayCount),
       body: weekCalendarBody(days),
       dayKeys: days.map((d) => dateKey(d.date)).join(','),
+      theme: options.theme,
     );
   }
 
@@ -292,10 +316,78 @@ class HomeWidgetDataBinder {
         provider: 'WeekCalendarWidgetProvider',
         title: data.title,
         body: data.body,
-        extra: {'days': data.dayKeys},
+        extra: {'days': data.dayKeys, 'theme': data.theme.key},
       );
       _mark('week_calendar');
     } catch (_) {}
+  }
+
+  /// Re-renders the week widget immediately, bypassing the 15-minute
+  /// throttle. Used after the user taps previous/next so the new range
+  /// appears right away. The native provider cannot re-render the Flutter
+  /// image by itself; this foreground re-render is the documented path.
+  Future<void> refreshWeekCalendarNow({bool skipThrottle = true}) async {
+    try {
+      if (skipThrottle) {
+        // Best-effort: still record the render time for the throttle.
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setInt(
+            'widget_image_last_week_calendar',
+            DateTime.now().millisecondsSinceEpoch,
+          );
+        } catch (_) {}
+      }
+      final data = await _weekCalendarData();
+      final path = await WidgetImageService().renderWeekCalendar(
+        days: data.days,
+        now: DateTime.now(),
+        theme: data.theme,
+      );
+      if (path != null) {
+        await _svc.update(
+          keyPrefix: 'week_calendar',
+          provider: 'WeekCalendarWidgetProvider',
+          title: data.title,
+          body: data.body,
+          imagePath: path,
+          extra: {'days': data.dayKeys, 'theme': data.theme.key},
+        );
+      }
+    } catch (_) {}
+  }
+
+  /// Shifts the persisted week-widget anchor by one visible span and
+  /// re-renders the widget foreground. Returns the new anchor start.
+  Future<DateTime> shiftWeekWidgetAnchor(int direction) async {
+    final options = await WeekWidgetOptions.load();
+    final dayCount = WeekWidgetOptions.sanitizeDayCount(options.dayCount);
+    var firstDay = DateTime.monday;
+    try {
+      final settings = await ref.read(settingsRepositoryProvider.future);
+      firstDay = settings.weekStart;
+    } catch (_) {}
+    final now = DateTime.now();
+    final current =
+        (options.anchorDayKey == null
+            ? null
+            : WeekWidgetOptions.tryParseDayKey(options.anchorDayKey!)) ??
+        (dayCount == 7
+            ? weekStartFor(now, weekStartDay: firstDay)
+            : DateTime(now.year, now.month, now.day));
+    final shifted = WeekWidgetOptions.shiftAnchor(current, dayCount, direction);
+    await options
+        .copyWith(anchorDayKey: () => WeekWidgetOptions.dayKey(shifted))
+        .save();
+    await refreshWeekCalendarNow();
+    return shifted;
+  }
+
+  /// Clears the persisted anchor so the widget shows the current week.
+  Future<void> resetWeekWidgetAnchor() async {
+    final options = await WeekWidgetOptions.load();
+    await options.copyWith(anchorDayKey: () => null).save();
+    await refreshWeekCalendarNow();
   }
 
   Future<void> _refreshMatrix() async {
@@ -768,21 +860,7 @@ class HomeWidgetDataBinder {
 
     if (want('WeekCalendarWidgetProvider') && await due('week_calendar')) {
       try {
-        final data = await _weekCalendarData();
-        final path = await images.renderWeekCalendar(
-          days: data.days,
-          now: DateTime.now(),
-        );
-        if (path != null) {
-          await _svc.update(
-            keyPrefix: 'week_calendar',
-            provider: 'WeekCalendarWidgetProvider',
-            title: data.title,
-            body: data.body,
-            imagePath: path,
-            extra: {'days': data.dayKeys},
-          );
-        }
+        await refreshWeekCalendarNow(skipThrottle: false);
       } catch (_) {}
     }
     if (want('MonthCalendarWidgetProvider') && await due('month_calendar')) {

@@ -1,5 +1,5 @@
 // Week time-grid image for the home-screen week calendar widget.
-// Draws seven day columns with an all-day band and 24-hour event blocks.
+// Draws day columns with an all-day band and 24-hour event blocks.
 // The widget is rendered offscreen at a fixed logical size and then scaled
 // by the launcher, so this must lay out with unbounded constraints.
 import 'dart:math' as math;
@@ -7,17 +7,26 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'week_calendar_data.dart';
+import 'week_widget_options.dart';
 
 class WeekCalendarImage extends StatelessWidget {
-  const WeekCalendarImage({super.key, required this.days, required this.now});
+  const WeekCalendarImage({
+    super.key,
+    required this.days,
+    required this.now,
+    this.theme = WeekWidgetTheme.light,
+  });
 
   final List<WeekCalendarDay> days;
   final DateTime now;
+  final WeekWidgetTheme theme;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFFFFFFF),
+      color: theme == WeekWidgetTheme.transparent
+          ? const Color(0x00000000)
+          : null,
       child: LayoutBuilder(
         builder: (ctx, cons) {
           // Offscreen widget renders do not always provide finite constraints.
@@ -26,12 +35,12 @@ class WeekCalendarImage extends StatelessWidget {
               : 360.0;
           final height = cons.maxHeight.isFinite
               ? cons.maxHeight.clamp(1.0, 4096.0)
-              : 300.0;
+              : 180.0;
           return SizedBox(
             width: width,
             height: height,
             child: CustomPaint(
-              painter: _WeekCalendarPainter(days: days, now: now),
+              painter: _WeekCalendarPainter(days: days, now: now, theme: theme),
             ),
           );
         },
@@ -47,23 +56,84 @@ class _PlacedItem {
   final double width;
 }
 
+/// Resolved palette for one widget theme. Transparent paints no solid
+/// background and uses light foreground colors so the grid stays readable
+/// over launcher wallpaper.
+class _WeekPalette {
+  const _WeekPalette({
+    required this.background,
+    required this.line,
+    required this.night,
+    required this.text,
+    required this.todayFill,
+    required this.todayText,
+    required this.nowLine,
+  });
+
+  final Color? background;
+  final Color line;
+  final Color night;
+  final Color text;
+  final Color todayFill;
+  final Color todayText;
+  final Color nowLine;
+
+  static _WeekPalette of(WeekWidgetTheme theme) {
+    switch (theme) {
+      case WeekWidgetTheme.dark:
+        return const _WeekPalette(
+          background: Color(0xFF1B1B1D),
+          line: Color(0xFF3A3A3E),
+          night: Color(0xFF232326),
+          text: Color(0xFFFFFFFF),
+          todayFill: Color(0xFFFFFFFF),
+          todayText: Color(0xFF000000),
+          nowLine: Color(0xFFFF5252),
+        );
+      case WeekWidgetTheme.transparent:
+        return const _WeekPalette(
+          background: null,
+          line: Color(0x99FFFFFF),
+          night: Color(0x22000000),
+          text: Color(0xFFFFFFFF),
+          todayFill: Color(0xAAFFFFFF),
+          todayText: Color(0xFF000000),
+          nowLine: Color(0xFFFF5252),
+        );
+      case WeekWidgetTheme.light:
+        return const _WeekPalette(
+          background: Color(0xFFFFFFFF),
+          line: Color(0xFFE2E2E2),
+          night: Color(0xFFF7F7F7),
+          text: Color(0xFF000000),
+          todayFill: Color(0xFF000000),
+          todayText: Color(0xFFFFFFFF),
+          nowLine: Color(0xFFD50000),
+        );
+    }
+  }
+}
+
 class _WeekCalendarPainter extends CustomPainter {
-  _WeekCalendarPainter({required this.days, required this.now});
+  _WeekCalendarPainter({
+    required this.days,
+    required this.now,
+    this.theme = WeekWidgetTheme.light,
+  });
 
   final List<WeekCalendarDay> days;
   final DateTime now;
+  final WeekWidgetTheme theme;
 
-  static const Color _line = Color(0xFFE2E2E2);
-  static const Color _night = Color(0xFFF7F7F7);
-  static const Color _today = Color(0x14000000);
+  static const Color _todayShade = Color(0x14000000);
 
   @override
   void paint(Canvas canvas, Size size) {
     if (days.isEmpty || size.width <= 0 || size.height <= 0) return;
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()..color = const Color(0xFFFFFFFF),
-    );
+    final palette = _WeekPalette.of(theme);
+    if (palette.background != null) {
+      canvas.drawRect(Offset.zero & size, Paint()..color = palette.background!);
+    }
 
     final colW = size.width / days.length;
     final headerH = (size.height * 0.11).clamp(8.0, 28.0);
@@ -81,13 +151,13 @@ class _WeekCalendarPainter extends CustomPainter {
     final gridTop = headerH + allDayH;
     final gridH = math.max(1.0, size.height - gridTop);
 
-    _paintBackground(canvas, size, colW, gridTop, gridH);
-    _paintHeaders(canvas, colW, headerH);
+    _paintBackground(canvas, size, colW, gridTop, gridH, palette);
+    _paintHeaders(canvas, colW, headerH, palette);
     if (allDayRows > 0) {
-      _paintAllDay(canvas, colW, headerH, allDayRowH, allDayRows);
+      _paintAllDay(canvas, colW, headerH, allDayRowH, allDayRows, palette);
     }
     _paintTimed(canvas, colW, gridTop, gridH);
-    _paintNowLine(canvas, colW, gridTop, gridH);
+    _paintNowLine(canvas, colW, gridTop, gridH, palette);
   }
 
   void _paintBackground(
@@ -96,13 +166,17 @@ class _WeekCalendarPainter extends CustomPainter {
     double colW,
     double gridTop,
     double gridH,
+    _WeekPalette palette,
   ) {
     for (var i = 0; i < days.length; i++) {
       final left = i * colW;
       if (_sameDay(days[i].date, now)) {
         canvas.drawRect(
           Rect.fromLTWH(left, 0, colW, size.height),
-          Paint()..color = _today,
+          Paint()
+            ..color = theme == WeekWidgetTheme.light
+                ? _todayShade
+                : palette.todayFill.withValues(alpha: 0.18),
         );
       }
     }
@@ -110,14 +184,14 @@ class _WeekCalendarPainter extends CustomPainter {
       // Shade night hours so daytime events stand out at a glance.
       canvas.drawRect(
         Rect.fromLTWH(0, gridTop, size.width, gridH * 6 / 24),
-        Paint()..color = _night,
+        Paint()..color = palette.night,
       );
       canvas.drawRect(
         Rect.fromLTWH(0, gridTop + gridH * 21 / 24, size.width, gridH * 3 / 24),
-        Paint()..color = _night,
+        Paint()..color = palette.night,
       );
       final linePaint = Paint()
-        ..color = _line
+        ..color = palette.line
         ..strokeWidth = 0.5;
       for (final hour in const [6, 12, 18]) {
         final y = gridTop + gridH * hour / 24;
@@ -125,7 +199,7 @@ class _WeekCalendarPainter extends CustomPainter {
       }
     }
     final vertical = Paint()
-      ..color = _line
+      ..color = palette.line
       ..strokeWidth = 0.5;
     for (var i = 1; i < days.length; i++) {
       final x = i * colW;
@@ -133,7 +207,12 @@ class _WeekCalendarPainter extends CustomPainter {
     }
   }
 
-  void _paintHeaders(Canvas canvas, double colW, double headerH) {
+  void _paintHeaders(
+    Canvas canvas,
+    double colW,
+    double headerH,
+    _WeekPalette palette,
+  ) {
     final weekdaySize = math.min(6.5, headerH * 0.36);
     final dateSize = math.min(9.0, headerH * 0.5);
     for (var i = 0; i < days.length; i++) {
@@ -143,10 +222,10 @@ class _WeekCalendarPainter extends CustomPainter {
       if (isToday) {
         canvas.drawRect(
           Rect.fromLTWH(left, 0, colW, headerH),
-          Paint()..color = const Color(0xFF000000),
+          Paint()..color = palette.todayFill,
         );
       }
-      final color = isToday ? const Color(0xFFFFFFFF) : const Color(0xFF000000);
+      final color = isToday ? palette.todayText : palette.text;
       final label = _weekday(day.weekday);
       if (colW >= 20 && headerH >= 9) {
         _drawText(
@@ -186,6 +265,7 @@ class _WeekCalendarPainter extends CustomPainter {
     double headerH,
     double rowH,
     int maxRows,
+    _WeekPalette palette,
   ) {
     final uneven = days.any((d) => d.allDayItems.length > maxRows);
     final showRows = uneven ? math.max(0, maxRows - 1) : maxRows;
@@ -222,7 +302,7 @@ class _WeekCalendarPainter extends CustomPainter {
           Offset(left, headerH + showRows * rowH + 1),
           colW,
           math.min(6.0, rowH * 0.72),
-          color: const Color(0xFF000000),
+          color: palette.text,
           weight: FontWeight.w600,
         );
       }
@@ -281,7 +361,13 @@ class _WeekCalendarPainter extends CustomPainter {
     }
   }
 
-  void _paintNowLine(Canvas canvas, double colW, double gridTop, double gridH) {
+  void _paintNowLine(
+    Canvas canvas,
+    double colW,
+    double gridTop,
+    double gridH,
+    _WeekPalette palette,
+  ) {
     final index = days.indexWhere((d) => _sameDay(d.date, now));
     if (index < 0) return;
     final minutes = now.hour * 60 + now.minute;
@@ -290,7 +376,7 @@ class _WeekCalendarPainter extends CustomPainter {
       Offset(index * colW, y),
       Offset((index + 1) * colW, y),
       Paint()
-        ..color = const Color(0xFFD50000)
+        ..color = palette.nowLine
         ..strokeWidth = 0.9,
     );
   }
@@ -374,5 +460,7 @@ class _WeekCalendarPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _WeekCalendarPainter oldDelegate) =>
-      oldDelegate.days != days || oldDelegate.now != now;
+      oldDelegate.days != days ||
+      oldDelegate.now != now ||
+      oldDelegate.theme != theme;
 }
