@@ -216,7 +216,12 @@ class WidgetImageService {
     if (!isHomeWidgetSupported) return null;
     try {
       final path = await HomeWidget.renderFlutterWidget(
-        WeekCalendarImage(days: days, now: now, theme: theme),
+        WeekCalendarImage(
+          days: days,
+          now: now,
+          theme: theme,
+          logicalSize: const Size(720, 360),
+        ),
         key: 'week_calendar_image',
         logicalSize: const Size(720, 360),
         pixelRatio: 1,

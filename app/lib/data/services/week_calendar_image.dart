@@ -15,11 +15,18 @@ class WeekCalendarImage extends StatelessWidget {
     required this.days,
     required this.now,
     this.theme = WeekWidgetTheme.light,
+    this.logicalSize = const Size(720, 360),
   });
 
   final List<WeekCalendarDay> days;
   final DateTime now;
   final WeekWidgetTheme theme;
+
+  /// Full render size used when the offscreen host leaves an axis
+  /// unbounded. `renderFlutterWidget` sizes the canvas from `logicalSize`
+  /// but can hand the widget an unbounded height; using a smaller fallback
+  /// there centers a 180 px band inside a 360 px PNG.
+  final Size logicalSize;
 
   @override
   Widget build(BuildContext context) {
@@ -29,13 +36,12 @@ class WeekCalendarImage extends StatelessWidget {
           : null,
       child: LayoutBuilder(
         builder: (ctx, cons) {
-          // Offscreen widget renders do not always provide finite constraints.
           final width = cons.maxWidth.isFinite
               ? cons.maxWidth.clamp(1.0, 4096.0)
-              : 360.0;
+              : logicalSize.width;
           final height = cons.maxHeight.isFinite
               ? cons.maxHeight.clamp(1.0, 4096.0)
-              : 180.0;
+              : logicalSize.height;
           return SizedBox(
             width: width,
             height: height,
