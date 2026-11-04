@@ -45,14 +45,17 @@ DateTime weekStartFor(DateTime now, {int weekStartDay = DateTime.monday}) {
   return day.subtract(Duration(days: delta));
 }
 
-/// Builds seven day buckets for [weekStart]. All-day rows are repeated on
-/// every day they cover so a multi-day event is visible across the week.
+/// Builds day buckets for [weekStart]. All-day rows are repeated on
+/// every day they cover so a multi-day event is visible across the range.
+/// [dayCount] selects 1, 3, 5, or 7 columns (default 7).
 List<WeekCalendarDay> buildWeekCalendar({
   required List<OccurrenceCacheData> occurrences,
   required DateTime weekStart,
+  int dayCount = 7,
 }) {
+  final count = dayCount <= 0 ? 7 : dayCount;
   final start = DateTime(weekStart.year, weekStart.month, weekStart.day);
-  final buckets = List.generate(7, (_) => <WeekCalendarItem>[]);
+  final buckets = List.generate(count, (_) => <WeekCalendarItem>[]);
 
   for (final o in occurrences) {
     final title = (o.title ?? '').trim();
@@ -85,7 +88,7 @@ List<WeekCalendarDay> buildWeekCalendar({
           first.day,
         ).add(Duration(days: offset));
         final index = day.difference(start).inDays;
-        if (index >= 0 && index < 7) {
+        if (index >= 0 && index < count) {
           buckets[index].add(
             WeekCalendarItem(
               title: title.isEmpty ? 'Untitled' : title,
@@ -100,7 +103,7 @@ List<WeekCalendarDay> buildWeekCalendar({
       continue;
     }
 
-    for (var i = 0; i < 7; i++) {
+    for (var i = 0; i < count; i++) {
       final dayStart = start.add(Duration(days: i));
       final dayEnd = dayStart.add(const Duration(days: 1));
       if (!itemStart.isBefore(dayEnd) || !itemEnd.isAfter(dayStart)) continue;
@@ -126,7 +129,7 @@ List<WeekCalendarDay> buildWeekCalendar({
   }
 
   return [
-    for (var i = 0; i < 7; i++)
+    for (var i = 0; i < count; i++)
       WeekCalendarDay(
         date: start.add(Duration(days: i)),
         items: buckets[i],
@@ -134,10 +137,13 @@ List<WeekCalendarDay> buildWeekCalendar({
   ];
 }
 
-/// Compact title shown above the week grid.
-String weekCalendarTitle(DateTime weekStart) {
-  final start = DateTime(weekStart.year, weekStart.month, weekStart.day);
-  final end = start.add(const Duration(days: 6));
+/// Compact title shown above the week grid. [dayCount] is the number of
+/// days in the range starting at [rangeStart].
+String weekCalendarTitle(DateTime rangeStart, {int dayCount = 7}) {
+  final start = DateTime(rangeStart.year, rangeStart.month, rangeStart.day);
+  final span = dayCount <= 0 ? 7 : dayCount;
+  final end = start.add(Duration(days: span - 1));
+  if (span == 1) return DateFormat.yMMMd().format(start);
   if (start.year != end.year) {
     return '${DateFormat.yMMMd().format(start)} - '
         '${DateFormat.yMMMd().format(end)}';

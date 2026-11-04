@@ -95,8 +95,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
     redirect: (context, state) {
+      // Widget taps deliver ephemeron://widget/... through the platform
+      // intent; if one ever reaches the router as a path, open the
+      // calendar instead of showing the error page.
       if (state.uri.path == '/') return '/tab0';
+      if (state.uri.path == '/widget' ||
+          state.uri.path.startsWith('/widget/')) {
+        return '/tab0';
+      }
       return null;
     },
+    errorBuilder: (context, state) => const CalendarScreen(),
   );
 });

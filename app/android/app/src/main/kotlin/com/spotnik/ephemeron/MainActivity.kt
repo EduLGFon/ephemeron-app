@@ -21,6 +21,16 @@ class MainActivity : FlutterFragmentActivity() {
     private var pendingWidgetAction: String? = null
     private var pendingNotifResult: MethodChannel.Result? = null
 
+    // Home-widget taps arrive as ephemeron://widget/... intents targeted at
+    // this activity. The Flutter engine would otherwise treat the intent
+    // data as the initial route and show the router error page; the action
+    // itself is delivered to Dart through getWidgetAction instead.
+    override fun getInitialRoute(): String? {
+        val data = intent?.data
+        if (data?.scheme == "ephemeron" && data.host == "widget") return null
+        return super.getInitialRoute()
+    }
+
     companion object {
         private const val NOTIF_REQUEST_CODE = 1001
     }

@@ -254,12 +254,16 @@ Future<void> pushAllHeadlessWidgets(AppDatabase db) async {
             ))
             .get();
     final days = buildWeekCalendar(occurrences: occs, weekStart: start);
+    final theme = prefs.getString('week_calendar_theme') ?? 'light';
     await _push(
       'week_calendar',
       'WeekCalendarWidgetProvider',
       weekCalendarTitle(start),
       weekCalendarBody(days),
-      extra: {'days': days.map((d) => dateKey(d.date)).join(',')},
+      extra: {
+        'days': days.map((d) => dateKey(d.date)).join(','),
+        'theme': theme,
+      },
     );
   } catch (_) {}
   try {

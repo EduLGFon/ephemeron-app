@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:ephemeron/core/ui/app_sheet.dart';
 import 'package:ephemeron/core/ui/escape_to_close.dart';
@@ -29,6 +30,7 @@ import '../../features/sync/application/sync_providers.dart';
 import '../../features/tasks/presentation/quick_add_sheet.dart';
 import '../../features/tasks/presentation/task_editor_sheet.dart';
 import '../../data/services/home_widget_data_binder.dart';
+import '../../data/services/week_widget_options.dart';
 import '../../data/services/week_calendar_data.dart';
 import 'app_sections.dart';
 import '../../features/tasks/application/tasks_providers.dart';
@@ -158,25 +160,48 @@ class _AppShellState extends ConsumerState<AppShell>
     await _handleWidgetAction();
   }
 
-  /// Routes a home-widget tap (new_task/search/week day). Called on startup
-  /// and on resume so taps work whether the app was closed or already open.
+  /// Routes a home-widget tap (new_task/search/week day/prev/next). Called
+  /// on startup and on resume so taps work whether the app was closed or
+  /// already open. Previous/next shifts the persisted widget anchor by one
+  /// visible span and re-renders the widget in the foreground (the native
+  /// provider cannot re-render the Flutter image on its own), then opens
+  /// the calendar on the new range.
   Future<void> _handleWidgetAction() async {
     if (!mounted) return;
     final widgetAction = await SystemLauncher.consumeWidgetAction();
     if (widgetAction == null || !mounted) return;
     if (widgetAction == 'new_task') {
       await showQuickAdd(context);
+      return;
     } else if (widgetAction == 'search') {
       GoRouter.of(context).push('/search');
       try {
         final repo = await ref.read(settingsRepositoryProvider.future);
         await repo.setLastRoute('/search');
       } catch (_) {}
-    } else if (widgetAction == 'calendar' || widgetAction == 'calendar/today') {
-      await _openWeekCalendar(DateTime.now());
-    } else if (widgetAction.startsWith('calendar/')) {
-      final raw = widgetAction.substring('calendar/'.length);
-      await _openWeekCalendar(DateTime.tryParse(raw) ?? DateTime.now());
+      return;
+    }
+    final tap = parseWeekWidgetAction(widgetAction);
+    if (tap == null) return;
+    switch (tap.nav) {
+      case WeekWidgetNav.today:
+        await _openWeekCalendar(DateTime.now());
+      case WeekWidgetNav.day:
+        await _openWeekCalendar(tap.day ?? DateTime.now());
+      case WeekWidgetNav.prev:
+        try {
+          final shifted = await ref
+              .read(homeWidgetDataBinderProvider)
+              .shiftWeekWidgetAnchor(-1);
+          if (mounted) await _openWeekCalendar(shifted);
+        } catch (_) {}
+      case WeekWidgetNav.next:
+        try {
+          final shifted = await ref
+              .read(homeWidgetDataBinderProvider)
+              .shiftWeekWidgetAnchor(1);
+          if (mounted) await _openWeekCalendar(shifted);
+        } catch (_) {}
     }
   }
 
