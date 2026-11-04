@@ -12,6 +12,7 @@ import '../../../app/session/session_restore.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../domain/alarms/alarm_preset.dart';
 import '../../../domain/alarms/reminder.dart';
+import '../../../domain/recurrence/recurrence_rule.dart';
 import '../../../domain/sources/source_label.dart';
 import '../../../domain/sources/source_move.dart';
 import '../../../core/platform/app_permissions.dart';
@@ -57,9 +58,22 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
   int _priority = 0;
   String? _dueDate;
   String? _plannedDate;
+  String? _plannedStart;
+  String? _plannedEnd;
+  String? _rrule;
+  final TextEditingController _rruleText = TextEditingController();
   int? _dueTime;
   bool _pinned = false;
   String? _alarmPreset;
+  bool _customRrule = false;
+  static const Map<String, String?> _repeatPresets = {
+    'Does not repeat': null,
+    'Daily': 'FREQ=DAILY',
+    'Weekly': 'FREQ=WEEKLY',
+    'Monthly': 'FREQ=MONTHLY',
+    'Yearly': 'FREQ=YEARLY',
+    'Custom RRULE': '__custom__',
+  };
   List<int> _reminders = const [0];
   DraftAutosaver? _saver;
   bool _saved = false;
@@ -83,6 +97,11 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
     _priority = (d?['priority'] as num?)?.toInt() ?? t?.priority ?? 0;
     _dueDate = (d?['dueDate'] as String?) ?? t?.dueDate;
     _plannedDate = (d?['plannedDate'] as String?) ?? t?.plannedDate;
+    _plannedStart = (d?['plannedStart'] as String?) ?? t?.plannedStart;
+    _plannedEnd = (d?['plannedEnd'] as String?) ?? t?.plannedEnd;
+    _rrule = (d?['rrule'] as String?) ?? t?.rrule;
+    _customRrule = _rrule != null && !_repeatPresets.containsValue(_rrule);
+    _rruleText.text = _rrule ?? '';
     _dueTime = (d?['dueTime'] as num?)?.toInt() ?? t?.dueTime;
     _pinned = (d?['pinned'] as bool?) ?? t?.pinned ?? false;
     _alarmPreset = (d?['alarmPreset'] as String?) ?? t?.alarmPreset;
@@ -123,6 +142,11 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         _priority = (j['priority'] as num?)?.toInt() ?? 0;
         _dueDate = j['dueDate'] as String?;
         _plannedDate = j['plannedDate'] as String?;
+        _plannedStart = j['plannedStart'] as String?;
+        _plannedEnd = j['plannedEnd'] as String?;
+        _rrule = j['rrule'] as String?;
+        _customRrule = _rrule != null && !_repeatPresets.containsValue(_rrule);
+        _rruleText.text = _rrule ?? '';
         _dueTime = (j['dueTime'] as num?)?.toInt();
         _pinned = (j['pinned'] as bool?) ?? false;
         _alarmPreset = j['alarmPreset'] as String?;
@@ -159,6 +183,9 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         'priority': _priority,
         'dueDate': _dueDate,
         'plannedDate': _plannedDate,
+        'plannedStart': _plannedStart,
+        'plannedEnd': _plannedEnd,
+        'rrule': _rrule,
         'dueTime': _dueTime,
         'pinned': _pinned,
         'alarmPreset': _alarmPreset,
@@ -182,6 +209,9 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         'priority': _priority,
         'dueDate': _dueDate,
         'plannedDate': _plannedDate,
+        'plannedStart': _plannedStart,
+        'plannedEnd': _plannedEnd,
+        'rrule': _rrule,
         'dueTime': _dueTime,
         'pinned': _pinned,
         'alarmPreset': _alarmPreset,
@@ -207,6 +237,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
     _title.dispose();
     _notes.dispose();
     _tags.dispose();
+    _rruleText.dispose();
     super.dispose();
   }
 
@@ -231,6 +262,28 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
       );
       if (!mounted) return;
     }
+    if (_plannedStart != null && _plannedEnd != null) {
+      final s = DateTime.tryParse(_plannedStart!);
+      final e = DateTime.tryParse(_plannedEnd!);
+      if (s != null && e != null && !e.isAfter(s)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Planned end must be after start.')),
+          );
+        }
+        return;
+      }
+    }
+    if (_rrule != null &&
+        _rrule!.trim().isNotEmpty &&
+        !_isValidRrule(_rrule!)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid recurrence rule.')),
+        );
+      }
+      return;
+    }
     final repo = ref.read(taskRepositoryProvider);
     final tagNames = _tags.text
         .split(RegExp(r'[,\s]+'))
@@ -238,6 +291,8 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         .where((s) => s.isNotEmpty)
         .toList();
     final existing = widget.task;
+    // A timed planned interval replaces the legacy all-day planned date.
+    final plannedDate = _plannedStart == null ? _plannedDate : null;
     if (existing == null) {
       await repo.createTask(
         title: title,
@@ -245,7 +300,10 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         priority: _priority,
         dueDate: _dueDate,
-        plannedDate: _plannedDate,
+        plannedDate: plannedDate,
+        plannedStart: _plannedStart,
+        plannedEnd: _plannedEnd,
+        rrule: _rrule,
         dueTime: _dueTime,
         pinned: _pinned,
         parentId: widget.parentId,
@@ -272,7 +330,10 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         priority: _priority,
         dueDate: () => _dueDate,
-        plannedDate: () => _plannedDate,
+        plannedDate: () => plannedDate,
+        plannedStart: () => _plannedStart,
+        plannedEnd: () => _plannedEnd,
+        rrule: () => _rrule,
         dueTime: () => _dueTime,
         pinned: _pinned,
         alarmPreset: () => _alarmPreset,
@@ -409,10 +470,21 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
                 label: 'Planned date',
                 value: _plannedDate,
                 onChanged: (v) {
-                  setState(() => _plannedDate = v);
+                  setState(() {
+                    _plannedDate = v;
+                    if (v != null) {
+                      _plannedStart = null;
+                      _plannedEnd = null;
+                    }
+                  });
                   _queueDraft();
                 },
               ),
+              const SizedBox(height: 8),
+              _plannedIntervalSection(context),
+              const SizedBox(height: 8),
+              _repeatSection(context),
+              const SizedBox(height: 8),
               _dateRow(
                 context,
                 label: 'Due date',
@@ -574,6 +646,183 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
     );
     if (picked != null) onChanged(_fmtDue(picked));
   }
+
+  Future<String?> _pickDateTime(String? current) async {
+    final now = DateTime.now();
+    final initial = current == null ? now : DateTime.tryParse(current) ?? now;
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (date == null || !mounted) return null;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+    );
+    if (time == null) return null;
+    return '${_fmtDue(date)}T${_pad(time.hour)}:${_pad(time.minute)}';
+  }
+
+  Widget _plannedIntervalSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.schedule_outlined),
+          title: const Text('Planned interval'),
+          subtitle: Text(
+            _plannedStart == null && _plannedEnd == null
+                ? 'Not set'
+                : '${_plannedStart ?? ''} - ${_plannedEnd ?? ''}',
+          ),
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () async {
+                  final v = await _pickDateTime(_plannedStart);
+                  if (v == null) return;
+                  setState(() {
+                    _plannedStart = v;
+                    _plannedDate = null;
+                    if (_plannedEnd != null) {
+                      final s = DateTime.tryParse(v);
+                      final e = DateTime.tryParse(_plannedEnd!);
+                      if (s != null && e != null && !e.isAfter(s)) {
+                        _plannedEnd = null;
+                      }
+                    }
+                  });
+                  _queueDraft();
+                },
+                child: Text(_plannedStart == null ? 'Start' : _plannedStart!),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _plannedStart == null
+                    ? null
+                    : () async {
+                        final v = await _pickDateTime(
+                          _plannedEnd ?? _plannedStart,
+                        );
+                        if (v == null) return;
+                        setState(() => _plannedEnd = v);
+                        _queueDraft();
+                      },
+                child: Text(_plannedEnd == null ? 'End' : _plannedEnd!),
+              ),
+            ),
+            if (_plannedStart != null)
+              Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  icon: const Icon(Icons.clear),
+                  tooltip: 'Clear interval',
+                  onPressed: () {
+                    setState(() {
+                      _plannedStart = null;
+                      _plannedEnd = null;
+                    });
+                    _queueDraft();
+                  },
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _repeatSection(BuildContext context) {
+    final dropdownValue = _customRrule
+        ? '__custom__'
+        : (_repeatPresets.containsValue(_rrule) ? _rrule : null);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<String?>(
+          initialValue: dropdownValue,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Repeat',
+            border: OutlineInputBorder(),
+          ),
+          items: [
+            for (final e in _repeatPresets.entries)
+              DropdownMenuItem(value: e.value, child: Text(e.key)),
+          ],
+          onChanged: (v) {
+            if (v == '__custom__') {
+              setState(() {
+                _customRrule = true;
+                if (_rrule == null && _rruleText.text.trim().isNotEmpty) {
+                  _rrule = _rruleText.text.trim();
+                }
+              });
+            } else {
+              setState(() {
+                _customRrule = false;
+                _rrule = v;
+              });
+              _queueDraft();
+            }
+          },
+        ),
+        if (_customRrule) ...[
+          const SizedBox(height: 8),
+          TextField(
+            controller: _rruleText,
+            decoration: InputDecoration(
+              labelText: 'Custom RRULE',
+              border: const OutlineInputBorder(),
+              errorText: _rruleText.text.trim().isEmpty
+                  ? null
+                  : _validateRrule(_rruleText.text.trim()),
+            ),
+            onChanged: (t) {
+              setState(() {
+                final v = t.trim();
+                _rrule = v.isEmpty ? null : v;
+              });
+              _queueDraft();
+            },
+          ),
+        ],
+      ],
+    );
+  }
+
+  bool _isValidRrule(String value) {
+    final body = value.trim().toUpperCase().startsWith('RRULE:')
+        ? value.trim().substring(6)
+        : value.trim();
+    final freqPart = body
+        .split(';')
+        .where((p) => p.toUpperCase().startsWith('FREQ='))
+        .firstOrNull;
+    if (freqPart == null) return false;
+    final freq = freqPart.split('=').last.toUpperCase();
+    if (!const {'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'}.contains(freq)) {
+      return false;
+    }
+    try {
+      RecurrenceRule.parse(value);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String? _validateRrule(String v) => _isValidRrule(v) ? null : 'Invalid RRULE';
 
   Widget _dueChip(BuildContext context, String label, String value) {
     final selected = _dueDate == value;
