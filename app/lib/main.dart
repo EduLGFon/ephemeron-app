@@ -93,6 +93,7 @@ class _LockGate extends StatefulWidget {
 class _LockGateState extends State<_LockGate> {
   bool _unlocked = false;
   bool _busy = false;
+  String? _error;
 
   @override
   void initState() {
@@ -102,7 +103,10 @@ class _LockGateState extends State<_LockGate> {
 
   Future<void> _tryUnlock() async {
     if (_busy || _unlocked || !mounted) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     // On devices without biometric/device-credential support, the lock cannot
     // be used: clear the stale setting and pass through.
     if (!await AppLock.isSupported()) {
@@ -120,12 +124,23 @@ class _LockGateState extends State<_LockGate> {
       });
       return;
     }
-    final ok = await AppLock.authenticate();
-    if (!mounted) return;
-    setState(() {
-      _busy = false;
-      _unlocked = ok;
-    });
+    try {
+      final ok = await AppLock.authenticate();
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _unlocked = ok;
+        // User cancel stays locked quietly; other false results also retry.
+        if (!ok) _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _unlocked = false;
+        _error = AppLock.describeError(e);
+      });
+    }
   }
 
   @override
@@ -140,6 +155,19 @@ class _LockGateState extends State<_LockGate> {
               const Icon(Icons.lock_outline, size: 48),
               const SizedBox(height: 12),
               const Text('Ephemeron is locked'),
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    _error!,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.red),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: _busy ? null : _tryUnlock,

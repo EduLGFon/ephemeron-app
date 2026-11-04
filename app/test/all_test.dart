@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'cases/alarm_repository_case.dart' as alarm_repository;
 import 'cases/alarm_window_case.dart' as alarm_window;
+import 'cases/app_lock_case.dart' as app_lock;
 import 'cases/auth_screen_case.dart' as auth_screen;
 import 'cases/backend_auth_case.dart' as backend_auth;
 import 'cases/backend_sync_case.dart' as backend_sync;
@@ -48,6 +49,7 @@ import 'cases/widget_image_case.dart' as widget_image;
 const _included = <String>{
   'alarm_repository_case.dart',
   'alarm_window_case.dart',
+  'app_lock_case.dart',
   'auth_screen_case.dart',
   'backend_auth_case.dart',
   'backend_sync_case.dart',
@@ -94,6 +96,7 @@ void main() {
 
   group('alarm_repository', alarm_repository.main);
   group('alarm_window', alarm_window.main);
+  group('app_lock', app_lock.main);
   group('auth_screen', auth_screen.main);
   group('backend_auth', backend_auth.main);
   group('backend_sync', backend_sync.main);

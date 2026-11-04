@@ -214,7 +214,33 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   value: supported && repo.biometricLock,
                   onChanged: supported
-                      ? (v) => _mutate(ref, (r) => r.setBiometricLock(v))
+                      ? (v) async {
+                          if (!v) {
+                            await _mutate(
+                              ref,
+                              (r) => r.setBiometricLock(false),
+                            );
+                            return;
+                          }
+                          // Verify the system prompt works before enabling,
+                          // otherwise the user gets stuck on a dead lock screen.
+                          try {
+                            final ok = await AppLock.authenticate();
+                            if (!context.mounted) return;
+                            if (ok) {
+                              await _mutate(
+                                ref,
+                                (r) => r.setBiometricLock(true),
+                              );
+                            }
+                            // User cancel: stay disabled quietly.
+                          } catch (e) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(AppLock.describeError(e))),
+                            );
+                          }
+                        }
                       : null,
                 );
               },

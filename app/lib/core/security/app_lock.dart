@@ -19,6 +19,10 @@ class AppLock {
   /// Alias kept for callers/tests that use a different name.
   static Future<bool> isAvailable() => isSupported();
 
+  /// Returns true on success. Returns false when the user cancels.
+  /// Throws [LocalAuthException] for other failures so the UI can show
+  /// a reason instead of leaving a dead Unlock button.
+  /// SECURITY: fail closed, callers must stay locked on throw or false.
   static Future<bool> authenticate() async {
     // Devices without biometric/device-credential support cannot lock the
     // app; pass through instead of failing closed.
@@ -28,9 +32,47 @@ class AppLock {
       return await auth.authenticate(
         localizedReason: 'Unlock Ephemeron',
         biometricOnly: false,
+        persistAcrossBackgrounding: true,
       );
-    } catch (_) {
-      return false;
+    } on LocalAuthException catch (e) {
+      // User dismissal is not an error, stay locked quietly.
+      if (e.code == LocalAuthExceptionCode.userCanceled ||
+          e.code == LocalAuthExceptionCode.systemCanceled) {
+        return false;
+      }
+      rethrow;
     }
+  }
+
+  /// User-visible reason for an authentication failure.
+  static String describeError(Object e) {
+    if (e is LocalAuthException) {
+      switch (e.code) {
+        case LocalAuthExceptionCode.noBiometricsEnrolled:
+        case LocalAuthExceptionCode.noCredentialsSet:
+          return 'No screen lock enrolled. Add a PIN or biometric in system settings.';
+        case LocalAuthExceptionCode.noBiometricHardware:
+          return 'This device has no biometric hardware.';
+        case LocalAuthExceptionCode.biometricHardwareTemporarilyUnavailable:
+          return 'Biometric hardware is temporarily unavailable. Try again.';
+        case LocalAuthExceptionCode.temporaryLockout:
+        case LocalAuthExceptionCode.biometricLockout:
+          return 'Too many attempts. Use your device PIN to unlock.';
+        case LocalAuthExceptionCode.uiUnavailable:
+          return 'System unlock UI is unavailable. Update the app and try again.';
+        case LocalAuthExceptionCode.authInProgress:
+          return 'An unlock is already in progress.';
+        case LocalAuthExceptionCode.timeout:
+          return 'Unlock timed out. Try again.';
+        case LocalAuthExceptionCode.userCanceled:
+        case LocalAuthExceptionCode.systemCanceled:
+          return 'Unlock was cancelled.';
+        case LocalAuthExceptionCode.userRequestedFallback:
+        case LocalAuthExceptionCode.deviceError:
+        case LocalAuthExceptionCode.unknownError:
+          return 'Unlock failed. Try again.';
+      }
+    }
+    return 'Unlock failed. Try again.';
   }
 }
