@@ -156,3 +156,5 @@ Remaining (not yet fixed):
 - Web sign-in still needs `app/web/auth.html` (or equivalent redirect page) and the Entra SPA redirect registration for `http://localhost:8080/auth.html`; the service already uses `AppConfig.microsoftWebRedirectUri`. Android is the primary verification target until then.
 
 - Task action sheet: projected future occurrences are read-only until per-occurrence completion is implemented (no completion/won't-do actions shown).
+
+- Microsoft pull is read-only: remote deletions are not reconciled yet, so a row that disappears from Graph stays locally until a later deletion pass. Microsoft-originated edits/completions are also local-only until Graph write support lands; hide or disable those actions for Microsoft items when sync is wired into the UI.

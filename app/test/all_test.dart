@@ -41,6 +41,7 @@ import 'cases/markdown_editing_controller_case.dart' as markdown_editing_control
 import 'cases/matrix_case.dart' as matrix;
 import 'cases/microsoft_auth_case.dart' as microsoft_auth;
 import 'cases/microsoft_graph_case.dart' as microsoft_graph;
+import 'cases/microsoft_sync_engine_case.dart' as microsoft_sync_engine;
 import 'cases/month_view_case.dart' as month_view;
 import 'cases/note_editor_case.dart' as note_editor;
 import 'cases/note_repository_case.dart' as note_repository;
@@ -105,6 +106,7 @@ const _included = <String>{
   'matrix_case.dart',
   'microsoft_auth_case.dart',
   'microsoft_graph_case.dart',
+  'microsoft_sync_engine_case.dart',
   'month_view_case.dart',
   'note_editor_case.dart',
   'note_repository_case.dart',
@@ -176,6 +178,7 @@ void main() {
   group('matrix', matrix.main);
   group('microsoft_auth', microsoft_auth.main);
   group('microsoft_graph', microsoft_graph.main);
+  group('microsoft_sync_engine', microsoft_sync_engine.main);
   group('month_view', month_view.main);
   group('note_editor', note_editor.main);
   group('note_repository', note_repository.main);

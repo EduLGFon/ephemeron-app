@@ -28,7 +28,11 @@ class MicrosoftGraphException implements Exception {
 abstract class MicrosoftGraphClient {
   Future<MsIdentity> getMe();
   Future<List<MsCalendar>> listCalendars();
-  Future<List<MsEvent>> calendarView(DateTime startUtc, DateTime endUtc);
+  Future<List<MsEvent>> calendarView(
+    DateTime startUtc,
+    DateTime endUtc, {
+    String? calendarId,
+  });
   Future<List<MsTodoList>> listTodoLists();
   Future<List<MsTodoTask>> listTodoTasks(String listId);
 }
@@ -165,17 +169,23 @@ class HttpMicrosoftGraphClient implements MicrosoftGraphClient {
   }
 
   @override
-  Future<List<MsEvent>> calendarView(DateTime startUtc, DateTime endUtc) async {
+  Future<List<MsEvent>> calendarView(
+    DateTime startUtc,
+    DateTime endUtc, {
+    String? calendarId,
+  }) async {
     final headers = await _headers(preferUtc: true);
-    final initial = Uri.parse('${AppConfig.microsoftGraphBase}/me/calendarView')
-        .replace(
-          queryParameters: {
-            r'$select':
-                'id,subject,bodyPreview,start,end,isAllDay,location,showAs,isCancelled,seriesMasterId,type,recurrence,onlineMeetingUrl,attendees,organizer,lastModifiedDateTime',
-            'startDateTime': startUtc.toUtc().toIso8601String(),
-            'endDateTime': endUtc.toUtc().toIso8601String(),
-          },
-        );
+    final path = calendarId == null || calendarId.isEmpty
+        ? '/me/calendarView'
+        : '/me/calendars/${Uri.encodeComponent(calendarId)}/calendarView';
+    final initial = Uri.parse('${AppConfig.microsoftGraphBase}$path').replace(
+      queryParameters: {
+        r'$select':
+            'id,subject,bodyPreview,start,end,isAllDay,location,showAs,isCancelled,seriesMasterId,type,recurrence,onlineMeetingUrl,attendees,organizer,lastModifiedDateTime',
+        'startDateTime': startUtc.toUtc().toIso8601String(),
+        'endDateTime': endUtc.toUtc().toIso8601String(),
+      },
+    );
     return _paginate(initial, headers, MsEvent.fromMap);
   }
 
