@@ -76,11 +76,12 @@ class CalendarState extends Notifier<CalendarWindow> {
   }
 
   void setView(CalendarViewKind view, {int dayCount = 1}) {
-    state = CalendarWindow(
-      anchor: state.anchor,
-      view: view,
-      dayCount: dayCount,
-    );
+    // Opening the month view always starts from today; other views keep
+    // the current anchor so swipes and selections survive view switches.
+    final anchor = view == CalendarViewKind.month
+        ? DateTime.now()
+        : state.anchor;
+    state = CalendarWindow(anchor: anchor, view: view, dayCount: dayCount);
   }
 
   void goTo(DateTime anchor) {

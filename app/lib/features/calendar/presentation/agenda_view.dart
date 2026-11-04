@@ -5,7 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/time/time.dart';
 import '../../../data/drift/app_database.dart';
 import '../application/calendar_providers.dart';
-import 'timeline/timeline_utils.dart';
+import 'agenda_event_tile.dart';
+import 'event_details_sheet.dart';
 
 class AgendaView extends ConsumerWidget {
   const AgendaView({super.key});
@@ -57,19 +58,10 @@ class AgendaView extends ConsumerWidget {
           );
           for (final o in byDay[d]!) {
             items.add(
-              ListTile(
-                leading: Container(
-                  width: 4,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: timelineEventColor(context, o.colorId),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                title: Text(o.title ?? '…'),
-                trailing: Text(
-                  '${DateTime.fromMillisecondsSinceEpoch(o.startUtc).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(o.startUtc).minute.toString().padLeft(2, '0')}',
-                ),
+              AgendaEventTile(
+                key: ValueKey('agenda-${o.id}'),
+                occurrence: o,
+                onTap: (id) => showEventDetails(context, id),
               ),
             );
           }

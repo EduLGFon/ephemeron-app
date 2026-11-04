@@ -29,6 +29,7 @@ import 'cases/home_widget_binder_case.dart' as home_widget_binder;
 import 'cases/home_widget_callback_case.dart' as home_widget_callback;
 import 'cases/home_widget_case.dart' as home_widget;
 import 'cases/l10n_case.dart' as l10n;
+import 'cases/month_view_case.dart' as month_view;
 import 'cases/note_repository_case.dart' as note_repository;
 import 'cases/occurrence_cache_case.dart' as occurrence_cache;
 import 'cases/onboarding_case.dart' as onboarding;
@@ -70,6 +71,7 @@ const _included = <String>{
   'home_widget_callback_case.dart',
   'home_widget_case.dart',
   'l10n_case.dart',
+  'month_view_case.dart',
   'note_repository_case.dart',
   'occurrence_cache_case.dart',
   'onboarding_case.dart',
@@ -118,6 +120,7 @@ void main() {
   group('home_widget_callback', home_widget_callback.main);
   group('home_widget', home_widget.main);
   group('l10n', l10n.main);
+  group('month_view', month_view.main);
   group('note_repository', note_repository.main);
   group('occurrence_cache', occurrence_cache.main);
   group('onboarding', onboarding.main);

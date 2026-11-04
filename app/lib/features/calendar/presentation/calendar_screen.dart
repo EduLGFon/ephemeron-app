@@ -24,7 +24,9 @@ class CalendarScreen extends ConsumerStatefulWidget {
 }
 
 class _CalendarScreenState extends ConsumerState<CalendarScreen> {
-  CalendarWindow? _built;
+  DateTime? _builtFrom;
+  DateTime? _builtTo;
+  CalendarWindow? _persisted;
 
   @override
   void initState() {
@@ -35,9 +37,23 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Future<void> _maybeRebuild() async {
     if (!mounted) return;
     final window = ref.read(calendarStateProvider);
+    // Persist every window change (including day selection in the month
+    // view) without forcing a cache rebuild for it.
+    if (_persisted != window) {
+      _persisted = window;
+      Future.microtask(() async {
+        try {
+          if (!mounted) return;
+          await persistCalendarView(ref);
+        } catch (_) {}
+      });
+    }
     final dirty = ref.read(occurrenceDirtyProvider);
-    if (_built == window && !dirty) return;
-    _built = window;
+    final rangeChanged =
+        _builtFrom != window.fromUtc || _builtTo != window.toUtc;
+    if (!rangeChanged && !dirty) return;
+    _builtFrom = window.fromUtc;
+    _builtTo = window.toUtc;
     await ref
         .read(occurrenceRepositoryProvider)
         .rebuildWindow(
@@ -46,14 +62,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         );
     if (!mounted) return;
     ref.read(occurrenceDirtyProvider.notifier).clear();
-    // Persist the calendar view so restarts return to the same place.
-    // Best-effort, never blocks the UI.
-    Future.microtask(() async {
-      try {
-        if (!mounted) return;
-        await persistCalendarView(ref);
-      } catch (_) {}
-    });
     if (mounted) setState(() {});
   }
 
@@ -129,13 +137,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           enabled: true,
           onShift: (direction) =>
               ref.read(calendarStateProvider.notifier).shiftMonths(direction),
-          child: MonthView(
-            onDayTap: (d) {
-              ref.read(calendarStateProvider.notifier)
-                ..goTo(d)
-                ..setView(CalendarViewKind.day);
-            },
-          ),
+          child: const MonthView(),
         ),
         CalendarViewKind.multiDay => TimelineView(
           anchor: window.anchor,
