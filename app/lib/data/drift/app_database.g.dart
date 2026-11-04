@@ -4081,6 +4081,17 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _plannedDateMeta = const VerificationMeta(
+    'plannedDate',
+  );
+  @override
+  late final GeneratedColumn<String> plannedDate = GeneratedColumn<String>(
+    'planned_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _dueTimeMeta = const VerificationMeta(
     'dueTime',
   );
@@ -4292,6 +4303,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     notes,
     priority,
     dueDate,
+    plannedDate,
     dueTime,
     durationMin,
     rrule,
@@ -4356,6 +4368,15 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
       context.handle(
         _dueDateMeta,
         dueDate.isAcceptableOrUnknown(data['due_date']!, _dueDateMeta),
+      );
+    }
+    if (data.containsKey('planned_date')) {
+      context.handle(
+        _plannedDateMeta,
+        plannedDate.isAcceptableOrUnknown(
+          data['planned_date']!,
+          _plannedDateMeta,
+        ),
       );
     }
     if (data.containsKey('due_time')) {
@@ -4515,6 +4536,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.string,
         data['${effectivePrefix}due_date'],
       ),
+      plannedDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}planned_date'],
+      ),
       dueTime: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}due_time'],
@@ -4603,6 +4628,7 @@ class Task extends DataClass implements Insertable<Task> {
   final String? notes;
   final int priority;
   final String? dueDate;
+  final String? plannedDate;
   final int? dueTime;
   final int? durationMin;
   final String? rrule;
@@ -4628,6 +4654,7 @@ class Task extends DataClass implements Insertable<Task> {
     this.notes,
     required this.priority,
     this.dueDate,
+    this.plannedDate,
     this.dueTime,
     this.durationMin,
     this.rrule,
@@ -4661,6 +4688,9 @@ class Task extends DataClass implements Insertable<Task> {
     map['priority'] = Variable<int>(priority);
     if (!nullToAbsent || dueDate != null) {
       map['due_date'] = Variable<String>(dueDate);
+    }
+    if (!nullToAbsent || plannedDate != null) {
+      map['planned_date'] = Variable<String>(plannedDate);
     }
     if (!nullToAbsent || dueTime != null) {
       map['due_time'] = Variable<int>(dueTime);
@@ -4721,6 +4751,9 @@ class Task extends DataClass implements Insertable<Task> {
       dueDate: dueDate == null && nullToAbsent
           ? const Value.absent()
           : Value(dueDate),
+      plannedDate: plannedDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(plannedDate),
       dueTime: dueTime == null && nullToAbsent
           ? const Value.absent()
           : Value(dueTime),
@@ -4778,6 +4811,7 @@ class Task extends DataClass implements Insertable<Task> {
       notes: serializer.fromJson<String?>(json['notes']),
       priority: serializer.fromJson<int>(json['priority']),
       dueDate: serializer.fromJson<String?>(json['dueDate']),
+      plannedDate: serializer.fromJson<String?>(json['plannedDate']),
       dueTime: serializer.fromJson<int?>(json['dueTime']),
       durationMin: serializer.fromJson<int?>(json['durationMin']),
       rrule: serializer.fromJson<String?>(json['rrule']),
@@ -4808,6 +4842,7 @@ class Task extends DataClass implements Insertable<Task> {
       'notes': serializer.toJson<String?>(notes),
       'priority': serializer.toJson<int>(priority),
       'dueDate': serializer.toJson<String?>(dueDate),
+      'plannedDate': serializer.toJson<String?>(plannedDate),
       'dueTime': serializer.toJson<int?>(dueTime),
       'durationMin': serializer.toJson<int?>(durationMin),
       'rrule': serializer.toJson<String?>(rrule),
@@ -4836,6 +4871,7 @@ class Task extends DataClass implements Insertable<Task> {
     Value<String?> notes = const Value.absent(),
     int? priority,
     Value<String?> dueDate = const Value.absent(),
+    Value<String?> plannedDate = const Value.absent(),
     Value<int?> dueTime = const Value.absent(),
     Value<int?> durationMin = const Value.absent(),
     Value<String?> rrule = const Value.absent(),
@@ -4861,6 +4897,7 @@ class Task extends DataClass implements Insertable<Task> {
     notes: notes.present ? notes.value : this.notes,
     priority: priority ?? this.priority,
     dueDate: dueDate.present ? dueDate.value : this.dueDate,
+    plannedDate: plannedDate.present ? plannedDate.value : this.plannedDate,
     dueTime: dueTime.present ? dueTime.value : this.dueTime,
     durationMin: durationMin.present ? durationMin.value : this.durationMin,
     rrule: rrule.present ? rrule.value : this.rrule,
@@ -4890,6 +4927,9 @@ class Task extends DataClass implements Insertable<Task> {
       notes: data.notes.present ? data.notes.value : this.notes,
       priority: data.priority.present ? data.priority.value : this.priority,
       dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
+      plannedDate: data.plannedDate.present
+          ? data.plannedDate.value
+          : this.plannedDate,
       dueTime: data.dueTime.present ? data.dueTime.value : this.dueTime,
       durationMin: data.durationMin.present
           ? data.durationMin.value
@@ -4932,6 +4972,7 @@ class Task extends DataClass implements Insertable<Task> {
           ..write('notes: $notes, ')
           ..write('priority: $priority, ')
           ..write('dueDate: $dueDate, ')
+          ..write('plannedDate: $plannedDate, ')
           ..write('dueTime: $dueTime, ')
           ..write('durationMin: $durationMin, ')
           ..write('rrule: $rrule, ')
@@ -4962,6 +5003,7 @@ class Task extends DataClass implements Insertable<Task> {
     notes,
     priority,
     dueDate,
+    plannedDate,
     dueTime,
     durationMin,
     rrule,
@@ -4991,6 +5033,7 @@ class Task extends DataClass implements Insertable<Task> {
           other.notes == this.notes &&
           other.priority == this.priority &&
           other.dueDate == this.dueDate &&
+          other.plannedDate == this.plannedDate &&
           other.dueTime == this.dueTime &&
           other.durationMin == this.durationMin &&
           other.rrule == this.rrule &&
@@ -5018,6 +5061,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<String?> notes;
   final Value<int> priority;
   final Value<String?> dueDate;
+  final Value<String?> plannedDate;
   final Value<int?> dueTime;
   final Value<int?> durationMin;
   final Value<String?> rrule;
@@ -5044,6 +5088,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.notes = const Value.absent(),
     this.priority = const Value.absent(),
     this.dueDate = const Value.absent(),
+    this.plannedDate = const Value.absent(),
     this.dueTime = const Value.absent(),
     this.durationMin = const Value.absent(),
     this.rrule = const Value.absent(),
@@ -5071,6 +5116,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.notes = const Value.absent(),
     this.priority = const Value.absent(),
     this.dueDate = const Value.absent(),
+    this.plannedDate = const Value.absent(),
     this.dueTime = const Value.absent(),
     this.durationMin = const Value.absent(),
     this.rrule = const Value.absent(),
@@ -5100,6 +5146,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<String>? notes,
     Expression<int>? priority,
     Expression<String>? dueDate,
+    Expression<String>? plannedDate,
     Expression<int>? dueTime,
     Expression<int>? durationMin,
     Expression<String>? rrule,
@@ -5127,6 +5174,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (notes != null) 'notes': notes,
       if (priority != null) 'priority': priority,
       if (dueDate != null) 'due_date': dueDate,
+      if (plannedDate != null) 'planned_date': plannedDate,
       if (dueTime != null) 'due_time': dueTime,
       if (durationMin != null) 'duration_min': durationMin,
       if (rrule != null) 'rrule': rrule,
@@ -5156,6 +5204,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<String?>? notes,
     Value<int>? priority,
     Value<String?>? dueDate,
+    Value<String?>? plannedDate,
     Value<int?>? dueTime,
     Value<int?>? durationMin,
     Value<String?>? rrule,
@@ -5183,6 +5232,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       notes: notes ?? this.notes,
       priority: priority ?? this.priority,
       dueDate: dueDate ?? this.dueDate,
+      plannedDate: plannedDate ?? this.plannedDate,
       dueTime: dueTime ?? this.dueTime,
       durationMin: durationMin ?? this.durationMin,
       rrule: rrule ?? this.rrule,
@@ -5225,6 +5275,9 @@ class TasksCompanion extends UpdateCompanion<Task> {
     }
     if (dueDate.present) {
       map['due_date'] = Variable<String>(dueDate.value);
+    }
+    if (plannedDate.present) {
+      map['planned_date'] = Variable<String>(plannedDate.value);
     }
     if (dueTime.present) {
       map['due_time'] = Variable<int>(dueTime.value);
@@ -5295,6 +5348,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
           ..write('notes: $notes, ')
           ..write('priority: $priority, ')
           ..write('dueDate: $dueDate, ')
+          ..write('plannedDate: $plannedDate, ')
           ..write('dueTime: $dueTime, ')
           ..write('durationMin: $durationMin, ')
           ..write('rrule: $rrule, ')
@@ -16740,6 +16794,7 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<String?> notes,
       Value<int> priority,
       Value<String?> dueDate,
+      Value<String?> plannedDate,
       Value<int?> dueTime,
       Value<int?> durationMin,
       Value<String?> rrule,
@@ -16768,6 +16823,7 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<String?> notes,
       Value<int> priority,
       Value<String?> dueDate,
+      Value<String?> plannedDate,
       Value<int?> dueTime,
       Value<int?> durationMin,
       Value<String?> rrule,
@@ -16860,6 +16916,11 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<String> get dueDate => $composableBuilder(
     column: $table.dueDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get plannedDate => $composableBuilder(
+    column: $table.plannedDate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -17036,6 +17097,11 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get plannedDate => $composableBuilder(
+    column: $table.plannedDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get dueTime => $composableBuilder(
     column: $table.dueTime,
     builder: (column) => ColumnOrderings(column),
@@ -17173,6 +17239,11 @@ class $$TasksTableAnnotationComposer
 
   GeneratedColumn<String> get dueDate =>
       $composableBuilder(column: $table.dueDate, builder: (column) => column);
+
+  GeneratedColumn<String> get plannedDate => $composableBuilder(
+    column: $table.plannedDate,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get dueTime =>
       $composableBuilder(column: $table.dueTime, builder: (column) => column);
@@ -17323,6 +17394,7 @@ class $$TasksTableTableManager
                 Value<String?> notes = const Value.absent(),
                 Value<int> priority = const Value.absent(),
                 Value<String?> dueDate = const Value.absent(),
+                Value<String?> plannedDate = const Value.absent(),
                 Value<int?> dueTime = const Value.absent(),
                 Value<int?> durationMin = const Value.absent(),
                 Value<String?> rrule = const Value.absent(),
@@ -17349,6 +17421,7 @@ class $$TasksTableTableManager
                 notes: notes,
                 priority: priority,
                 dueDate: dueDate,
+                plannedDate: plannedDate,
                 dueTime: dueTime,
                 durationMin: durationMin,
                 rrule: rrule,
@@ -17377,6 +17450,7 @@ class $$TasksTableTableManager
                 Value<String?> notes = const Value.absent(),
                 Value<int> priority = const Value.absent(),
                 Value<String?> dueDate = const Value.absent(),
+                Value<String?> plannedDate = const Value.absent(),
                 Value<int?> dueTime = const Value.absent(),
                 Value<int?> durationMin = const Value.absent(),
                 Value<String?> rrule = const Value.absent(),
@@ -17403,6 +17477,7 @@ class $$TasksTableTableManager
                 notes: notes,
                 priority: priority,
                 dueDate: dueDate,
+                plannedDate: plannedDate,
                 dueTime: dueTime,
                 durationMin: durationMin,
                 rrule: rrule,

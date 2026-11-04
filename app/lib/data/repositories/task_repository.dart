@@ -78,6 +78,18 @@ class TaskRepository {
         .watch();
   }
 
+  /// Persists a user-defined list order. Local-only: Google Tasks has no
+  /// position field, so no outbox row is queued.
+  Future<void> reorderLists(List<String> orderedIds) async {
+    await _db.transaction(() async {
+      for (var i = 0; i < orderedIds.length; i++) {
+        await (_db.update(_db.taskLists)
+              ..where((l) => l.id.equals(orderedIds[i])))
+            .write(TaskListsCompanion(sortOrder: Value(i)));
+      }
+    });
+  }
+
   /// Renames and/or recolors a list locally and queues the remote patch.
   /// Google Tasks lists have no color, so color stays device-local.
   Future<void> updateList(String id, {String? name, String? color}) async {
@@ -149,6 +161,7 @@ class TaskRepository {
     String? notes,
     int priority = 0,
     String? dueDate,
+    String? plannedDate,
     int? dueTime,
     int? durationMin,
     String? rrule,
@@ -174,6 +187,7 @@ class TaskRepository {
             notes: Value(notes),
             priority: Value(priority),
             dueDate: Value(dueDate),
+            plannedDate: Value(plannedDate),
             dueTime: Value(dueTime),
             durationMin: Value(durationMin),
             rrule: Value(rrule),
@@ -233,6 +247,17 @@ class TaskRepository {
       (t) => OrderingTerm.asc(t.sortOrder),
     ]);
     return q.watch();
+  }
+
+  /// Persists a user-defined task order. Local-only: Google Tasks has no
+  /// position field, so no outbox row is queued.
+  Future<void> reorderTasks(List<String> orderedIds) async {
+    await _db.transaction(() async {
+      for (var i = 0; i < orderedIds.length; i++) {
+        await (_db.update(_db.tasks)..where((t) => t.id.equals(orderedIds[i])))
+            .write(TasksCompanion(sortOrder: Value(i)));
+      }
+    });
   }
 
   Stream<List<Task>> watchTrash() {
@@ -326,6 +351,7 @@ class TaskRepository {
     String? notes,
     int? priority,
     String? Function()? dueDate,
+    String? Function()? plannedDate,
     int? Function()? dueTime,
     int? Function()? durationMin,
     String? Function()? rrule,
@@ -342,6 +368,9 @@ class TaskRepository {
         notes: notes == null ? const Value.absent() : Value(notes),
         priority: priority == null ? const Value.absent() : Value(priority),
         dueDate: dueDate == null ? const Value.absent() : Value(dueDate()),
+        plannedDate: plannedDate == null
+            ? const Value.absent()
+            : Value(plannedDate()),
         dueTime: dueTime == null ? const Value.absent() : Value(dueTime()),
         durationMin: durationMin == null
             ? const Value.absent()
@@ -402,6 +431,11 @@ class TaskRepository {
             notes: task.notes,
             priority: task.priority,
             dueDate: dateKey(next),
+            plannedDate: _shiftPlannedDate(
+              task.plannedDate,
+              task.dueDate,
+              next,
+            ),
             dueTime: (next.hour == 0 && next.minute == 0)
                 ? null
                 : next.hour * 60 + next.minute,
@@ -449,6 +483,23 @@ class TaskRepository {
           ? null
           : next.hour * 60 + next.minute,
     );
+  }
+
+  /// Recurring completion keeps the planned date offset from the due date.
+  String? _shiftPlannedDate(
+    String? plannedDate,
+    String? dueDate,
+    DateTime nextDue,
+  ) {
+    if (plannedDate == null || dueDate == null) return plannedDate;
+    final nextKey = dateKey(nextDue);
+    final delta = _parseDateKey(nextKey).difference(_parseDateKey(dueDate));
+    return dateKey(_parseDateKey(plannedDate).add(delta));
+  }
+
+  DateTime _parseDateKey(String value) {
+    final p = value.split('-');
+    return DateTime.utc(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
   }
 
   DateTime? _taskDueUtc(Task task) {

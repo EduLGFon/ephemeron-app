@@ -294,6 +294,7 @@ class BackupService {
     notes: Value(_optStr(m, 'notes')),
     priority: Value(_optInt(m, 'priority') ?? 0),
     dueDate: Value(_optStr(m, 'dueDate')),
+    plannedDate: Value(_optStr(m, 'plannedDate')),
     dueTime: Value(_optInt(m, 'dueTime')),
     durationMin: Value(_optInt(m, 'durationMin')),
     rrule: Value(_optStr(m, 'rrule')),

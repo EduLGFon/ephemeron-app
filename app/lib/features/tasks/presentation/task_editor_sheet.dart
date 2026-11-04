@@ -56,6 +56,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
   String? _listId;
   int _priority = 0;
   String? _dueDate;
+  String? _plannedDate;
   int? _dueTime;
   bool _pinned = false;
   String? _alarmPreset;
@@ -81,6 +82,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
     _listId = (d?['listId'] as String?) ?? t?.listId;
     _priority = (d?['priority'] as num?)?.toInt() ?? t?.priority ?? 0;
     _dueDate = (d?['dueDate'] as String?) ?? t?.dueDate;
+    _plannedDate = (d?['plannedDate'] as String?) ?? t?.plannedDate;
     _dueTime = (d?['dueTime'] as num?)?.toInt() ?? t?.dueTime;
     _pinned = (d?['pinned'] as bool?) ?? t?.pinned ?? false;
     _alarmPreset = (d?['alarmPreset'] as String?) ?? t?.alarmPreset;
@@ -120,6 +122,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         _listId = j['listId'] as String?;
         _priority = (j['priority'] as num?)?.toInt() ?? 0;
         _dueDate = j['dueDate'] as String?;
+        _plannedDate = j['plannedDate'] as String?;
         _dueTime = (j['dueTime'] as num?)?.toInt();
         _pinned = (j['pinned'] as bool?) ?? false;
         _alarmPreset = j['alarmPreset'] as String?;
@@ -155,6 +158,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         'listId': _listId,
         'priority': _priority,
         'dueDate': _dueDate,
+        'plannedDate': _plannedDate,
         'dueTime': _dueTime,
         'pinned': _pinned,
         'alarmPreset': _alarmPreset,
@@ -177,6 +181,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         'listId': _listId,
         'priority': _priority,
         'dueDate': _dueDate,
+        'plannedDate': _plannedDate,
         'dueTime': _dueTime,
         'pinned': _pinned,
         'alarmPreset': _alarmPreset,
@@ -240,6 +245,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         priority: _priority,
         dueDate: _dueDate,
+        plannedDate: _plannedDate,
         dueTime: _dueTime,
         pinned: _pinned,
         parentId: widget.parentId,
@@ -266,6 +272,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         priority: _priority,
         dueDate: () => _dueDate,
+        plannedDate: () => _plannedDate,
         dueTime: () => _dueTime,
         pinned: _pinned,
         alarmPreset: () => _alarmPreset,
@@ -397,6 +404,25 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
                 ],
               ),
               const SizedBox(height: 8),
+              _dateRow(
+                context,
+                label: 'Planned date',
+                value: _plannedDate,
+                onChanged: (v) {
+                  setState(() => _plannedDate = v);
+                  _queueDraft();
+                },
+              ),
+              _dateRow(
+                context,
+                label: 'Due date',
+                value: _dueDate,
+                onChanged: (v) {
+                  setState(() => _dueDate = v);
+                  _queueDraft();
+                },
+              ),
+              const SizedBox(height: 4),
               Wrap(
                 spacing: 8,
                 children: [
@@ -411,16 +437,6 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
                     'Next Mon',
                     _fmtDue(_nextWeekday(DateTime.now(), DateTime.monday)),
                   ),
-                  if (_dueDate != null)
-                    ActionChip(
-                      label: Text(
-                        'Clear (${_dueDate == null ? '' : DeviceDateFormat.dateIso(context, _dueDate!)})',
-                      ),
-                      onPressed: () {
-                        setState(() => _dueDate = null);
-                        _queueDraft();
-                      },
-                    ),
                 ],
               ),
               const SizedBox(height: 8),
@@ -509,6 +525,54 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
         ),
       ),
     );
+  }
+
+  Widget _dateRow(
+    BuildContext context, {
+    required String label,
+    required String? value,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.event_outlined),
+      title: Text(label),
+      subtitle: Text(
+        value == null ? 'Not set' : DeviceDateFormat.dateIso(context, value),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.calendar_month_outlined),
+            tooltip: 'Pick $label',
+            onPressed: () => _pickDate(value, onChanged),
+          ),
+          if (value != null)
+            IconButton(
+              icon: const Icon(Icons.clear),
+              tooltip: 'Clear $label',
+              onPressed: () => onChanged(null),
+            ),
+        ],
+      ),
+      onTap: () => _pickDate(value, onChanged),
+    );
+  }
+
+  Future<void> _pickDate(
+    String? current,
+    ValueChanged<String?> onChanged,
+  ) async {
+    final now = DateTime.now();
+    final initial = current == null ? now : DateTime.tryParse(current) ?? now;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) onChanged(_fmtDue(picked));
   }
 
   Widget _dueChip(BuildContext context, String label, String value) {

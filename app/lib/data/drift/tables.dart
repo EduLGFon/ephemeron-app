@@ -110,6 +110,7 @@ class Tasks extends Table {
   TextColumn get notes => text().nullable()();
   IntColumn get priority => integer().withDefault(const Constant(0))();
   TextColumn get dueDate => text().nullable()(); // YYYY-MM-DD
+  TextColumn get plannedDate => text().nullable()(); // YYYY-MM-DD
   IntColumn get dueTime => integer().nullable()(); // ms of day? store minutes
   IntColumn get durationMin => integer().nullable()();
   TextColumn get rrule => text().nullable()();

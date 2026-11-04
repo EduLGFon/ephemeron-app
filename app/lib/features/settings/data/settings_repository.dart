@@ -105,6 +105,16 @@ class SettingsRepository {
   Future<void> setSelectedTaskListId(String? v) =>
       v == null ? _prefs.remove(_kTaskList) : _prefs.setString(_kTaskList, v);
 
+  /// Task sort mode name: custom, name, created or due (default due).
+  static const _kTaskSort = 'tasks.sort';
+  String get taskSort => _prefs.getString(_kTaskSort) ?? 'due';
+  Future<void> setTaskSort(String v) => _prefs.setString(_kTaskSort, v);
+
+  /// Task-list sort mode name: custom, name or created (default custom).
+  static const _kTaskListSort = 'lists.sort';
+  String get taskListSort => _prefs.getString(_kTaskListSort) ?? 'custom';
+  Future<void> setTaskListSort(String v) => _prefs.setString(_kTaskListSort, v);
+
   /// Matrix board grouping: 'auto' (default) or 'priority'.
   static const _kMatrixMode = 'matrix.mode';
   String get matrixMode => _prefs.getString(_kMatrixMode) ?? 'auto';

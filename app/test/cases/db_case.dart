@@ -34,9 +34,9 @@ void main() {
     await db.close();
   });
 
-  test('schema version is 9', () async {
+  test('schema version is 10', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
-    expect(db.schemaVersion, 9);
+    expect(db.schemaVersion, 10);
     await db.close();
   });
 
@@ -49,6 +49,15 @@ void main() {
         contains('google_account'),
       );
     }
+    await db.close();
+  });
+
+  test('tasks carry nullable planned_date added in v10', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final cols = await db.customSelect('PRAGMA table_info(tasks)').get();
+    final planned = cols.where((r) => r.read<String>('name') == 'planned_date');
+    expect(planned, hasLength(1));
+    expect(planned.single.read<int>('notnull'), 0);
     await db.close();
   });
 

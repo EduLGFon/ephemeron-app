@@ -6,6 +6,7 @@ import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../domain/tasks/eisenhower.dart';
 import '../../../domain/tasks/smart_filter.dart';
+import '../../../domain/tasks/task_sort.dart';
 import '../../settings/application/settings_providers.dart';
 
 final taskRepositoryProvider = Provider<TaskRepository>((ref) {
@@ -100,6 +101,54 @@ class OccurrenceDirty extends Notifier<bool> {
 final occurrenceDirtyProvider = NotifierProvider<OccurrenceDirty, bool>(
   OccurrenceDirty.new,
 );
+
+/// Task sort mode, persisted in shared preferences. Default preserves the
+/// pre-existing due-date order.
+final taskSortProvider = AsyncNotifierProvider<TaskSortNotifier, TaskSort>(
+  TaskSortNotifier.new,
+);
+
+class TaskSortNotifier extends AsyncNotifier<TaskSort> {
+  @override
+  Future<TaskSort> build() async {
+    final repo = await ref.watch(settingsRepositoryProvider.future);
+    return TaskSortLabel.parse(repo.taskSort);
+  }
+
+  Future<void> select(TaskSort sort) async {
+    state = AsyncData(sort);
+    try {
+      final repo = await ref.read(settingsRepositoryProvider.future);
+      await repo.setTaskSort(sort.name);
+    } catch (_) {
+      // Best-effort persistence: keep the chosen mode for this session.
+    }
+  }
+}
+
+/// Task-list sort mode, persisted in shared preferences.
+final taskListSortProvider =
+    AsyncNotifierProvider<TaskListSortNotifier, TaskListSort>(
+      TaskListSortNotifier.new,
+    );
+
+class TaskListSortNotifier extends AsyncNotifier<TaskListSort> {
+  @override
+  Future<TaskListSort> build() async {
+    final repo = await ref.watch(settingsRepositoryProvider.future);
+    return TaskListSortLabel.parse(repo.taskListSort);
+  }
+
+  Future<void> select(TaskListSort sort) async {
+    state = AsyncData(sort);
+    try {
+      final repo = await ref.read(settingsRepositoryProvider.future);
+      await repo.setTaskListSort(sort.name);
+    } catch (_) {
+      // Best-effort persistence: keep the chosen mode for this session.
+    }
+  }
+}
 
 /// Matrix grouping mode, persisted in shared preferences.
 final matrixModeProvider =

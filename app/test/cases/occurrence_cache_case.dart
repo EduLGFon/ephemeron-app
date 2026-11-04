@@ -173,6 +173,73 @@ void main() {
     expect(await repo.occurrencesForDay('2026-11-04'), isEmpty);
   });
 
+  test('task occurrences use planned date as all-day when set', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    await db
+        .into(db.tasks)
+        .insert(
+          TasksCompanion.insert(
+            id: 't1',
+            title: const Value('Plan'),
+            dueDate: const Value('2026-03-10'),
+            plannedDate: const Value('2026-03-05'),
+            dueTime: const Value(540),
+            durationMin: const Value(60),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+    final repo = OccurrenceRepository(db);
+    await repo.rebuildWindow(
+      windowStartUtc: DateTime.utc(2026, 3, 1),
+      windowEndUtc: DateTime.utc(2026, 3, 31),
+    );
+    final rows = await repo.occurrencesForDay('2026-03-05');
+    expect(rows, hasLength(1));
+    expect(rows.single.eventId, 't1');
+    expect(
+      rows.single.startUtc,
+      DateTime(2026, 3, 5).toUtc().millisecondsSinceEpoch,
+    );
+    expect(await repo.occurrencesForDay('2026-03-10'), isEmpty);
+  });
+
+  test('task occurrences fall back to timed due date when unplanned', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    await db
+        .into(db.tasks)
+        .insert(
+          TasksCompanion.insert(
+            id: 't2',
+            title: const Value('Due only'),
+            dueDate: const Value('2026-03-06'),
+            dueTime: const Value(540),
+            durationMin: const Value(60),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+    final repo = OccurrenceRepository(db);
+    await repo.rebuildWindow(
+      windowStartUtc: DateTime.utc(2026, 3, 1),
+      windowEndUtc: DateTime.utc(2026, 3, 31),
+    );
+    final rows = await repo.occurrencesForDay('2026-03-06');
+    expect(rows, hasLength(1));
+    expect(
+      rows.single.startUtc,
+      DateTime(2026, 3, 6, 9).toUtc().millisecondsSinceEpoch,
+    );
+    expect(
+      rows.single.endUtc,
+      DateTime(2026, 3, 6, 10).toUtc().millisecondsSinceEpoch,
+    );
+  });
+
   test('invalidateEvent clears rows for master and exceptions', () async {
     final db = _db();
     addTearDown(db.close);

@@ -57,6 +57,8 @@ Future<void> _seed(AppDatabase db) async {
           id: 'task1',
           listId: const Value('list1'),
           title: const Value('Buy milk'),
+          dueDate: const Value('2026-03-02'),
+          plannedDate: const Value('2026-03-01'),
           createdAt: now,
           updatedAt: now,
         ),
@@ -192,6 +194,8 @@ void main() {
       db2.tasks,
     )..where((t) => t.id.equals('task1'))).getSingle();
     expect(task.title, 'Buy milk');
+    expect(task.dueDate, '2026-03-02');
+    expect(task.plannedDate, '2026-03-01');
     final event = await (db2.select(
       db2.events,
     )..where((e) => e.id.equals('event1'))).getSingle();

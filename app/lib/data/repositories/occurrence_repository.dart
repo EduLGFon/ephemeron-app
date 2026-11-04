@@ -76,15 +76,20 @@ class OccurrenceRepository {
       }
     }
 
-    // Only tasks due inside the range become occurrences.
+    // Tasks appear on their planned date when set, otherwise on their due
+    // date. Load any task with an effective date inside the range.
     final tasks =
         await (_db.select(_db.tasks)..where(
               (t) =>
                   t.deletedAt.isNull() &
                   t.completedAt.isNull() &
-                  t.dueDate.isNotNull() &
-                  t.dueDate.isSmallerOrEqualValue(endKey) &
-                  t.dueDate.isBiggerOrEqualValue(startKey),
+                  ((t.plannedDate.isNotNull() &
+                          t.plannedDate.isSmallerOrEqualValue(endKey) &
+                          t.plannedDate.isBiggerOrEqualValue(startKey)) |
+                      (t.plannedDate.isNull() &
+                          t.dueDate.isNotNull() &
+                          t.dueDate.isSmallerOrEqualValue(endKey) &
+                          t.dueDate.isBiggerOrEqualValue(startKey))),
             ))
             .get();
 
@@ -371,17 +376,21 @@ class OccurrenceRepository {
     DateTime rangeEnd,
     Map<String, String?> listColors,
   ) {
-    if (t.dueDate == null) return;
-    if (t.dueDate!.compareTo(dateKey(rangeEnd)) > 0) return;
-    if (t.dueDate!.compareTo(dateKey(rangeStart)) < 0) return;
+    final planned = t.plannedDate;
+    final day = planned ?? t.dueDate;
+    if (day == null) return;
+    if (day.compareTo(dateKey(rangeEnd)) > 0) return;
+    if (day.compareTo(dateKey(rangeStart)) < 0) return;
     final color = effectiveTaskColor(
       listColor: t.listId == null ? null : listColors[t.listId],
       seed: t.listId ?? t.id,
     );
-    final p = t.dueDate!.split('-');
+    final p = day.split('-');
     int startMs;
     int endMs;
-    if (t.dueTime == null) {
+    // A planned date is an all-day occurrence. Due-only tasks keep the
+    // existing timed behavior when a due time is set.
+    if (planned != null || t.dueTime == null) {
       final cursor = DateTime(
         int.parse(p[0]),
         int.parse(p[1]),
@@ -404,9 +413,7 @@ class OccurrenceRepository {
       final dur = Duration(minutes: t.durationMin ?? 30);
       endMs = dt.add(dur).toUtc().millisecondsSinceEpoch;
     }
-    rows.add(
-      _row(t.id, startMs, endMs, t.dueDate!, title: t.title, colorId: color),
-    );
+    rows.add(_row(t.id, startMs, endMs, day, title: t.title, colorId: color));
   }
 
   OccurrenceCacheCompanion _row(

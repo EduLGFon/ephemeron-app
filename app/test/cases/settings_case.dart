@@ -14,5 +14,12 @@ void main() {
     await repo.setNavOrder([6, 5, 4, 3, 2, 1, 0]);
     expect(repo.brightness, 'dark');
     expect(repo.navOrder, [6, 5, 4, 3, 2, 1, 0]);
+
+    expect(repo.taskSort, 'due');
+    expect(repo.taskListSort, 'custom');
+    await repo.setTaskSort('name');
+    await repo.setTaskListSort('created');
+    expect(repo.taskSort, 'name');
+    expect(repo.taskListSort, 'created');
   });
 }

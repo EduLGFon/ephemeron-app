@@ -1,5 +1,6 @@
 // Tasks screen: list filter, overdue section, swipe actions with undo,
 // trash, completed view, quick add FAB.
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:ephemeron/core/time/device_date_format.dart';
 
@@ -9,9 +10,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../../../domain/sources/source_label.dart';
+import '../../../domain/tasks/task_sort.dart';
 import '../../settings/application/settings_providers.dart';
 import '../../sync/application/pending_operations.dart';
 import '../../sync/presentation/sync_title.dart';
+import '../application/task_sorting.dart';
 import '../application/tasks_providers.dart';
 import 'quick_add_sheet.dart';
 import 'smart_list_editor_sheet.dart';
@@ -56,10 +59,25 @@ class TasksScreen extends ConsumerWidget {
         ? ref.watch(openTasksProvider(listId))
         : ref.watch(smartListTasksProvider(smart));
     final listsAsync = ref.watch(taskListsProvider);
+    final taskSort = ref.watch(taskSortProvider).value ?? TaskSort.due;
+    final listSort =
+        ref.watch(taskListSortProvider).value ?? TaskListSort.custom;
     return Scaffold(
       appBar: AppBar(
         title: const SyncTitle(text: 'Tasks'),
         actions: [
+          if (smart == null)
+            PopupMenuButton<TaskSort>(
+              icon: const Icon(Icons.sort),
+              tooltip: 'Sort tasks',
+              initialValue: taskSort,
+              onSelected: (mode) =>
+                  ref.read(taskSortProvider.notifier).select(mode),
+              itemBuilder: (_) => [
+                for (final mode in TaskSort.values)
+                  PopupMenuItem(value: mode, child: Text(mode.label)),
+              ],
+            ),
           IconButton(
             icon: const Icon(Icons.done_all),
             tooltip: 'Completed',
@@ -106,60 +124,66 @@ class TasksScreen extends ConsumerWidget {
       body: Column(
         children: [
           listsAsync.maybeWhen(
-            data: (lists) => SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                children: [
-                  ChoiceChip(
-                    label: const Text('All'),
-                    selected: smart == null && listId == null,
-                    onSelected: (_) => _select(ref, null),
-                  ),
-                  const SizedBox(width: 8),
-                  for (final l in lists) ...[
-                    GestureDetector(
-                      onLongPress: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const TaskListsScreen(),
+            data: (lists) {
+              final sortedLists = [...lists]
+                ..sort((a, b) => compareTaskLists(a, b, listSort));
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: [
+                    ChoiceChip(
+                      label: const Text('All'),
+                      selected: smart == null && listId == null,
+                      onSelected: (_) => _select(ref, null),
+                    ),
+                    const SizedBox(width: 8),
+                    for (final l in sortedLists) ...[
+                      GestureDetector(
+                        onLongPress: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const TaskListsScreen(),
+                          ),
+                        ),
+                        child: Tooltip(
+                          message:
+                              taskListAccountLabel(l) ??
+                              (l.remoteId == null
+                                  ? localSourceLabel
+                                  : 'Google'),
+                          child: ChoiceChip(
+                            avatar: TaskListColorDot(list: l, size: 10),
+                            label: Text(l.name),
+                            selected: smart == null && listId == l.id,
+                            onSelected: (_) => _select(ref, l.id),
+                          ),
                         ),
                       ),
-                      child: Tooltip(
-                        message:
-                            taskListAccountLabel(l) ??
-                            (l.remoteId == null ? localSourceLabel : 'Google'),
-                        child: ChoiceChip(
-                          avatar: TaskListColorDot(list: l, size: 10),
-                          label: Text(l.name),
-                          selected: smart == null && listId == l.id,
-                          onSelected: (_) => _select(ref, l.id),
-                        ),
+                      const SizedBox(width: 8),
+                    ],
+                    for (final s in smartLists) ...[
+                      _SmartListChip(
+                        smartList: s,
+                        selected: smart?.id == s.id,
+                        onSelected: () => _selectSmart(ref, s.id),
+                        onLongPress: () => _smartActions(context, ref, s),
                       ),
+                      const SizedBox(width: 8),
+                    ],
+                    ActionChip(
+                      label: const Text('+ List'),
+                      onPressed: () => showCreateTaskListDialog(context, ref),
+                    ),
+                    const SizedBox(width: 8),
+                    ActionChip(
+                      label: const Text('+ Smart list'),
+                      onPressed: () => showSmartListEditor(context),
                     ),
                     const SizedBox(width: 8),
                   ],
-                  for (final s in smartLists) ...[
-                    _SmartListChip(
-                      smartList: s,
-                      selected: smart?.id == s.id,
-                      onSelected: () => _selectSmart(ref, s.id),
-                      onLongPress: () => _smartActions(context, ref, s),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  ActionChip(
-                    label: const Text('+ List'),
-                    onPressed: () => showCreateTaskListDialog(context, ref),
-                  ),
-                  const SizedBox(width: 8),
-                  ActionChip(
-                    label: const Text('+ Smart list'),
-                    onPressed: () => showSmartListEditor(context),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
             orElse: () => const SizedBox.shrink(),
           ),
           Expanded(
@@ -194,15 +218,22 @@ class TasksScreen extends ConsumerWidget {
                     onAction: () => showQuickAdd(context),
                   );
                 }
+                // Smart lists keep the sort saved in their filter JSON.
+                final sortedTasks = smart == null
+                    ? ([...tasks]..sort((a, b) => compareTasks(a, b, taskSort)))
+                    : tasks;
+                if (smart == null && taskSort == TaskSort.custom) {
+                  return _CustomTaskList(tasks: sortedTasks);
+                }
                 final today = _today();
-                final overdue = tasks
+                final overdue = sortedTasks
                     .where(
                       (t) =>
                           t.dueDate != null && t.dueDate!.compareTo(today) < 0,
                     )
                     .toList();
                 final overdueIds = overdue.map((t) => t.id).toSet();
-                final rest = tasks
+                final rest = sortedTasks
                     .where((t) => !overdueIds.contains(t.id))
                     .toList();
                 final items = <Widget>[];
@@ -345,6 +376,74 @@ class _SmartListChip extends ConsumerWidget {
   }
 }
 
+/// Custom-order task list. Reordering is optimistic and persisted locally;
+/// swipe actions and tap-to-edit stay on the tiles inside.
+class _CustomTaskList extends ConsumerStatefulWidget {
+  const _CustomTaskList({required this.tasks});
+
+  final List<Task> tasks;
+
+  @override
+  ConsumerState<_CustomTaskList> createState() => _CustomTaskListState();
+}
+
+class _CustomTaskListState extends ConsumerState<_CustomTaskList> {
+  late List<Task> _tasks;
+
+  @override
+  void initState() {
+    super.initState();
+    _tasks = [...widget.tasks];
+  }
+
+  @override
+  void didUpdateWidget(covariant _CustomTaskList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!listEquals(oldWidget.tasks, widget.tasks)) {
+      _tasks = [...widget.tasks];
+    }
+  }
+
+  void _onReorder(int oldIndex, int newIndex) {
+    setState(() {
+      final item = _tasks.removeAt(oldIndex);
+      _tasks.insert(newIndex, item);
+    });
+    _persist();
+  }
+
+  Future<void> _persist() async {
+    try {
+      await ref.read(taskRepositoryProvider).reorderTasks([
+        for (final t in _tasks) t.id,
+      ]);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _tasks = [...widget.tasks]);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: ReorderableListView.builder(
+        buildDefaultDragHandles: false,
+        itemCount: _tasks.length,
+        onReorderItem: _onReorder,
+        itemBuilder: (context, i) {
+          final task = _tasks[i];
+          return ReorderableDelayedDragStartListener(
+            key: ValueKey('reorder-${task.id}'),
+            index: i,
+            child: _TaskTile(task: task),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _TaskTile extends ConsumerWidget {
   const _TaskTile({required this.task, this.overdue = false});
 
@@ -445,16 +544,21 @@ class _TaskTile extends ConsumerWidget {
     );
   }
 
+  String _formatDate(BuildContext context, String value) {
+    try {
+      return DeviceDateFormat.yMMMd(context).format(DateTime.parse(value));
+    } catch (_) {
+      return value;
+    }
+  }
+
   Widget? _subtitle(BuildContext context, WidgetRef ref, String? source) {
     final parts = <String>[];
+    if (task.plannedDate != null) {
+      parts.add('Planned ${_formatDate(context, task.plannedDate!)}');
+    }
     if (task.dueDate != null) {
-      try {
-        parts.add(
-          DeviceDateFormat.yMMMd(context).format(DateTime.parse(task.dueDate!)),
-        );
-      } catch (_) {
-        parts.add(task.dueDate!);
-      }
+      parts.add('Due ${_formatDate(context, task.dueDate!)}');
     }
     if (task.priority > 0) parts.add('P${5 - task.priority}');
     if (task.wontDo) parts.add("Won't do");

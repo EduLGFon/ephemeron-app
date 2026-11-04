@@ -44,6 +44,9 @@
 - Habit markers are widget-tested in the month grid and timeline strip. Agenda
   habit rows and the "Open habits" navigation are covered by repository and
   static checks only.
+- Task sort menus and planned/due date fields are covered by repository,
+  occurrence and settings tests. Long-press drag reorder has no dedicated
+  widget test; see `docs/TASK_DATES_AND_SORTING.md`.
 
 ## Open work
 
