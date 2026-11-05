@@ -25,6 +25,10 @@ EisenhowerQuadrant classifyTask({
   required DateTime now,
   int urgentDays = 2,
 }) {
+  // Urgency is derived from the due date (deadline) only. The planned date
+  // (when the user intends to work) does not affect urgency; a task planned
+  // soon but due later correctly stays in Schedule when important
+  // (priority >= 2), and is Eliminate when not important. See PLAN.md 8.7.
   final important = priority >= 2;
   bool urgent = false;
   if (dueDate != null) {
