@@ -97,6 +97,9 @@ class HabitRepository {
                 entity: 'habit',
                 ops: {archived ? 'unarchive' : 'archive'},
               ),
+            ) &
+            h.id.isNotInQuery(
+              pendingIdsQuery(_db, entity: 'habit', ops: const {'delete'}),
             ),
       );
     q.orderBy([(h) => OrderingTerm.asc(h.name)]);
@@ -117,6 +120,9 @@ class HabitRepository {
                 h.id.isNotInQuery(
                   pendingIdsQuery(_db, entity: 'habit', ops: const {'archive'}),
                 ) &
+                h.id.isNotInQuery(
+                  pendingIdsQuery(_db, entity: 'habit', ops: const {'delete'}),
+                ) &
                 h.name.like(like),
           )
           ..orderBy([(h) => OrderingTerm.asc(h.name)])
@@ -128,6 +134,29 @@ class HabitRepository {
     await (_db.update(_db.habits)..where((h) => h.id.equals(id))).write(
       HabitsCompanion(
         archived: Value(archived),
+        updatedAt: Value(nowMs()),
+        dirty: const Value(true),
+      ),
+    );
+    await _enqueue('habit', id, 'update');
+  }
+
+  Future<void> deleteHabit(String id) async {
+    final now = nowMs();
+    await (_db.update(_db.habits)..where((h) => h.id.equals(id))).write(
+      HabitsCompanion(
+        deletedAt: Value(now),
+        updatedAt: Value(now),
+        dirty: const Value(true),
+      ),
+    );
+    await _enqueue('habit', id, 'delete');
+  }
+
+  Future<void> restoreHabit(String id) async {
+    await (_db.update(_db.habits)..where((h) => h.id.equals(id))).write(
+      HabitsCompanion(
+        deletedAt: const Value(null),
         updatedAt: Value(nowMs()),
         dirty: const Value(true),
       ),
@@ -170,9 +199,10 @@ class HabitRepository {
       'l.skipped AS log_skipped, days.d AS day '
       'FROM days CROSS JOIN habits h '
       'LEFT JOIN habit_logs l ON l.habit_id = h.id AND l.day_key = days.d '
-      'WHERE h.archived = 0 AND h.deleted_at IS NULL',
+      "WHERE h.archived = 0 AND h.deleted_at IS NULL "
+      "AND h.id NOT IN (SELECT entity_id FROM outbox WHERE entity = 'habit' AND op = 'delete')",
       variables: [Variable<String>(fromKey), Variable<String>(toKey)],
-      readsFrom: {_db.habits, _db.habitLogs},
+      readsFrom: {_db.habits, _db.habitLogs, _db.outbox},
     );
     return query.watch().map((rows) {
       final out = <HabitCalendarEntry>[];

@@ -101,6 +101,9 @@ class PendingOperations {
   Future<String> scheduleHabitArchive(String id, bool archived) =>
       _enqueue('habit', id, archived ? 'archive' : 'unarchive');
 
+  Future<String> scheduleHabitDelete(String id) =>
+      _enqueue('habit', id, 'delete');
+
   Future<String> scheduleCountdownDelete(String id) =>
       _enqueue('countdown', id, 'delete');
 
@@ -217,6 +220,8 @@ class PendingOperations {
       case 'habit':
         if (row.op == 'archive' || row.op == 'unarchive') {
           await _habits.archiveHabit(row.entityId, row.op == 'archive');
+        } else if (row.op == 'delete') {
+          await _habits.deleteHabit(row.entityId);
         }
         break;
       case 'countdown':

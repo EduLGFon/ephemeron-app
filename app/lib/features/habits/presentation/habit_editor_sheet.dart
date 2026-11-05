@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/session/session_restore.dart';
 import '../../../data/drift/app_database.dart';
 import '../../settings/application/settings_providers.dart';
+import '../../sync/application/pending_operations.dart';
 import '../../../domain/alarms/alarm_preset.dart';
 import '../../../domain/habits/date_key.dart';
 import '../../../core/platform/app_permissions.dart';
@@ -337,6 +338,12 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
               style: TextStyle(fontSize: 12),
             ),
             const SizedBox(height: 12),
+            if (widget.habit != null)
+              OutlinedButton(
+                onPressed: _deleteHabit,
+                child: const Text('Delete habit'),
+              ),
+            const SizedBox(height: 8),
             FilledButton(onPressed: _save, child: const Text('Save')),
           ],
         ),
@@ -372,6 +379,49 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
     final hh = t.hour.toString().padLeft(2, '0');
     final mm = t.minute.toString().padLeft(2, '0');
     _changed(() => _reminderTime = '$hh:$mm');
+  }
+
+  Future<void> _deleteHabit() async {
+    final habit = widget.habit;
+    if (habit == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete habit?'),
+        content: const Text('This habit will be deleted.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final pending = ref.read(pendingOperationsProvider);
+    final opId = await pending.scheduleHabitDelete(habit.id);
+    _saved = true;
+    try {
+      await ref.read(draftStoreProvider).clear('habit', _draftEntityId);
+    } catch (_) {}
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.of(context).pop();
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text('Habit deleted.'),
+        duration: const Duration(seconds: 6),
+        persist: false,
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () => pending.cancel(opId),
+        ),
+      ),
+    );
   }
 
   Future<void> _save() async {
