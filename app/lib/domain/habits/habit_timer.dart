@@ -26,3 +26,46 @@ String formatElapsed(Duration elapsed) {
   }
   return '$mm:$ss';
 }
+
+String _fmtNumber(double v) {
+  if (v == v.roundToDouble()) return v.toInt().toString();
+  return v.toString();
+}
+
+String formatHabitProgress({
+  required String? unit,
+  required double amount,
+  required double goal,
+}) {
+  final u = unit ?? '';
+  if (isMinuteUnit(unit) && amount != amount.roundToDouble()) {
+    var pct = goal > 0 ? (amount / goal * 100).round() : 0;
+    if (pct < 0) pct = 0;
+    if (pct > 100) pct = 100;
+    return '$pct% of ${_fmtNumber(goal)} $u'.trim();
+  }
+  return '${_fmtNumber(amount)}/${_fmtNumber(goal)} $u'.trim();
+}
+
+String formatHabitExact({
+  required String? unit,
+  required double amount,
+  required double goal,
+}) {
+  final u = unit ?? '';
+  if (isMinuteUnit(unit)) {
+    final totalSeconds = (amount * 60).round();
+    final mins = totalSeconds ~/ 60;
+    final secs = totalSeconds % 60;
+    String amountLabel;
+    if (mins == 0) {
+      amountLabel = '${secs}s';
+    } else if (secs == 0) {
+      amountLabel = '$mins min';
+    } else {
+      amountLabel = '${mins}m ${secs}s';
+    }
+    return '$amountLabel / ${_fmtNumber(goal)} $u'.trim();
+  }
+  return '${_fmtNumber(amount)}/${_fmtNumber(goal)} $u'.trim();
+}

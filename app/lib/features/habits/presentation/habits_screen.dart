@@ -1,6 +1,7 @@
 // Habits screen: 7-day navigator, sections, one-tap logging,
 // skip, streaks, archive with undo.
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:ephemeron/core/ui/empty_state.dart';
@@ -242,17 +243,39 @@ class _HabitTile extends ConsumerWidget {
           subtitle: streakAsync.maybeWhen(
             data: (st) {
               final progress = hasGoal
-                  ? '${_fmt(amount)}/${_fmt(goal)} ${habit.unit ?? ''}'.trim()
+                  ? formatHabitProgress(
+                      unit: habit.unit,
+                      amount: amount,
+                      goal: goal,
+                    )
                   : null;
               final streakText = skipped
                   ? 'Skipped - streak ${st.current} - best ${st.best}'
                   : 'Streak ${st.current} - best ${st.best}';
               if (progress == null) return Text(streakText);
-              return Text('$progress  $streakText');
+              return Tooltip(
+                message: formatHabitExact(
+                  unit: habit.unit,
+                  amount: amount,
+                  goal: goal,
+                ),
+                child: Text('$progress  $streakText'),
+              );
             },
             orElse: () => hasGoal
-                ? Text(
-                    '${_fmt(amount)}/${_fmt(goal)} ${habit.unit ?? ''}'.trim(),
+                ? Tooltip(
+                    message: formatHabitExact(
+                      unit: habit.unit,
+                      amount: amount,
+                      goal: goal,
+                    ),
+                    child: Text(
+                      formatHabitProgress(
+                        unit: habit.unit,
+                        amount: amount,
+                        goal: goal,
+                      ),
+                    ),
                   )
                 : null,
           ),
