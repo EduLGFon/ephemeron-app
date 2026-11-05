@@ -151,6 +151,20 @@ Remaining (not yet fixed):
   `GeneratedPluginRegistrant.java`; a debug registrant includes
   `integration_test` and the release Java compile fails.
 
+## Widget and sync handoff (2026-11-05)
+
+- Week widget: the image-fill fix is merged. On a Motorola One Fusion the
+  widget filled a 4x2 cell with the dark 3-day range, and the setup dialog
+  persisted theme/day count. Warm and cold launcher taps still did not apply
+  the requested day or previous/next range during testing: the intent reaches
+  MainActivity, but AppShell handles it after the async session restore and
+  the restore wins. Samsung SM A556E verification was interrupted by a USB
+  disconnect. Do not treat widget tap navigation as complete.
+- Microsoft sync: schema v12 and read-only pull are merged. The follow-up
+  worktree `microsoft-ui-sync` (global sync loop, source labels and pickers)
+  passes analysis and 356 tests but is not merged. Microsoft item edits and
+  completions remain local-only; hide or disable them before shipping.
+
 ## Microsoft sync foundation (2026-11-04)
 
 - Web sign-in still needs `app/web/auth.html` (or equivalent redirect page) and the Entra SPA redirect registration for `http://localhost:8080/auth.html`; the service already uses `AppConfig.microsoftWebRedirectUri`. Android is the primary verification target until then.
