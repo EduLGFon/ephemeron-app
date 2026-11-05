@@ -94,6 +94,7 @@ Quick commands:
 ## 3. General Agent Behavior
 
 - Inspect before modifying.
+- When any requirement, design choice, or implementation detail is ambiguous or underspecified, ask the owner before deciding. Do not guess through ambiguity.
 - Search before assuming.
 - Read relevant existing code, configuration, tests, and documentation before
   making consequential changes.
