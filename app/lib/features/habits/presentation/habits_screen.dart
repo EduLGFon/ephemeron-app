@@ -328,6 +328,13 @@ class _HabitTile extends ConsumerWidget {
                 tooltip: habit.archived ? 'Unarchive' : 'Archive',
                 onPressed: () => _toggleArchive(context, ref),
               ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                iconSize: 20,
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Delete',
+                onPressed: () => _deleteHabit(context, ref),
+              ),
             ],
           ),
           onTap: () => showHabitEditor(context, habit: habit),
@@ -374,6 +381,41 @@ class _HabitTile extends ConsumerWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(wasArchived ? 'Habit unarchived.' : 'Habit archived.'),
+        duration: const Duration(seconds: 6),
+        persist: false,
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () => pending.cancel(opId),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _deleteHabit(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete habit?'),
+        content: const Text('This habit will be deleted.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final pending = ref.read(pendingOperationsProvider);
+    final opId = await pending.scheduleHabitDelete(habit.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Habit deleted.'),
         duration: const Duration(seconds: 6),
         persist: false,
         action: SnackBarAction(

@@ -172,3 +172,7 @@ Remaining (not yet fixed):
 - Task action sheet: projected future occurrences are read-only until per-occurrence completion is implemented (no completion/won't-do actions shown).
 
 - Microsoft pull is read-only: remote deletions are not reconciled yet, so a row that disappears from Graph stays locally until a later deletion pass. Microsoft-originated edits/completions are also local-only until Graph write support lands; hide or disable those actions for Microsoft items when sync is wired into the UI.
+
+## Habit deletion (2026-11-05)
+
+- Soft-delete with 6s undo buffer added for habits: `HabitRepository.deleteHabit`/`restoreHabit`, `PendingOperations.scheduleHabitDelete`, apply case, UI affordances on tile and editor sheet. Outbox op enqueued. Calendar entries exclude deleted. Tests: `habit_delete_case.dart`.
