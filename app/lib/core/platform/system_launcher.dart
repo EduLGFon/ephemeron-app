@@ -1,11 +1,31 @@
 // System launcher: opens URLs, DND access, focus chronometer.
 // Android-only methods go through the ephemeron/system channel registered
 // in MainActivity. Other platforms return false (callers fall back).
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class SystemLauncher {
   static const _channel = MethodChannel('ephemeron/system');
+  static final StreamController<String> _widgetActionController =
+      StreamController<String>.broadcast();
+  static bool _widgetActionHandlerInstalled = false;
+
+  /// Warm widget taps pushed by MainActivity.onNewIntent. Cold-start taps
+  /// still arrive through [consumeWidgetAction].
+  static Stream<String> get widgetActions => _widgetActionController.stream;
+
+  static void ensureWidgetActionHandler() {
+    if (_widgetActionHandlerInstalled) return;
+    _widgetActionHandlerInstalled = true;
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'widgetAction' && call.arguments is String) {
+        _widgetActionController.add(call.arguments as String);
+      }
+      return null;
+    });
+  }
 
   /// Opens [url] in the system browser. False on unsupported platforms.
   static Future<bool> openUrl(String url) async {

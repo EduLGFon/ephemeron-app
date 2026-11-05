@@ -250,6 +250,13 @@ class MainActivity : FlutterFragmentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleIntent(intent)
+        // A warm widget tap does not always produce a Flutter lifecycle
+        // resume event, so push the pending action to Dart immediately.
+        val action = pendingWidgetAction
+        if (action != null && systemChannel != null) {
+            pendingWidgetAction = null
+            systemChannel?.invokeMethod("widgetAction", action)
+        }
     }
 
     private fun handleIntent(intent: Intent) {

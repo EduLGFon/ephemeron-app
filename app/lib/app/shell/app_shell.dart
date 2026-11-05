@@ -64,6 +64,8 @@ class _AppShellState extends ConsumerState<AppShell>
   Map<ShortcutActivator, VoidCallback> _shortcuts =
       const <ShortcutActivator, VoidCallback>{};
   Timer? _widgetRefreshTimer;
+  late final Future<void> _restoreFuture;
+  StreamSubscription<String>? _widgetActionSub;
   void _scheduleWidgetRefresh() {
     _widgetRefreshTimer?.cancel();
     _widgetRefreshTimer = Timer(const Duration(seconds: 2), () async {
@@ -79,13 +81,21 @@ class _AppShellState extends ConsumerState<AppShell>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     HardwareKeyboard.instance.addHandler(_handleGlobalKey);
-    _restoreSession();
+    _restoreFuture = _restoreSession();
+    SystemLauncher.ensureWidgetActionHandler();
+    _widgetActionSub = SystemLauncher.widgetActions.listen((action) {
+      Future.microtask(() async {
+        await _restoreFuture;
+        if (!mounted) return;
+        await _handleWidgetAction(action);
+      });
+    });
     // Everything below is non-critical for the first frame. Defer it until
     // after Flutter has painted so launch stays responsive.
     WidgetsBinding.instance.addPostFrameCallback((_) => _startBackgroundWork());
   }
 
-  void _startBackgroundWork() {
+  Future<void> _startBackgroundWork() async {
     if (!mounted) return;
     // Apply destructive operations left pending by a previous session.
     ref.read(pendingOperationsProvider);
@@ -106,17 +116,22 @@ class _AppShellState extends ConsumerState<AppShell>
             );
       } catch (_) {}
     });
+    // A widget tap must win over the restored tab/view; otherwise the
+    // async session restore can overwrite the requested calendar range.
+    await _restoreFuture;
+    if (!mounted) return;
     // Refresh home-screen widgets after startup settles so they do not
     // compete with the first calendar frame.
     _scheduleWidgetRefresh();
     // Handle Android share-target text and launcher shortcuts once the
     // first frame is up (needs a BuildContext for sheets/navigation).
-    _handleIntents();
+    await _handleIntents();
   }
 
   @override
   void dispose() {
     _widgetRefreshTimer?.cancel();
+    _widgetActionSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     HardwareKeyboard.instance.removeHandler(_handleGlobalKey);
     super.dispose();
@@ -128,6 +143,7 @@ class _AppShellState extends ConsumerState<AppShell>
     // consume the pending action on resume so deep links still work.
     if (state == AppLifecycleState.resumed) {
       Future.microtask(() async {
+        await _restoreFuture;
         if (!mounted) return;
         await _handleWidgetAction();
       });
@@ -166,9 +182,11 @@ class _AppShellState extends ConsumerState<AppShell>
   /// visible span and re-renders the widget in the foreground (the native
   /// provider cannot re-render the Flutter image on its own), then opens
   /// the calendar on the new range.
-  Future<void> _handleWidgetAction() async {
+  Future<void> _handleWidgetAction([String? pendingAction]) async {
     if (!mounted) return;
-    final widgetAction = await SystemLauncher.consumeWidgetAction();
+    final widgetAction =
+        pendingAction ?? await SystemLauncher.consumeWidgetAction();
+    debugPrint('[widget] action=$widgetAction mounted=$mounted');
     if (widgetAction == null || !mounted) return;
     if (widgetAction == 'new_task') {
       await showQuickAdd(context);
@@ -182,6 +200,7 @@ class _AppShellState extends ConsumerState<AppShell>
       return;
     }
     final tap = parseWeekWidgetAction(widgetAction);
+    debugPrint('[widget] parsed nav=${tap?.nav} day=${tap?.day}');
     if (tap == null) return;
     switch (tap.nav) {
       case WeekWidgetNav.today:
@@ -193,15 +212,21 @@ class _AppShellState extends ConsumerState<AppShell>
           final shifted = await ref
               .read(homeWidgetDataBinderProvider)
               .shiftWeekWidgetAnchor(-1);
+          debugPrint('[widget] shifted prev=$shifted');
           if (mounted) await _openWeekCalendar(shifted);
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('[widget] shift prev failed: $e');
+        }
       case WeekWidgetNav.next:
         try {
           final shifted = await ref
               .read(homeWidgetDataBinderProvider)
               .shiftWeekWidgetAnchor(1);
+          debugPrint('[widget] shifted next=$shifted');
           if (mounted) await _openWeekCalendar(shifted);
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('[widget] shift next failed: $e');
+        }
     }
   }
 
