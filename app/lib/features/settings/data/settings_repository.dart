@@ -100,6 +100,34 @@ class SettingsRepository {
   int get calendarDayCount => _prefs.getInt(_kCalDayCount) ?? 1;
   Future<void> setCalendarDayCount(int v) => _prefs.setInt(_kCalDayCount, v);
 
+  /// Manual timeline zoom multiplier (auto-fit is separate). One global value
+  /// shared by day and multi-day views; view switches do not reset it.
+  static const _kTimelineScale = 'calendar.timelineScale';
+  double get timelineScale {
+    final v = _prefs.getDouble(_kTimelineScale);
+    if (v == null || v < 0) return 1.0;
+    return v.clamp(0.5, 3.0);
+  }
+
+  Future<void> setTimelineScale(double v) {
+    final safe = (v < 0) ? 1.0 : v.clamp(0.5, 3.0);
+    return _prefs.setDouble(_kTimelineScale, safe);
+  }
+
+  /// Vertical scroll offset of the timeline, in logical pixels. Clamped to
+  /// the available extent on restore.
+  static const _kTimelineScrollOffset = 'calendar.timelineScrollOffset';
+  double get timelineScrollOffset {
+    final v = _prefs.getDouble(_kTimelineScrollOffset);
+    if (v == null || v < 0) return 0.0;
+    return v;
+  }
+
+  Future<void> setTimelineScrollOffset(double v) {
+    final safe = v < 0 ? 0.0 : v;
+    return _prefs.setDouble(_kTimelineScrollOffset, safe);
+  }
+
   static const _kTaskList = 'tasks.selectedList';
   String? get selectedTaskListId => _prefs.getString(_kTaskList);
   Future<void> setSelectedTaskListId(String? v) =>

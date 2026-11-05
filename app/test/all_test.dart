@@ -70,6 +70,7 @@ import 'cases/timeline_layout_case.dart' as timeline_layout;
 import 'cases/timeline_multiday_overflow_case.dart'
     as timeline_multiday_overflow;
 import 'cases/timeline_now_controller_case.dart' as timeline_now_controller;
+import 'cases/timeline_persist_case.dart' as timeline_persist;
 import 'cases/timeline_view_case.dart' as timeline_view;
 import 'cases/week_calendar_case.dart' as week_calendar;
 import 'cases/week_widget_options_case.dart' as week_widget_options;
@@ -140,6 +141,7 @@ const _included = <String>{
   'timeline_layout_case.dart',
   'timeline_multiday_overflow_case.dart',
   'timeline_now_controller_case.dart',
+  'timeline_persist_case.dart',
   'timeline_view_case.dart',
   'week_calendar_case.dart',
   'week_widget_options_case.dart',
@@ -221,6 +223,7 @@ void main() {
   group('timeline_layout', timeline_layout.main);
   group('timeline_multiday_overflow', timeline_multiday_overflow.main);
   group('timeline_now_controller', timeline_now_controller.main);
+  group('timeline_persist', timeline_persist.main);
   group('timeline_view', timeline_view.main);
   group('week_calendar', week_calendar.main);
   group('week_widget_options', week_widget_options.main);

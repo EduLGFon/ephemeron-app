@@ -172,3 +172,5 @@ Remaining (not yet fixed):
 - Task action sheet: projected future occurrences are read-only until per-occurrence completion is implemented (no completion/won't-do actions shown).
 
 - Microsoft pull is read-only: remote deletions are not reconciled yet, so a row that disappears from Graph stays locally until a later deletion pass. Microsoft-originated edits/completions are also local-only until Graph write support lands; hide or disable those actions for Microsoft items when sync is wired into the UI.
+
+- Timeline zoom (manual scale) and vertical scroll offset now persist via SharedPreferences (calendar.timelineScale, calendar.timelineScrollOffset); one global value shared by day and multi-day views. Restore happens on first mount; scroll offset clamps to max extent.
