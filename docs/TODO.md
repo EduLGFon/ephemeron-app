@@ -176,3 +176,7 @@ Remaining (not yet fixed):
 ## Habit deletion (2026-11-05)
 
 - Soft-delete with 6s undo buffer added for habits: `HabitRepository.deleteHabit`/`restoreHabit`, `PendingOperations.scheduleHabitDelete`, apply case, UI affordances on tile and editor sheet. Outbox op enqueued. Calendar entries exclude deleted. Tests: `habit_delete_case.dart`.
+
+## Timeline persistence (2026-11-05)
+
+- Timeline zoom (manual scale) and vertical scroll offset now persist via SharedPreferences (calendar.timelineScale, calendar.timelineScrollOffset); one global value shared by day and multi-day views. Restore happens on first mount; scroll offset clamps to max extent. Tests: `timeline_persist_case.dart`.

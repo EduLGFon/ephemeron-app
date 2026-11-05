@@ -2,6 +2,8 @@
 // current-time line, tap-empty to create, tap event for details.
 // Composes the chrome, painters, event blocks, and interaction mixin;
 // overlap layout lives in timeline_layout.dart.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,6 +11,7 @@ import '../../../../data/drift/app_database.dart';
 import '../../../../domain/habits/habit_calendar_entry.dart';
 import '../../application/calendar_providers.dart';
 import '../../application/calendar_state.dart';
+import '../../../settings/application/settings_providers.dart';
 import '../event_details_sheet.dart';
 import '../habit_action_sheet.dart';
 import '../task_action_sheet.dart';
@@ -49,6 +52,21 @@ class _TimelineViewState extends ConsumerState<TimelineView>
     super.initState();
     initTimelineInteraction();
     WidgetsBinding.instance.addObserver(this);
+    _restoreTimelineState();
+  }
+
+  Future<void> _restoreTimelineState() async {
+    try {
+      final repo = await ref.read(settingsRepositoryProvider.future);
+      if (!mounted) return;
+      final savedScale = repo.timelineScale;
+      if (savedScale != scale) setState(() => scale = savedScale);
+      restoredScrollOffset = repo.timelineScrollOffset;
+    } catch (_) {}
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) maybeJump();
+    });
   }
 
   @override

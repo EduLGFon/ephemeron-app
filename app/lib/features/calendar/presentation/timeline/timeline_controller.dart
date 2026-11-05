@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../data/repositories/event_repository.dart';
 import '../../application/calendar_providers.dart';
+import '../../../settings/application/settings_providers.dart';
 import '../event_editor_sheet.dart';
 import '../scope_sheet.dart';
 import 'timeline_utils.dart';
@@ -37,6 +38,11 @@ mixin TimelineInteraction {
   String? pendingMovedId;
   bool didJump = false;
   double scale = 1;
+  // Restored vertical scroll offset (logical pixels), if any. Consumed by
+  // maybeJump on first mount; null means fall back to the now/8am jump.
+  double? restoredScrollOffset;
+  Timer? _scalePersistTimer;
+  Timer? _scrollPersistTimer;
   // Auto-fitted base scale so the 6h-23h window (17 hours) fits the
   // available viewport. Manual zoom ([scale]) multiplies on top.
   double autoScale = 1;
@@ -67,7 +73,18 @@ mixin TimelineInteraction {
             setState(() => swipeOffset = animation.value);
           }
         });
-    WidgetsBinding.instance.addPostFrameCallback((_) => maybeJump());
+    scroll.addListener(_onScrollTick);
+  }
+
+  void _onScrollTick() {
+    _scrollPersistTimer?.cancel();
+    _scrollPersistTimer = Timer(const Duration(milliseconds: 400), () async {
+      if (!scroll.hasClients) return;
+      try {
+        final repo = await ref.read(settingsRepositoryProvider.future);
+        await repo.setTimelineScrollOffset(scroll.offset);
+      } catch (_) {}
+    });
   }
 
   void refreshTimelineWindow() {
@@ -78,6 +95,20 @@ mixin TimelineInteraction {
   }
 
   void disposeTimelineInteraction() {
+    _scalePersistTimer?.cancel();
+    _scrollPersistTimer?.cancel();
+    // Best-effort flush of the current zoom and scroll position.
+    final scaleNow = scale;
+    final offsetNow = scroll.hasClients ? scroll.offset : null;
+    unawaited(() async {
+      try {
+        final repo = await ref.read(settingsRepositoryProvider.future);
+        await repo.setTimelineScale(scaleNow);
+        if (offsetNow != null) {
+          await repo.setTimelineScrollOffset(offsetNow);
+        }
+      } catch (_) {}
+    }());
     swipeController.dispose();
     scroll.dispose();
   }
@@ -185,6 +216,13 @@ mixin TimelineInteraction {
   void maybeJump() {
     if (didJump || !scroll.hasClients) return;
     didJump = true;
+    if (restoredScrollOffset != null) {
+      scroll.jumpTo(
+        restoredScrollOffset!.clamp(0.0, scroll.position.maxScrollExtent),
+      );
+      restoredScrollOffset = null;
+      return;
+    }
     final now = DateTime.now();
     final todayIdx = _todayIndex(now);
     // Scroll to current time when today is visible, else to 8am.
@@ -214,6 +252,13 @@ mixin TimelineInteraction {
       scroll.jumpTo(
         (offset * ratio).clamp(0.0, scroll.position.maxScrollExtent),
       );
+    });
+    _scalePersistTimer?.cancel();
+    _scalePersistTimer = Timer(const Duration(milliseconds: 400), () async {
+      try {
+        final repo = await ref.read(settingsRepositoryProvider.future);
+        await repo.setTimelineScale(scale);
+      } catch (_) {}
     });
   }
 
