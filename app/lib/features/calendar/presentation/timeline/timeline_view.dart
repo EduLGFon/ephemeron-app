@@ -306,11 +306,13 @@ class _TimelineViewState extends ConsumerState<TimelineView>
                                                             ? dragXOffset
                                                             : 0.0),
                                                   onTap: () {
-                                                    if (o.sourceType == 'task') {
+                                                    if (o.sourceType ==
+                                                        'task') {
                                                       showTaskActionSheet(
                                                         context,
                                                         taskId: o.eventId,
-                                                        occurrenceDate: o.dayKey,
+                                                        occurrenceDate:
+                                                            o.dayKey,
                                                       );
                                                     } else {
                                                       showEventDetails(
@@ -319,9 +321,12 @@ class _TimelineViewState extends ConsumerState<TimelineView>
                                                       );
                                                     }
                                                   },
-                                                  onLongPressStart: o.sourceType == 'task'
+                                                  onLongPressStart:
+                                                      o.sourceType == 'task'
                                                       ? () {}
-                                                      : () => beginDrag(o.eventId),
+                                                      : () => beginDrag(
+                                                          o.eventId,
+                                                        ),
                                                   onLongPressMoveUpdate: (d) =>
                                                       updateDrag(o.eventId, d),
                                                   onLongPressEnd: () =>

@@ -24,8 +24,18 @@ Color taskListColor(TaskList list) {
 }
 
 String? taskListAccountLabel(TaskList list) {
-  final isLocal = list.remoteId == null;
-  return sourceLabel(name: null, account: list.googleAccount, isLocal: isLocal);
+  final isLocal =
+      list.remoteId == null &&
+      list.googleAccount == null &&
+      list.microsoftAccount == null;
+  return sourceLabel(
+    name: null,
+    account: accountForSource(
+      googleAccount: list.googleAccount,
+      microsoftAccount: list.microsoftAccount,
+    ),
+    isLocal: isLocal,
+  );
 }
 
 class TaskListColorDot extends StatelessWidget {

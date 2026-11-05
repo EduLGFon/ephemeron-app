@@ -96,9 +96,16 @@ class _DetailsState extends ConsumerState<_Details> {
         event: event,
         source: sourceLabel(
           name: calendar?.name,
-          account: event.googleAccount,
-          fallbackAccount: calendar?.googleAccount,
-          isLocal: calendar?.source == 'device',
+          account: accountForSource(
+            googleAccount: event.googleAccount,
+            microsoftAccount: event.microsoftAccount,
+          ),
+          fallbackAccount: accountForSource(
+            googleAccount: calendar?.googleAccount,
+            microsoftAccount: calendar?.microsoftAccount,
+          ),
+          isLocal:
+              calendar?.source != 'google' && calendar?.source != 'microsoft',
         ),
       );
     }
@@ -116,8 +123,14 @@ class _DetailsState extends ConsumerState<_Details> {
       task: task,
       source: sourceLabel(
         name: list?.name,
-        account: task.googleAccount,
-        fallbackAccount: list?.googleAccount,
+        account: accountForSource(
+          googleAccount: task.googleAccount,
+          microsoftAccount: task.microsoftAccount,
+        ),
+        fallbackAccount: accountForSource(
+          googleAccount: list?.googleAccount,
+          microsoftAccount: list?.microsoftAccount,
+        ),
       ),
     );
   }

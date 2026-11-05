@@ -9,6 +9,8 @@ import '../../../core/db/db_provider.dart';
 import '../../../data/remote/backend_sync_api.dart';
 import '../../../data/remote/google_api_client.dart';
 import '../../auth/application/auth_providers.dart';
+import '../data/microsoft_sync_engine.dart';
+import '../data/microsoft_graph_client.dart';
 import '../../calendar/application/calendar_providers.dart';
 import '../../settings/application/settings_providers.dart';
 import '../../settings/data/settings_repository.dart';
@@ -59,6 +61,21 @@ class GoogleReconsentAccounts extends Notifier<List<String>> {
       state = state.where((a) => a != account).toList();
 }
 
+final microsoftReconsentAccountsProvider =
+    NotifierProvider<MicrosoftReconsentAccounts, List<String>>(
+      MicrosoftReconsentAccounts.new,
+    );
+
+class MicrosoftReconsentAccounts extends Notifier<List<String>> {
+  @override
+  List<String> build() => const [];
+
+  void set(List<String> accounts) => state = List.unmodifiable(accounts);
+
+  void clear(String account) =>
+      state = state.where((a) => a != account).toList();
+}
+
 class SyncStatusNotifier extends Notifier<SyncStatus> {
   @override
   SyncStatus build() => SyncStatus.synced;
@@ -66,39 +83,84 @@ class SyncStatusNotifier extends Notifier<SyncStatus> {
   Future<void> syncNow() async {
     debugPrint('[sync] notifier syncNow start');
     state = SyncStatus.syncing;
-    final auth = ref.read(googleAuthProvider);
-    final accounts = auth.accounts;
-    if (accounts.isEmpty) {
+    final googleAuth = ref.read(googleAuthProvider);
+    final googleAccounts = googleAuth.accounts;
+    final msAuth = ref.read(microsoftAuthProvider);
+    await msAuth.restore();
+    final msAccounts = msAuth.accounts;
+    if (googleAccounts.isEmpty && msAccounts.isEmpty) {
       debugPrint('[sync] not signed in: offline');
       state = SyncStatus.offline;
       return;
     }
-    SyncStatus last = SyncStatus.synced;
-    final needReconnect = <String>[];
-    for (final acct in accounts) {
-      await auth.setActiveAccount(acct);
-      final engine = SyncEngine(
-        ref.read(appDatabaseProvider),
-        clientFactory: () {
-          try {
-            return HttpGoogleApiClient(accessToken: () => auth.accessToken());
-          } catch (_) {
-            return null;
-          }
-        },
-        account: acct,
-      );
-      debugPrint('[sync] signed in ($acct), calling engine');
-      await engine.syncNow();
-      last = engine.status;
-      if (engine.authFailure) needReconnect.add(acct);
+    bool allSucceeded = true;
+    bool anyAttempted = false;
+    bool anyPulled = false;
+    // Google
+    final needReconnectGoogle = <String>[];
+    if (googleAccounts.isNotEmpty) {
+      for (final acct in googleAccounts) {
+        await googleAuth.setActiveAccount(acct);
+        final engine = SyncEngine(
+          ref.read(appDatabaseProvider),
+          clientFactory: () {
+            try {
+              return HttpGoogleApiClient(
+                accessToken: () => googleAuth.accessToken(),
+              );
+            } catch (_) {
+              return null;
+            }
+          },
+          account: acct,
+        );
+        debugPrint('[sync] signed in ($acct), calling engine');
+        await engine.syncNow();
+        if (engine.status != SyncStatus.synced) allSucceeded = false;
+        if (engine.authFailure) needReconnectGoogle.add(acct);
+        anyAttempted = true;
+        if (engine.status == SyncStatus.synced) anyPulled = true;
+      }
+      ref
+          .read(googleReconsentAccountsProvider.notifier)
+          .set(needReconnectGoogle);
     }
-    ref.read(googleReconsentAccountsProvider.notifier).set(needReconnect);
-    state = last;
-    if (last == SyncStatus.synced) {
+    // Microsoft
+    final needReconnectMs = <String>[];
+    if (msAccounts.isNotEmpty) {
+      for (final acct in msAccounts) {
+        await msAuth.setActiveAccount(acct);
+        final client = HttpMicrosoftGraphClient(
+          accessToken: () => msAuth.accessTokenFor(acct),
+        );
+        final engine = MicrosoftSyncEngine(
+          ref.read(appDatabaseProvider),
+          client,
+          acct,
+        );
+        final result = await engine.syncNow();
+        if (result.authFailure) {
+          needReconnectMs.add(acct);
+          allSucceeded = false;
+        }
+        anyAttempted = true;
+        anyPulled = true;
+      }
+      ref
+          .read(microsoftReconsentAccountsProvider.notifier)
+          .set(needReconnectMs);
+    }
+    if (!anyAttempted) {
+      state = SyncStatus.offline;
+      return;
+    }
+    final finalStatus = allSucceeded ? SyncStatus.synced : SyncStatus.error;
+    state = finalStatus;
+    if (finalStatus == SyncStatus.synced) {
       unawaited(ref.read(lastGoogleSyncAtProvider.notifier).recordNow());
-      // Pulled events land in the events table; rebuild the materialized
-      // occurrence range so the calendar shows them right away.
+    }
+    if (anyPulled) {
+      // Rebuild occurrence cache once after both loops.
       try {
         final range = ref.read(calendarCacheRangeProvider);
         final n = await ref
@@ -111,7 +173,6 @@ class SyncStatusNotifier extends Notifier<SyncStatus> {
         ref.invalidate(windowOccurrencesProvider(range));
       } catch (e) {
         debugPrint('[sync] occurrence cache rebuild failed: $e');
-        // Cache rebuild is best-effort; next navigation rebuilds anyway.
       }
     }
   }

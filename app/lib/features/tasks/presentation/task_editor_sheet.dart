@@ -397,8 +397,13 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
                       ? 'No list'
                       : sourceLabel(
                               name: list.name,
-                              account: list.googleAccount,
-                              isLocal: list.googleAccount == null,
+                              account: accountForSource(
+                                googleAccount: list.googleAccount,
+                                microsoftAccount: list.microsoftAccount,
+                              ),
+                              isLocal:
+                                  list.googleAccount == null &&
+                                  list.microsoftAccount == null,
                             ) ??
                             list.name;
                   return ListTile(

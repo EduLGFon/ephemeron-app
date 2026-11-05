@@ -96,8 +96,14 @@ class TaskListsScreen extends ConsumerWidget {
     final source =
         sourceLabel(
           name: list.name,
-          account: list.googleAccount,
-          isLocal: list.remoteId == null,
+          account: accountForSource(
+            googleAccount: list.googleAccount,
+            microsoftAccount: list.microsoftAccount,
+          ),
+          isLocal:
+              list.remoteId == null &&
+              list.googleAccount == null &&
+              list.microsoftAccount == null,
         ) ??
         list.name;
     return ListTile(

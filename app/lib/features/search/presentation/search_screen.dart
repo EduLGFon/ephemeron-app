@@ -157,8 +157,14 @@ class _Results extends ConsumerWidget {
             final list = t.listId == null ? null : listsById[t.listId];
             final source = sourceLabel(
               name: list?.name,
-              account: t.googleAccount,
-              fallbackAccount: list?.googleAccount,
+              account: accountForSource(
+                googleAccount: t.googleAccount,
+                microsoftAccount: t.microsoftAccount,
+              ),
+              fallbackAccount: accountForSource(
+                googleAccount: list?.googleAccount,
+                microsoftAccount: list?.microsoftAccount,
+              ),
             );
             return ListTile(
               leading: const Icon(Icons.checklist_outlined),
@@ -188,9 +194,18 @@ class _Results extends ConsumerWidget {
             final calendar = calendarsById[e.calendarId];
             final source = sourceLabel(
               name: calendar?.name,
-              account: e.googleAccount,
-              fallbackAccount: calendar?.googleAccount,
-              isLocal: calendar == null || calendar.source != 'google',
+              account: accountForSource(
+                googleAccount: e.googleAccount,
+                microsoftAccount: e.microsoftAccount,
+              ),
+              fallbackAccount: accountForSource(
+                googleAccount: calendar?.googleAccount,
+                microsoftAccount: calendar?.microsoftAccount,
+              ),
+              isLocal:
+                  calendar == null ||
+                  (calendar.source != 'google' &&
+                      calendar.source != 'microsoft'),
             );
             return ListTile(
               leading: const Icon(Icons.calendar_month_outlined),

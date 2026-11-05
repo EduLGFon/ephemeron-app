@@ -14,7 +14,11 @@ import '../../../core/platform/system_launcher.dart';
 List<MapEntry<String, List<Calendar>>> _groupCalendars(List<Calendar> cals) {
   final map = <String, List<Calendar>>{};
   for (final c in cals) {
-    final key = c.source == 'google' ? (c.googleAccount ?? 'Google') : 'Device';
+    final key = c.source == 'google'
+        ? (c.googleAccount ?? 'Google')
+        : c.source == 'microsoft'
+        ? (c.microsoftAccount ?? 'Microsoft')
+        : 'Device';
     map.putIfAbsent(key, () => []).add(c);
   }
   return map.entries.toList();

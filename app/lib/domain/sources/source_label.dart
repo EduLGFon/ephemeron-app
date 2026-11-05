@@ -30,6 +30,13 @@ String? sourceLabel({
   return isLocal ? localSourceLabel : null;
 }
 
+/// Returns the Microsoft account when the Google one is null/empty.
+String? accountForSource({String? googleAccount, String? microsoftAccount}) {
+  final g = _nonEmpty(googleAccount);
+  if (g != null) return g;
+  return _nonEmpty(microsoftAccount);
+}
+
 String? _nonEmpty(String? value) {
   final trimmed = value?.trim();
   return trimmed == null || trimmed.isEmpty ? null : trimmed;
