@@ -76,15 +76,18 @@ class HabitTimelineBlock extends StatelessWidget {
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 11, color: color),
-              const SizedBox(width: 3),
+              if (width >= 26) ...[
+                Icon(icon, size: 11, color: color),
+                const SizedBox(width: 3),
+              ],
               Expanded(
                 child: Text.rich(
                   TextSpan(
                     text: entry.habitName,
                     children: [
-                      if (progress != null)
+                      if (progress != null && width >= 40)
                         TextSpan(
                           text: '  $progress',
                           style: TextStyle(
@@ -96,6 +99,7 @@ class HabitTimelineBlock extends StatelessWidget {
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
+                  softWrap: true,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     fontSize: 10,
                     color: scheme.onSurface,

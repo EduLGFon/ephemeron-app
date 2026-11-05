@@ -35,6 +35,9 @@ class TimelineHourGutter extends StatelessWidget {
               right: 4,
               child: Text(
                 '${h.toString().padLeft(2, '0')}:00',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
                 style: Theme.of(context).textTheme.labelSmall,
               ),
             ),
@@ -125,6 +128,7 @@ class TimelineDayHeader extends StatelessWidget {
           Text(
             DeviceDateFormat.weekday(context, day),
             maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             softWrap: false,
             style: Theme.of(context).textTheme.labelSmall,
           ),
@@ -183,6 +187,9 @@ class TimelineAllDayStrip extends StatelessWidget {
             child: Text(
               'All-day',
               textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
               style: Theme.of(context).textTheme.labelSmall,
             ),
           ),

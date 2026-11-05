@@ -28,6 +28,7 @@ import 'cases/focus_screen_case.dart' as focus_screen;
 import 'cases/focus_stopwatch_case.dart' as focus_stopwatch;
 import 'cases/habit_calendar_repository_case.dart' as habit_calendar_repository;
 import 'cases/habit_focus_case.dart' as habit_focus;
+import 'cases/habit_percent_case.dart' as habit_percent;
 import 'cases/habit_schedule_case.dart' as habit_schedule;
 import 'cases/habit_streak_case.dart' as habit_streak;
 import 'cases/habits_screen_case.dart' as habits_screen;
@@ -37,8 +38,10 @@ import 'cases/home_widget_binder_case.dart' as home_widget_binder;
 import 'cases/home_widget_callback_case.dart' as home_widget_callback;
 import 'cases/home_widget_case.dart' as home_widget;
 import 'cases/l10n_case.dart' as l10n;
-import 'cases/markdown_editing_controller_case.dart' as markdown_editing_controller;
+import 'cases/markdown_editing_controller_case.dart'
+    as markdown_editing_controller;
 import 'cases/matrix_case.dart' as matrix;
+import 'cases/matrix_planned_case.dart' as matrix_planned;
 import 'cases/microsoft_auth_case.dart' as microsoft_auth;
 import 'cases/microsoft_graph_case.dart' as microsoft_graph;
 import 'cases/microsoft_sync_engine_case.dart' as microsoft_sync_engine;
@@ -64,6 +67,8 @@ import 'cases/task_editor_case.dart' as task_editor;
 import 'cases/task_editor_extra_case.dart' as task_editor_extra;
 import 'cases/task_repository_case.dart' as task_repository;
 import 'cases/timeline_layout_case.dart' as timeline_layout;
+import 'cases/timeline_multiday_overflow_case.dart'
+    as timeline_multiday_overflow;
 import 'cases/timeline_now_controller_case.dart' as timeline_now_controller;
 import 'cases/timeline_view_case.dart' as timeline_view;
 import 'cases/week_calendar_case.dart' as week_calendar;
@@ -95,6 +100,7 @@ const _included = <String>{
   'focus_stopwatch_case.dart',
   'habit_calendar_repository_case.dart',
   'habit_focus_case.dart',
+  'habit_percent_case.dart',
   'habit_schedule_case.dart',
   'habit_streak_case.dart',
   'habits_screen_case.dart',
@@ -106,6 +112,7 @@ const _included = <String>{
   'l10n_case.dart',
   'markdown_editing_controller_case.dart',
   'matrix_case.dart',
+  'matrix_planned_case.dart',
   'microsoft_auth_case.dart',
   'microsoft_graph_case.dart',
   'microsoft_sync_engine_case.dart',
@@ -131,6 +138,7 @@ const _included = <String>{
   'task_editor_extra_case.dart',
   'task_repository_case.dart',
   'timeline_layout_case.dart',
+  'timeline_multiday_overflow_case.dart',
   'timeline_now_controller_case.dart',
   'timeline_view_case.dart',
   'week_calendar_case.dart',
@@ -143,9 +151,13 @@ const _included = <String>{
 
 void main() {
   test('test runner includes every case file', () {
-    expect(_caseFilesOnDisk(), _included,
-        reason: 'test/all_test.dart is stale. Run: '
-            'dart run tools/gen_test_runner.dart');
+    expect(
+      _caseFilesOnDisk(),
+      _included,
+      reason:
+          'test/all_test.dart is stale. Run: '
+          'dart run tools/gen_test_runner.dart',
+    );
   });
 
   group('alarm_repository', alarm_repository.main);
@@ -169,6 +181,7 @@ void main() {
   group('focus_stopwatch', focus_stopwatch.main);
   group('habit_calendar_repository', habit_calendar_repository.main);
   group('habit_focus', habit_focus.main);
+  group('habit_percent', habit_percent.main);
   group('habit_schedule', habit_schedule.main);
   group('habit_streak', habit_streak.main);
   group('habits_screen', habits_screen.main);
@@ -180,6 +193,7 @@ void main() {
   group('l10n', l10n.main);
   group('markdown_editing_controller', markdown_editing_controller.main);
   group('matrix', matrix.main);
+  group('matrix_planned', matrix_planned.main);
   group('microsoft_auth', microsoft_auth.main);
   group('microsoft_graph', microsoft_graph.main);
   group('microsoft_sync_engine', microsoft_sync_engine.main);
@@ -205,6 +219,7 @@ void main() {
   group('task_editor_extra', task_editor_extra.main);
   group('task_repository', task_repository.main);
   group('timeline_layout', timeline_layout.main);
+  group('timeline_multiday_overflow', timeline_multiday_overflow.main);
   group('timeline_now_controller', timeline_now_controller.main);
   group('timeline_view', timeline_view.main);
   group('week_calendar', week_calendar.main);
@@ -229,8 +244,12 @@ Set<String> _caseFilesOnDisk() {
       .where((path) => path.endsWith('_test.dart'))
       .where((path) => !path.endsWith('/all_test.dart'))
       .toSet();
-  expect(stray, isEmpty,
-      reason: 'Move top-level test files under test/cases/ as '
-          '*_case.dart and regenerate this runner.');
+  expect(
+    stray,
+    isEmpty,
+    reason:
+        'Move top-level test files under test/cases/ as '
+        '*_case.dart and regenerate this runner.',
+  );
   return cases;
 }
