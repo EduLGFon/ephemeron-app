@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/source_picker_sheet.dart';
+import '../../../domain/sources/source_label.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../domain/sources/source_move.dart';
 import '../../calendar/application/calendar_providers.dart';
@@ -15,8 +16,15 @@ List<SourceOption> taskListSourceOptions(List<TaskList> lists) {
         id: list.id,
         name: list.name,
         account:
-            list.googleAccount ?? (list.remoteId == null ? null : 'Google'),
-        isLocal: list.googleAccount == null && list.remoteId == null,
+            accountForSource(
+              googleAccount: list.googleAccount,
+              microsoftAccount: list.microsoftAccount,
+            ) ??
+            (list.remoteId == null ? null : 'Microsoft'),
+        isLocal:
+            list.googleAccount == null &&
+            list.microsoftAccount == null &&
+            list.remoteId == null,
         enabled: list.deletedAt == null,
       ),
   ];

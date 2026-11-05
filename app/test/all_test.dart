@@ -55,6 +55,7 @@ import 'cases/session_restore_case.dart' as session_restore;
 import 'cases/settings_case.dart' as settings;
 import 'cases/settings_screen_case.dart' as settings_screen;
 import 'cases/smart_filter_case.dart' as smart_filter;
+import 'cases/source_label_case.dart' as source_label;
 import 'cases/source_move_case.dart' as source_move;
 import 'cases/source_picker_case.dart' as source_picker;
 import 'cases/sync_engine_case.dart' as sync_engine;
@@ -121,6 +122,7 @@ const _included = <String>{
   'settings_case.dart',
   'settings_screen_case.dart',
   'smart_filter_case.dart',
+  'source_label_case.dart',
   'source_move_case.dart',
   'source_picker_case.dart',
   'sync_engine_case.dart',
@@ -194,6 +196,7 @@ void main() {
   group('settings', settings.main);
   group('settings_screen', settings_screen.main);
   group('smart_filter', smart_filter.main);
+  group('source_label', source_label.main);
   group('source_move', source_move.main);
   group('source_picker', source_picker.main);
   group('sync_engine', sync_engine.main);

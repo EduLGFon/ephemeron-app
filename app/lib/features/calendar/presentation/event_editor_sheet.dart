@@ -652,8 +652,13 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                       ? 'Select calendar'
                       : sourceLabel(
                               name: calendar.name,
-                              account: calendar.googleAccount,
-                              isLocal: calendar.source != 'google',
+                              account: accountForSource(
+                                googleAccount: calendar.googleAccount,
+                                microsoftAccount: calendar.microsoftAccount,
+                              ),
+                              isLocal:
+                                  calendar.source != 'google' &&
+                                  calendar.source != 'microsoft',
                             ) ??
                             calendar.name;
                   return ListTile(

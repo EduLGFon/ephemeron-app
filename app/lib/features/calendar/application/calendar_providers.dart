@@ -129,8 +129,14 @@ final occurrenceSourceMapProvider =
       final out = <String, OccurrenceSource>{};
       for (final event in events) {
         final calendar = calendarById[event.calendarId];
-        final isLocal = calendar == null || calendar.source != 'google';
-        final account = event.googleAccount ?? calendar?.googleAccount;
+        final isLocal =
+            calendar == null ||
+            (calendar.source != 'google' && calendar.source != 'microsoft');
+        final account = accountForSource(
+          googleAccount: event.googleAccount ?? calendar?.googleAccount,
+          microsoftAccount:
+              event.microsoftAccount ?? calendar?.microsoftAccount,
+        );
         final name = calendar?.name;
         out[event.id] = OccurrenceSource(
           calendarId: event.calendarId,

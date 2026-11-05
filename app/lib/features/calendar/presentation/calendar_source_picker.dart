@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/source_picker_sheet.dart';
 import '../../../data/drift/app_database.dart';
+import '../../../domain/sources/source_label.dart';
 import '../../../domain/sources/source_move.dart';
 import '../../tasks/application/tasks_providers.dart';
 import '../application/calendar_providers.dart';
@@ -14,8 +15,13 @@ List<SourceOption> calendarSourceOptions(List<Calendar> calendars) {
       SourceOption(
         id: calendar.id,
         name: calendar.name,
-        account: calendar.googleAccount ?? 'Google',
-        isLocal: calendar.source != 'google',
+        account:
+            accountForSource(
+              googleAccount: calendar.googleAccount,
+              microsoftAccount: calendar.microsoftAccount,
+            ) ??
+            (calendar.source == 'microsoft' ? 'Microsoft' : 'Google'),
+        isLocal: calendar.source != 'google' && calendar.source != 'microsoft',
         enabled: !calendar.readOnly,
       ),
   ];

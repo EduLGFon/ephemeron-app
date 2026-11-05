@@ -457,8 +457,14 @@ class _TaskTile extends ConsumerWidget {
         : ref.watch(taskListsByIdProvider)[task.listId];
     final source = sourceLabel(
       name: list?.name,
-      account: task.googleAccount,
-      fallbackAccount: list?.googleAccount,
+      account: accountForSource(
+        googleAccount: task.googleAccount,
+        microsoftAccount: task.microsoftAccount,
+      ),
+      fallbackAccount: accountForSource(
+        googleAccount: list?.googleAccount,
+        microsoftAccount: list?.microsoftAccount,
+      ),
     );
     return Dismissible(
       key: ValueKey(task.id),
@@ -568,7 +574,7 @@ class _TaskTile extends ConsumerWidget {
       final end = task.plannedEnd;
       parts.add(
         'Planned ${start == null ? '' : _formatDateTime(context, start)}'
-            '${end == null ? '' : ' - ${_formatDateTime(context, end)}'}',
+        '${end == null ? '' : ' - ${_formatDateTime(context, end)}'}',
       );
     } else if (task.plannedDate != null) {
       parts.add('Planned ${_formatDate(context, task.plannedDate!)}');
@@ -578,7 +584,8 @@ class _TaskTile extends ConsumerWidget {
       if (task.dueTime != null) {
         final h = task.dueTime! ~/ 60;
         final m = task.dueTime! % 60;
-        due += ' ${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
+        due +=
+            ' ${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
       }
       parts.add(due);
     }
