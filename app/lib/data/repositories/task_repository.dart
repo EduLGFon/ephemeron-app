@@ -18,6 +18,7 @@ import 'package:ephemeron/domain/tasks/smart_filter.dart';
 part 'task_repository/lists.dart';
 part 'task_repository/tasks.dart';
 part 'task_repository/completion.dart';
+part 'task_repository/occurrences.dart';
 part 'task_repository/queries.dart';
 part 'task_repository/move.dart';
 part 'task_repository/tags.dart';
@@ -114,6 +115,115 @@ class _TaskRepositoryBase {
       '${dt.day.toString().padLeft(2, '0')}T'
       '${dt.hour.toString().padLeft(2, '0')}:'
       '${dt.minute.toString().padLeft(2, '0')}';
+  String _shiftBaseDate(Task task) => task.dueDate ?? _baseDateKey(task);
+
+  String? _shiftPlannedDate(
+    String? plannedDate,
+    String? dueDate,
+    DateTime nextDue,
+  ) {
+    if (plannedDate == null || dueDate == null) return plannedDate;
+    final nextKey = dateKey(nextDue);
+    final deltaDays = _parseDateKey(
+      nextKey,
+    ).difference(_parseDateKey(dueDate)).inDays;
+    final p = plannedDate.split('-');
+    return dateKey(
+      DateTime.utc(
+        int.parse(p[0]),
+        int.parse(p[1]),
+        int.parse(p[2]) + deltaDays,
+      ),
+    );
+  }
+
+  String? _shiftPlannedStart(
+    String? plannedStart,
+    String? dueDate,
+    DateTime nextDue,
+  ) {
+    if (plannedStart == null || dueDate == null) return plannedStart;
+    final nextKey = dateKey(nextDue);
+    final deltaDays = _parseDateKey(
+      nextKey,
+    ).difference(_parseDateKey(dueDate)).inDays;
+    final dt = DateTime.parse(plannedStart);
+    final shifted = DateTime(
+      dt.year,
+      dt.month,
+      dt.day + deltaDays,
+      dt.hour,
+      dt.minute,
+    );
+    return _formatLocalIso(shifted);
+  }
+
+  String? _shiftPlannedEnd(
+    String? plannedEnd,
+    String? dueDate,
+    DateTime nextDue,
+  ) {
+    if (plannedEnd == null || dueDate == null) return plannedEnd;
+    final nextKey = dateKey(nextDue);
+    final deltaDays = _parseDateKey(
+      nextKey,
+    ).difference(_parseDateKey(dueDate)).inDays;
+    final dt = DateTime.parse(plannedEnd);
+    final shifted = DateTime(
+      dt.year,
+      dt.month,
+      dt.day + deltaDays,
+      dt.hour,
+      dt.minute,
+    );
+    return _formatLocalIso(shifted);
+  }
+
+  Future<bool> _hasSiblingOccurrence(
+    String seriesId,
+    String occurrenceDate,
+  ) async {
+    final rows =
+        await (_db.select(_db.tasks)..where(
+              (t) =>
+                  t.seriesId.equals(seriesId) &
+                  t.recurrenceKey.equals(occurrenceDate) &
+                  t.deletedAt.isNull(),
+            ))
+            .get();
+    return rows.isNotEmpty;
+  }
+
+  DateTime _taskBaseUtc(Task task) {
+    if (task.dueDate != null) {
+      final p = task.dueDate!.split('-');
+      final mins = task.dueTime ?? 0;
+      return DateTime.utc(
+        int.parse(p[0]),
+        int.parse(p[1]),
+        int.parse(p[2]),
+        mins ~/ 60,
+        mins % 60,
+      );
+    }
+    if (task.plannedStart != null && task.plannedStart!.isNotEmpty) {
+      return DateTime.parse(task.plannedStart!).toUtc();
+    }
+    if (task.plannedDate != null) {
+      final p = task.plannedDate!.split('-');
+      return DateTime.utc(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
+    }
+    return DateTime.now().toUtc();
+  }
+
+  String _baseDateKey(Task task) {
+    if (task.plannedStart != null && task.plannedStart!.isNotEmpty) {
+      return task.plannedStart!.substring(0, 10);
+    }
+    if (task.plannedDate != null) return task.plannedDate!;
+    if (task.dueDate != null) return task.dueDate!;
+    return dateKey(DateTime.now());
+  }
 }
 
 class TaskRepository extends _TaskRepositoryBase
@@ -121,6 +231,7 @@ class TaskRepository extends _TaskRepositoryBase
         _TaskListOps,
         _TaskCrudOps,
         _TaskCompletionOps,
+        _TaskOccurrenceOps,
         _TaskQueryOps,
         _TaskMoveOps,
         _TaskTagOps,
