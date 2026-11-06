@@ -4,15 +4,17 @@ import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/session/session_restore.dart';
-import '../../../data/drift/app_database.dart';
-import '../../settings/application/settings_providers.dart';
-import '../../sync/application/pending_operations.dart';
-import '../../../domain/alarms/alarm_preset.dart';
-import '../../../domain/habits/date_key.dart';
 import '../../../core/platform/app_permissions.dart';
+import '../../../core/time/picker_memory.dart';
 import '../../../core/ui/app_sheet.dart';
 import '../../../core/ui/escape_to_close.dart';
+import '../../../data/drift/app_database.dart';
+import '../../../domain/alarms/alarm_preset.dart';
+import '../../../domain/habits/date_key.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
+import '../../settings/application/settings_providers.dart';
+import '../../settings/data/settings_repository.dart';
+import '../../sync/application/pending_operations.dart';
 import '../application/habits_providers.dart';
 
 Future<void> showHabitEditor(
@@ -56,7 +58,7 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
   String? _alarmPreset;
   DraftAutosaver? _saver;
   bool _saved = false;
-  dynamic _settings;
+  SettingsRepository? _settings;
 
   String get _draftEntityId => widget.habit?.id ?? 'new';
 
@@ -361,24 +363,50 @@ class _HabitEditorSheetState extends ConsumerState<_HabitEditorSheet> {
 
   Future<void> _pickStartDate() async {
     final initial = parseKey(_startDate);
+    SettingsRepository? settings;
+    try {
+      settings = await ref.read(settingsRepositoryProvider.future);
+    } catch (_) {}
+    if (!mounted) return;
     final d = await showDatePicker(
       context: context,
       initialDate: initial,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (d != null) _changed(() => _startDate = habitDateKey(d));
+    if (d != null) {
+      final value = habitDateKey(d);
+      try {
+        await settings?.setPickerDate(PickerMemoryKeys.habitStartDate, value);
+      } catch (_) {}
+      _changed(() => _startDate = value);
+    }
   }
 
   Future<void> _pickReminder() async {
+    SettingsRepository? settings;
+    try {
+      settings = await ref.read(settingsRepositoryProvider.future);
+    } catch (_) {}
+    if (!mounted) return;
+    final now = TimeOfDay.now();
+    final minutes = resolvePickerTimeMinutes(
+      currentMinutes: parseHhmm(_reminderTime),
+      rememberedHhmm: settings?.getPickerTime(
+        PickerMemoryKeys.habitReminderTime,
+      ),
+      fallbackMinutes: now.hour * 60 + now.minute,
+    );
     final t = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60),
     );
     if (t == null) return;
-    final hh = t.hour.toString().padLeft(2, '0');
-    final mm = t.minute.toString().padLeft(2, '0');
-    _changed(() => _reminderTime = '$hh:$mm');
+    final hhmm = formatHhmm(t.hour, t.minute);
+    try {
+      await settings?.setPickerTime(PickerMemoryKeys.habitReminderTime, hhmm);
+    } catch (_) {}
+    _changed(() => _reminderTime = hhmm);
   }
 
   Future<void> _deleteHabit() async {

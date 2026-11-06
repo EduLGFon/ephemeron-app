@@ -245,6 +245,19 @@ class SettingsRepository {
   Future<void> setTaskDueTomorrowReminder(bool v) =>
       _prefs.setBool(_kTaskDueTomorrow, v);
 
+  // Remembers the last confirmed date/time per picker option so editors can
+  // reopen at the user's previous choice when the field is unset.
+  String _pk(String key, String kind) => 'picker.$key.$kind';
+  String? getPickerDate(String key) => _prefs.getString(_pk(key, 'date'));
+  Future<void> setPickerDate(String key, String ymd) =>
+      _prefs.setString(_pk(key, 'date'), ymd);
+  String? getPickerTime(String key) => _prefs.getString(_pk(key, 'time'));
+  Future<void> setPickerTime(String key, String hhmm) =>
+      _prefs.setString(_pk(key, 'time'), hhmm);
+  String? getPickerDateTime(String key) => _prefs.getString(_pk(key, 'dt'));
+  Future<void> setPickerDateTime(String key, String iso) =>
+      _prefs.setString(_pk(key, 'dt'), iso);
+
   /// Last successful Google sync, for title freshness + scheduling.
   static const _kLastGoogleSync = 'sync.lastGoogleSyncAtMs';
   DateTime? get lastGoogleSyncAt {

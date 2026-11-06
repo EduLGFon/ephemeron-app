@@ -9,6 +9,8 @@ import 'package:ephemeron/core/ui/escape_to_close.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/session/session_restore.dart';
+import '../../../core/platform/app_permissions.dart';
+import '../../../core/time/picker_memory.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../domain/alarms/alarm_preset.dart';
 import '../../../domain/alarms/reminder.dart';
@@ -16,9 +18,9 @@ import '../../../domain/recurrence/recurrence_rule.dart';
 import '../../../domain/sources/microsoft_source.dart';
 import '../../../domain/sources/source_label.dart';
 import '../../../domain/sources/source_move.dart';
-import '../../../core/platform/app_permissions.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
 import '../../settings/application/settings_providers.dart';
+import '../../settings/data/settings_repository.dart';
 import '../application/tasks_providers.dart';
 import 'task_source_picker.dart';
 
@@ -78,7 +80,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
   List<int> _reminders = const [0];
   DraftAutosaver? _saver;
   bool _saved = false;
-  dynamic _settings;
+  SettingsRepository? _settings;
 
   String get _draftEntityId => widget.task?.id ?? 'new';
 
@@ -500,6 +502,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
                 context,
                 label: 'Planned date',
                 value: _plannedDate,
+                pickerKey: PickerMemoryKeys.taskPlannedDate,
                 onChanged: (v) {
                   setState(() {
                     _plannedDate = v;
@@ -520,6 +523,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
                 context,
                 label: 'Due date',
                 value: _dueDate,
+                pickerKey: PickerMemoryKeys.taskDueDate,
                 onChanged: (v) {
                   setState(() => _dueDate = v);
                   _queueDraft();
@@ -562,14 +566,35 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
                   ),
                   TextButton(
                     onPressed: () async {
+                      SettingsRepository? settings;
+                      try {
+                        settings = await ref.read(
+                          settingsRepositoryProvider.future,
+                        );
+                      } catch (_) {}
+                      if (!context.mounted) return;
+                      final minutes = resolvePickerTimeMinutes(
+                        currentMinutes: _dueTime,
+                        rememberedHhmm: settings?.getPickerTime(
+                          PickerMemoryKeys.taskDueTime,
+                        ),
+                        fallbackMinutes: 540,
+                      );
                       final t = await showTimePicker(
                         context: context,
                         initialTime: TimeOfDay(
-                          hour: (_dueTime ?? 540) ~/ 60,
-                          minute: (_dueTime ?? 540) % 60,
+                          hour: minutes ~/ 60,
+                          minute: minutes % 60,
                         ),
                       );
                       if (t != null) {
+                        final hhmm = formatHhmm(t.hour, t.minute);
+                        try {
+                          await settings?.setPickerTime(
+                            PickerMemoryKeys.taskDueTime,
+                            hhmm,
+                          );
+                        } catch (_) {}
                         setState(() => _dueTime = t.hour * 60 + t.minute);
                         _queueDraft();
                       }
@@ -637,6 +662,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
     required String label,
     required String? value,
     required ValueChanged<String?> onChanged,
+    required String pickerKey,
   }) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -651,7 +677,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
           IconButton(
             icon: const Icon(Icons.calendar_month_outlined),
             tooltip: 'Pick $label',
-            onPressed: () => _pickDate(value, onChanged),
+            onPressed: () => _pickDate(value, onChanged, pickerKey: pickerKey),
           ),
           if (value != null)
             IconButton(
@@ -661,31 +687,59 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
             ),
         ],
       ),
-      onTap: () => _pickDate(value, onChanged),
+      onTap: () => _pickDate(value, onChanged, pickerKey: pickerKey),
     );
   }
 
   Future<void> _pickDate(
     String? current,
-    ValueChanged<String?> onChanged,
-  ) async {
+    ValueChanged<String?> onChanged, {
+    required String pickerKey,
+  }) async {
     final now = DateTime.now();
-    final initial = current == null ? now : DateTime.tryParse(current) ?? now;
+    SettingsRepository? settings;
+    try {
+      settings = await ref.read(settingsRepositoryProvider.future);
+    } catch (_) {}
+    if (!mounted) return;
+    final initial = resolvePickerDate(
+      current: current,
+      remembered: settings?.getPickerDate(pickerKey),
+      fallback: now,
+    );
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked != null) onChanged(_fmtDue(picked));
+    if (picked != null) {
+      final value = formatYmd(picked);
+      try {
+        await settings?.setPickerDate(pickerKey, value);
+      } catch (_) {}
+      onChanged(value);
+    }
   }
 
-  Future<String?> _pickDateTime(String? current) async {
+  Future<String?> _pickDateTime(
+    String? current, {
+    required String pickerKey,
+  }) async {
     final now = DateTime.now();
-    final initial = current == null ? now : DateTime.tryParse(current) ?? now;
+    SettingsRepository? settings;
+    try {
+      settings = await ref.read(settingsRepositoryProvider.future);
+    } catch (_) {}
+    if (!mounted) return null;
+    final initial = resolvePickerDateTime(
+      currentIso: current,
+      rememberedIso: settings?.getPickerDateTime(pickerKey),
+      fallback: now,
+    );
     final date = await showDatePicker(
       context: context,
-      initialDate: initial,
+      initialDate: DateTime(initial.year, initial.month, initial.day),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
@@ -695,7 +749,11 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
       initialTime: TimeOfDay.fromDateTime(initial),
     );
     if (time == null) return null;
-    return '${_fmtDue(date)}T${_pad(time.hour)}:${_pad(time.minute)}';
+    final result = '${formatYmd(date)}T${formatHhmm(time.hour, time.minute)}';
+    try {
+      await settings?.setPickerDateTime(pickerKey, result);
+    } catch (_) {}
+    return result;
   }
 
   Widget _plannedIntervalSection(BuildContext context) {
@@ -719,7 +777,10 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
               width: double.infinity,
               child: OutlinedButton(
                 onPressed: () async {
-                  final v = await _pickDateTime(_plannedStart);
+                  final v = await _pickDateTime(
+                    _plannedStart,
+                    pickerKey: PickerMemoryKeys.taskPlannedStart,
+                  );
                   if (v == null) return;
                   setState(() {
                     _plannedStart = v;
@@ -746,6 +807,7 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
                     : () async {
                         final v = await _pickDateTime(
                           _plannedEnd ?? _plannedStart,
+                          pickerKey: PickerMemoryKeys.taskPlannedEnd,
                         );
                         if (v == null) return;
                         setState(() => _plannedEnd = v);

@@ -10,22 +10,24 @@ import 'package:ephemeron/core/ui/escape_to_close.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/session/session_restore.dart';
+import '../../../core/platform/app_permissions.dart';
+import '../../../core/time/picker_memory.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/event_repository.dart';
 import '../../../domain/alarms/alarm_preset.dart';
 import '../../../domain/alarms/reminder.dart';
+import '../../../domain/recurrence/recurrence_rule.dart';
 import '../../../domain/sources/microsoft_source.dart';
 import '../../../domain/sources/source_label.dart';
 import '../../../domain/sources/source_move.dart';
-import '../../../core/platform/app_permissions.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
-import '../../settings/application/settings_providers.dart';
 import '../../notes/application/notes_providers.dart';
+import '../../settings/application/settings_providers.dart';
+import '../../settings/data/settings_repository.dart';
 import '../application/calendar_providers.dart';
-import '../../../domain/recurrence/recurrence_rule.dart';
 import 'calendar_source_picker.dart';
-import 'scope_sheet.dart';
 import 'google_calendar_colors.dart';
+import 'scope_sheet.dart';
 
 Future<void> showEventEditor(
   BuildContext context, {
@@ -121,7 +123,7 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
   String? _alarmPreset;
   DraftAutosaver? _saver;
   bool _saved = false;
-  dynamic _settings;
+  SettingsRepository? _settings;
 
   String get _draftEntityId => widget.event?.id ?? 'new';
 
@@ -375,6 +377,14 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
   }
 
   Future<void> _pickDate(bool isStart) async {
+    SettingsRepository? settings;
+    try {
+      settings = await ref.read(settingsRepositoryProvider.future);
+    } catch (_) {}
+    if (!mounted) return;
+    final key = isStart
+        ? PickerMemoryKeys.eventStart
+        : PickerMemoryKeys.eventEnd;
     final d = await showDatePicker(
       context: context,
       initialDate: isStart ? _start : _end,
@@ -410,10 +420,26 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
         }
       }
     });
+    try {
+      final dt = isStart ? _start : _end;
+      await settings?.setPickerDateTime(key, dt.toIso8601String());
+    } catch (_) {}
   }
 
   Future<void> _pickTime(bool isStart) async {
-    final t = await awaitTime(context, isStart ? _start : _end);
+    SettingsRepository? settings;
+    try {
+      settings = await ref.read(settingsRepositoryProvider.future);
+    } catch (_) {}
+    if (!mounted) return;
+    final key = isStart
+        ? PickerMemoryKeys.eventStart
+        : PickerMemoryKeys.eventEnd;
+    final base = isStart ? _start : _end;
+    final t = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: base.hour, minute: base.minute),
+    );
     if (t == null) return;
     _changed(() {
       if (isStart) {
@@ -430,6 +456,10 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
         _end = DateTime(_end.year, _end.month, _end.day, t.hour, t.minute);
       }
     });
+    try {
+      final dt = isStart ? _start : _end;
+      await settings?.setPickerDateTime(key, dt.toIso8601String());
+    } catch (_) {}
   }
 
   Future<void> _save() async {
@@ -989,13 +1019,35 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                                   const SizedBox(height: 8),
                                   OutlinedButton(
                                     onPressed: () async {
+                                      SettingsRepository? settings;
+                                      try {
+                                        settings = await ref.read(
+                                          settingsRepositoryProvider.future,
+                                        );
+                                      } catch (_) {}
+                                      final initial =
+                                          until ??
+                                          resolvePickerDate(
+                                            current: null,
+                                            remembered: settings?.getPickerDate(
+                                              PickerMemoryKeys.eventRruleUntil,
+                                            ),
+                                            fallback: DateTime.now(),
+                                          );
+                                      if (!ctx.mounted) return;
                                       final picked = await showDatePicker(
                                         context: ctx,
-                                        initialDate: until ?? DateTime.now(),
+                                        initialDate: initial,
                                         firstDate: DateTime(2000),
                                         lastDate: DateTime(2100),
                                       );
                                       if (picked != null) {
+                                        try {
+                                          await settings?.setPickerDate(
+                                            PickerMemoryKeys.eventRruleUntil,
+                                            formatYmd(picked),
+                                          );
+                                        } catch (_) {}
                                         setSt(() => until = picked);
                                       }
                                     },
@@ -1190,11 +1242,4 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
 
   String _fmtTime(DateTime d) =>
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-}
-
-Future<TimeOfDay?> awaitTime(BuildContext context, DateTime d) {
-  return showTimePicker(
-    context: context,
-    initialTime: TimeOfDay(hour: d.hour, minute: d.minute),
-  );
 }

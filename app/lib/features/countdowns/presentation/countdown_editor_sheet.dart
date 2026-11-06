@@ -4,13 +4,15 @@ import 'package:ephemeron/core/time/device_date_format.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/session/session_restore.dart';
-import '../../../data/drift/app_database.dart';
-import '../../settings/application/settings_providers.dart';
-import '../../../domain/alarms/alarm_preset.dart';
 import '../../../core/platform/app_permissions.dart';
+import '../../../core/time/picker_memory.dart';
 import '../../../core/ui/app_sheet.dart';
 import '../../../core/ui/escape_to_close.dart';
+import '../../../data/drift/app_database.dart';
+import '../../../domain/alarms/alarm_preset.dart';
 import '../../alarms/presentation/alarm_preset_picker.dart';
+import '../../settings/application/settings_providers.dart';
+import '../../settings/data/settings_repository.dart';
 import '../application/countdowns_providers.dart';
 
 Future<void> showCountdownEditor(
@@ -52,7 +54,7 @@ class _CountdownEditorSheetState extends ConsumerState<_CountdownEditorSheet> {
   String? _alarmPreset;
   DraftAutosaver? _saver;
   bool _saved = false;
-  dynamic _settings;
+  SettingsRepository? _settings;
 
   String get _draftEntityId => widget.countdown?.id ?? 'new';
 
@@ -252,21 +254,50 @@ class _CountdownEditorSheetState extends ConsumerState<_CountdownEditorSheet> {
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
+    SettingsRepository? settings;
+    try {
+      settings = await ref.read(settingsRepositoryProvider.future);
+    } catch (_) {}
+    if (!mounted) return;
+    final initial = resolvePickerDate(
+      current: _date == null ? null : formatYmd(_date!),
+      remembered: settings?.getPickerDate(PickerMemoryKeys.countdownTargetDate),
+      fallback: now,
+    );
     final d = await showDatePicker(
       context: context,
-      initialDate: _date ?? now,
+      initialDate: initial,
       firstDate: DateTime(1900),
       lastDate: DateTime(2100),
     );
-    if (d != null) _changed(() => _date = d);
+    if (d != null) {
+      try {
+        await settings?.setPickerDate(
+          PickerMemoryKeys.countdownTargetDate,
+          formatYmd(d),
+        );
+      } catch (_) {}
+      _changed(() => _date = d);
+    }
   }
 
   Future<void> _pickAlertTime() async {
+    SettingsRepository? settings;
+    try {
+      settings = await ref.read(settingsRepositoryProvider.future);
+    } catch (_) {}
+    if (!mounted) return;
     final t = await showTimePicker(
       context: context,
       initialTime: TimeOfDay(hour: _alertHour, minute: _alertMinute),
     );
     if (t != null) {
+      try {
+        await settings?.setPickerTime(
+          PickerMemoryKeys.countdownAlertTime,
+          formatHhmm(t.hour, t.minute),
+        );
+      } catch (_) {}
       _changed(() {
         _alertHour = t.hour;
         _alertMinute = t.minute;

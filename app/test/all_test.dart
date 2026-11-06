@@ -56,6 +56,7 @@ import 'cases/note_repository_case.dart' as note_repository;
 import 'cases/occurrence_cache_case.dart' as occurrence_cache;
 import 'cases/onboarding_case.dart' as onboarding;
 import 'cases/parser_case.dart' as parser;
+import 'cases/picker_memory_case.dart' as picker_memory;
 import 'cases/quick_add_case.dart' as quick_add;
 import 'cases/recurrence_case.dart' as recurrence;
 import 'cases/search_case.dart' as search;
@@ -132,6 +133,7 @@ const _included = <String>{
   'occurrence_cache_case.dart',
   'onboarding_case.dart',
   'parser_case.dart',
+  'picker_memory_case.dart',
   'quick_add_case.dart',
   'recurrence_case.dart',
   'search_case.dart',
@@ -218,6 +220,7 @@ void main() {
   group('occurrence_cache', occurrence_cache.main);
   group('onboarding', onboarding.main);
   group('parser', parser.main);
+  group('picker_memory', picker_memory.main);
   group('quick_add', quick_add.main);
   group('recurrence', recurrence.main);
   group('search', search.main);

@@ -4,12 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/time/device_date_format.dart';
+import '../../../core/time/picker_memory.dart';
 import '../../../core/time/time.dart';
 import '../../../core/ui/app_sheet.dart';
 import '../../../core/ui/escape_to_close.dart';
 import '../../../core/ui/sheet_padding.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../domain/tasks/smart_filter.dart';
+import '../../settings/application/settings_providers.dart';
+import '../../settings/data/settings_repository.dart';
 import '../application/tasks_providers.dart';
 
 Future<void> showSmartListEditor(BuildContext context, {SmartList? smartList}) {
@@ -215,28 +218,38 @@ class _SmartListEditorState extends ConsumerState<_SmartListEditor> {
   }
 
   Future<void> _pickDate({required bool from}) async {
-    final parsed = _tryParse(from ? _dueFrom : _dueTo);
+    final key = from
+        ? PickerMemoryKeys.smartListDueFrom
+        : PickerMemoryKeys.smartListDueTo;
+    final current = from ? _dueFrom : _dueTo;
+    SettingsRepository? settings;
+    try {
+      settings = await ref.read(settingsRepositoryProvider.future);
+    } catch (_) {}
+    if (!mounted) return;
+    final initial = resolvePickerDate(
+      current: current,
+      remembered: settings?.getPickerDate(key),
+      fallback: DateTime.now(),
+    );
     final picked = await showDatePicker(
       context: context,
-      initialDate: parsed ?? DateTime.now(),
+      initialDate: initial,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
     if (picked == null || !mounted) return;
+    final value = dateKey(picked);
+    try {
+      await settings?.setPickerDate(key, value);
+    } catch (_) {}
     setState(() {
       if (from) {
-        _dueFrom = dateKey(picked);
+        _dueFrom = value;
       } else {
-        _dueTo = dateKey(picked);
+        _dueTo = value;
       }
     });
-  }
-
-  DateTime? _tryParse(String? key) {
-    if (key == null) return null;
-    final parts = key.split('-');
-    if (parts.length != 3) return null;
-    return DateTime.tryParse(key);
   }
 
   Future<void> _save() async {
