@@ -24,6 +24,7 @@ import 'focus_stats_screen.dart';
 
 part 'focus_screen_start.dart';
 part 'focus_screen_running.dart';
+part 'focus_screen_running_actions.dart';
 part 'focus_screen_shared.dart';
 
 const _focusPresets = [15, 25, 50];
