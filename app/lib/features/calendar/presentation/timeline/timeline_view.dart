@@ -36,6 +36,9 @@ class TimelineView extends ConsumerStatefulWidget {
 class _TimelineViewState extends ConsumerState<TimelineView>
     with
         TimelineInteraction,
+        TimelineSwipe,
+        TimelineScale,
+        TimelineDrag,
         SingleTickerProviderStateMixin,
         WidgetsBindingObserver {
   List<OccurrenceCacheData> _lastOccurrences = const [];
