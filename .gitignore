@@ -53,6 +53,7 @@ app/android/app/src/main/kotlin/com/spotnik/*
 !app/android/app/src/main/kotlin/com/spotnik/ephemeron/
 app/android/app/src/main/kotlin/com/spotnik/ephemeron/*
 !app/android/app/src/main/kotlin/com/spotnik/ephemeron/AlarmPlugin.kt
+!app/android/app/src/main/kotlin/com/spotnik/ephemeron/AlarmStore.kt
 !app/android/app/src/main/kotlin/com/spotnik/ephemeron/AlarmReceiver.kt
 !app/android/app/src/main/kotlin/com/spotnik/ephemeron/AlarmRingService.kt
 !app/android/app/src/main/kotlin/com/spotnik/ephemeron/MainActivity.kt
