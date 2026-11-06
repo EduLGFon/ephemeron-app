@@ -1,7 +1,11 @@
 part of '../task_repository.dart';
 
-extension TaskRepositoryLists on TaskRepository {
+mixin _TaskListOps on _TaskRepositoryBase {
+  Future<List<String>> softDeleteTasks(List<String> ids);
+  Future<Map<String, String?>> moveTasks(List<String> ids, String? listId);
+
   // Lists.
+
   Future<String> createList(String name, {String? color}) async {
     final id = newId();
     final now = nowMs();

@@ -1,7 +1,8 @@
 part of '../task_repository.dart';
 
-extension TaskRepositorySmartLists on TaskRepository {
+mixin _TaskSmartListOps on _TaskRepositoryBase {
   // Smart lists.
+
   Future<String> createSmartList(
     String name,
     Map<String, Object?> filter,

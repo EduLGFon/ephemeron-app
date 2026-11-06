@@ -1,6 +1,6 @@
 part of '../task_repository.dart';
 
-extension TaskRepositoryMove on TaskRepository {
+mixin _TaskMoveOps on _TaskRepositoryBase {
   /// Moves tasks to [listId]; returns previous list ids for undo.
   ///
   /// Same-account Google lists use the Tasks API move endpoint. A move to

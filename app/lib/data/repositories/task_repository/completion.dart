@@ -1,6 +1,50 @@
 part of '../task_repository.dart';
 
-extension TaskRepositoryCompletion on TaskRepository {
+mixin _TaskCompletionOps on _TaskRepositoryBase {
+  Future<String> createTask({
+    required String title,
+    String? listId,
+    String? notes,
+    int priority = 0,
+    String? dueDate,
+    String? plannedDate,
+    String? plannedStart,
+    String? plannedEnd,
+    String? seriesId,
+    String? recurrenceKey,
+    int? dueTime,
+    int? durationMin,
+    String? rrule,
+    String? repeatMode,
+    String? parentId,
+    bool pinned = false,
+    List<String> tags = const [],
+    String? alarmPreset,
+    String? reminders,
+  });
+
+  Future<void> updateTask(
+    String id, {
+    String? title,
+    String? notes,
+    int? priority,
+    String? Function()? dueDate,
+    String? Function()? plannedDate,
+    String? Function()? plannedStart,
+    String? Function()? plannedEnd,
+    int? Function()? dueTime,
+    int? Function()? durationMin,
+    String? Function()? rrule,
+    String? listId,
+    bool? pinned,
+    bool? wontDo,
+    int? sortOrder,
+    String? Function()? alarmPreset,
+    String? Function()? reminders,
+  });
+
+  Future<List<String>> taskTagIds(String taskId);
+
   Future<void> completeTask(String id, {DateTime? at}) async {
     final task = await (_db.select(
       _db.tasks,
@@ -239,9 +283,9 @@ extension TaskRepositoryCompletion on TaskRepository {
   ) {
     if (plannedDate == null || dueDate == null) return plannedDate;
     final nextKey = dateKey(nextDue);
-    final deltaDays = _parseDateKey(nextKey)
-        .difference(_parseDateKey(dueDate))
-        .inDays;
+    final deltaDays = _parseDateKey(
+      nextKey,
+    ).difference(_parseDateKey(dueDate)).inDays;
     final p = plannedDate.split('-');
     return dateKey(
       DateTime.utc(
@@ -259,9 +303,9 @@ extension TaskRepositoryCompletion on TaskRepository {
   ) {
     if (plannedStart == null || dueDate == null) return plannedStart;
     final nextKey = dateKey(nextDue);
-    final deltaDays = _parseDateKey(nextKey)
-        .difference(_parseDateKey(dueDate))
-        .inDays;
+    final deltaDays = _parseDateKey(
+      nextKey,
+    ).difference(_parseDateKey(dueDate)).inDays;
     final dt = DateTime.parse(plannedStart);
     final shifted = DateTime(
       dt.year,
@@ -280,9 +324,9 @@ extension TaskRepositoryCompletion on TaskRepository {
   ) {
     if (plannedEnd == null || dueDate == null) return plannedEnd;
     final nextKey = dateKey(nextDue);
-    final deltaDays = _parseDateKey(nextKey)
-        .difference(_parseDateKey(dueDate))
-        .inDays;
+    final deltaDays = _parseDateKey(
+      nextKey,
+    ).difference(_parseDateKey(dueDate)).inDays;
     final dt = DateTime.parse(plannedEnd);
     final shifted = DateTime(
       dt.year,
@@ -294,13 +338,8 @@ extension TaskRepositoryCompletion on TaskRepository {
     return _formatLocalIso(shifted);
   }
 
-  String _formatLocalIso(DateTime dt) =>
-      '${dt.year.toString().padLeft(4, '0')}-'
-      '${dt.month.toString().padLeft(2, '0')}-'
-      '${dt.day.toString().padLeft(2, '0')}T'
-      '${dt.hour.toString().padLeft(2, '0')}:'
-      '${dt.minute.toString().padLeft(2, '0')}';
   String taskSeriesId(Task task) => task.seriesId ?? task.id;
+
   String currentTaskOccurrenceKey(Task task) =>
       task.recurrenceKey ??
       _effectiveOccurrenceDate(
@@ -383,28 +422,6 @@ extension TaskRepositoryCompletion on TaskRepository {
             ))
             .get();
     return rows.isNotEmpty;
-  }
-
-  DateTime _taskBaseUtcForDate(DateTime d) {
-    return DateTime.utc(d.year, d.month, d.day, d.hour, d.minute);
-  }
-
-  String _effectiveOccurrenceDate({
-    String? plannedStart,
-    String? plannedDate,
-    String? dueDate,
-  }) {
-    if (plannedStart != null && plannedStart.length >= 10) {
-      return plannedStart.substring(0, 10);
-    }
-    if (plannedDate != null) return plannedDate;
-    if (dueDate != null) return dueDate;
-    return dateKey(DateTime.now());
-  }
-
-  DateTime _parseDateKey(String value) {
-    final p = value.split('-');
-    return DateTime.utc(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
   }
 
   DateTime _taskBaseUtc(Task task) {

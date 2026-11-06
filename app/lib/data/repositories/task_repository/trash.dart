@@ -1,6 +1,6 @@
 part of '../task_repository.dart';
 
-extension TaskRepositoryTrash on TaskRepository {
+mixin _TaskTrashOps on _TaskRepositoryBase {
   /// Soft-deletes; returns ids for undo snackbars.
   Future<List<String>> softDeleteTasks(List<String> ids) async {
     final now = nowMs();

@@ -1,7 +1,8 @@
 part of '../task_repository.dart';
 
-extension TaskRepositoryTags on TaskRepository {
+mixin _TaskTagOps on _TaskRepositoryBase {
   // Tags.
+
   Future<String> ensureTag(String name, {String? color}) async {
     final clean = name.trim().toLowerCase();
     final existing = await (_db.select(
