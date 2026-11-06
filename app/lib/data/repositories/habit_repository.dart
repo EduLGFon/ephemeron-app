@@ -200,7 +200,9 @@ class HabitRepository {
       'FROM days CROSS JOIN habits h '
       'LEFT JOIN habit_logs l ON l.habit_id = h.id AND l.day_key = days.d '
       "WHERE h.archived = 0 AND h.deleted_at IS NULL "
-      "AND h.id NOT IN (SELECT entity_id FROM outbox WHERE entity = 'habit' AND op = 'delete')",
+      "AND h.id NOT IN (SELECT entity_id FROM outbox WHERE entity = 'habit' AND op = 'delete') "
+      "AND h.id NOT IN (SELECT entity_id FROM outbox WHERE entity = 'habit' AND op = 'archive') "
+      "AND h.id NOT IN (SELECT entity_id FROM outbox WHERE entity = 'habit' AND op = 'unarchive')",
       variables: [Variable<String>(fromKey), Variable<String>(toKey)],
       readsFrom: {_db.habits, _db.habitLogs, _db.outbox},
     );
