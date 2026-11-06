@@ -61,6 +61,30 @@ void main() {
     expect(parseWeekWidgetAction('other/thing'), isNull);
   });
 
+  test('widget actions override restore for explicit navigation', () {
+    expect(widgetActionOverridesRestore(null), isFalse);
+    expect(widgetActionOverridesRestore(''), isFalse);
+    expect(widgetActionOverridesRestore('other/thing'), isFalse);
+    expect(widgetActionOverridesRestore('new_task'), isTrue);
+    expect(widgetActionOverridesRestore('search'), isTrue);
+    expect(widgetActionOverridesRestore('calendar/today'), isTrue);
+    expect(widgetActionOverridesRestore('calendar'), isTrue);
+    expect(widgetActionOverridesRestore('calendar/prev'), isTrue);
+    expect(widgetActionOverridesRestore('calendar/next'), isTrue);
+    expect(widgetActionOverridesRestore('calendar/2026-11-04'), isTrue);
+  });
+
+  test('only calendar widget actions target calendar state', () {
+    expect(widgetActionTargetsCalendar(null), isFalse);
+    expect(widgetActionTargetsCalendar('new_task'), isFalse);
+    expect(widgetActionTargetsCalendar('search'), isFalse);
+    expect(widgetActionTargetsCalendar('calendar/bogus'), isFalse);
+    expect(widgetActionTargetsCalendar('calendar/today'), isTrue);
+    expect(widgetActionTargetsCalendar('calendar/prev'), isTrue);
+    expect(widgetActionTargetsCalendar('calendar/next'), isTrue);
+    expect(widgetActionTargetsCalendar('calendar/2026-11-04'), isTrue);
+  });
+
   test('options persist and reload from SharedPreferences', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     const options = WeekWidgetOptions(

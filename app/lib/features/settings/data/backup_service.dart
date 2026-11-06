@@ -41,6 +41,7 @@ class BackupService {
         'task_lists': await jsonOf(_db.taskLists),
         'tasks': await jsonOf(_db.tasks),
         'task_tags': await jsonOf(_db.taskTags),
+        'task_occurrence_states': await jsonOf(_db.taskOccurrenceStates),
         'smart_lists': await jsonOf(_db.smartLists),
         'tags': await jsonOf(_db.tags),
         'tag_defaults': await jsonOf(_db.tagDefaults),
@@ -96,6 +97,7 @@ class BackupService {
       final clearOrder = <TableInfo<Table, dynamic>>[
         _db.eventAttendees,
         _db.taskTags,
+        _db.taskOccurrenceStates,
         _db.noteLinks,
         _db.tasks,
         _db.events,
@@ -139,6 +141,11 @@ class BackupService {
       );
       await _insertAll(_db.tasks, rowsOf['tasks'], _taskOf);
       await _insertAll(_db.taskTags, rowsOf['task_tags'], _taskTagOf);
+      await _insertAll(
+        _db.taskOccurrenceStates,
+        rowsOf['task_occurrence_states'],
+        _taskOccurrenceStateOf,
+      );
       await _insertAll(_db.notes, rowsOf['notes'], _noteOf);
       await _insertAll(_db.noteLinks, rowsOf['note_links'], _noteLinkOf);
       await _insertAll(_db.habits, rowsOf['habits'], _habitOf);
@@ -324,6 +331,16 @@ class BackupService {
         taskId: _reqStr(m, 'taskId'),
         tagId: _reqStr(m, 'tagId'),
       );
+
+  TaskOccurrenceStatesCompanion _taskOccurrenceStateOf(
+    Map<String, dynamic> m,
+  ) => TaskOccurrenceStatesCompanion.insert(
+    seriesId: _reqStr(m, 'seriesId'),
+    occurrenceDate: _reqStr(m, 'occurrenceDate'),
+    status: _reqStr(m, 'status'),
+    completedAt: Value(_optInt(m, 'completedAt')),
+    updatedAt: _reqInt(m, 'updatedAt'),
+  );
 
   SmartListsCompanion _smartListOf(Map<String, dynamic> m) =>
       SmartListsCompanion.insert(

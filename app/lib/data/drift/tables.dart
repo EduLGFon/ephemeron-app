@@ -398,3 +398,17 @@ class Drafts extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+
+/// Per-occurrence completion state for recurring task projections. Local-only;
+/// never synced to Google/Microsoft task APIs. Keyed by stable series identity
+/// and occurrence date (YYYY-MM-DD, same key as projection/suppression).
+class TaskOccurrenceStates extends Table {
+  TextColumn get seriesId => text()();
+  TextColumn get occurrenceDate => text()();
+  TextColumn get status => text()(); // completed | wont_do
+  IntColumn get completedAt => integer().nullable()();
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {seriesId, occurrenceDate};
+}

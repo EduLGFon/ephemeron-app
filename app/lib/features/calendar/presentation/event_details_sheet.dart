@@ -10,6 +10,7 @@ import '../../../core/ui/escape_to_close.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../core/db/db_provider.dart';
 import '../../../data/repositories/event_repository.dart';
+import '../../../domain/sources/microsoft_source.dart';
 import '../../../domain/sources/source_label.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../notes/application/notes_providers.dart';
@@ -53,11 +54,17 @@ Future<void> showEventDetails(BuildContext context, String eventId) async {
 
 /// Event or task detail row plus the resolved source label.
 class _LoadedDetails {
-  const _LoadedDetails({this.event, this.task, this.source});
+  const _LoadedDetails({
+    this.event,
+    this.task,
+    this.source,
+    this.isMicrosoft = false,
+  });
 
   final Event? event;
   final Task? task;
   final String? source;
+  final bool isMicrosoft;
 }
 
 class _Details extends ConsumerStatefulWidget {
@@ -92,8 +99,14 @@ class _DetailsState extends ConsumerState<_Details> {
       final calendar = await (db.select(
         db.calendars,
       )..where((c) => c.id.equals(event.calendarId))).getSingleOrNull();
+      final isMs = isMicrosoftEvent(
+        eventMicrosoftAccount: event.microsoftAccount,
+        calendarSource: calendar?.source,
+        calendarMicrosoftAccount: calendar?.microsoftAccount,
+      );
       return _LoadedDetails(
         event: event,
+        isMicrosoft: isMs,
         source: sourceLabel(
           name: calendar?.name,
           account: accountForSource(
@@ -119,8 +132,13 @@ class _DetailsState extends ConsumerState<_Details> {
         : await (db.select(
             db.taskLists,
           )..where((l) => l.id.equals(listId))).getSingleOrNull();
+    final isMs = isMicrosoftTask(
+      taskMicrosoftAccount: task.microsoftAccount,
+      listMicrosoftAccount: list?.microsoftAccount,
+    );
     return _LoadedDetails(
       task: task,
+      isMicrosoft: isMs,
       source: sourceLabel(
         name: list?.name,
         account: accountForSource(
@@ -161,17 +179,19 @@ class _DetailsState extends ConsumerState<_Details> {
                     icon: Icons.calendar_today_outlined,
                     kind: 'Calendar',
                     label: source ?? 'Unknown calendar',
-                    onTap: () async {
-                      final moved = await pickAndMoveEvent(
-                        context,
-                        ref,
-                        eventId: e.id,
-                        currentCalendarId: e.calendarId,
-                      );
-                      if (moved && context.mounted) {
-                        Navigator.of(context).pop();
-                      }
-                    },
+                    onTap: data?.isMicrosoft == true
+                        ? null
+                        : () async {
+                            final moved = await pickAndMoveEvent(
+                              context,
+                              ref,
+                              eventId: e.id,
+                              currentCalendarId: e.calendarId,
+                            );
+                            if (moved && context.mounted) {
+                              Navigator.of(context).pop();
+                            }
+                          },
                   ),
                   if (e.location != null && e.location!.isNotEmpty)
                     ListTile(
@@ -290,17 +310,19 @@ class _DetailsState extends ConsumerState<_Details> {
                     icon: Icons.list_alt_outlined,
                     kind: 'List',
                     label: source ?? 'No list',
-                    onTap: () async {
-                      final moved = await pickAndMoveTask(
-                        context,
-                        ref,
-                        taskId: t.id,
-                        currentListId: t.listId,
-                      );
-                      if (moved && context.mounted) {
-                        Navigator.of(context).pop();
-                      }
-                    },
+                    onTap: data?.isMicrosoft == true
+                        ? null
+                        : () async {
+                            final moved = await pickAndMoveTask(
+                              context,
+                              ref,
+                              taskId: t.id,
+                              currentListId: t.listId,
+                            );
+                            if (moved && context.mounted) {
+                              Navigator.of(context).pop();
+                            }
+                          },
                   ),
                   if (t.notes != null && t.notes!.isNotEmpty)
                     ListTile(
@@ -313,43 +335,50 @@ class _DetailsState extends ConsumerState<_Details> {
                       children: [
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              showTaskEditor(context, task: t);
-                            },
+                            onPressed: data?.isMicrosoft == true
+                                ? null
+                                : () {
+                                    Navigator.of(context).pop();
+                                    showTaskEditor(context, task: t);
+                                  },
                             child: const Text('Edit'),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: () async {
-                              final pending = ref.read(
-                                pendingOperationsProvider,
-                              );
-                              final opId = await pending.scheduleTaskDelete(
-                                t.id,
-                              );
-                              try {
-                                ref
-                                    .read(occurrenceDirtyProvider.notifier)
-                                    .markDirty();
-                              } catch (_) {}
-                              if (!context.mounted) return;
-                              final messenger = ScaffoldMessenger.of(context);
-                              Navigator.of(context).pop();
-                              messenger.showSnackBar(
-                                SnackBar(
-                                  content: Text('Deleted "${t.title}"'),
-                                  duration: const Duration(seconds: 6),
-                                  persist: false,
-                                  action: SnackBarAction(
-                                    label: 'Undo',
-                                    onPressed: () => pending.cancel(opId),
-                                  ),
-                                ),
-                              );
-                            },
+                            onPressed: data?.isMicrosoft == true
+                                ? null
+                                : () async {
+                                    final pending = ref.read(
+                                      pendingOperationsProvider,
+                                    );
+                                    final opId = await pending
+                                        .scheduleTaskDelete(t.id);
+                                    try {
+                                      ref
+                                          .read(
+                                            occurrenceDirtyProvider.notifier,
+                                          )
+                                          .markDirty();
+                                    } catch (_) {}
+                                    if (!context.mounted) return;
+                                    final messenger = ScaffoldMessenger.of(
+                                      context,
+                                    );
+                                    Navigator.of(context).pop();
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                        content: Text('Deleted "${t.title}"'),
+                                        duration: const Duration(seconds: 6),
+                                        persist: false,
+                                        action: SnackBarAction(
+                                          label: 'Undo',
+                                          onPressed: () => pending.cancel(opId),
+                                        ),
+                                      ),
+                                    );
+                                  },
                             child: const Text('Delete'),
                           ),
                         ),
@@ -359,7 +388,8 @@ class _DetailsState extends ConsumerState<_Details> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     child: FilledButton.icon(
-                      onPressed: t.completedAt == null
+                      onPressed:
+                          (t.completedAt == null && data?.isMicrosoft != true)
                           ? () async {
                               await ref
                                   .read(taskRepositoryProvider)

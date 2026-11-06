@@ -14797,6 +14797,385 @@ class DraftsCompanion extends UpdateCompanion<Draft> {
   }
 }
 
+class $TaskOccurrenceStatesTable extends TaskOccurrenceStates
+    with TableInfo<$TaskOccurrenceStatesTable, TaskOccurrenceState> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TaskOccurrenceStatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _seriesIdMeta = const VerificationMeta(
+    'seriesId',
+  );
+  @override
+  late final GeneratedColumn<String> seriesId = GeneratedColumn<String>(
+    'series_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _occurrenceDateMeta = const VerificationMeta(
+    'occurrenceDate',
+  );
+  @override
+  late final GeneratedColumn<String> occurrenceDate = GeneratedColumn<String>(
+    'occurrence_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _completedAtMeta = const VerificationMeta(
+    'completedAt',
+  );
+  @override
+  late final GeneratedColumn<int> completedAt = GeneratedColumn<int>(
+    'completed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    seriesId,
+    occurrenceDate,
+    status,
+    completedAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'task_occurrence_states';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TaskOccurrenceState> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('series_id')) {
+      context.handle(
+        _seriesIdMeta,
+        seriesId.isAcceptableOrUnknown(data['series_id']!, _seriesIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_seriesIdMeta);
+    }
+    if (data.containsKey('occurrence_date')) {
+      context.handle(
+        _occurrenceDateMeta,
+        occurrenceDate.isAcceptableOrUnknown(
+          data['occurrence_date']!,
+          _occurrenceDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_occurrenceDateMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('completed_at')) {
+      context.handle(
+        _completedAtMeta,
+        completedAt.isAcceptableOrUnknown(
+          data['completed_at']!,
+          _completedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {seriesId, occurrenceDate};
+  @override
+  TaskOccurrenceState map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TaskOccurrenceState(
+      seriesId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}series_id'],
+      )!,
+      occurrenceDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}occurrence_date'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      completedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}completed_at'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $TaskOccurrenceStatesTable createAlias(String alias) {
+    return $TaskOccurrenceStatesTable(attachedDatabase, alias);
+  }
+}
+
+class TaskOccurrenceState extends DataClass
+    implements Insertable<TaskOccurrenceState> {
+  final String seriesId;
+  final String occurrenceDate;
+  final String status;
+  final int? completedAt;
+  final int updatedAt;
+  const TaskOccurrenceState({
+    required this.seriesId,
+    required this.occurrenceDate,
+    required this.status,
+    this.completedAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['series_id'] = Variable<String>(seriesId);
+    map['occurrence_date'] = Variable<String>(occurrenceDate);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || completedAt != null) {
+      map['completed_at'] = Variable<int>(completedAt);
+    }
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  TaskOccurrenceStatesCompanion toCompanion(bool nullToAbsent) {
+    return TaskOccurrenceStatesCompanion(
+      seriesId: Value(seriesId),
+      occurrenceDate: Value(occurrenceDate),
+      status: Value(status),
+      completedAt: completedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completedAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory TaskOccurrenceState.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TaskOccurrenceState(
+      seriesId: serializer.fromJson<String>(json['seriesId']),
+      occurrenceDate: serializer.fromJson<String>(json['occurrenceDate']),
+      status: serializer.fromJson<String>(json['status']),
+      completedAt: serializer.fromJson<int?>(json['completedAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'seriesId': serializer.toJson<String>(seriesId),
+      'occurrenceDate': serializer.toJson<String>(occurrenceDate),
+      'status': serializer.toJson<String>(status),
+      'completedAt': serializer.toJson<int?>(completedAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  TaskOccurrenceState copyWith({
+    String? seriesId,
+    String? occurrenceDate,
+    String? status,
+    Value<int?> completedAt = const Value.absent(),
+    int? updatedAt,
+  }) => TaskOccurrenceState(
+    seriesId: seriesId ?? this.seriesId,
+    occurrenceDate: occurrenceDate ?? this.occurrenceDate,
+    status: status ?? this.status,
+    completedAt: completedAt.present ? completedAt.value : this.completedAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  TaskOccurrenceState copyWithCompanion(TaskOccurrenceStatesCompanion data) {
+    return TaskOccurrenceState(
+      seriesId: data.seriesId.present ? data.seriesId.value : this.seriesId,
+      occurrenceDate: data.occurrenceDate.present
+          ? data.occurrenceDate.value
+          : this.occurrenceDate,
+      status: data.status.present ? data.status.value : this.status,
+      completedAt: data.completedAt.present
+          ? data.completedAt.value
+          : this.completedAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskOccurrenceState(')
+          ..write('seriesId: $seriesId, ')
+          ..write('occurrenceDate: $occurrenceDate, ')
+          ..write('status: $status, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(seriesId, occurrenceDate, status, completedAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TaskOccurrenceState &&
+          other.seriesId == this.seriesId &&
+          other.occurrenceDate == this.occurrenceDate &&
+          other.status == this.status &&
+          other.completedAt == this.completedAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class TaskOccurrenceStatesCompanion
+    extends UpdateCompanion<TaskOccurrenceState> {
+  final Value<String> seriesId;
+  final Value<String> occurrenceDate;
+  final Value<String> status;
+  final Value<int?> completedAt;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const TaskOccurrenceStatesCompanion({
+    this.seriesId = const Value.absent(),
+    this.occurrenceDate = const Value.absent(),
+    this.status = const Value.absent(),
+    this.completedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TaskOccurrenceStatesCompanion.insert({
+    required String seriesId,
+    required String occurrenceDate,
+    required String status,
+    this.completedAt = const Value.absent(),
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  }) : seriesId = Value(seriesId),
+       occurrenceDate = Value(occurrenceDate),
+       status = Value(status),
+       updatedAt = Value(updatedAt);
+  static Insertable<TaskOccurrenceState> custom({
+    Expression<String>? seriesId,
+    Expression<String>? occurrenceDate,
+    Expression<String>? status,
+    Expression<int>? completedAt,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (seriesId != null) 'series_id': seriesId,
+      if (occurrenceDate != null) 'occurrence_date': occurrenceDate,
+      if (status != null) 'status': status,
+      if (completedAt != null) 'completed_at': completedAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TaskOccurrenceStatesCompanion copyWith({
+    Value<String>? seriesId,
+    Value<String>? occurrenceDate,
+    Value<String>? status,
+    Value<int?>? completedAt,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return TaskOccurrenceStatesCompanion(
+      seriesId: seriesId ?? this.seriesId,
+      occurrenceDate: occurrenceDate ?? this.occurrenceDate,
+      status: status ?? this.status,
+      completedAt: completedAt ?? this.completedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (seriesId.present) {
+      map['series_id'] = Variable<String>(seriesId.value);
+    }
+    if (occurrenceDate.present) {
+      map['occurrence_date'] = Variable<String>(occurrenceDate.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (completedAt.present) {
+      map['completed_at'] = Variable<int>(completedAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskOccurrenceStatesCompanion(')
+          ..write('seriesId: $seriesId, ')
+          ..write('occurrenceDate: $occurrenceDate, ')
+          ..write('status: $status, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -14827,6 +15206,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PendingOperationsTable pendingOperations =
       $PendingOperationsTable(this);
   late final $DraftsTable drafts = $DraftsTable(this);
+  late final $TaskOccurrenceStatesTable taskOccurrenceStates =
+      $TaskOccurrenceStatesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -14856,6 +15237,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     syncState,
     pendingOperations,
     drafts,
+    taskOccurrenceStates,
   ];
 }
 
@@ -24541,6 +24923,237 @@ typedef $$DraftsTableProcessedTableManager =
       Draft,
       PrefetchHooks Function()
     >;
+typedef $$TaskOccurrenceStatesTableCreateCompanionBuilder =
+    TaskOccurrenceStatesCompanion Function({
+      required String seriesId,
+      required String occurrenceDate,
+      required String status,
+      Value<int?> completedAt,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$TaskOccurrenceStatesTableUpdateCompanionBuilder =
+    TaskOccurrenceStatesCompanion Function({
+      Value<String> seriesId,
+      Value<String> occurrenceDate,
+      Value<String> status,
+      Value<int?> completedAt,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$TaskOccurrenceStatesTableFilterComposer
+    extends Composer<_$AppDatabase, $TaskOccurrenceStatesTable> {
+  $$TaskOccurrenceStatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get seriesId => $composableBuilder(
+    column: $table.seriesId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get occurrenceDate => $composableBuilder(
+    column: $table.occurrenceDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TaskOccurrenceStatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $TaskOccurrenceStatesTable> {
+  $$TaskOccurrenceStatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get seriesId => $composableBuilder(
+    column: $table.seriesId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get occurrenceDate => $composableBuilder(
+    column: $table.occurrenceDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TaskOccurrenceStatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TaskOccurrenceStatesTable> {
+  $$TaskOccurrenceStatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get seriesId =>
+      $composableBuilder(column: $table.seriesId, builder: (column) => column);
+
+  GeneratedColumn<String> get occurrenceDate => $composableBuilder(
+    column: $table.occurrenceDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$TaskOccurrenceStatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TaskOccurrenceStatesTable,
+          TaskOccurrenceState,
+          $$TaskOccurrenceStatesTableFilterComposer,
+          $$TaskOccurrenceStatesTableOrderingComposer,
+          $$TaskOccurrenceStatesTableAnnotationComposer,
+          $$TaskOccurrenceStatesTableCreateCompanionBuilder,
+          $$TaskOccurrenceStatesTableUpdateCompanionBuilder,
+          (
+            TaskOccurrenceState,
+            BaseReferences<
+              _$AppDatabase,
+              $TaskOccurrenceStatesTable,
+              TaskOccurrenceState
+            >,
+          ),
+          TaskOccurrenceState,
+          PrefetchHooks Function()
+        > {
+  $$TaskOccurrenceStatesTableTableManager(
+    _$AppDatabase db,
+    $TaskOccurrenceStatesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TaskOccurrenceStatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TaskOccurrenceStatesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$TaskOccurrenceStatesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> seriesId = const Value.absent(),
+                Value<String> occurrenceDate = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int?> completedAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TaskOccurrenceStatesCompanion(
+                seriesId: seriesId,
+                occurrenceDate: occurrenceDate,
+                status: status,
+                completedAt: completedAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String seriesId,
+                required String occurrenceDate,
+                required String status,
+                Value<int?> completedAt = const Value.absent(),
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => TaskOccurrenceStatesCompanion.insert(
+                seriesId: seriesId,
+                occurrenceDate: occurrenceDate,
+                status: status,
+                completedAt: completedAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TaskOccurrenceStatesTable, TaskOccurrenceState>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $TaskOccurrenceStatesTable,
+                    TaskOccurrenceState
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TaskOccurrenceStatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TaskOccurrenceStatesTable,
+      TaskOccurrenceState,
+      $$TaskOccurrenceStatesTableFilterComposer,
+      $$TaskOccurrenceStatesTableOrderingComposer,
+      $$TaskOccurrenceStatesTableAnnotationComposer,
+      $$TaskOccurrenceStatesTableCreateCompanionBuilder,
+      $$TaskOccurrenceStatesTableUpdateCompanionBuilder,
+      (
+        TaskOccurrenceState,
+        BaseReferences<
+          _$AppDatabase,
+          $TaskOccurrenceStatesTable,
+          TaskOccurrenceState
+        >,
+      ),
+      TaskOccurrenceState,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -24592,4 +25205,6 @@ class $AppDatabaseManager {
       $$PendingOperationsTableTableManager(_db, _db.pendingOperations);
   $$DraftsTableTableManager get drafts =>
       $$DraftsTableTableManager(_db, _db.drafts);
+  $$TaskOccurrenceStatesTableTableManager get taskOccurrenceStates =>
+      $$TaskOccurrenceStatesTableTableManager(_db, _db.taskOccurrenceStates);
 }

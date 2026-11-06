@@ -6,28 +6,38 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ephemeron/core/time/device_date_format.dart';
 
 import '../../../data/drift/app_database.dart';
+import '../../../domain/sources/microsoft_source.dart';
 import '../application/tasks_providers.dart';
 import 'task_editor_sheet.dart';
 
-class MatrixTaskRow extends StatelessWidget {
+class MatrixTaskRow extends ConsumerWidget {
   const MatrixTaskRow({super.key, required this.task, required this.draggable});
 
   final Task task;
   final bool draggable;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final list = task.listId == null
+        ? null
+        : ref.watch(taskListsByIdProvider)[task.listId];
+    final isMs = isMicrosoftTask(
+      taskMicrosoftAccount: task.microsoftAccount,
+      listMicrosoftAccount: list?.microsoftAccount,
+    );
+    final readOnly = isMs;
     final content = _MatrixTaskRowContent(
       key: ValueKey('matrix-task-${task.id}'),
       task: task,
+      readOnly: readOnly,
     );
-    if (!draggable) return content;
+    if (!draggable || readOnly) return content;
     return LongPressDraggable<Task>(
       data: task,
       feedback: _TaskDragFeedback(title: task.title),
       childWhenDragging: Opacity(
         opacity: 0.4,
-        child: _MatrixTaskRowContent(task: task),
+        child: _MatrixTaskRowContent(task: task, readOnly: readOnly),
       ),
       child: content,
     );
@@ -35,9 +45,14 @@ class MatrixTaskRow extends StatelessWidget {
 }
 
 class _MatrixTaskRowContent extends ConsumerWidget {
-  const _MatrixTaskRowContent({super.key, required this.task});
+  const _MatrixTaskRowContent({
+    super.key,
+    required this.task,
+    this.readOnly = false,
+  });
 
   final Task task;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -58,7 +73,7 @@ class _MatrixTaskRowContent extends ConsumerWidget {
                 shape: const CircleBorder(),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
-                onChanged: (_) => _complete(context, ref),
+                onChanged: readOnly ? null : (_) => _complete(context, ref),
               ),
             ),
           ),
@@ -66,7 +81,9 @@ class _MatrixTaskRowContent extends ConsumerWidget {
           Expanded(
             child: InkWell(
               borderRadius: BorderRadius.circular(6),
-              onTap: () => showTaskEditor(context, task: task),
+              onTap: readOnly
+                  ? null
+                  : () => showTaskEditor(context, task: task),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Column(

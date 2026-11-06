@@ -19,6 +19,19 @@ class OccurrenceRepository {
 
   static const int instanceCap = 1000;
 
+  Expression<bool> _taskOccurrenceStateSuppressed($OccurrenceCacheTable c) {
+    // Suppress task projections that have local per-occurrence completion state.
+    // Joins through tasks to resolve series_id (recurrenceKey may differ only in
+    // representation; occurrenceDate matches cache day_key).
+    return const CustomExpression<bool>(
+      "(occurrence_cache.source_type = 'event' OR NOT EXISTS ("
+      'SELECT 1 FROM task_occurrence_states tos '
+      'JOIN tasks t ON COALESCE(t.series_id, t.id) = tos.series_id '
+      'WHERE t.id = occurrence_cache.event_id '
+      'AND tos.occurrence_date = occurrence_cache.day_key))',
+    );
+  }
+
   /// Rebuilds cache rows overlapping [windowStartUtc, windowEndUtc].
   /// Returns the number of rows inserted.
   Future<int> rebuildWindow({
@@ -162,7 +175,8 @@ class OccurrenceRepository {
                 c.endUtc.isBiggerOrEqualValue(
                   fromUtc.toUtc().millisecondsSinceEpoch,
                 ) &
-                c.eventId.isNotInQuery(_pendingDeletes(_db)),
+                c.eventId.isNotInQuery(_pendingDeletes(_db)) &
+                _taskOccurrenceStateSuppressed(c),
           )
           ..orderBy([(c) => OrderingTerm.asc(c.startUtc)]))
         .watch();
@@ -173,7 +187,8 @@ class OccurrenceRepository {
           ..where(
             (c) =>
                 c.dayKey.equals(dayKey) &
-                c.eventId.isNotInQuery(_pendingDeletes(_db)),
+                c.eventId.isNotInQuery(_pendingDeletes(_db)) &
+                _taskOccurrenceStateSuppressed(c),
           )
           ..orderBy([(c) => OrderingTerm.asc(c.startUtc)]))
         .watch();
@@ -184,7 +199,8 @@ class OccurrenceRepository {
           ..where(
             (c) =>
                 c.dayKey.equals(dayKey) &
-                c.eventId.isNotInQuery(_pendingDeletes(_db)),
+                c.eventId.isNotInQuery(_pendingDeletes(_db)) &
+                _taskOccurrenceStateSuppressed(c),
           )
           ..orderBy([(c) => OrderingTerm.asc(c.startUtc)]))
         .get();

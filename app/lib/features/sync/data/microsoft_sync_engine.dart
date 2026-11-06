@@ -204,6 +204,10 @@ class MicrosoftSyncEngine {
 
       // Task lists.
       final todoLists = await _client.listTodoLists();
+      final remoteListIds = {
+        for (final l in todoLists)
+          if (l.id.isNotEmpty) l.id,
+      };
       final listIdByRemote = <String, String>{};
       listCount = 0;
       for (final l in todoLists) {
@@ -249,6 +253,10 @@ class MicrosoftSyncEngine {
           listIdByRemote[remoteId] = existing.id;
         }
       }
+      // Remote deletions: reconcile task lists only after a complete, successful
+      // list fetch. Soft-delete lists (and their MS-synced, non-dirty tasks) that
+      // disappeared from Graph. Never acts on partial/failed sync or dirty rows.
+      await _reconcileDeletedTaskLists(remoteListIds, now);
 
       taskCount = 0;
       for (final l in todoLists) {
@@ -257,6 +265,10 @@ class MicrosoftSyncEngine {
         final localListId = listIdByRemote[remoteListId];
         if (localListId == null) continue;
         final tasks = await _client.listTodoTasks(remoteListId);
+        final remoteTaskIds = {
+          for (final t in tasks)
+            if (t.id.isNotEmpty) t.id,
+        };
         for (final t in tasks) {
           final remoteId = t.id;
           if (remoteId.isEmpty) continue;
@@ -330,6 +342,10 @@ class MicrosoftSyncEngine {
             taskCount++;
           }
         }
+        // Reconcile task deletions only after a complete, successful fetch for
+        // this list. calendarView is time-windowed, so event deletion
+        // reconciliation is not attempted (fail-safe).
+        await _reconcileDeletedTasks(localListId, remoteTaskIds, now);
       }
 
       return MicrosoftSyncResult(
@@ -351,6 +367,80 @@ class MicrosoftSyncEngine {
         );
       }
       rethrow;
+    }
+  }
+
+  Future<void> _reconcileDeletedTaskLists(
+    Set<String> remoteListIds,
+    int nowMs,
+  ) async {
+    final candidates =
+        await (_db.select(_db.taskLists)..where(
+              (t) =>
+                  t.microsoftAccount.equals(account) &
+                  t.remoteId.isNotNull() &
+                  t.deletedAt.isNull() &
+                  t.dirty.equals(false),
+            ))
+            .get();
+    for (final list in candidates) {
+      final remoteId = list.remoteId;
+      if (remoteId == null || remoteId.isEmpty) continue;
+      if (remoteListIds.contains(remoteId)) continue;
+      // List disappeared from Graph; soft-delete list and its MS-synced tasks.
+      await (_db.update(
+        _db.taskLists,
+      )..where((t) => t.id.equals(list.id))).write(
+        TaskListsCompanion(
+          deletedAt: Value(nowMs),
+          updatedAt: Value(nowMs),
+          dirty: const Value(false),
+        ),
+      );
+      await (_db.update(_db.tasks)..where(
+            (t) =>
+                t.listId.equals(list.id) &
+                t.microsoftAccount.equals(account) &
+                t.remoteId.isNotNull() &
+                t.deletedAt.isNull() &
+                t.dirty.equals(false),
+          ))
+          .write(
+            TasksCompanion(
+              deletedAt: Value(nowMs),
+              updatedAt: Value(nowMs),
+              dirty: const Value(false),
+            ),
+          );
+    }
+  }
+
+  Future<void> _reconcileDeletedTasks(
+    String localListId,
+    Set<String> remoteTaskIds,
+    int nowMs,
+  ) async {
+    final candidates =
+        await (_db.select(_db.tasks)..where(
+              (t) =>
+                  t.listId.equals(localListId) &
+                  t.microsoftAccount.equals(account) &
+                  t.remoteId.isNotNull() &
+                  t.deletedAt.isNull() &
+                  t.dirty.equals(false),
+            ))
+            .get();
+    for (final task in candidates) {
+      final remoteId = task.remoteId;
+      if (remoteId == null || remoteId.isEmpty) continue;
+      if (remoteTaskIds.contains(remoteId)) continue;
+      await (_db.update(_db.tasks)..where((t) => t.id.equals(task.id))).write(
+        TasksCompanion(
+          deletedAt: Value(nowMs),
+          updatedAt: Value(nowMs),
+          dirty: const Value(false),
+        ),
+      );
     }
   }
 

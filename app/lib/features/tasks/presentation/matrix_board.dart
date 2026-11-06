@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/drift/app_database.dart';
 import '../../../domain/tasks/eisenhower.dart';
 import '../application/tasks_providers.dart';
+import '../../../domain/sources/microsoft_source.dart';
 import 'matrix_task_row.dart';
 
 const double _pagePadding = 12;
@@ -279,10 +280,30 @@ class _DropZone extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return DragTarget<Task>(
-      onWillAcceptWithDetails: (details) => details.data.priority != priority,
+      onWillAcceptWithDetails: (details) {
+        final task = details.data;
+        if (task.priority == priority) return false;
+        final lists = ref.read(taskListsByIdProvider);
+        final list = task.listId == null ? null : lists[task.listId];
+        if (isMicrosoftTask(
+          taskMicrosoftAccount: task.microsoftAccount,
+          listMicrosoftAccount: list?.microsoftAccount,
+        )) {
+          return false;
+        }
+        return true;
+      },
       onAcceptWithDetails: (details) async {
         final task = details.data;
         if (task.priority == priority) return;
+        final lists = ref.read(taskListsByIdProvider);
+        final list = task.listId == null ? null : lists[task.listId];
+        if (isMicrosoftTask(
+          taskMicrosoftAccount: task.microsoftAccount,
+          listMicrosoftAccount: list?.microsoftAccount,
+        )) {
+          return;
+        }
         await ref
             .read(taskRepositoryProvider)
             .updateTask(task.id, priority: priority);

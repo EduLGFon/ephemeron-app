@@ -7,6 +7,7 @@ import '../../../core/ui/app_sheet.dart';
 import '../../../core/ui/escape_to_close.dart';
 import '../../../core/db/db_provider.dart';
 import '../../../data/drift/app_database.dart';
+import '../../../domain/sources/microsoft_source.dart';
 import '../../tasks/application/tasks_providers.dart';
 import '../../tasks/presentation/task_editor_sheet.dart';
 
@@ -71,6 +72,10 @@ class TaskActionSheet extends ConsumerWidget {
           );
         }
         final isFuture = _isFutureOccurrence(task);
+        final isRecurring = task.rrule != null && task.rrule!.isNotEmpty;
+        final currentKey = repo.currentTaskOccurrenceKey(task);
+        final isProjectedOccurrence =
+            isRecurring && occurrenceDate != currentKey;
         TaskList? list;
         for (final l in lists) {
           if (l.id == task.listId) {
@@ -79,6 +84,10 @@ class TaskActionSheet extends ConsumerWidget {
           }
         }
         final sourceLabel = list?.name ?? 'Tasks';
+        final isMs = isMicrosoftTask(
+          taskMicrosoftAccount: task.microsoftAccount,
+          listMicrosoftAccount: list?.microsoftAccount,
+        );
 
         DateTime? plannedDt;
         String? timeStr;
@@ -171,34 +180,53 @@ class TaskActionSheet extends ConsumerWidget {
                 ),
               ),
               const Divider(height: 1),
-              if (!isFuture) ...[
-                ListTile(
-                  leading: Icon(
-                    done ? Icons.undo_rounded : Icons.check_rounded,
+              if (!isMs) ...[
+                if (isProjectedOccurrence) ...[
+                  ListTile(
+                    leading: const Icon(Icons.check_rounded),
+                    title: const Text('Mark as concluded'),
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      await repo.completeTaskOccurrence(task, occurrenceDate);
+                    },
                   ),
-                  title: Text(
-                    done ? 'Mark as not concluded' : 'Mark as concluded',
+                  ListTile(
+                    leading: const Icon(Icons.block_rounded),
+                    title: const Text("Won't do"),
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      await repo.markWontDoTaskOccurrence(task, occurrenceDate);
+                    },
                   ),
-                  onTap: () async {
-                    Navigator.of(context).pop();
-                    if (done) {
-                      await repo.uncompleteTask(taskId);
-                    } else {
-                      await repo.completeTask(taskId);
-                    }
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.block_rounded),
-                  title: const Text("Won't do"),
-                  enabled: !wontDo,
-                  onTap: wontDo
-                      ? null
-                      : () async {
-                          Navigator.of(context).pop();
-                          await repo.markWontDo(taskId);
-                        },
-                ),
+                ] else ...[
+                  ListTile(
+                    leading: Icon(
+                      done ? Icons.undo_rounded : Icons.check_rounded,
+                    ),
+                    title: Text(
+                      done ? 'Mark as not concluded' : 'Mark as concluded',
+                    ),
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      if (done) {
+                        await repo.uncompleteTask(taskId);
+                      } else {
+                        await repo.completeTask(taskId);
+                      }
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.block_rounded),
+                    title: const Text("Won't do"),
+                    enabled: !wontDo,
+                    onTap: wontDo
+                        ? null
+                        : () async {
+                            Navigator.of(context).pop();
+                            await repo.markWontDo(taskId);
+                          },
+                  ),
+                ],
               ],
               ListTile(
                 leading: const Icon(Icons.open_in_new_rounded),
@@ -230,25 +258,38 @@ class TaskActionSheet extends ConsumerWidget {
                   return Column(
                     children: [
                       for (final s in subs)
-                        ListTile(
-                          leading: IconButton(
-                            icon: Icon(
-                              s.completedAt != null
-                                  ? Icons.check_circle_rounded
-                                  : Icons.radio_button_unchecked_rounded,
-                            ),
-                            onPressed: () async {
-                              if (s.completedAt != null) {
-                                await repo.uncompleteTask(s.id);
-                              } else {
-                                await repo.completeTask(s.id);
-                              }
-                            },
-                          ),
-                          title: Text(s.title),
-                          onTap: () {
-                            Navigator.of(context).pop();
-                            showTaskEditor(context, task: s);
+                        Builder(
+                          builder: (context) {
+                            final subMs = isMicrosoftTask(
+                              taskMicrosoftAccount: s.microsoftAccount,
+                              listMicrosoftAccount: list?.microsoftAccount,
+                            );
+                            final readOnly = isMs || subMs;
+                            return ListTile(
+                              leading: IconButton(
+                                icon: Icon(
+                                  s.completedAt != null
+                                      ? Icons.check_circle_rounded
+                                      : Icons.radio_button_unchecked_rounded,
+                                ),
+                                onPressed: readOnly
+                                    ? null
+                                    : () async {
+                                        if (s.completedAt != null) {
+                                          await repo.uncompleteTask(s.id);
+                                        } else {
+                                          await repo.completeTask(s.id);
+                                        }
+                                      },
+                              ),
+                              title: Text(s.title),
+                              onTap: readOnly
+                                  ? null
+                                  : () {
+                                      Navigator.of(context).pop();
+                                      showTaskEditor(context, task: s);
+                                    },
+                            );
                           },
                         ),
                     ],

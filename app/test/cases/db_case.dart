@@ -34,9 +34,9 @@ void main() {
     await db.close();
   });
 
-  test('schema version is 12', () async {
+  test('schema version is 13', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
-    expect(db.schemaVersion, 12);
+    expect(db.schemaVersion, 13);
     await db.close();
   });
 
@@ -99,6 +99,23 @@ void main() {
         )
         .get();
     expect(res, isNotEmpty);
+    await db.close();
+  });
+
+  test('task occurrence states table and index exist', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final table = await db
+        .customSelect(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='task_occurrence_states'",
+        )
+        .get();
+    expect(table, isNotEmpty);
+    final idx = await db
+        .customSelect(
+          "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_task_occurrence_states_series_date'",
+        )
+        .get();
+    expect(idx, isNotEmpty);
     await db.close();
   });
 }

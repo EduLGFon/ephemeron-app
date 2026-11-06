@@ -66,6 +66,11 @@ class _AppShellState extends ConsumerState<AppShell>
   Timer? _widgetRefreshTimer;
   late final Future<void> _restoreFuture;
   StreamSubscription<String>? _widgetActionSub;
+  late final Future<String?> _startupWidgetActionFuture;
+  String? _pendingWidgetAction;
+  bool _handlingWidgetAction = false;
+  String? _handledWidgetAction;
+
   void _scheduleWidgetRefresh() {
     _widgetRefreshTimer?.cancel();
     _widgetRefreshTimer = Timer(const Duration(seconds: 2), () async {
@@ -81,6 +86,9 @@ class _AppShellState extends ConsumerState<AppShell>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     HardwareKeyboard.instance.addHandler(_handleGlobalKey);
+    // Consume before restore applies state so a cold-start widget tap can
+    // suppress conflicting tab/calendar restore and then be applied after.
+    _startupWidgetActionFuture = SystemLauncher.consumeWidgetAction();
     _restoreFuture = _restoreSession();
     SystemLauncher.ensureWidgetActionHandler();
     _widgetActionSub = SystemLauncher.widgetActions.listen((action) {
@@ -185,48 +193,64 @@ class _AppShellState extends ConsumerState<AppShell>
   Future<void> _handleWidgetAction([String? pendingAction]) async {
     if (!mounted) return;
     final widgetAction =
-        pendingAction ?? await SystemLauncher.consumeWidgetAction();
+        pendingAction ??
+        _pendingWidgetAction ??
+        await SystemLauncher.consumeWidgetAction();
+    if (pendingAction == null) _pendingWidgetAction = null;
     debugPrint('[widget] action=$widgetAction mounted=$mounted');
     if (widgetAction == null || !mounted) return;
-    if (widgetAction == 'new_task') {
-      await showQuickAdd(context);
-      return;
-    } else if (widgetAction == 'search') {
-      GoRouter.of(context).push('/search');
-      try {
-        final repo = await ref.read(settingsRepositoryProvider.future);
-        await repo.setLastRoute('/search');
-      } catch (_) {}
-      return;
-    }
-    final tap = parseWeekWidgetAction(widgetAction);
-    debugPrint('[widget] parsed nav=${tap?.nav} day=${tap?.day}');
-    if (tap == null) return;
-    switch (tap.nav) {
-      case WeekWidgetNav.today:
-        await _openWeekCalendar(DateTime.now());
-      case WeekWidgetNav.day:
-        await _openWeekCalendar(tap.day ?? DateTime.now());
-      case WeekWidgetNav.prev:
+    if (_handlingWidgetAction) return;
+    if (_handledWidgetAction == widgetAction && pendingAction == null) return;
+    _handlingWidgetAction = true;
+    _handledWidgetAction = widgetAction;
+    try {
+      if (widgetAction == 'new_task') {
+        await showQuickAdd(context);
+        return;
+      } else if (widgetAction == 'search') {
+        GoRouter.of(context).push('/search');
         try {
-          final shifted = await ref
-              .read(homeWidgetDataBinderProvider)
-              .shiftWeekWidgetAnchor(-1);
-          debugPrint('[widget] shifted prev=$shifted');
-          if (mounted) await _openWeekCalendar(shifted);
-        } catch (e) {
-          debugPrint('[widget] shift prev failed: $e');
-        }
-      case WeekWidgetNav.next:
-        try {
-          final shifted = await ref
-              .read(homeWidgetDataBinderProvider)
-              .shiftWeekWidgetAnchor(1);
-          debugPrint('[widget] shifted next=$shifted');
-          if (mounted) await _openWeekCalendar(shifted);
-        } catch (e) {
-          debugPrint('[widget] shift next failed: $e');
-        }
+          final repo = await ref.read(settingsRepositoryProvider.future);
+          await repo.setLastRoute('/search');
+        } catch (_) {}
+        return;
+      }
+      final tap = parseWeekWidgetAction(widgetAction);
+      debugPrint('[widget] parsed nav=${tap?.nav} day=${tap?.day}');
+      if (tap == null) return;
+      switch (tap.nav) {
+        case WeekWidgetNav.today:
+          await _openWeekCalendar(DateTime.now());
+        case WeekWidgetNav.day:
+          await _openWeekCalendar(tap.day ?? DateTime.now());
+        case WeekWidgetNav.prev:
+          try {
+            final shifted = await ref
+                .read(homeWidgetDataBinderProvider)
+                .shiftWeekWidgetAnchor(-1);
+            debugPrint('[widget] shifted prev=$shifted');
+            if (mounted) await _openWeekCalendar(shifted);
+          } catch (e) {
+            debugPrint('[widget] shift prev failed: $e');
+          }
+        case WeekWidgetNav.next:
+          try {
+            final shifted = await ref
+                .read(homeWidgetDataBinderProvider)
+                .shiftWeekWidgetAnchor(1);
+            debugPrint('[widget] shifted next=$shifted');
+            if (mounted) await _openWeekCalendar(shifted);
+          } catch (e) {
+            debugPrint('[widget] shift next failed: $e');
+          }
+      }
+    } finally {
+      _handlingWidgetAction = false;
+      // Allow the same logical action string later (e.g. repeated taps
+      // across separate resume events) once this handling completes.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _handledWidgetAction = null;
+      });
     }
   }
 
@@ -249,31 +273,49 @@ class _AppShellState extends ConsumerState<AppShell>
 
   Future<void> _restoreSession() async {
     try {
+      String? startupWidgetAction;
+      try {
+        startupWidgetAction = await _startupWidgetActionFuture;
+      } catch (_) {}
+      if (!mounted) return;
+      final widgetOverridesRestore = widgetActionOverridesRestore(
+        startupWidgetAction,
+      );
+      final widgetOverridesCalendar = widgetActionTargetsCalendar(
+        startupWidgetAction,
+      );
+      if (startupWidgetAction != null) {
+        _pendingWidgetAction = startupWidgetAction;
+      }
       final repo = await ref.read(settingsRepositoryProvider.future);
       if (!mounted) return;
-      // Last tab.
-      final idx = repo.lastTabIndex.clamp(0, 6);
-      if (idx != widget.navigationShell.currentIndex) {
-        widget.navigationShell.goBranch(idx);
+      // Last tab. A widget tap that targets the calendar wins over restore.
+      if (!widgetOverridesCalendar) {
+        final idx = repo.lastTabIndex.clamp(0, 6);
+        if (idx != widget.navigationShell.currentIndex) {
+          widget.navigationShell.goBranch(idx);
+        }
       }
       // Calendar view + anchor + day count. This is the only restore step
       // the calendar needs before its first cache build.
-      try {
-        final view = CalendarViewKind.values.firstWhere(
-          (v) => v.name == repo.calendarView,
-          orElse: () => CalendarViewKind.month,
-        );
-        final anchorMs = repo.calendarAnchorMs;
-        final anchor = anchorMs == null
-            ? DateTime.now()
-            : DateTime.fromMillisecondsSinceEpoch(
-                anchorMs,
-                isUtc: true,
-              ).toLocal();
-        ref
-            .read(calendarStateProvider.notifier)
-            .restore(view, anchor, dayCount: repo.calendarDayCount);
-      } catch (_) {}
+      if (!widgetOverridesCalendar) {
+        try {
+          final view = CalendarViewKind.values.firstWhere(
+            (v) => v.name == repo.calendarView,
+            orElse: () => CalendarViewKind.month,
+          );
+          final anchorMs = repo.calendarAnchorMs;
+          final anchor = anchorMs == null
+              ? DateTime.now()
+              : DateTime.fromMillisecondsSinceEpoch(
+                  anchorMs,
+                  isUtc: true,
+                ).toLocal();
+          ref
+              .read(calendarStateProvider.notifier)
+              .restore(view, anchor, dayCount: repo.calendarDayCount);
+        } catch (_) {}
+      }
       ref.read(initialRestoreDoneProvider.notifier).markDone();
       // Drop expired drafts from previous sessions. Not needed for the
       // first calendar frame, so it runs after the restore flag is set.
@@ -305,27 +347,31 @@ class _AppShellState extends ConsumerState<AppShell>
       // Restore a previous Google sign-in so sync works after restart.
       await ref.read(googleAccountProvider.notifier).restore();
       if (!mounted) return;
-      // Pushed routes (search/settings) recorded before the kill.
-      final route = repo.lastRoute;
-      if (route == '/search' ||
-          route == '/settings' ||
-          route == '/alarm-settings') {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          try {
-            GoRouter.of(context).push(route!);
-          } catch (_) {}
-        });
-      } else if (route != null && route.startsWith('note:')) {
-        // Note editors reopen through the openSheet path below.
-      }
-      // Reopen the sheet/modal that was open at kill time.
-      final sheet = repo.openSheet;
-      if (sheet != null && sheet.isNotEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          _maybeReopenSheet(sheet);
-        });
+      // A widget tap requested explicit navigation; do not push restored
+      // routes or reopen sheets over it.
+      if (!widgetOverridesRestore) {
+        // Pushed routes (search/settings) recorded before the kill.
+        final route = repo.lastRoute;
+        if (route == '/search' ||
+            route == '/settings' ||
+            route == '/alarm-settings') {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            try {
+              GoRouter.of(context).push(route!);
+            } catch (_) {}
+          });
+        } else if (route != null && route.startsWith('note:')) {
+          // Note editors reopen through the openSheet path below.
+        }
+        // Reopen the sheet/modal that was open at kill time.
+        final sheet = repo.openSheet;
+        if (sheet != null && sheet.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _maybeReopenSheet(sheet);
+          });
+        }
       }
     } catch (_) {
       // Best-effort: restore must never block startup.

@@ -385,4 +385,54 @@ void main() {
     expect(byEvent.sourceType, 'event');
     expect(byTask.sourceType, 'task');
   });
+
+  test(
+    'projected recurring occurrence suppressed by per-occurrence state',
+    () async {
+      final db = _db();
+      addTearDown(db.close);
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      await db
+          .into(db.tasks)
+          .insert(
+            TasksCompanion.insert(
+              id: 'master',
+              title: const Value('Recur'),
+              plannedStart: const Value('2026-03-02T09:00'),
+              plannedEnd: const Value('2026-03-02T10:00'),
+              rrule: const Value('FREQ=DAILY;COUNT=3'),
+              seriesId: const Value('s1'),
+              recurrenceKey: const Value('2026-03-02'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      final repo = OccurrenceRepository(db);
+      await repo.rebuildWindow(
+        windowStartUtc: DateTime.utc(2026, 3, 1),
+        windowEndUtc: DateTime.utc(2026, 3, 10),
+      );
+      expect((await repo.occurrencesForDay('2026-03-03')).length, 1);
+
+      await db
+          .into(db.taskOccurrenceStates)
+          .insert(
+            TaskOccurrenceStatesCompanion.insert(
+              seriesId: 's1',
+              occurrenceDate: '2026-03-03',
+              status: 'completed',
+              updatedAt: now,
+            ),
+          );
+      expect(await repo.occurrencesForDay('2026-03-03'), isEmpty);
+      expect((await repo.occurrencesForDay('2026-03-02')).length, 1);
+
+      await (db.delete(db.taskOccurrenceStates)..where(
+            (s) =>
+                s.seriesId.equals('s1') & s.occurrenceDate.equals('2026-03-03'),
+          ))
+          .go();
+      expect((await repo.occurrencesForDay('2026-03-03')).length, 1);
+    },
+  );
 }

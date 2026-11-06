@@ -27,7 +27,11 @@
 
 ## Environment limits (no SDK/devices here; need owner machine)
 
-- Migration tests from previous schema versions: none yet (only v1 exists).
+- Migration tests from previous schema versions: v4->v5 alarm/countdown
+  coverage added (`alarm_migration_v4v5_case.dart`,
+  `migration_v4_v5_case.dart`) plus v7/v11 regression coverage
+  (`migration_v7_v11_regression_case.dart`). Full step-by-step schema
+  snapshot replay is not set up.
 - Week calendar home widget: Android grid/provider/layout added (7 day
   columns, all-day band, timed blocks, day tap deep link, 1dp minimum size).
   No Android SDK/device here, so the native build and launcher behavior are
@@ -53,15 +57,13 @@
 
 ## Open work
 
-- iOS home-screen widgets: add WidgetKit extension target, App Group, and SwiftUI widgets mirroring Android types.
-- Flashlight blink and MediaPlayer-on-alarm-stream sound; notification defaults
-  ship instead.
-- Alarms follow-up: done. Task custom reminder offsets (per-task JSON,
-  at-time default preserved), focus end alarm preset picker (stored per
-  session, scheduled with that style, cancelled on finish/discard), iOS
-  Critical Alerts entitlement (`ios/Runner/Runner.entitlements`, versioned via
-  .gitignore ladder) plus `AlarmScheduler.requestCriticalAlerts` and a
-  settings request button.
+- iOS home-screen widgets: not implemented here. Requires macOS + Xcode owner
+  work: WidgetKit extension target, App Group entitlement, signing, and
+  SwiftUI views mirroring the Android providers. See `docs/IOS_WIDGETS.md`.
+  Linux agents must not fabricate Xcode project integration.
+- Android alarm flashlight blink and MediaPlayer-on-alarm-stream sound are
+  implemented in `AlarmRingService` (native foreground service); reminder and
+  notification presets keep notification defaults. Unverified on device.
 - iOS owner steps (need Xcode Mac + Apple approval, unverifiable on Linux):
   select Runner.entitlements under Signing and Capabilities in Xcode
   (CODE_SIGN_ENTITLEMENTS), add a `requestCriticalAlerts` handler on the
@@ -69,14 +71,13 @@
   `UNUserNotificationCenter.current().requestAuthorization(options:
   [.alert, .sound, .criticalAlert])`, request the Critical Alerts entitlement
   in App Store Connect.
-- Alarm migration test v4->v5 (countdowns.alarm_preset, alarms_index
-  kind/title/preset): schema migrates, no dedicated migration test yet.
 
 ## Deep research remediation (partial)
 
 Remaining (not yet fixed):
 
-- Split files >300 lines and functions >50 lines (optional cleanup).
+- Split files >300 lines and functions >50 lines (in progress / being
+  addressed in the integration pass).
 
 ## Phase 10 (release hardening, owner checks)
 
@@ -153,25 +154,36 @@ Remaining (not yet fixed):
 
 ## Widget and sync handoff (2026-11-05)
 
-- Week widget: the image-fill fix is merged. On a Motorola One Fusion the
-  widget filled a 4x2 cell with the dark 3-day range, and the setup dialog
-  persisted theme/day count. Warm and cold launcher taps still did not apply
-  the requested day or previous/next range during testing: the intent reaches
-  MainActivity, but AppShell handles it after the async session restore and
-  the restore wins. Samsung SM A556E verification was interrupted by a USB
-  disconnect. Do not treat widget tap navigation as complete.
-- Microsoft sync: schema v12 and read-only pull are merged. The follow-up
-  worktree `microsoft-ui-sync` (global sync loop, source labels and pickers)
-  passes analysis and 356 tests but is not merged. Microsoft item edits and
-  completions remain local-only; hide or disable them before shipping.
+- Week widget: the image-fill fix is merged. App-shell widget tap handling was
+  updated so widget navigation is not overwritten by async session restore;
+  warm/cold launcher tap behavior still needs owner device verification. On a
+  Motorola One Fusion the widget filled a 4x2 cell and setup persisted
+  theme/day count; Samsung SM A556E verification was interrupted by a USB
+  disconnect.
+- Microsoft sync: schema v12, read-only pull, and the `microsoft-ui-sync`
+  follow-up (global sync loop, source labels and pickers) are merged
+  (c175177 / 9b051b7). Graph access remains read-only.
+- Microsoft item edits and completions are hidden/disabled in the UI (local-only
+  Graph writes not supported).
+- Microsoft remote deletions are reconciled conservatively for task lists and
+  tasks on successful full-scope/list fetches (dirty rows preserved). Event and
+  calendar remote deletions are still not reconciled because calendar view is
+  time-windowed.
 
 ## Microsoft sync foundation (2026-11-04)
 
-- Web sign-in still needs `app/web/auth.html` (or equivalent redirect page) and the Entra SPA redirect registration for `http://localhost:8080/auth.html`; the service already uses `AppConfig.microsoftWebRedirectUri`. Android is the primary verification target until then.
-
-- Task action sheet: projected future occurrences are read-only until per-occurrence completion is implemented (no completion/won't-do actions shown).
-
-- Microsoft pull is read-only: remote deletions are not reconciled yet, so a row that disappears from Graph stays locally until a later deletion pass. Microsoft-originated edits/completions are also local-only until Graph write support lands; hide or disable those actions for Microsoft items when sync is wired into the UI.
+- `app/web/auth.html` was added for the flutter_web_auth_2 web callback.
+  Entra SPA redirect registration for `http://localhost:8080/auth.html` is
+  still an owner console step; the service already uses
+  `AppConfig.microsoftWebRedirectUri`. Android is the primary verification
+  target until then.
+- Projected task occurrences support per-occurrence completion/won't-do state
+  (local-only). The calendar action sheet routes projected occurrences to
+  occurrence-aware actions; uncompleting a suppressed projected occurrence has
+  no calendar-surface undo yet (repository method exists).
+- Alarm migration v4->v5 is covered by automated tests, and the v7/v11
+  `occurrence_cache.source_type` duplicate-column migration bug is fixed with
+  regression coverage.
 
 ## Habit deletion (2026-11-05)
 

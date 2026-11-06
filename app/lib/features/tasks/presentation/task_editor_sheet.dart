@@ -13,6 +13,7 @@ import '../../../data/drift/app_database.dart';
 import '../../../domain/alarms/alarm_preset.dart';
 import '../../../domain/alarms/reminder.dart';
 import '../../../domain/recurrence/recurrence_rule.dart';
+import '../../../domain/sources/microsoft_source.dart';
 import '../../../domain/sources/source_label.dart';
 import '../../../domain/sources/source_move.dart';
 import '../../../core/platform/app_permissions.dart';
@@ -80,6 +81,23 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
   dynamic _settings;
 
   String get _draftEntityId => widget.task?.id ?? 'new';
+
+  bool get _isMicrosoftTask {
+    final t = widget.task;
+    if (t == null) return false;
+    final lists = ref.read(taskListsProvider).value ?? const <TaskList>[];
+    TaskList? list;
+    for (final l in lists) {
+      if (l.id == t.listId) {
+        list = l;
+        break;
+      }
+    }
+    return isMicrosoftTask(
+      taskMicrosoftAccount: t.microsoftAccount,
+      listMicrosoftAccount: list?.microsoftAccount,
+    );
+  }
 
   @override
   void initState() {
@@ -280,6 +298,14 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid recurrence rule.')),
+        );
+      }
+      return;
+    }
+    if (widget.task != null && _isMicrosoftTask) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Microsoft tasks cannot be edited.')),
         );
       }
       return;
@@ -594,7 +620,9 @@ class _TaskEditorState extends ConsumerState<_TaskEditor> {
               ),
               if (widget.task != null) _SubtaskSection(task: widget.task!),
               FilledButton(
-                onPressed: _save,
+                onPressed: (widget.task != null && _isMicrosoftTask)
+                    ? null
+                    : _save,
                 child: Text(widget.task == null ? 'Create' : 'Save'),
               ),
             ],
@@ -859,6 +887,13 @@ class _SubtaskSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final listsById = ref.watch(taskListsByIdProvider);
+    final parentMs = isMicrosoftTask(
+      taskMicrosoftAccount: task.microsoftAccount,
+      listMicrosoftAccount:
+          (task.listId == null ? null : listsById[task.listId])
+              ?.microsoftAccount,
+    );
     final subsAsync = ref.watch(subtasksProvider(task.id));
     return subsAsync.maybeWhen(
       data: (subs) {
@@ -868,25 +903,38 @@ class _SubtaskSection extends ConsumerWidget {
           children: [
             Text('Subtasks $done/${subs.length}'),
             for (final s in subs)
-              CheckboxListTile(
-                value: s.completedAt != null,
-                onChanged: (_) {
-                  final repo = ref.read(taskRepositoryProvider);
-                  if (s.completedAt != null) {
-                    repo.uncompleteTask(s.id);
-                  } else {
-                    repo.completeTask(s.id);
-                  }
+              Builder(
+                builder: (context) {
+                  final subList = s.listId == null ? null : listsById[s.listId];
+                  final subMs = isMicrosoftTask(
+                    taskMicrosoftAccount: s.microsoftAccount,
+                    listMicrosoftAccount: subList?.microsoftAccount,
+                  );
+                  final readOnly = parentMs || subMs;
+                  return CheckboxListTile(
+                    value: s.completedAt != null,
+                    onChanged: readOnly
+                        ? null
+                        : (_) {
+                            final repo = ref.read(taskRepositoryProvider);
+                            if (s.completedAt != null) {
+                              repo.uncompleteTask(s.id);
+                            } else {
+                              repo.completeTask(s.id);
+                            }
+                          },
+                    title: Text(s.title),
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                  );
                 },
-                title: Text(s.title),
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
               ),
-            TextButton.icon(
-              onPressed: () => showTaskEditor(context, parentId: task.id),
-              icon: const Icon(Icons.add),
-              label: const Text('Add subtask'),
-            ),
+            if (!parentMs)
+              TextButton.icon(
+                onPressed: () => showTaskEditor(context, parentId: task.id),
+                icon: const Icon(Icons.add),
+                label: const Text('Add subtask'),
+              ),
           ],
         );
       },

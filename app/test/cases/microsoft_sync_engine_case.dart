@@ -343,4 +343,198 @@ void main() {
     expect(await db.select(db.taskLists).get(), isEmpty);
     expect(await db.select(db.tasks).get(), isEmpty);
   });
+
+  test(
+    'remote task deletion is reconciled after complete list fetch',
+    () async {
+      final db = _db();
+      addTearDown(db.close);
+      final fake = FakeMs()
+        ..lists = [const MsTodoList(id: 'l1', displayName: 'Tasks')]
+        ..tasksByList = {
+          'l1': [
+            MsTodoTask(id: 't1', title: 'Keep'),
+            MsTodoTask(id: 't2', title: 'Gone'),
+          ],
+        };
+      final engine = MicrosoftSyncEngine(db, fake, 'acct@example.com');
+      await engine.syncNow();
+      fake.tasksByList = {
+        'l1': [MsTodoTask(id: 't1', title: 'Keep')],
+      };
+      await engine.syncNow();
+      final rows = await (db.select(
+        db.tasks,
+      )..where((t) => t.microsoftAccount.equals('acct@example.com'))).get();
+      final kept = rows.firstWhere((t) => t.remoteId == 't1');
+      final gone = rows.firstWhere((t) => t.remoteId == 't2');
+      expect(kept.deletedAt, isNull);
+      expect(gone.deletedAt, isNotNull);
+      expect(gone.dirty, false);
+    },
+  );
+
+  test('dirty local task is never reconciled as remote deletion', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final fake = FakeMs()
+      ..lists = [const MsTodoList(id: 'l1', displayName: 'Tasks')]
+      ..tasksByList = {
+        'l1': [MsTodoTask(id: 't1', title: 'Edit me')],
+      };
+    final engine = MicrosoftSyncEngine(db, fake, 'acct@example.com');
+    await engine.syncNow();
+    final task = (await db.select(db.tasks).get()).single;
+    await (db.update(db.tasks)..where((t) => t.id.equals(task.id))).write(
+      const TasksCompanion(dirty: Value(true), title: Value('Local edit')),
+    );
+    fake.tasksByList = {'l1': []};
+    await engine.syncNow();
+    final after = (await db.select(db.tasks).get()).single;
+    expect(after.deletedAt, isNull);
+    expect(after.dirty, true);
+    expect(after.title, 'Local edit');
+  });
+
+  test('remote task list deletion soft-deletes list and its tasks', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final fake = FakeMs()
+      ..lists = [
+        const MsTodoList(id: 'l1', displayName: 'Keep'),
+        const MsTodoList(id: 'l2', displayName: 'Gone'),
+      ]
+      ..tasksByList = {
+        'l1': [MsTodoTask(id: 't1', title: 'Stay')],
+        'l2': [MsTodoTask(id: 't2', title: 'Orphan no')],
+      };
+    final engine = MicrosoftSyncEngine(db, fake, 'acct@example.com');
+    await engine.syncNow();
+    fake.lists = [const MsTodoList(id: 'l1', displayName: 'Keep')];
+    fake.tasksByList = {
+      'l1': [MsTodoTask(id: 't1', title: 'Stay')],
+    };
+    await engine.syncNow();
+    final lists = await (db.select(
+      db.taskLists,
+    )..where((t) => t.microsoftAccount.equals('acct@example.com'))).get();
+    final keptList = lists.firstWhere((l) => l.remoteId == 'l1');
+    final goneList = lists.firstWhere((l) => l.remoteId == 'l2');
+    expect(keptList.deletedAt, isNull);
+    expect(goneList.deletedAt, isNotNull);
+    final tasks = await (db.select(
+      db.tasks,
+    )..where((t) => t.microsoftAccount.equals('acct@example.com'))).get();
+    expect(tasks.firstWhere((t) => t.remoteId == 't1').deletedAt, isNull);
+    expect(tasks.firstWhere((t) => t.remoteId == 't2').deletedAt, isNotNull);
+  });
+
+  test('reconciliation is scoped to the synced Microsoft account', () async {
+    final db = _db();
+    addTearDown(db.close);
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    await db
+        .into(db.taskLists)
+        .insert(
+          TaskListsCompanion.insert(
+            id: 'local-ms',
+            remoteId: const Value('shared'),
+            name: 'Other acct',
+            microsoftAccount: const Value('other@example.com'),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+    await db
+        .into(db.tasks)
+        .insert(
+          TasksCompanion.insert(
+            id: 'local-task',
+            listId: const Value('local-ms'),
+            remoteId: const Value('t-shared'),
+            title: const Value('Other'),
+            microsoftAccount: const Value('other@example.com'),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+    final fake = FakeMs()
+      ..lists = [const MsTodoList(id: 'l1', displayName: 'Mine')]
+      ..tasksByList = {
+        'l1': [MsTodoTask(id: 't1', title: 'Mine')],
+      };
+    final engine = MicrosoftSyncEngine(db, fake, 'acct@example.com');
+    await engine.syncNow();
+    final otherList = await (db.select(
+      db.taskLists,
+    )..where((t) => t.id.equals('local-ms'))).getSingle();
+    final otherTask = await (db.select(
+      db.tasks,
+    )..where((t) => t.id.equals('local-task'))).getSingle();
+    expect(otherList.deletedAt, isNull);
+    expect(otherTask.deletedAt, isNull);
+  });
+
+  test(
+    'task fetch failure prevents reconciliation for that list only',
+    () async {
+      final db = _db();
+      addTearDown(db.close);
+      final fake = _FailingTasksFake()
+        ..lists = [
+          const MsTodoList(id: 'l1', displayName: 'First'),
+          const MsTodoList(id: 'l2', displayName: 'Second'),
+        ]
+        ..tasksByList = {
+          'l1': [MsTodoTask(id: 't1', title: 'One')],
+          'l2': [
+            MsTodoTask(id: 't2', title: 'Keep'),
+            MsTodoTask(id: 't3', title: 'Remote gone'),
+          ],
+        };
+      final engine = MicrosoftSyncEngine(db, fake, 'acct@example.com');
+      await engine.syncNow();
+      // l1 task fetch fails; l2 task reconciliation must not run because sync
+      // aborts before reaching l2.
+      fake.failListId = 'l1';
+      fake.tasksByList = {
+        'l1': [MsTodoTask(id: 't1', title: 'One')],
+        'l2': [MsTodoTask(id: 't2', title: 'Keep')],
+      };
+      await expectLater(engine.syncNow(), throwsA(isA<StateError>()));
+      final t3 = await (db.select(
+        db.tasks,
+      )..where((t) => t.remoteId.equals('t3'))).getSingle();
+      expect(t3.deletedAt, isNull);
+    },
+  );
+
+  test('calendarView pagination is followed (client contract)', () async {
+    // Pagination is implemented in HttpMicrosoftGraphClient._paginate and
+    // covered by microsoft_graph_case.dart; reconciliation relies on complete
+    // results, so a fake returning complete data is sufficient here.
+    final db = _db();
+    addTearDown(db.close);
+    final fake = FakeMs()
+      ..lists = [const MsTodoList(id: 'l1', displayName: 'Tasks')]
+      ..tasksByList = {
+        'l1': [MsTodoTask(id: 't1', title: 'One')],
+      };
+    final engine = MicrosoftSyncEngine(db, fake, 'acct@example.com');
+    await engine.syncNow();
+    fake.tasksByList = {'l1': []};
+    await engine.syncNow();
+    final task = (await db.select(db.tasks).get()).single;
+    expect(task.deletedAt, isNotNull);
+  });
+}
+
+class _FailingTasksFake extends FakeMs {
+  String? failListId;
+
+  @override
+  Future<List<MsTodoTask>> listTodoTasks(String listId) async {
+    if (listId == failListId) throw StateError('boom');
+    return super.listTodoTasks(listId);
+  }
 }

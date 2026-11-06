@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/drift/app_database.dart';
 import '../../../domain/sources/source_label.dart';
+import '../../../domain/sources/microsoft_source.dart';
 import '../../../domain/tasks/task_sort.dart';
 import '../../settings/application/settings_providers.dart';
 import '../../sync/application/pending_operations.dart';
@@ -321,13 +322,25 @@ class TasksScreen extends ConsumerWidget {
   ) async {
     final repo = ref.read(taskRepositoryProvider);
     final today = _today();
+    var count = 0;
     for (final t in overdue) {
+      final list = t.listId == null
+          ? null
+          : ref.read(taskListsByIdProvider)[t.listId];
+      if (isMicrosoftTask(
+        taskMicrosoftAccount: t.microsoftAccount,
+        listMicrosoftAccount: list?.microsoftAccount,
+      )) {
+        continue;
+      }
       await repo.updateTask(t.id, dueDate: () => today);
+      count++;
     }
+    if (count == 0) return;
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Rescheduled ${overdue.length} tasks')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Rescheduled $count tasks')));
     }
   }
 
@@ -466,7 +479,12 @@ class _TaskTile extends ConsumerWidget {
         microsoftAccount: list?.microsoftAccount,
       ),
     );
+    final isMs = isMicrosoftTask(
+      taskMicrosoftAccount: task.microsoftAccount,
+      listMicrosoftAccount: list?.microsoftAccount,
+    );
     return Dismissible(
+      direction: isMs ? DismissDirection.none : DismissDirection.horizontal,
       key: ValueKey(task.id),
       background: Container(
         color: Colors.green,
@@ -481,6 +499,7 @@ class _TaskTile extends ConsumerWidget {
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       confirmDismiss: (dir) async {
+        if (isMs) return false;
         final repo = ref.read(taskRepositoryProvider);
         if (dir == DismissDirection.startToEnd) {
           await repo.completeTask(task.id);
@@ -521,23 +540,25 @@ class _TaskTile extends ConsumerWidget {
       child: ListTile(
         leading: Checkbox(
           value: false,
-          onChanged: (_) async {
-            final repo = ref.read(taskRepositoryProvider);
-            await repo.completeTask(task.id);
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Completed "${task.title}"'),
-                  duration: const Duration(seconds: 6),
-                  persist: false,
-                  action: SnackBarAction(
-                    label: 'Undo',
-                    onPressed: () => repo.uncompleteTask(task.id),
-                  ),
-                ),
-              );
-            }
-          },
+          onChanged: isMs
+              ? null
+              : (_) async {
+                  final repo = ref.read(taskRepositoryProvider);
+                  await repo.completeTask(task.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Completed "${task.title}"'),
+                        duration: const Duration(seconds: 6),
+                        persist: false,
+                        action: SnackBarAction(
+                          label: 'Undo',
+                          onPressed: () => repo.uncompleteTask(task.id),
+                        ),
+                      ),
+                    );
+                  }
+                },
         ),
         title: Text(
           task.title,
@@ -545,7 +566,7 @@ class _TaskTile extends ConsumerWidget {
         ),
         subtitle: _subtitle(context, ref, source),
         trailing: _MoveButtons(task: task),
-        onTap: () => showTaskEditor(context, task: task),
+        onTap: isMs ? null : () => showTaskEditor(context, task: task),
       ),
     );
   }
@@ -643,15 +664,22 @@ class _MoveButtons extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final list = task.listId == null
+        ? null
+        : ref.watch(taskListsByIdProvider)[task.listId];
+    final isMs = isMicrosoftTask(
+      taskMicrosoftAccount: task.microsoftAccount,
+      listMicrosoftAccount: list?.microsoftAccount,
+    );
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
           icon: const Icon(Icons.drive_file_move_outlined),
           tooltip: 'Move to list',
-          onPressed: () => _move(context, ref),
+          onPressed: isMs ? null : () => _move(context, ref),
         ),
-        if (task.rrule != null && task.rrule!.isNotEmpty)
+        if (task.rrule != null && task.rrule!.isNotEmpty && !isMs)
           IconButton(
             icon: const Icon(Icons.skip_next),
             tooltip: 'Skip occurrence',
@@ -759,10 +787,20 @@ class _CompletedScreen extends ConsumerWidget {
               itemBuilder: (context, i) {
                 final t = tasks[i];
                 final list = t.listId == null ? null : listsById[t.listId];
+                final isMs = isMicrosoftTask(
+                  taskMicrosoftAccount: t.microsoftAccount,
+                  listMicrosoftAccount: list?.microsoftAccount,
+                );
                 final source = sourceLabel(
                   name: list?.name,
-                  account: t.googleAccount,
-                  fallbackAccount: list?.googleAccount,
+                  account: accountForSource(
+                    googleAccount: t.googleAccount,
+                    microsoftAccount: t.microsoftAccount,
+                  ),
+                  fallbackAccount: accountForSource(
+                    googleAccount: list?.googleAccount,
+                    microsoftAccount: list?.microsoftAccount,
+                  ),
                 );
                 return ListTile(
                   leading: const Icon(Icons.check_circle_outline),
@@ -775,12 +813,14 @@ class _CompletedScreen extends ConsumerWidget {
                           children: [
                             if (source != null)
                               InkWell(
-                                onTap: () => pickAndMoveTask(
-                                  context,
-                                  ref,
-                                  taskId: t.id,
-                                  currentListId: t.listId,
-                                ),
+                                onTap: isMs
+                                    ? null
+                                    : () => pickAndMoveTask(
+                                        context,
+                                        ref,
+                                        taskId: t.id,
+                                        currentListId: t.listId,
+                                      ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -799,8 +839,11 @@ class _CompletedScreen extends ConsumerWidget {
                   trailing: IconButton(
                     icon: const Icon(Icons.undo),
                     tooltip: 'Reopen',
-                    onPressed: () =>
-                        ref.read(taskRepositoryProvider).uncompleteTask(t.id),
+                    onPressed: isMs
+                        ? null
+                        : () => ref
+                              .read(taskRepositoryProvider)
+                              .uncompleteTask(t.id),
                   ),
                 );
               },

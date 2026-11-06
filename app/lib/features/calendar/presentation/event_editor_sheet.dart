@@ -14,6 +14,7 @@ import '../../../data/drift/app_database.dart';
 import '../../../data/repositories/event_repository.dart';
 import '../../../domain/alarms/alarm_preset.dart';
 import '../../../domain/alarms/reminder.dart';
+import '../../../domain/sources/microsoft_source.dart';
 import '../../../domain/sources/source_label.dart';
 import '../../../domain/sources/source_move.dart';
 import '../../../core/platform/app_permissions.dart';
@@ -123,6 +124,32 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
   dynamic _settings;
 
   String get _draftEntityId => widget.event?.id ?? 'new';
+
+  bool get _isMicrosoftEvent {
+    final e = widget.event;
+    if (e == null) return false;
+    final cals = ref.read(calendarsProvider).value ?? const <Calendar>[];
+    Calendar? cal;
+    for (final c in cals) {
+      if (c.id == e.calendarId) {
+        cal = c;
+        break;
+      }
+    }
+    if (cal == null && _calendarId != null) {
+      for (final c in cals) {
+        if (c.id == _calendarId) {
+          cal = c;
+          break;
+        }
+      }
+    }
+    return isMicrosoftEvent(
+      eventMicrosoftAccount: e.microsoftAccount,
+      calendarSource: cal?.source,
+      calendarMicrosoftAccount: cal?.microsoftAccount,
+    );
+  }
 
   @override
   void initState() {
@@ -429,6 +456,14 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
         fullScreen: preset?.usesFullScreen ?? false,
       );
       if (!mounted) return;
+    }
+    if (widget.event != null && _isMicrosoftEvent) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Microsoft events cannot be edited.')),
+        );
+      }
+      return;
     }
     final repo = ref.read(eventRepositoryProvider);
     final existing = widget.event;
@@ -1129,7 +1164,9 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
               ),
               const SizedBox(height: 12),
               FilledButton(
-                onPressed: _save,
+                onPressed: (widget.event != null && _isMicrosoftEvent)
+                    ? null
+                    : _save,
                 child: Text(widget.event == null ? 'Create' : 'Save'),
               ),
             ],

@@ -145,3 +145,15 @@ WeekWidgetTap? parseWeekWidgetAction(String? action) {
   }
   return null;
 }
+
+/// True for widget actions that request explicit navigation and must not be
+/// overwritten by async session restore (tab/calendar/route/sheet state).
+bool widgetActionOverridesRestore(String? action) {
+  if (action == null || action.isEmpty) return false;
+  if (action == 'new_task' || action == 'search') return true;
+  return parseWeekWidgetAction(action) != null;
+}
+
+/// True when a widget action targets calendar view/anchor state.
+bool widgetActionTargetsCalendar(String? action) =>
+    parseWeekWidgetAction(action) != null;

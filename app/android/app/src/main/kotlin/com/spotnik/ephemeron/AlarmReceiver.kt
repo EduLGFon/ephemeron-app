@@ -70,6 +70,7 @@ class AlarmActionReceiver : BroadcastReceiver() {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE)
             as android.app.NotificationManager
         nm.cancel(rc)
+        try { AlarmRingService.stop(context, rc) } catch (_: Exception) {}
         when (intent.action) {
             ACTION_SNOOZE -> {
                 val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager

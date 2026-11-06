@@ -31,6 +31,7 @@ part 'app_database.g.dart';
     SyncState,
     PendingOperations,
     Drafts,
+    TaskOccurrenceStates,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -39,7 +40,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -107,7 +108,6 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(tasks, tasks.plannedEnd);
         await m.addColumn(tasks, tasks.seriesId);
         await m.addColumn(tasks, tasks.recurrenceKey);
-        await m.addColumn(occurrenceCache, occurrenceCache.sourceType);
         await customStatement(
           "UPDATE tasks SET series_id = id, recurrence_key = COALESCE(planned_date, due_date) WHERE rrule IS NOT NULL AND rrule <> '';",
         );
@@ -122,6 +122,12 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(events, events.microsoftAccount);
         await m.addColumn(taskLists, taskLists.microsoftAccount);
         await m.addColumn(tasks, tasks.microsoftAccount);
+      }
+      if (from < 13) {
+        await m.createTable(taskOccurrenceStates);
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_task_occurrence_states_series_date ON task_occurrence_states(series_id, occurrence_date);',
+        );
       }
     },
     beforeOpen: (details) async {
@@ -172,6 +178,9 @@ Future<void> _createIndexesAndFts(AppDatabase db) async {
   );
   await db.customStatement(
     'CREATE INDEX IF NOT EXISTS idx_pending_operations_scheduled ON pending_operations(scheduled_at);',
+  );
+  await db.customStatement(
+    'CREATE INDEX IF NOT EXISTS idx_task_occurrence_states_series_date ON task_occurrence_states(series_id, occurrence_date);',
   );
 
   await db.customStatement(

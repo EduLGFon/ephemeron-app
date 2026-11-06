@@ -67,6 +67,16 @@ Future<void> _seed(AppDatabase db) async {
       .into(db.taskTags)
       .insert(TaskTagsCompanion.insert(taskId: 'task1', tagId: 'tag1'));
   await db
+      .into(db.taskOccurrenceStates)
+      .insert(
+        TaskOccurrenceStatesCompanion.insert(
+          seriesId: 'series-backup',
+          occurrenceDate: '2026-03-05',
+          status: 'completed',
+          updatedAt: now,
+        ),
+      );
+  await db
       .into(db.calendars)
       .insert(
         CalendarsCompanion.insert(
@@ -144,6 +154,7 @@ Future<Map<String, int>> _counts(AppDatabase db) async {
     'task_lists': await n(db.taskLists),
     'tasks': await n(db.tasks),
     'task_tags': await n(db.taskTags),
+    'task_occurrence_states': await n(db.taskOccurrenceStates),
     'tags': await n(db.tags),
     'habit_sections': await n(db.habitSections),
     'habits': await n(db.habits),
@@ -200,6 +211,10 @@ void main() {
       db2.events,
     )..where((e) => e.id.equals('event1'))).getSingle();
     expect(event.title, 'Dentist');
+    final occState = await db2.select(db2.taskOccurrenceStates).getSingle();
+    expect(occState.seriesId, 'series-backup');
+    expect(occState.occurrenceDate, '2026-03-05');
+    expect(occState.status, 'completed');
   });
 
   test('restore rejects bad input with typed errors', () async {

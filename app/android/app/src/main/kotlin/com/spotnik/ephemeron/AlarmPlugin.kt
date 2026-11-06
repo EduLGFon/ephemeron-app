@@ -69,74 +69,82 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
             )
         }
 
+        fun buildNotification(
+        context: Context,
+        requestCode: Int,
+        title: String,
+        preset: String,
+        body: String = "",
+        kind: String = "alarm",
+        fullScreen: Boolean = true,
+    ): android.app.Notification {
+        val norm = normalizePreset(preset)
+        val contentIntent = PendingIntent.getActivity(
+            context, requestCode,
+            Intent(context, MainActivity::class.java).apply {
+                putExtra("ring", true)
+                putExtra("requestCode", requestCode)
+                putExtra("title", title)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val snoozeIntent = PendingIntent.getBroadcast(
+            context, requestCode,
+            Intent(context, AlarmActionReceiver::class.java).apply {
+                action = AlarmActionReceiver.ACTION_SNOOZE
+                putExtra("requestCode", requestCode)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val doneIntent = PendingIntent.getBroadcast(
+            context, requestCode + 500000,
+            Intent(context, AlarmActionReceiver::class.java).apply {
+                action = AlarmActionReceiver.ACTION_DONE
+                putExtra("requestCode", requestCode)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val isReminder = kind == "reminder"
+        val wantFullScreen = !isReminder && fullScreen && usesFullScreen(norm)
+        val defaults = when {
+            isReminder || norm == "notification" -> NotificationCompat.DEFAULT_SOUND
+            else -> NotificationCompat.DEFAULT_VIBRATE
+        }
+        val text = when {
+            body.isNotEmpty() -> body
+            isReminder -> "Reminder"
+            norm == "full_long" -> "Alarm - long sound"
+            norm == "full_short" -> "Alarm"
+            else -> "Notification"
+        }
+        val builder = NotificationCompat.Builder(context, "alarm_$norm")
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setPriority(
+                if (wantFullScreen) NotificationCompat.PRIORITY_MAX
+                else NotificationCompat.PRIORITY_HIGH
+            )
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setDefaults(defaults)
+            .setContentIntent(contentIntent)
+            .setAutoCancel(!wantFullScreen)
+            .setOngoing(wantFullScreen)
+            .addAction(android.R.drawable.ic_menu_recent_history, "Snooze 10 min", snoozeIntent)
+            .addAction(android.R.drawable.ic_menu_agenda, "Done", doneIntent)
+        if (wantFullScreen) {
+            builder.setFullScreenIntent(contentIntent, true)
+        }
+        return builder.build()
+    }
+
         fun fire(context: Context, requestCode: Int, title: String, preset: String, body: String = "", kind: String = "alarm", fullScreen: Boolean = true) {
             notifyChannels(context)
-            val norm = normalizePreset(preset)
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val contentIntent = PendingIntent.getActivity(
-                context, requestCode,
-                Intent(context, MainActivity::class.java).apply {
-                    putExtra("ring", true)
-                    putExtra("requestCode", requestCode)
-                    putExtra("title", title)
-                },
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            val snoozeIntent = PendingIntent.getBroadcast(
-                context, requestCode,
-                Intent(context, AlarmActionReceiver::class.java).apply {
-                    action = AlarmActionReceiver.ACTION_SNOOZE
-                    putExtra("requestCode", requestCode)
-                },
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            val doneIntent = PendingIntent.getBroadcast(
-                context, requestCode + 500000,
-                Intent(context, AlarmActionReceiver::class.java).apply {
-                    action = AlarmActionReceiver.ACTION_DONE
-                    putExtra("requestCode", requestCode)
-                },
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            val isReminder = kind == "reminder"
-            // Reminders and the notification preset never use full-screen:
-            // plain notification with short sound. Full-screen presets use
-            // fullScreenIntent; Android shows a heads-up notification instead
-            // while the phone is in use.
-            val wantFullScreen = !isReminder && fullScreen && usesFullScreen(norm)
-            val defaults = when {
-                isReminder || norm == "notification" -> NotificationCompat.DEFAULT_SOUND
-                norm == "full_short" -> NotificationCompat.DEFAULT_SOUND or NotificationCompat.DEFAULT_VIBRATE
-                else -> NotificationCompat.DEFAULT_SOUND or NotificationCompat.DEFAULT_VIBRATE
-            }
-            val text = when {
-                body.isNotEmpty() -> body
-                isReminder -> "Reminder"
-                norm == "full_long" -> "Alarm - long sound"
-                norm == "full_short" -> "Alarm"
-                else -> "Notification"
-            }
-            val builder = NotificationCompat.Builder(context, "alarm_$norm")
-                .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-                .setContentTitle(title)
-                .setContentText(text)
-                .setPriority(
-                    if (wantFullScreen) NotificationCompat.PRIORITY_MAX
-                    else NotificationCompat.PRIORITY_HIGH
-                )
-                .setCategory(NotificationCompat.CATEGORY_ALARM)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setDefaults(defaults)
-                .setContentIntent(contentIntent)
-                .setAutoCancel(!wantFullScreen)
-                .setOngoing(wantFullScreen)
-                .addAction(android.R.drawable.ic_menu_recent_history, "Snooze 10 min", snoozeIntent)
-                .addAction(android.R.drawable.ic_menu_agenda, "Done", doneIntent)
-            if (wantFullScreen) {
-                builder.setFullScreenIntent(contentIntent, true)
-            }
-            nm.notify(requestCode, builder.build())
+            nm.notify(requestCode, buildNotification(context, requestCode, title, preset, body, kind, fullScreen))
             AlarmStore.markState(context, requestCode, "fired")
+            AlarmRingService.start(context, requestCode, title, preset, body, kind, fullScreen)
         }
     }
 
@@ -229,6 +237,7 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
         if (intent != null) am.cancel(intent)
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.cancel(rc)
+        AlarmRingService.stop(context, rc)
         AlarmStore.markState(context, rc, "cancelled")
     }
 }

@@ -632,4 +632,60 @@ void main() {
     expect(tasks.single.plannedEnd, '2026-03-03T10:00');
     expect(tasks.single.completedAt, isNull);
   });
+
+  test(
+    'projected occurrence state is local-only and does not advance series',
+    () async {
+      final db = _db();
+      addTearDown(db.close);
+      final repo = TaskRepository(db);
+      final id = await repo.createTask(
+        title: 'Recur',
+        dueDate: '2026-03-02',
+        rrule: 'FREQ=DAILY',
+        repeatMode: 'from_due_date',
+      );
+      await (db.delete(db.outbox)).go();
+      await (db.update(db.tasks)..where((t) => t.id.equals(id))).write(
+        const TasksCompanion(dirty: Value(false)),
+      );
+      final task = await (db.select(
+        db.tasks,
+      )..where((t) => t.id.equals(id))).getSingle();
+
+      await repo.completeTaskOccurrence(task, '2026-03-10');
+      var states = await db.select(db.taskOccurrenceStates).get();
+      expect(states, hasLength(1));
+      expect(states.single.seriesId, task.seriesId ?? task.id);
+      expect(states.single.occurrenceDate, '2026-03-10');
+      expect(states.single.status, 'completed');
+      var row = await (db.select(
+        db.tasks,
+      )..where((t) => t.id.equals(id))).getSingle();
+      expect(row.completedAt, isNull);
+      expect(row.dirty, isFalse);
+      expect(row.dueDate, '2026-03-02');
+      expect(await db.select(db.outbox).get(), isEmpty);
+
+      await repo.markWontDoTaskOccurrence(task, '2026-03-11');
+      states = await db.select(db.taskOccurrenceStates).get();
+      expect(
+        states.map((s) => s.occurrenceDate),
+        containsAll(['2026-03-10', '2026-03-11']),
+      );
+      expect(
+        states.firstWhere((s) => s.occurrenceDate == '2026-03-11').status,
+        'wont_do',
+      );
+
+      await repo.uncompleteTaskOccurrence(task, '2026-03-10');
+      states = await db.select(db.taskOccurrenceStates).get();
+      expect(states.map((s) => s.occurrenceDate), ['2026-03-11']);
+      row = await (db.select(
+        db.tasks,
+      )..where((t) => t.id.equals(id))).getSingle();
+      expect(row.completedAt, isNull);
+      expect(await db.select(db.outbox).get(), isEmpty);
+    },
+  );
 }
