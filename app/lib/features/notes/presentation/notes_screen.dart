@@ -25,6 +25,7 @@ import '../application/notes_providers.dart';
 import 'note_editor_screen.dart';
 
 part 'notes_screen/notes_screen_view.dart';
+part 'notes_screen/notes_list.dart';
 part 'notes_screen/breadcrumbs.dart';
 part 'notes_screen/search_results.dart';
 part 'notes_screen/trash_screen.dart';
