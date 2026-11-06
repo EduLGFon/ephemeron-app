@@ -16,6 +16,14 @@ import java.io.File
 class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandler {
     companion object {
         const val CHANNEL = "ephemeron/alarms"
+        const val EXTRA_REQUEST_CODE = "requestCode"
+        const val EXTRA_TITLE = "title"
+        const val EXTRA_PRESET = "preset"
+        const val EXTRA_BODY = "body"
+        const val EXTRA_KIND = "kind"
+        const val EXTRA_FULL_SCREEN = "fullScreen"
+        const val EXTRA_SOURCE_TYPE = "sourceType"
+        const val EXTRA_SOURCE_ID = "sourceId"
 
         /** Current preset ids: notification, full_short, full_long.
          * Legacy ids (light/medium/strong/constant/habit/focus) still map. */
@@ -35,6 +43,13 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
         fun registerWith(engine: FlutterEngine, context: Context) {
             val channel = MethodChannel(engine.dartExecutor.binaryMessenger, CHANNEL)
             channel.setMethodCallHandler(AlarmPlugin(context))
+        }
+
+        fun baseSourceId(sourceId: String): String {
+            val at = sourceId.indexOf('@')
+            if (at >= 0) return sourceId.substring(0, at)
+            val hash = sourceId.indexOf('#')
+            return if (hash >= 0) sourceId.substring(0, hash) else sourceId
         }
 
         fun notifyChannels(context: Context) {
@@ -69,6 +84,34 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
             )
         }
 
+        private fun putAlarmExtras(
+            intent: Intent,
+            requestCode: Int,
+            title: String,
+            preset: String,
+            body: String = "",
+            kind: String = "alarm",
+            fullScreen: Boolean = true,
+            sourceType: String = "",
+            sourceId: String = "",
+        ) {
+            intent.putExtra(EXTRA_REQUEST_CODE, requestCode)
+            intent.putExtra(EXTRA_TITLE, title)
+            intent.putExtra(EXTRA_PRESET, preset)
+            intent.putExtra(EXTRA_BODY, body)
+            intent.putExtra(EXTRA_KIND, kind)
+            intent.putExtra(EXTRA_FULL_SCREEN, fullScreen)
+            intent.putExtra(EXTRA_SOURCE_TYPE, sourceType)
+            intent.putExtra(EXTRA_SOURCE_ID, sourceId)
+        }
+
+        private fun isNumericGoalHabit(context: Context, sourceType: String, sourceId: String): Boolean {
+            if (sourceType != "habit" && sourceType != "habit_reminder") return false
+            val base = baseSourceId(sourceId)
+            if (base.isEmpty()) return false
+            return AlarmStore.habitGoalAmount(context, base) > 0.0
+        }
+
         fun buildNotification(
         context: Context,
         requestCode: Int,
@@ -77,33 +120,49 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
         body: String = "",
         kind: String = "alarm",
         fullScreen: Boolean = true,
+        sourceType: String = "",
+        sourceId: String = "",
     ): android.app.Notification {
         val norm = normalizePreset(preset)
         val contentIntent = PendingIntent.getActivity(
             context, requestCode,
             Intent(context, MainActivity::class.java).apply {
                 putExtra("ring", true)
-                putExtra("requestCode", requestCode)
-                putExtra("title", title)
+                putExtra(EXTRA_REQUEST_CODE, requestCode)
+                putExtra(EXTRA_TITLE, title)
+                putExtra(EXTRA_SOURCE_TYPE, sourceType)
+                putExtra(EXTRA_SOURCE_ID, sourceId)
+                putExtra(EXTRA_KIND, kind)
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val snoozeIntent = PendingIntent.getBroadcast(
-            context, requestCode,
-            Intent(context, AlarmActionReceiver::class.java).apply {
-                action = AlarmActionReceiver.ACTION_SNOOZE
-                putExtra("requestCode", requestCode)
-            },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val doneIntent = PendingIntent.getBroadcast(
-            context, requestCode + 500000,
-            Intent(context, AlarmActionReceiver::class.java).apply {
-                action = AlarmActionReceiver.ACTION_DONE
-                putExtra("requestCode", requestCode)
-            },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+
+        fun broadcastAction(action: String, codeOffset: Int): PendingIntent {
+            return PendingIntent.getBroadcast(
+                context, requestCode + codeOffset,
+                Intent(context, AlarmActionReceiver::class.java).apply {
+                    this.action = action
+                    putAlarmExtras(this, requestCode, title, preset, body, kind, fullScreen, sourceType, sourceId)
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+
+        fun activityAction(action: String, codeOffset: Int): PendingIntent {
+            return PendingIntent.getActivity(
+                context, requestCode + codeOffset,
+                Intent(context, MainActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    putExtra("alarm_action", action)
+                    putAlarmExtras(this, requestCode, title, preset, body, kind, fullScreen, sourceType, sourceId)
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+
+        val snoozeIntent = broadcastAction(AlarmActionReceiver.ACTION_SNOOZE, 0)
+        val dismissIntent = broadcastAction(AlarmActionReceiver.ACTION_DISMISS, 700000)
+        val doneBroadcast = broadcastAction(AlarmActionReceiver.ACTION_DONE, 500000)
         val isReminder = kind == "reminder"
         val wantFullScreen = !isReminder && fullScreen && usesFullScreen(norm)
         val defaults = when {
@@ -131,20 +190,58 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
             .setContentIntent(contentIntent)
             .setAutoCancel(!wantFullScreen)
             .setOngoing(wantFullScreen)
-            .addAction(android.R.drawable.ic_menu_recent_history, "Snooze 10 min", snoozeIntent)
-            .addAction(android.R.drawable.ic_menu_agenda, "Done", doneIntent)
+
+        val st = sourceType
+        val isTask = st == "task" || st == "task_reminder" || st == "task_due_tomorrow"
+        val isHabit = st == "habit" || st == "habit_reminder"
+        when {
+            isTask -> {
+                builder.addAction(android.R.drawable.ic_menu_agenda, "Done", activityAction(AlarmActionReceiver.ACTION_DONE, 500000))
+                builder.addAction(android.R.drawable.ic_menu_recent_history, "Snooze", snoozeIntent)
+                builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Dismiss", dismissIntent)
+            }
+            isHabit && isNumericGoalHabit(context, st, sourceId) -> {
+                builder.addAction(android.R.drawable.ic_input_add, "+1", activityAction(AlarmActionReceiver.ACTION_PLUS_ONE, 800000))
+                builder.addAction(android.R.drawable.ic_menu_recent_history, "Snooze", snoozeIntent)
+                builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Dismiss", dismissIntent)
+            }
+            isHabit -> {
+                builder.addAction(android.R.drawable.ic_menu_agenda, "Done", activityAction(AlarmActionReceiver.ACTION_DONE, 500000))
+                builder.addAction(android.R.drawable.ic_menu_recent_history, "Snooze", snoozeIntent)
+                builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Dismiss", dismissIntent)
+            }
+            st.startsWith("event") || st.startsWith("countdown") -> {
+                builder.addAction(android.R.drawable.ic_menu_recent_history, "Snooze", snoozeIntent)
+                builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Dismiss", dismissIntent)
+            }
+            else -> {
+                builder.addAction(android.R.drawable.ic_menu_recent_history, "Snooze 10 min", snoozeIntent)
+                builder.addAction(android.R.drawable.ic_menu_agenda, "Done", doneBroadcast)
+                builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Dismiss", dismissIntent)
+            }
+        }
         if (wantFullScreen) {
             builder.setFullScreenIntent(contentIntent, true)
         }
         return builder.build()
     }
 
-        fun fire(context: Context, requestCode: Int, title: String, preset: String, body: String = "", kind: String = "alarm", fullScreen: Boolean = true) {
+        fun fire(
+            context: Context,
+            requestCode: Int,
+            title: String,
+            preset: String,
+            body: String = "",
+            kind: String = "alarm",
+            fullScreen: Boolean = true,
+            sourceType: String = "",
+            sourceId: String = "",
+        ) {
             notifyChannels(context)
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            nm.notify(requestCode, buildNotification(context, requestCode, title, preset, body, kind, fullScreen))
+            nm.notify(requestCode, buildNotification(context, requestCode, title, preset, body, kind, fullScreen, sourceType, sourceId))
             AlarmStore.markState(context, requestCode, "fired")
-            AlarmRingService.start(context, requestCode, title, preset, body, kind, fullScreen)
+            AlarmRingService.start(context, requestCode, title, preset, body, kind, fullScreen, sourceType, sourceId)
         }
     }
 
@@ -162,7 +259,9 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
                 val kind = call.argument<String>("kind") ?: "alarm"
                 val fullScreen = call.argument<Boolean>("fullScreen")
                     ?: usesFullScreen(preset)
-                schedule(rc, at, useClock, title, preset, body, kind, fullScreen)
+                val sourceType = call.argument<String>("sourceType") ?: ""
+                val sourceId = call.argument<String>("sourceId") ?: ""
+                schedule(rc, at, useClock, title, preset, body, kind, fullScreen, sourceType, sourceId)
                 result.success(null)
             }
             "cancel" -> {
@@ -201,24 +300,30 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
         }
     }
 
-    private fun schedule(rc: Int, at: Long, useClock: Boolean, title: String, preset: String, body: String = "", kind: String = "alarm", fullScreen: Boolean = true) {
+    private fun schedule(
+        rc: Int, at: Long, useClock: Boolean, title: String, preset: String,
+        body: String = "", kind: String = "alarm", fullScreen: Boolean = true,
+        sourceType: String = "", sourceId: String = "",
+    ) {
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = PendingIntent.getBroadcast(
             context, rc,
             Intent(context, AlarmReceiver::class.java).apply {
-                putExtra("requestCode", rc)
-                putExtra("title", title)
-                putExtra("preset", preset)
-                putExtra("body", body)
-                putExtra("kind", kind)
-                putExtra("fullScreen", fullScreen)
+                putAlarmExtras(this, rc, title, preset, body, kind, fullScreen, sourceType, sourceId)
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         if (useClock) {
             val showIntent = PendingIntent.getActivity(
                 context, rc,
-                Intent(context, MainActivity::class.java).apply { putExtra("ring", true) },
+                Intent(context, MainActivity::class.java).apply {
+                    putExtra("ring", true)
+                    putExtra(EXTRA_REQUEST_CODE, rc)
+                    putExtra(EXTRA_TITLE, title)
+                    putExtra(EXTRA_SOURCE_TYPE, sourceType)
+                    putExtra(EXTRA_SOURCE_ID, sourceId)
+                    putExtra(EXTRA_KIND, kind)
+                },
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             am.setAlarmClock(AlarmManager.AlarmClockInfo(at, showIntent), intent)
@@ -241,6 +346,16 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
         AlarmStore.markState(context, rc, "cancelled")
     }
 }
+
+data class AlarmIndexRow(
+    val requestCode: Int,
+    val fireAtUtc: Long,
+    val title: String,
+    val sourceType: String,
+    val sourceId: String,
+    val kind: String,
+    val preset: String,
+)
 
 /** Reads/writes the alarms_index table directly so reboot recovery works
  *  without a Dart engine. Writes only scheduler state, never user content. */
@@ -307,12 +422,56 @@ object AlarmStore {
         return out
     }
 
+    fun rowForRequestCode(context: Context, requestCode: Int): AlarmIndexRow? {
+        val db = openOrNull(context, true) ?: return null
+        try {
+            val c = db.rawQuery(
+                "SELECT request_code, fire_at_utc, title, source_type, source_id, kind, preset FROM alarms_index WHERE request_code = ? LIMIT 1",
+                arrayOf(requestCode.toString())
+            )
+            val row = if (c.moveToNext()) {
+                AlarmIndexRow(
+                    requestCode = c.getInt(0),
+                    fireAtUtc = c.getLong(1),
+                    title = c.getString(2) ?: "Alarm",
+                    sourceType = c.getString(3) ?: "",
+                    sourceId = c.getString(4) ?: "",
+                    kind = c.getString(5) ?: "alarm",
+                    preset = c.getString(6) ?: "notification",
+                )
+            } else null
+            c.close()
+            return row
+        } catch (_: Exception) {
+            return null
+        } finally {
+            try { db.close() } catch (_: Exception) {}
+        }
+    }
+
+    fun habitGoalAmount(context: Context, habitId: String): Double {
+        val db = openOrNull(context, true) ?: return 0.0
+        try {
+            val c = db.rawQuery(
+                "SELECT goal_amount FROM habits WHERE id = ? LIMIT 1",
+                arrayOf(habitId)
+            )
+            val v = if (c.moveToNext() && !c.isNull(0)) c.getDouble(0) else 0.0
+            c.close()
+            return v
+        } catch (_: Exception) {
+            return 0.0
+        } finally {
+            try { db.close() } catch (_: Exception) {}
+        }
+    }
+
     fun dueAlarms(context: Context, nowMs: Long): List<Triple<Int, Long, String>> {
         val out = mutableListOf<Triple<Int, Long, String>>()
         val db = openOrNull(context, true) ?: return out
         try {
             val c = db.rawQuery(
-                "SELECT request_code, fire_at_utc, source_id FROM alarms_index WHERE state = 'scheduled' AND fire_at_utc <= ?",
+                "SELECT request_code, fire_at_utc, title FROM alarms_index WHERE state = 'scheduled' AND fire_at_utc <= ?",
                 arrayOf(nowMs.toString())
             )
             while (c.moveToNext()) {
@@ -326,23 +485,60 @@ object AlarmStore {
         return out
     }
 
+    fun scheduledRows(context: Context): List<AlarmIndexRow> {
+        val out = mutableListOf<AlarmIndexRow>()
+        val db = openOrNull(context, true) ?: return out
+        try {
+            val c = db.rawQuery(
+                "SELECT request_code, fire_at_utc, title, source_type, source_id, kind, preset FROM alarms_index WHERE state = 'scheduled' AND request_code IS NOT NULL",
+                null
+            )
+            while (c.moveToNext()) {
+                out.add(
+                    AlarmIndexRow(
+                        requestCode = c.getInt(0),
+                        fireAtUtc = c.getLong(1),
+                        title = c.getString(2) ?: "Alarm",
+                        sourceType = c.getString(3) ?: "",
+                        sourceId = c.getString(4) ?: "",
+                        kind = c.getString(5) ?: "alarm",
+                        preset = c.getString(6) ?: "notification",
+                    )
+                )
+            }
+            c.close()
+        } catch (_: Exception) {
+        } finally {
+            try { db.close() } catch (_: Exception) {}
+        }
+        return out
+    }
+
     fun rescheduleAll(context: Context) {
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        for ((rc, at, title) in dueAlarms(context, Long.MAX_VALUE)) {
-            if (at <= System.currentTimeMillis()) {
-                markState(context, rc, "missed")
+        val now = System.currentTimeMillis()
+        for (row in scheduledRows(context)) {
+            if (row.fireAtUtc <= now) {
+                markState(context, row.requestCode, "missed")
                 continue
             }
             try {
+                val fullScreen = row.kind == "alarm" && AlarmPlugin.usesFullScreen(row.preset)
                 val intent = PendingIntent.getBroadcast(
-                    context, rc,
+                    context, row.requestCode,
                     Intent(context, AlarmReceiver::class.java).apply {
-                        putExtra("requestCode", rc)
-                        putExtra("title", title)
+                        putExtra(AlarmPlugin.EXTRA_REQUEST_CODE, row.requestCode)
+                        putExtra(AlarmPlugin.EXTRA_TITLE, row.title)
+                        putExtra(AlarmPlugin.EXTRA_PRESET, row.preset)
+                        putExtra(AlarmPlugin.EXTRA_BODY, "")
+                        putExtra(AlarmPlugin.EXTRA_KIND, row.kind)
+                        putExtra(AlarmPlugin.EXTRA_FULL_SCREEN, fullScreen)
+                        putExtra(AlarmPlugin.EXTRA_SOURCE_TYPE, row.sourceType)
+                        putExtra(AlarmPlugin.EXTRA_SOURCE_ID, row.sourceId)
                     },
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
-                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, intent)
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, row.fireAtUtc, intent)
             } catch (_: Exception) {
             }
         }

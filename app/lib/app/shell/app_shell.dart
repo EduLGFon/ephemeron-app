@@ -11,6 +11,7 @@ import '../../core/platform/system_launcher.dart';
 import '../../core/db/db_provider.dart';
 import '../../app/session/session_restore.dart';
 import '../../data/drift/app_database.dart';
+import '../../features/alarms/application/alarm_action_handler.dart';
 import '../../features/alarms/application/alarm_providers.dart';
 import '../../features/alarms/data/fallback_alarm_engine.dart';
 import '../../features/auth/application/auth_providers.dart';
@@ -755,34 +756,36 @@ class _AppShellState extends ConsumerState<AppShell>
         }
         return result;
       },
-      child: AlarmListener(
-        child: Scaffold(
-          body: widget.navigationShell,
-          bottomNavigationBar: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: NavigationBar(
-              selectedIndex:
-                  pinned.contains(widget.navigationShell.currentIndex)
-                  ? pinned.indexOf(widget.navigationShell.currentIndex)
-                  : 5,
-              onDestinationSelected: (i) {
-                if (i < 5) {
-                  _onTabSelected(pinned[i]);
-                } else {
-                  _showMore(context, more, order);
-                }
-              },
-              destinations: [
-                for (final idx in pinned)
-                  NavigationDestination(
-                    icon: Icon(AppSection.values[idx].icon),
-                    label: AppSection.values[idx].title,
+      child: AlarmActionHandler(
+        child: AlarmListener(
+          child: Scaffold(
+            body: widget.navigationShell,
+            bottomNavigationBar: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: NavigationBar(
+                selectedIndex:
+                    pinned.contains(widget.navigationShell.currentIndex)
+                    ? pinned.indexOf(widget.navigationShell.currentIndex)
+                    : 5,
+                onDestinationSelected: (i) {
+                  if (i < 5) {
+                    _onTabSelected(pinned[i]);
+                  } else {
+                    _showMore(context, more, order);
+                  }
+                },
+                destinations: [
+                  for (final idx in pinned)
+                    NavigationDestination(
+                      icon: Icon(AppSection.values[idx].icon),
+                      label: AppSection.values[idx].title,
+                    ),
+                  const NavigationDestination(
+                    icon: Icon(Icons.more_horiz),
+                    label: 'More',
                   ),
-                const NavigationDestination(
-                  icon: Icon(Icons.more_horiz),
-                  label: 'More',
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

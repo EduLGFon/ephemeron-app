@@ -130,6 +130,7 @@ mixin _TaskCompletionOps on _TaskRepositoryBase {
       }
     });
     await _enqueue('task', id, 'update');
+    await cancelAlarmsForEntity(_db, id);
   }
 
   Future<void> markWontDo(String id, {DateTime? at}) async {
@@ -214,6 +215,7 @@ mixin _TaskCompletionOps on _TaskRepositoryBase {
       }
     });
     await _enqueue('task', id, 'update');
+    await cancelAlarmsForEntity(_db, id);
   }
 
   Future<void> uncompleteTask(String id) async {
@@ -361,6 +363,7 @@ mixin _TaskCompletionOps on _TaskRepositoryBase {
       status: 'completed',
       completedAt: (at ?? DateTime.now()).toUtc().millisecondsSinceEpoch,
     );
+    await cancelAlarmsForEntity(_db, task.id);
   }
 
   Future<void> markWontDoTaskOccurrence(
@@ -374,6 +377,7 @@ mixin _TaskCompletionOps on _TaskRepositoryBase {
       status: 'wont_do',
       completedAt: (at ?? DateTime.now()).toUtc().millisecondsSinceEpoch,
     );
+    await cancelAlarmsForEntity(_db, task.id);
   }
 
   Future<void> uncompleteTaskOccurrence(

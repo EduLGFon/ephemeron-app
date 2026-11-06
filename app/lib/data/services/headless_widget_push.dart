@@ -6,7 +6,6 @@ import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/time/time.dart';
-import '../../features/alarms/data/alarm_scheduler.dart';
 import '../drift/app_database.dart';
 import '../repositories/occurrence_repository.dart';
 import '../repositories/countdown_repository.dart';
@@ -15,6 +14,8 @@ import '../repositories/habit_repository.dart';
 import '../repositories/note_repository.dart';
 import '../repositories/task_repository.dart';
 import 'week_calendar_data.dart';
+
+export 'alarm_cancel.dart' show cancelAlarmsForEntity;
 
 Future<void> _push(
   String prefix,
@@ -187,35 +188,6 @@ Future<void> pushFocusWidgets(AppDatabase db) async {
 /// Pushes every widget type a headless isolate can compute: tasks, habits,
 /// countdowns, notes, focus, plus today's agenda from the occurrence cache
 /// and derived summaries. Mirrors the foreground binder's key names.
-/// Cancels scheduled alarms belonging to one entity (completed task or
-/// logged habit) so a widget toggle does not leave a stale ring behind.
-/// Task reminders use a suffixed sourceId per offset; habits per date.
-Future<void> cancelAlarmsForEntity(AppDatabase db, String id) async {
-  try {
-    final rows =
-        await (db.select(db.alarmsIndex)..where(
-              (a) =>
-                  a.state.equals('scheduled') &
-                  (a.sourceId.equals(id) |
-                      a.sourceId.like('$id#%') |
-                      a.sourceId.like('$id@%')),
-            ))
-            .get();
-    for (final row in rows) {
-      final code = row.requestCode;
-      if (code != null) {
-        try {
-          await AlarmScheduler.cancel(code);
-        } catch (_) {}
-      }
-      try {
-        await (db.update(db.alarmsIndex)..where((a) => a.id.equals(row.id)))
-            .write(const AlarmsIndexCompanion(state: Value('cancelled')));
-      } catch (_) {}
-    }
-  } catch (_) {}
-}
-
 /// Rebuilds the occurrence window headless (pure Dart + drift, no channels)
 /// so background agenda widgets read fresh data instead of a stale cache.
 Future<void> rebuildOccurrenceWindowHeadless(AppDatabase db) async {
