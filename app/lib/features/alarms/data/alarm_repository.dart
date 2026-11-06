@@ -17,6 +17,10 @@ import 'package:ephemeron/domain/habits/date_key.dart';
 import 'alarm_scheduler.dart';
 
 part 'alarm_repository/rebuild.dart';
+part 'alarm_repository/events.dart';
+part 'alarm_repository/tasks.dart';
+part 'alarm_repository/countdowns.dart';
+part 'alarm_repository/habits.dart';
 part 'alarm_repository/management.dart';
 
 class _AlarmRepositoryBase {
@@ -74,7 +78,13 @@ class _AlarmRepositoryBase {
 }
 
 class AlarmRepository extends _AlarmRepositoryBase
-    with _AlarmRebuildOps, _AlarmManagementOps {
+    with
+        _AlarmEventCandidatesOps,
+        _AlarmTaskCandidatesOps,
+        _AlarmCountdownCandidatesOps,
+        _AlarmHabitCandidatesOps,
+        _AlarmRebuildOps,
+        _AlarmManagementOps {
   AlarmRepository(super._db);
 
   static DateTime clampDueTomorrow(DateTime localFire) =>
