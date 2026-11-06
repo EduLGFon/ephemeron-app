@@ -68,10 +68,17 @@ import 'cases/source_label_case.dart' as source_label;
 import 'cases/source_move_case.dart' as source_move;
 import 'cases/source_picker_case.dart' as source_picker;
 import 'cases/sync_engine_case.dart' as sync_engine;
+import 'cases/sync_engine_errors_case.dart' as sync_engine_errors;
+import 'cases/sync_engine_ownership_case.dart' as sync_engine_ownership;
+import 'cases/sync_engine_task_lists_case.dart' as sync_engine_task_lists;
 import 'cases/task_action_sheet_case.dart' as task_action_sheet;
 import 'cases/task_editor_case.dart' as task_editor;
 import 'cases/task_editor_extra_case.dart' as task_editor_extra;
-import 'cases/task_repository_case.dart' as task_repository;
+import 'cases/task_repository_crud_case.dart' as task_repository_crud;
+import 'cases/task_repository_lifecycle_case.dart' as task_repository_lifecycle;
+import 'cases/task_repository_lists_case.dart' as task_repository_lists;
+import 'cases/task_repository_recurrence_case.dart' as task_repository_recurrence;
+import 'cases/task_repository_smart_filter_case.dart' as task_repository_smart_filter;
 import 'cases/timeline_layout_case.dart' as timeline_layout;
 import 'cases/timeline_multiday_overflow_case.dart' as timeline_multiday_overflow;
 import 'cases/timeline_now_controller_case.dart' as timeline_now_controller;
@@ -146,10 +153,17 @@ const _included = <String>{
   'source_move_case.dart',
   'source_picker_case.dart',
   'sync_engine_case.dart',
+  'sync_engine_errors_case.dart',
+  'sync_engine_ownership_case.dart',
+  'sync_engine_task_lists_case.dart',
   'task_action_sheet_case.dart',
   'task_editor_case.dart',
   'task_editor_extra_case.dart',
-  'task_repository_case.dart',
+  'task_repository_crud_case.dart',
+  'task_repository_lifecycle_case.dart',
+  'task_repository_lists_case.dart',
+  'task_repository_recurrence_case.dart',
+  'task_repository_smart_filter_case.dart',
   'timeline_layout_case.dart',
   'timeline_multiday_overflow_case.dart',
   'timeline_now_controller_case.dart',
@@ -231,10 +245,17 @@ void main() {
   group('source_move', source_move.main);
   group('source_picker', source_picker.main);
   group('sync_engine', sync_engine.main);
+  group('sync_engine_errors', sync_engine_errors.main);
+  group('sync_engine_ownership', sync_engine_ownership.main);
+  group('sync_engine_task_lists', sync_engine_task_lists.main);
   group('task_action_sheet', task_action_sheet.main);
   group('task_editor', task_editor.main);
   group('task_editor_extra', task_editor_extra.main);
-  group('task_repository', task_repository.main);
+  group('task_repository_crud', task_repository_crud.main);
+  group('task_repository_lifecycle', task_repository_lifecycle.main);
+  group('task_repository_lists', task_repository_lists.main);
+  group('task_repository_recurrence', task_repository_recurrence.main);
+  group('task_repository_smart_filter', task_repository_smart_filter.main);
   group('timeline_layout', timeline_layout.main);
   group('timeline_multiday_overflow', timeline_multiday_overflow.main);
   group('timeline_now_controller', timeline_now_controller.main);
