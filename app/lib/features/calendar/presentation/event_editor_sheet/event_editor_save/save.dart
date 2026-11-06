@@ -4,13 +4,15 @@ extension on _EventEditorState {
   Future<void> _save() async {
     final title = _title.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Title is required.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Title is required.')));
       return;
     }
     if (_calendarId == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Select a calendar.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Select a calendar.')));
       return;
     }
     // Moment of need: reminders/alarms only prompt here, at save time.
@@ -41,8 +43,9 @@ extension on _EventEditorState {
         await repo.moveEventToCalendar(existing.id, _calendarId!);
       } on SourceMoveException catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(e.message)));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(e.message)));
         }
         return;
       }
