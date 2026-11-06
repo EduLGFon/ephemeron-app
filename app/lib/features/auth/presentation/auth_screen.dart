@@ -43,15 +43,17 @@ class AuthScreen extends ConsumerWidget {
       await ref.read(googleAutoSyncServiceProvider).start();
     } on GoogleAuthException catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
       // Never mask the real failure behind the offline message: the app
       // works offline, but a failed sign-in deserves its actual cause
       // (for example a missing serverClientId or SHA-1 mismatch).
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Google sign-in failed: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Google sign-in failed: $e')));
     }
   }
 

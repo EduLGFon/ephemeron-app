@@ -212,8 +212,9 @@ class _BackendSectionState extends ConsumerState<_BackendSection> {
       }
     } on BackendApiException catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     }
   }
 
