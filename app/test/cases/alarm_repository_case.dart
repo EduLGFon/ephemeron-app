@@ -66,7 +66,7 @@ void main() {
       dueDate: _tomorrowKey(),
       dueTime: 9 * 60,
     );
-    await AlarmRepository(db).rebuildWindow();
+    await AlarmRepository(db).rebuildWindow(dueTomorrowEnabled: false);
     final rows = await (db.select(
       db.alarmsIndex,
     )..where((a) => a.sourceId.like('%$id%'))).get();
