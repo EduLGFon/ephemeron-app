@@ -94,99 +94,13 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                   message: 'Could not load notes.',
                   onRetry: () => ref.invalidate(folderNotesProvider(_folderId)),
                 ),
-                data: (notes) {
-                  if (folders.isEmpty && notes.isEmpty) {
-                    return EmptyState(
-                      icon: Icons.note_outlined,
-                      title: 'No notes here',
-                      actionLabel: 'New note',
-                      onAction: () => _newNote(),
-                    );
-                  }
-                  final items = <Widget>[];
-                  for (final f in folders) {
-                    items.add(
-                      ListTile(
-                        leading: const Icon(Icons.folder_outlined),
-                        title: Text(f.name),
-                        trailing: PopupMenuButton<String>(
-                          onSelected: (v) async {
-                            if (v != 'delete') return;
-                            final pending = ref.read(pendingOperationsProvider);
-                            final opId = await pending.scheduleFolderDelete(
-                              f.id,
-                            );
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Deleted folder "${f.name}"'),
-                                duration: const Duration(seconds: 6),
-                                persist: false,
-                                action: SnackBarAction(
-                                  label: 'Undo',
-                                  onPressed: () => pending.cancel(opId),
-                                ),
-                              ),
-                            );
-                          },
-                          itemBuilder: (_) => const [
-                            PopupMenuItem(
-                              value: 'delete',
-                              child: Text('Delete folder'),
-                            ),
-                          ],
-                        ),
-                        onTap: () => _navigateFolder(f.id),
-                      ),
-                    );
-                  }
-                  for (final n in notes) {
-                    items.add(
-                      Dismissible(
-                        key: ValueKey(n.id),
-                        direction: DismissDirection.endToStart,
-                        background: Container(
-                          color: Colors.red,
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 16),
-                          child: const Icon(Icons.delete, color: Colors.white),
-                        ),
-                        confirmDismiss: (_) async {
-                          final pending = ref.read(pendingOperationsProvider);
-                          final opId = await pending.scheduleNoteTrash(n.id);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Trashed "${n.title}"'),
-                                duration: const Duration(seconds: 6),
-                                persist: false,
-                                action: SnackBarAction(
-                                  label: 'Undo',
-                                  onPressed: () => pending.cancel(opId),
-                                ),
-                              ),
-                            );
-                          }
-                          return false;
-                        },
-                        child: ListTile(
-                          leading: n.pinned
-                              ? const Icon(Icons.push_pin, size: 18)
-                              : null,
-                          title: Text(n.title.isEmpty ? '(untitled)' : n.title),
-                          subtitle: _subtitle(n),
-                          onTap: () => _openNote(n),
-                        ),
-                      ),
-                    );
-                  }
-                  return RepaintBoundary(
-                    child: ListView.builder(
-                      itemCount: items.length,
-                      itemBuilder: (_, i) => items[i],
-                    ),
-                  );
-                },
+                data: (notes) => _NotesListBody(
+                  folders: folders,
+                  notes: notes,
+                  onFolderTap: _navigateFolder,
+                  onNoteTap: _openNote,
+                  onNewNote: _newNote,
+                ),
               ),
             ),
           ),
@@ -209,17 +123,6 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
         ],
       ),
     );
-  }
-
-  Widget? _subtitle(Note n) {
-    final body = (n.body ?? '').trim();
-    if (body.isEmpty && n.linkedEventId == null) return null;
-    final first = body
-        .split('\n')
-        .firstWhere((l) => l.trim().isNotEmpty, orElse: () => '');
-    final text = n.linkedEventId != null ? '[event] $first' : first;
-    if (text.isEmpty) return null;
-    return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis);
   }
 
   Future<void> _newNote({String template = ''}) async {
@@ -297,15 +200,13 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
         }
       }
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Imported $count file(s)')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Imported $count file(s)')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Import failed: $e')));
       }
     }
   }
@@ -327,15 +228,13 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
       final file = File('${dir.path}/notes-export.zip');
       await file.writeAsBytes(data);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Exported to ${file.path}')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Exported to ${file.path}')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     }
   }
