@@ -40,7 +40,9 @@ part 'event_editor_sheet/editor_sections.dart';
 part 'event_editor_sheet/event_editor_state.dart';
 part 'event_editor_sheet/event_editor_draft.dart';
 part 'event_editor_sheet/event_editor_view.dart';
-part 'event_editor_sheet/event_editor_save.dart';
+part 'event_editor_sheet/event_editor_save/draft.dart';
+part 'event_editor_sheet/event_editor_save/pickers.dart';
+part 'event_editor_sheet/event_editor_save/save.dart';
 
 Future<void> showEventEditor(
   BuildContext context, {
