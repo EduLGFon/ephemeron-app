@@ -77,6 +77,9 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
         body: String = "",
         kind: String = "alarm",
         fullScreen: Boolean = true,
+        sourceType: String? = null,
+        sourceId: String? = null,
+        phase: String? = null,
     ): android.app.Notification {
         val norm = normalizePreset(preset)
         val contentIntent = PendingIntent.getActivity(
@@ -85,6 +88,8 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
                 putExtra("ring", true)
                 putExtra("requestCode", requestCode)
                 putExtra("title", title)
+                putExtra("sourceType", sourceType)
+                putExtra("sourceId", sourceId)
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -133,16 +138,47 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
             .setOngoing(wantFullScreen)
             .addAction(android.R.drawable.ic_menu_recent_history, "Snooze 10 min", snoozeIntent)
             .addAction(android.R.drawable.ic_menu_agenda, "Done", doneIntent)
+        if (sourceType == "focus" && !isReminder) {
+            val nextPhase = if (phase == "break") "focus" else "break"
+            val nextLabel = if (nextPhase == "break") "Start break" else "Start focus"
+            val nextIntent = PendingIntent.getActivity(
+                context, requestCode + 700000,
+                Intent(context, MainActivity::class.java).apply {
+                    putExtra("focusNext", nextPhase)
+                    putExtra("sourceId", sourceId)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(android.R.drawable.ic_media_play, nextLabel, nextIntent)
+        }
         if (wantFullScreen) {
             builder.setFullScreenIntent(contentIntent, true)
         }
         return builder.build()
     }
 
-        fun fire(context: Context, requestCode: Int, title: String, preset: String, body: String = "", kind: String = "alarm", fullScreen: Boolean = true) {
+        fun fire(
+            context: Context,
+            requestCode: Int,
+            title: String,
+            preset: String,
+            body: String = "",
+            kind: String = "alarm",
+            fullScreen: Boolean = true,
+            sourceType: String? = null,
+            sourceId: String? = null,
+            phase: String? = null,
+        ) {
             notifyChannels(context)
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            nm.notify(requestCode, buildNotification(context, requestCode, title, preset, body, kind, fullScreen))
+            nm.notify(
+                requestCode,
+                buildNotification(
+                    context, requestCode, title, preset, body, kind, fullScreen,
+                    sourceType, sourceId, phase,
+                )
+            )
             AlarmStore.markState(context, requestCode, "fired")
             AlarmRingService.start(context, requestCode, title, preset, body, kind, fullScreen)
         }
@@ -159,10 +195,13 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
                 val title = call.argument<String>("title") ?: "Alarm"
                 val body = call.argument<String>("body") ?: ""
                 val preset = call.argument<String>("preset") ?: "notification"
+                val sourceType = call.argument<String>("sourceType")
+                val sourceId = call.argument<String>("sourceId")
+                val phase = call.argument<String>("phase")
                 val kind = call.argument<String>("kind") ?: "alarm"
                 val fullScreen = call.argument<Boolean>("fullScreen")
                     ?: usesFullScreen(preset)
-                schedule(rc, at, useClock, title, preset, body, kind, fullScreen)
+                schedule(rc, at, useClock, title, preset, body, kind, fullScreen, sourceType, sourceId, phase)
                 result.success(null)
             }
             "cancel" -> {
@@ -201,7 +240,11 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
         }
     }
 
-    private fun schedule(rc: Int, at: Long, useClock: Boolean, title: String, preset: String, body: String = "", kind: String = "alarm", fullScreen: Boolean = true) {
+    private fun schedule(
+        rc: Int, at: Long, useClock: Boolean, title: String, preset: String,
+        body: String = "", kind: String = "alarm", fullScreen: Boolean = true,
+        sourceType: String? = null, sourceId: String? = null, phase: String? = null,
+    ) {
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = PendingIntent.getBroadcast(
             context, rc,
@@ -212,13 +255,20 @@ class AlarmPlugin(private val context: Context) : MethodChannel.MethodCallHandle
                 putExtra("body", body)
                 putExtra("kind", kind)
                 putExtra("fullScreen", fullScreen)
+                putExtra("sourceType", sourceType)
+                putExtra("sourceId", sourceId)
+                putExtra("phase", phase)
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         if (useClock) {
             val showIntent = PendingIntent.getActivity(
                 context, rc,
-                Intent(context, MainActivity::class.java).apply { putExtra("ring", true) },
+                Intent(context, MainActivity::class.java).apply {
+                    putExtra("ring", true)
+                    putExtra("sourceType", sourceType)
+                    putExtra("sourceId", sourceId)
+                },
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             am.setAlarmClock(AlarmManager.AlarmClockInfo(at, showIntent), intent)

@@ -5,10 +5,13 @@ extension HomeWidgetDataBinderFocus on HomeWidgetDataBinder {
     try {
       final repo = ref.read(focusRepositoryProvider);
       final session = await repo.currentSession();
+      final phase = session?.phase == 'break' ? 'break' : 'focus';
       await _svc.updateByPrefix(
         keyPrefix: 'focus_timer',
-        title: session == null ? 'Focus' : 'Focusing',
-        body: session == null ? 'No active session.' : 'Session running',
+        title: session == null
+            ? 'Focus'
+            : (phase == 'break' ? 'On break' : 'Focusing'),
+        body: session == null ? 'No active session.' : '$phase session running',
       );
       _mark('focus_timer');
     } catch (_) {}

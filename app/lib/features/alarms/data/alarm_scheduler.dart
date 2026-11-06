@@ -31,6 +31,7 @@ class AlarmScheduler {
     String preset = 'notification',
     String? sourceType,
     String? sourceId,
+    String? phase,
     String kind = 'alarm',
     String body = '',
     bool fullScreen = false,
@@ -48,6 +49,7 @@ class AlarmScheduler {
       'preset': preset,
       'sourceType': sourceType,
       'sourceId': sourceId,
+      'phase': phase,
       'kind': kind,
       'fullScreen': fullScreen,
     });
@@ -62,6 +64,7 @@ class AlarmScheduler {
     String body = '',
     String? sourceType,
     String? sourceId,
+    String? phase,
     String kind = 'alarm',
   }) {
     return schedule(
@@ -73,6 +76,7 @@ class AlarmScheduler {
       preset: preset.id,
       sourceType: sourceType,
       sourceId: sourceId,
+      phase: phase,
       kind: kind,
       fullScreen: preset.usesFullScreen,
     );

@@ -22,9 +22,10 @@ class _FocusStatsScreenState extends ConsumerState<FocusStatsScreen> {
   @override
   Widget build(BuildContext context) {
     final daysAsync = ref.watch(focusMonthMinutesProvider(_month));
+    final breakDaysAsync = ref.watch(breakMonthMinutesProvider(_month));
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Focus stats'),
+        title: const Text('Focus and break stats'),
         actions: [
           IconButton(
             icon: const Icon(Icons.chevron_left),
@@ -50,20 +51,51 @@ class _FocusStatsScreenState extends ConsumerState<FocusStatsScreen> {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
+          Text(
+            'Focus (sessions 5 min or longer)',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: 4),
           daysAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, _) => const Text('Could not load month.'),
             data: (days) => _MonthGrid(days: days, month: _month),
           ),
-          const SizedBox(height: 16),
-          Text('By task', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 12),
+          Text('Focus by task', style: Theme.of(context).textTheme.titleSmall),
           _Breakdown(provider: focusStatsByTaskProvider),
           const SizedBox(height: 8),
-          Text('By habit', style: Theme.of(context).textTheme.titleSmall),
+          Text('Focus by habit', style: Theme.of(context).textTheme.titleSmall),
           _Breakdown(provider: focusStatsByHabitProvider),
           const SizedBox(height: 8),
-          Text('By time of day', style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            'Focus by time of day',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           _Breakdown(provider: focusStatsByTimeOfDayProvider),
+          const SizedBox(height: 20),
+          Text('Breaks', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          breakDaysAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (_, _) => const Text('Could not load break month.'),
+            data: (days) => _MonthGrid(days: days, month: _month),
+          ),
+          const SizedBox(height: 12),
+          Text('Breaks by task', style: Theme.of(context).textTheme.titleSmall),
+          _Breakdown(provider: breakStatsByTaskProvider),
+          const SizedBox(height: 8),
+          Text(
+            'Breaks by habit',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          _Breakdown(provider: breakStatsByHabitProvider),
+          const SizedBox(height: 8),
+          Text(
+            'Breaks by time of day',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          _Breakdown(provider: breakStatsByTimeOfDayProvider),
           const SizedBox(height: 16),
           const _DndToggle(),
         ],

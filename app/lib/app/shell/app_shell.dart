@@ -178,6 +178,12 @@ class _AppShellState extends ConsumerState<AppShell>
           _onTabSelected(AppSection.calendar.index);
         case 'start_focus':
           _onTabSelected(AppSection.focus.index);
+        case 'focus_start_break':
+        case 'focus_start_focus':
+          ref
+              .read(pendingFocusNextProvider.notifier)
+              .set(action == 'focus_start_break' ? 'break' : 'focus');
+          _onTabSelected(AppSection.focus.index);
       }
     }
     if (!mounted) return;
@@ -213,6 +219,13 @@ class _AppShellState extends ConsumerState<AppShell>
           final repo = await ref.read(settingsRepositoryProvider.future);
           await repo.setLastRoute('/search');
         } catch (_) {}
+        return;
+      } else if (widgetAction == 'focus_start_break' ||
+          widgetAction == 'focus_start_focus') {
+        ref
+            .read(pendingFocusNextProvider.notifier)
+            .set(widgetAction == 'focus_start_break' ? 'break' : 'focus');
+        _onTabSelected(AppSection.focus.index);
         return;
       }
       final tap = parseWeekWidgetAction(widgetAction);
