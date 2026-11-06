@@ -1,6 +1,7 @@
 part of '../habit_editor_sheet.dart';
 
-abstract class _HabitEditorSheetStateBase extends ConsumerState<_HabitEditorSheet> {
+abstract class _HabitEditorSheetStateBase
+    extends ConsumerState<_HabitEditorSheet> {
   late final TextEditingController _name;
   late final TextEditingController _amount;
   late final TextEditingController _unit;
@@ -25,7 +26,8 @@ abstract class _HabitEditorSheetStateBase extends ConsumerState<_HabitEditorShee
 }
 
 abstract class _HabitEditorSheetStateWithActions
-    extends _HabitEditorSheetStateBase with _HabitEditorSheetStateActions {}
+    extends _HabitEditorSheetStateBase
+    with _HabitEditorSheetStateActions {}
 
 class _HabitEditorSheetState extends _HabitEditorSheetStateWithActions
     with _HabitEditorSheetStateView {
