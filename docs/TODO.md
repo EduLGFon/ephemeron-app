@@ -22,7 +22,7 @@
 
 ## Code follow-ups
 
-- Split files >300 lines and functions >50 lines (U10 partial): `event_editor_sheet.dart`, `task_editor_sheet.dart`, `event_details_sheet.dart`, `app_shell.dart`, `tasks_screen.dart`, `note_editor_screen.dart`, `habit_editor_sheet.dart`, `habits_screen.dart`, and `event_repository.dart`/`occurrence_repository.dart` still need safe re-splits (prior extension-in-parts splits reverted after importer breakage). `task_repository`, `sync_engine`, `home_widget_data_binder`, and `focus_screen` are split.
+- Split files >300 lines and functions >50 lines (U10): `event_editor_sheet.dart`, `task_editor_sheet.dart`, `event_details_sheet.dart`, `app_shell.dart`, `tasks_screen.dart`, `note_editor_screen.dart`, `habit_editor_sheet.dart`, `habits_screen.dart`, and `event_repository.dart`/`occurrence_repository.dart` are now safely re-split/merged (part/mixin structure, API preserved). `task_repository`, `sync_engine`, `home_widget_data_binder`, and `focus_screen` were already split. Repo-wide recheck for remaining >300-line non-generated files is in progress (step 2).
 - Microsoft remote deletions: event and calendar remote deletions still not
   reconciled (calendar view is time-windowed). Task list/task deletions are
   reconciled conservatively on successful full-scope/list fetches.
