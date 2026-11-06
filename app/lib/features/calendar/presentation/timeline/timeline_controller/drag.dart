@@ -131,8 +131,9 @@ mixin TimelineDrag on TimelineInteraction {
           dragOffset = 0;
           pendingMovedId = null;
         });
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Event moved')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Event moved')));
       }
     }
   }
