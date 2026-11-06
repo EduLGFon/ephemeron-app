@@ -12,6 +12,26 @@ class FocusRepository {
   final AppDatabase _db;
   int _now() => DateTime.now().toUtc().millisecondsSinceEpoch;
 
+  /// Focus/stopwatch sessions shorter than this are excluded from focus stats.
+  static const minQualifyingFocusMinutes = 5;
+
+  /// Floor minutes for [s] at [atUtc] (defaults to now for running sessions).
+  static int sessionMinutes(FocusSession s, {int? atUtc}) {
+    final end =
+        s.endUtc ?? atUtc ?? DateTime.now().toUtc().millisecondsSinceEpoch;
+    if (end <= s.startUtc) return 0;
+    return ((end - s.startUtc) / msPerMinute).floor();
+  }
+
+  static bool isBreakSession(FocusSession s) => s.phase == 'break';
+
+  /// Qualifying focus work: not a break and at least [minQualifyingFocusMinutes].
+  /// Stopwatch sessions count as focus work when long enough.
+  static bool isQualifyingFocusSession(FocusSession s, {int? atUtc}) {
+    if (isBreakSession(s)) return false;
+    return sessionMinutes(s, atUtc: atUtc) >= minQualifyingFocusMinutes;
+  }
+
   /// Starts a session targeting [durationMin]; returns the session id.
   /// A null [durationMin] starts an open-ended stopwatch session with no
   /// target end and no end alarm (unless a [phase] is supplied).
@@ -87,15 +107,32 @@ class FocusRepository {
     await (_db.delete(_db.focusSessions)..where((f) => f.id.equals(id))).go();
   }
 
-  /// Total focused minutes in [fromUtc, toUtc].
-  Future<int> totalMinutes(int fromUtc, int toUtc) async {
+  /// Total qualifying focus minutes in [fromUtc, toUtc]. Excludes breaks and
+  /// focus/stopwatch sessions shorter than [minQualifyingFocusMinutes].
+  Future<int> totalMinutes(int fromUtc, int toUtc) =>
+      totalFocusMinutes(fromUtc, toUtc);
+
+  Future<int> totalFocusMinutes(int fromUtc, int toUtc) async {
     final rows = await sessionsInRange(fromUtc, toUtc);
     var total = 0;
     for (final r in rows) {
-      final end = r.endUtc ?? toUtc;
-      if (end > r.startUtc) {
-        total += ((end - r.startUtc) / msPerMinute).floor();
-      }
+      if (!isQualifyingFocusSession(r, atUtc: toUtc)) continue;
+      final start = r.startUtc.clamp(fromUtc, toUtc);
+      final end = (r.endUtc ?? toUtc).clamp(fromUtc, toUtc);
+      if (end > start) total += ((end - start) / msPerMinute).floor();
+    }
+    return total;
+  }
+
+  /// Total break minutes in [fromUtc, toUtc], any duration.
+  Future<int> totalBreakMinutes(int fromUtc, int toUtc) async {
+    final rows = await sessionsInRange(fromUtc, toUtc);
+    var total = 0;
+    for (final r in rows) {
+      if (!isBreakSession(r)) continue;
+      final start = r.startUtc.clamp(fromUtc, toUtc);
+      final end = (r.endUtc ?? toUtc).clamp(fromUtc, toUtc);
+      if (end > start) total += ((end - start) / msPerMinute).floor();
     }
     return total;
   }

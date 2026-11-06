@@ -51,11 +51,27 @@ class _StartViewState extends ConsumerState<_StartView> {
     } catch (_) {}
   }
 
+  bool _handlingPendingNext = false;
+
   @override
   Widget build(BuildContext context) {
+    ref.listen<String?>(pendingFocusNextProvider, (prev, next) {
+      if (next == null || _handlingPendingNext || !mounted) return;
+      _handlingPendingNext = true;
+      ref.read(pendingFocusNextProvider.notifier).set(null);
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        setState(() {
+          _mode = next == 'break' ? _FocusMode.breakTime : _FocusMode.focus;
+        });
+        await _start();
+        _handlingPendingNext = false;
+      });
+    });
     final tasksAsync = ref.watch(linkableTasksProvider);
     final habitsAsync = ref.watch(linkableHabitsProvider);
     final todayAsync = ref.watch(focusTodayMinutesProvider);
+    final breakTodayAsync = ref.watch(breakTodayMinutesProvider);
     final weekAsync = ref.watch(focusWeekMinutesProvider);
     final recentAsync = ref.watch(recentFocusSessionsProvider);
     return RepaintBoundary(
@@ -172,12 +188,23 @@ class _StartViewState extends ConsumerState<_StartView> {
           const SizedBox(height: 16),
           todayAsync.maybeWhen(
             data: (min) => Text(
-              'Today: ${_formatMin(min)}',
+              'Focus today: ${_formatMin(min)}',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             orElse: () => const SizedBox.shrink(),
           ),
+          breakTodayAsync.maybeWhen(
+            data: (min) => Text(
+              'Break today: ${_formatMin(min)}',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            orElse: () => const SizedBox.shrink(),
+          ),
           const SizedBox(height: 8),
+          Text(
+            'Focus this week',
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
           weekAsync.maybeWhen(
             data: (days) => _WeekBars(days: days),
             orElse: () => const SizedBox.shrink(),

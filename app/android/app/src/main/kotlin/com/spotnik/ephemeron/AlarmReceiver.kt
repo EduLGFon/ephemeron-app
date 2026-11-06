@@ -26,7 +26,12 @@ class AlarmReceiver : BroadcastReceiver() {
         val body = intent.getStringExtra("body") ?: ""
         val kind = intent.getStringExtra("kind") ?: "alarm"
         val fullScreen = intent.getBooleanExtra("fullScreen", true)
-        AlarmPlugin.fire(context, rc, title, preset, body, kind, fullScreen)
+        val sourceType = intent.getStringExtra("sourceType")
+        val sourceId = intent.getStringExtra("sourceId")
+        val phase = intent.getStringExtra("phase")
+        AlarmPlugin.fire(
+            context, rc, title, preset, body, kind, fullScreen, sourceType, sourceId, phase,
+        )
         // Full-screen long preset: constant sound + vibration, repeat every
         // minute until resolved, capped at 30 minutes.
         val norm = AlarmPlugin.normalizePreset(preset)
@@ -41,6 +46,9 @@ class AlarmReceiver : BroadcastReceiver() {
                     putExtra("body", body)
                     putExtra("kind", kind)
                     putExtra("fullScreen", fullScreen)
+                    putExtra("sourceType", sourceType)
+                    putExtra("sourceId", sourceId)
+                    putExtra("phase", phase)
                     putExtra("repeatCount", count + 1)
                 }
                 val repeat = PendingIntent.getBroadcast(

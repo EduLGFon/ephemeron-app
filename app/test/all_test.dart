@@ -25,6 +25,7 @@ import 'cases/db_case.dart' as db;
 import 'cases/event_rsvp_case.dart' as event_rsvp;
 import 'cases/event_scope_case.dart' as event_scope;
 import 'cases/event_source_case.dart' as event_source;
+import 'cases/focus_breaks_metrics_case.dart' as focus_breaks_metrics;
 import 'cases/focus_screen_case.dart' as focus_screen;
 import 'cases/focus_stopwatch_case.dart' as focus_stopwatch;
 import 'cases/habit_calendar_repository_case.dart' as habit_calendar_repository;
@@ -103,6 +104,7 @@ const _included = <String>{
   'event_rsvp_case.dart',
   'event_scope_case.dart',
   'event_source_case.dart',
+  'focus_breaks_metrics_case.dart',
   'focus_screen_case.dart',
   'focus_stopwatch_case.dart',
   'habit_calendar_repository_case.dart',
@@ -189,6 +191,7 @@ void main() {
   group('event_rsvp', event_rsvp.main);
   group('event_scope', event_scope.main);
   group('event_source', event_source.main);
+  group('focus_breaks_metrics', focus_breaks_metrics.main);
   group('focus_screen', focus_screen.main);
   group('focus_stopwatch', focus_stopwatch.main);
   group('habit_calendar_repository', habit_calendar_repository.main);

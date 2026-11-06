@@ -91,6 +91,11 @@ void _refresh(WidgetRef ref) {
   ref.invalidate(currentFocusSessionProvider);
   ref.invalidate(focusTodayMinutesProvider);
   ref.invalidate(focusWeekMinutesProvider);
+  ref.invalidate(breakTodayMinutesProvider);
+  ref.invalidate(breakWeekMinutesProvider);
+  ref.invalidate(focusMonthMinutesProvider);
+  ref.invalidate(breakMonthMinutesProvider);
+  ref.invalidate(recentFocusSessionsProvider);
 }
 
 int _requestCode(String id) => id.hashCode & 0x7fffffff;
@@ -99,13 +104,16 @@ Future<void> _scheduleEndAlarm(FocusSession s) {
   final target = s.targetEndUtc;
   if (target == null) return Future.value();
   final preset = parseAlarmPreset(s.alarmPreset) ?? AlarmPreset.notification;
+  final phase = s.phase ?? 'focus';
+  final isBreak = phase == 'break';
   return AlarmScheduler.schedulePreset(
     requestCode: _requestCode(s.id),
     fireAtUtcMs: target,
     preset: preset,
-    title: 'Focus session complete',
-    body: '${s.phase ?? 'focus'} session is over.',
+    title: isBreak ? 'Break complete' : 'Focus session complete',
+    body: '$phase session is over.',
     sourceType: 'focus',
     sourceId: s.id,
+    phase: phase,
   );
 }

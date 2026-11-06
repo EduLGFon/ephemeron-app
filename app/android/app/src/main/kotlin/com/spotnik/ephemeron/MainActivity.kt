@@ -265,6 +265,11 @@ class MainActivity : FlutterFragmentActivity() {
             if (!text.isNullOrEmpty()) pendingSharedText = text
         }
         intent.getStringExtra("shortcut")?.let { pendingShortcut = it }
+        intent.getStringExtra("focusNext")?.let { next ->
+            if (next == "break" || next == "focus") {
+                pendingWidgetAction = "focus_start_$next"
+            }
+        }
         intent.data?.let { uri ->
             if (uri.scheme == "ephemeron" && uri.host == "widget") {
                 // Preserve the full action path so day links such as
