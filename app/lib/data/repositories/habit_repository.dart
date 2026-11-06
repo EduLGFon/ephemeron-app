@@ -6,6 +6,7 @@ import 'package:ephemeron/core/time/time.dart';
 import 'package:ephemeron/data/drift/app_database.dart';
 import 'package:ephemeron/data/repositories/outbox_helper.dart';
 import 'package:ephemeron/data/repositories/pending_operations_repository.dart';
+import 'package:ephemeron/data/services/alarm_cancel.dart';
 import 'package:ephemeron/domain/habits/date_key.dart';
 import 'package:ephemeron/domain/habits/habit_calendar_entry.dart';
 import 'package:ephemeron/domain/habits/streaks.dart';
@@ -340,6 +341,7 @@ class HabitRepository {
     }
     await _enqueue('habit_log:$habitId', '$habitId@$dayKey', 'update');
     await _touchHabit(habitId);
+    await cancelHabitDayAlarms(_db, habitId, dayKey);
   }
 
   /// Adds [amount] to the day's goal progress, creating the log if needed.
@@ -351,8 +353,9 @@ class HabitRepository {
     )..where((h) => h.id.equals(habitId))).getSingleOrNull();
     final goal = habit?.goalAmount ?? 0;
     final existing = await logFor(habitId, dayKey);
+    final next = (existing?.amount ?? 0) + amount;
+    final reachedDone = existing?.done == true || (goal > 0 && next >= goal);
     if (existing == null) {
-      final next = amount;
       await _db
           .into(_db.habitLogs)
           .insert(
@@ -361,25 +364,27 @@ class HabitRepository {
               habitId: habitId,
               dayKey: dayKey,
               amount: Value(next),
-              done: Value(goal > 0 && next >= goal),
+              done: Value(reachedDone),
               createdAt: nowMs(),
               updatedAt: nowMs(),
             ),
           );
     } else {
-      final next = existing.amount + amount;
       await (_db.update(
         _db.habitLogs,
       )..where((l) => l.id.equals(existing.id))).write(
         HabitLogsCompanion(
           amount: Value(next),
-          done: Value(existing.done || (goal > 0 && next >= goal)),
+          done: Value(reachedDone),
           updatedAt: Value(nowMs()),
         ),
       );
     }
     await _enqueue('habit_log:$habitId', '$habitId@$dayKey', 'update');
     await _touchHabit(habitId);
+    if (reachedDone) {
+      await cancelHabitDayAlarms(_db, habitId, dayKey);
+    }
   }
 
   Future<void> setSkipped(String habitId, String dayKey, bool skipped) async {
@@ -437,6 +442,9 @@ class HabitRepository {
     }
     await _enqueue('habit_log:$habitId', '$habitId@$dayKey', 'update');
     await _touchHabit(habitId);
+    if (done) {
+      await cancelHabitDayAlarms(_db, habitId, dayKey);
+    }
   }
 
   Future<void> toggleHabitDone(String habitId, String dayKey) async {

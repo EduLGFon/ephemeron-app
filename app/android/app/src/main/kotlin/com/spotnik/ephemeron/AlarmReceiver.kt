@@ -19,19 +19,17 @@ class AlarmReceiver : BroadcastReceiver() {
                 return
             }
         }
-        val rc = intent.getIntExtra("requestCode", -1)
+        val rc = intent.getIntExtra(AlarmPlugin.EXTRA_REQUEST_CODE, intent.getIntExtra("requestCode", -1))
         if (rc < 0) return
-        val title = intent.getStringExtra("title") ?: "Alarm"
-        val preset = intent.getStringExtra("preset") ?: "notification"
-        val body = intent.getStringExtra("body") ?: ""
-        val kind = intent.getStringExtra("kind") ?: "alarm"
-        val fullScreen = intent.getBooleanExtra("fullScreen", true)
-        val sourceType = intent.getStringExtra("sourceType")
-        val sourceId = intent.getStringExtra("sourceId")
-        val phase = intent.getStringExtra("phase")
-        AlarmPlugin.fire(
-            context, rc, title, preset, body, kind, fullScreen, sourceType, sourceId, phase,
-        )
+        val title = intent.getStringExtra(AlarmPlugin.EXTRA_TITLE) ?: intent.getStringExtra("title") ?: "Alarm"
+        val preset = intent.getStringExtra(AlarmPlugin.EXTRA_PRESET) ?: intent.getStringExtra("preset") ?: "notification"
+        val body = intent.getStringExtra(AlarmPlugin.EXTRA_BODY) ?: intent.getStringExtra("body") ?: ""
+        val kind = intent.getStringExtra(AlarmPlugin.EXTRA_KIND) ?: intent.getStringExtra("kind") ?: "alarm"
+        val fullScreen = intent.getBooleanExtra(AlarmPlugin.EXTRA_FULL_SCREEN, intent.getBooleanExtra("fullScreen", true))
+        val sourceType = intent.getStringExtra(AlarmPlugin.EXTRA_SOURCE_TYPE) ?: intent.getStringExtra("sourceType") ?: ""
+        val sourceId = intent.getStringExtra(AlarmPlugin.EXTRA_SOURCE_ID) ?: intent.getStringExtra("sourceId") ?: ""
+        val phase = intent.getStringExtra(AlarmPlugin.EXTRA_PHASE) ?: intent.getStringExtra("phase")
+        AlarmPlugin.fire(context, rc, title, preset, body, kind, fullScreen, sourceType, sourceId, phase)
         // Full-screen long preset: constant sound + vibration, repeat every
         // minute until resolved, capped at 30 minutes.
         val norm = AlarmPlugin.normalizePreset(preset)
@@ -40,15 +38,15 @@ class AlarmReceiver : BroadcastReceiver() {
             val count = intent.getIntExtra("repeatCount", 0)
             if (count < 30) {
                 val repeatIntent = Intent(context, AlarmReceiver::class.java).apply {
-                    putExtra("requestCode", rc)
-                    putExtra("title", title)
-                    putExtra("preset", preset)
-                    putExtra("body", body)
-                    putExtra("kind", kind)
-                    putExtra("fullScreen", fullScreen)
-                    putExtra("sourceType", sourceType)
-                    putExtra("sourceId", sourceId)
-                    putExtra("phase", phase)
+                    putExtra(AlarmPlugin.EXTRA_REQUEST_CODE, rc)
+                    putExtra(AlarmPlugin.EXTRA_TITLE, title)
+                    putExtra(AlarmPlugin.EXTRA_PRESET, preset)
+                    putExtra(AlarmPlugin.EXTRA_BODY, body)
+                    putExtra(AlarmPlugin.EXTRA_KIND, kind)
+                    putExtra(AlarmPlugin.EXTRA_FULL_SCREEN, fullScreen)
+                    putExtra(AlarmPlugin.EXTRA_SOURCE_TYPE, sourceType)
+                    putExtra(AlarmPlugin.EXTRA_SOURCE_ID, sourceId)
+                    if (phase != null) putExtra(AlarmPlugin.EXTRA_PHASE, phase)
                     putExtra("repeatCount", count + 1)
                 }
                 val repeat = PendingIntent.getBroadcast(
@@ -64,21 +62,34 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 }
 
-/** Snooze and Done actions work without launching the app. */
+/** Snooze, dismiss, and fallback done actions work without launching the app.
+ *  Done/+1 for task and habit sources are launched via MainActivity so Dart
+ *  can complete the underlying source reliably. */
 class AlarmActionReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_SNOOZE = "com.spotnik.ephemeron.SNOOZE"
         const val ACTION_DONE = "com.spotnik.ephemeron.DONE"
+        const val ACTION_DISMISS = "com.spotnik.ephemeron.DISMISS"
+        const val ACTION_PLUS_ONE = "com.spotnik.ephemeron.PLUS_ONE"
         const val SNOOZE_MINUTES = 10
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        val rc = intent.getIntExtra("requestCode", -1)
+        val rc = intent.getIntExtra(AlarmPlugin.EXTRA_REQUEST_CODE, intent.getIntExtra("requestCode", -1))
         if (rc < 0) return
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE)
             as android.app.NotificationManager
         nm.cancel(rc)
         try { AlarmRingService.stop(context, rc) } catch (_: Exception) {}
+        val row = AlarmStore.rowForRequestCode(context, rc)
+        val title = intent.getStringExtra(AlarmPlugin.EXTRA_TITLE) ?: row?.title ?: "Alarm"
+        val preset = intent.getStringExtra(AlarmPlugin.EXTRA_PRESET) ?: row?.preset ?: "notification"
+        val body = intent.getStringExtra(AlarmPlugin.EXTRA_BODY) ?: ""
+        val kind = intent.getStringExtra(AlarmPlugin.EXTRA_KIND) ?: row?.kind ?: "alarm"
+        val fullScreen = intent.getBooleanExtra(AlarmPlugin.EXTRA_FULL_SCREEN, kind == "alarm" && AlarmPlugin.usesFullScreen(preset))
+        val sourceType = intent.getStringExtra(AlarmPlugin.EXTRA_SOURCE_TYPE) ?: row?.sourceType ?: ""
+        val sourceId = intent.getStringExtra(AlarmPlugin.EXTRA_SOURCE_ID) ?: row?.sourceId ?: ""
+        val phase = intent.getStringExtra(AlarmPlugin.EXTRA_PHASE)
         when (intent.action) {
             ACTION_SNOOZE -> {
                 val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -86,16 +97,23 @@ class AlarmActionReceiver : BroadcastReceiver() {
                 val fire = PendingIntent.getBroadcast(
                     context, rc,
                     Intent(context, AlarmReceiver::class.java).apply {
-                        putExtra("requestCode", rc)
-                        putExtra("title", "Snoozed alarm")
+                        putExtra(AlarmPlugin.EXTRA_REQUEST_CODE, rc)
+                        putExtra(AlarmPlugin.EXTRA_TITLE, title)
+                        putExtra(AlarmPlugin.EXTRA_PRESET, preset)
+                        putExtra(AlarmPlugin.EXTRA_BODY, body)
+                        putExtra(AlarmPlugin.EXTRA_KIND, kind)
+                        putExtra(AlarmPlugin.EXTRA_FULL_SCREEN, fullScreen)
+                        putExtra(AlarmPlugin.EXTRA_SOURCE_TYPE, sourceType)
+                        putExtra(AlarmPlugin.EXTRA_SOURCE_ID, sourceId)
+                        if (phase != null) putExtra(AlarmPlugin.EXTRA_PHASE, phase)
                     },
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
                 am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, fireAt, fire)
                 AlarmStore.upsert(context, rc, fireAt)
             }
-            ACTION_DONE -> {
-                AlarmStore.markState(context, rc, "done")
+            ACTION_DISMISS, ACTION_DONE -> {
+                AlarmStore.markState(context, rc, if (intent.action == ACTION_DISMISS) "dismissed" else "done")
                 val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
                 val stale = PendingIntent.getBroadcast(
                     context, rc, Intent(context, AlarmReceiver::class.java),

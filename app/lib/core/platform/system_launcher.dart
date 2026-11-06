@@ -10,21 +10,44 @@ class SystemLauncher {
   static const _channel = MethodChannel('ephemeron/system');
   static final StreamController<String> _widgetActionController =
       StreamController<String>.broadcast();
-  static bool _widgetActionHandlerInstalled = false;
+  static final StreamController<String> _alarmActionController =
+      StreamController<String>.broadcast();
+  static bool _handlerInstalled = false;
 
   /// Warm widget taps pushed by MainActivity.onNewIntent. Cold-start taps
   /// still arrive through [consumeWidgetAction].
   static Stream<String> get widgetActions => _widgetActionController.stream;
 
-  static void ensureWidgetActionHandler() {
-    if (_widgetActionHandlerInstalled) return;
-    _widgetActionHandlerInstalled = true;
+  /// Alarm notification actions (DONE/PLUS_ONE) pushed by MainActivity.
+  /// Cold-start actions arrive through [consumeAlarmAction].
+  static Stream<String> get alarmActions => _alarmActionController.stream;
+
+  static void ensureActionHandlers() {
+    if (_handlerInstalled) return;
+    _handlerInstalled = true;
     _channel.setMethodCallHandler((call) async {
       if (call.method == 'widgetAction' && call.arguments is String) {
         _widgetActionController.add(call.arguments as String);
+      } else if (call.method == 'alarmAction' && call.arguments is String) {
+        _alarmActionController.add(call.arguments as String);
       }
       return null;
     });
+  }
+
+  static void ensureWidgetActionHandler() => ensureActionHandlers();
+
+  static void ensureAlarmActionHandler() => ensureActionHandlers();
+
+  /// Alarm notification action payload. Format: action|requestCode|sourceType|sourceId.
+  /// Consumed once.
+  static Future<String?> consumeAlarmAction() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return null;
+    try {
+      return await _channel.invokeMethod<String>('getAlarmAction');
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Opens [url] in the system browser. False on unsupported platforms.

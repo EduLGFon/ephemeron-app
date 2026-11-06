@@ -24,6 +24,8 @@ class AlarmRingService : Service() {
         const val EXTRA_BODY = "body"
         const val EXTRA_KIND = "kind"
         const val EXTRA_FULL_SCREEN = "fullScreen"
+        const val EXTRA_SOURCE_TYPE = "sourceType"
+        const val EXTRA_SOURCE_ID = "sourceId"
 
         const val ACTION_STOP = "com.spotnik.ephemeron.ALARM_RING_STOP"
 
@@ -40,6 +42,8 @@ class AlarmRingService : Service() {
             body: String,
             kind: String,
             fullScreen: Boolean,
+            sourceType: String = "",
+            sourceId: String = "",
         ) {
             if (!shouldRing(preset, kind)) return
             val intent = Intent(context, AlarmRingService::class.java).apply {
@@ -49,6 +53,8 @@ class AlarmRingService : Service() {
                 putExtra(EXTRA_BODY, body)
                 putExtra(EXTRA_KIND, kind)
                 putExtra(EXTRA_FULL_SCREEN, fullScreen)
+                putExtra(EXTRA_SOURCE_TYPE, sourceType)
+                putExtra(EXTRA_SOURCE_ID, sourceId)
             }
             try {
                 ContextCompat.startForegroundService(context, intent)
@@ -119,13 +125,15 @@ class AlarmRingService : Service() {
         val body = intent?.getStringExtra(EXTRA_BODY) ?: ""
         val kind = intent?.getStringExtra(EXTRA_KIND) ?: "alarm"
         val fullScreen = intent?.getBooleanExtra(EXTRA_FULL_SCREEN, true) ?: true
+        val sourceType = intent?.getStringExtra(EXTRA_SOURCE_TYPE) ?: ""
+        val sourceId = intent?.getStringExtra(EXTRA_SOURCE_ID) ?: ""
 
         if (!shouldRing(preset, kind)) return START_NOT_STICKY
 
         val norm = AlarmPlugin.normalizePreset(preset)
 
         val notification = AlarmPlugin.buildNotification(
-            this, rc, title, preset, body, kind, fullScreen,
+            this, rc, title, preset, body, kind, fullScreen, sourceType, sourceId,
         )
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

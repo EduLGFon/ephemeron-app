@@ -20,6 +20,7 @@ class MainActivity : FlutterFragmentActivity() {
     private var pendingShortcut: String? = null
     private var pendingWidgetAction: String? = null
     private var pendingNotifResult: MethodChannel.Result? = null
+    private var pendingAlarmAction: String? = null
 
     // Home-widget taps arrive as ephemeron://widget/... intents targeted at
     // this activity. The Flutter engine would otherwise treat the intent
@@ -74,6 +75,11 @@ class MainActivity : FlutterFragmentActivity() {
                 "getWidgetAction" -> {
                     val action = pendingWidgetAction
                     pendingWidgetAction = null
+                    result.success(action)
+                }
+                "getAlarmAction" -> {
+                    val action = pendingAlarmAction
+                    pendingAlarmAction = null
                     result.success(action)
                 }
                 "openUrl" -> {
@@ -252,10 +258,15 @@ class MainActivity : FlutterFragmentActivity() {
         handleIntent(intent)
         // A warm widget tap does not always produce a Flutter lifecycle
         // resume event, so push the pending action to Dart immediately.
-        val action = pendingWidgetAction
-        if (action != null && systemChannel != null) {
+        val widget = pendingWidgetAction
+        if (widget != null && systemChannel != null) {
             pendingWidgetAction = null
-            systemChannel?.invokeMethod("widgetAction", action)
+            systemChannel?.invokeMethod("widgetAction", widget)
+        }
+        val alarm = pendingAlarmAction
+        if (alarm != null && systemChannel != null) {
+            pendingAlarmAction = null
+            systemChannel?.invokeMethod("alarmAction", alarm)
         }
     }
 
@@ -275,6 +286,20 @@ class MainActivity : FlutterFragmentActivity() {
                 // Preserve the full action path so day links such as
                 // calendar/2026-11-03 survive the trip to Dart.
                 pendingWidgetAction = uri.pathSegments.joinToString("/")
+            }
+        }
+        val alarmAction = intent.getStringExtra("alarm_action")
+        if (!alarmAction.isNullOrEmpty()) {
+            val rc = intent.getIntExtra(AlarmPlugin.EXTRA_REQUEST_CODE, intent.getIntExtra("requestCode", -1))
+            val sourceType = intent.getStringExtra(AlarmPlugin.EXTRA_SOURCE_TYPE) ?: ""
+            val sourceId = intent.getStringExtra(AlarmPlugin.EXTRA_SOURCE_ID) ?: ""
+            pendingAlarmAction = "$alarmAction|$rc|$sourceType|$sourceId"
+            if (rc >= 0) {
+                try {
+                    val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                    nm.cancel(rc)
+                    AlarmRingService.stop(this, rc)
+                } catch (_: Exception) {}
             }
         }
     }

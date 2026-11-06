@@ -93,6 +93,8 @@
             <intent-filter>
                 <action android:name="com.spotnik.ephemeron.SNOOZE" />
                 <action android:name="com.spotnik.ephemeron.DONE" />
+                <action android:name="com.spotnik.ephemeron.DISMISS" />
+                <action android:name="com.spotnik.ephemeron.PLUS_ONE" />
             </intent-filter>
         </receiver>
         <receiver android:name=".MonthCalendarWidgetProvider" android:exported="true">

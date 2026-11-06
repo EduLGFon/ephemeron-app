@@ -8,9 +8,8 @@ extension HomeWidgetDataBinderDerived on HomeWidgetDataBinder {
   Future<void> _refreshDerived() async {
     try {
       final now = DateTime.now();
-      final monthName =
-          'January February March April May June July August September October November December'
-              .split(' ')[now.month - 1];
+      final monthName = 'January February March April May June July August September October November December'
+          .split(' ')[now.month - 1];
       final taskRepo = ref.read(taskRepositoryProvider);
       final tasks = await taskRepo.watchOpen().first;
       final titles = tasks.take(5).map((t) => t.title).toList();
