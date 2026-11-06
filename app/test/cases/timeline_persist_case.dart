@@ -36,4 +36,28 @@ void main() {
     expect(fresh.timelineScale, 1.0);
     expect(fresh.timelineScrollOffset, 0.0);
   });
+
+  test('timeline settings survive a simulated restart', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final prefs = await SharedPreferences.getInstance();
+    final repo = SettingsRepository(prefs);
+    await repo.setTimelineScale(2.0);
+    await repo.setTimelineScrollOffset(75.5);
+
+    // Simulate process restart by constructing a new repository instance.
+    final restored = SettingsRepository(prefs);
+    expect(restored.timelineScale, 2.0);
+    expect(restored.timelineScrollOffset, 75.5);
+
+    // Clamping on read: out-of-range persisted values are clamped.
+    await prefs.setDouble('calendar.timelineScale', 99.0);
+    await prefs.setDouble('calendar.timelineScrollOffset', -3.0);
+    final clamped = SettingsRepository(prefs);
+    expect(clamped.timelineScale, 3.0);
+    expect(clamped.timelineScrollOffset, 0.0);
+
+    // Note: TimelineInteraction restore logic (controller mixin) is not unit
+    // tested here because it requires a widget/mixin host; the settings-repo
+    // round-trip above is the core persistence contract it depends on.
+  });
 }
