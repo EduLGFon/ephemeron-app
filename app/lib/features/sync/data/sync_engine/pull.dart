@@ -10,9 +10,9 @@ extension on SyncEngine {
     debugPrint('[sync] calendarList returned ${remote.length} items');
     _accountCalendarIds = account == null
         ? null
-        : {for (final c in remote) c['id'] as String?}
-              .whereType<String>()
-              .toSet();
+        : {
+            for (final c in remote) c['id'] as String?,
+          }.whereType<String>().toSet();
     final now = _now();
     var created = 0;
     for (final c in remote) {
@@ -129,9 +129,9 @@ extension on SyncEngine {
     debugPrint('[sync] taskLists returned ${remote.length} items');
     _accountListIds = account == null
         ? null
-        : {for (final l in remote) l['id'] as String?}
-              .whereType<String>()
-              .toSet();
+        : {
+            for (final l in remote) l['id'] as String?,
+          }.whereType<String>().toSet();
     final now = _now();
     var created = 0;
     for (final l in remote) {

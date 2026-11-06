@@ -368,7 +368,8 @@ extension on SyncEngine {
       await (_db.delete(_db.outbox)..where((o) => o.id.equals(op.id))).go();
       return;
     }
-    if ([400, 409].contains(e.status) && op.attempts + 1 >= SyncEngine.maxAttempts) {
+    if ([400, 409].contains(e.status) &&
+        op.attempts + 1 >= SyncEngine.maxAttempts) {
       await (_db.update(_db.outbox)..where((o) => o.id.equals(op.id))).write(
         OutboxCompanion(
           lastError: Value('failed: ${e.status}'),
