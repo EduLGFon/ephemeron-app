@@ -27,6 +27,9 @@ import 'task_source_picker.dart';
 import 'trash_screen.dart';
 
 part 'tasks_screen/tasks_screen_view.dart';
+part 'tasks_screen/tasks_screen_methods.dart';
+part 'tasks_screen/tasks_screen_enums.dart';
+part 'tasks_screen/smart_list_chip.dart';
 part 'tasks_screen/custom_task_list.dart';
 part 'tasks_screen/task_tile.dart';
 part 'tasks_screen/move_buttons.dart';
