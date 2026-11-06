@@ -1,5 +1,6 @@
-// Event editor widget and state: draft restore/autosave, save flow
-// (including scope handling for recurring events), and the form build.
+// Event editor widget and state shell: fields and lifecycle overrides.
+// Draft/autosave helpers live in event_editor_draft.dart, the form build
+// in event_editor_view.dart, and save/pickers in event_editor_save.dart.
 part of '../event_editor_sheet.dart';
 
 class _EventEditor extends ConsumerStatefulWidget {
@@ -37,34 +38,6 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
   DraftAutosaver? _saver;
   bool _saved = false;
   SettingsRepository? _settings;
-
-  String get _draftEntityId => widget.event?.id ?? 'new';
-
-  bool get _isMicrosoftEvent {
-    final e = widget.event;
-    if (e == null) return false;
-    final cals = ref.read(calendarsProvider).value ?? const <Calendar>[];
-    Calendar? cal;
-    for (final c in cals) {
-      if (c.id == e.calendarId) {
-        cal = c;
-        break;
-      }
-    }
-    if (cal == null && _calendarId != null) {
-      for (final c in cals) {
-        if (c.id == _calendarId) {
-          cal = c;
-          break;
-        }
-      }
-    }
-    return isMicrosoftEvent(
-      eventMicrosoftAccount: e.microsoftAccount,
-      calendarSource: cal?.source,
-      calendarMicrosoftAccount: cal?.microsoftAccount,
-    );
-  }
 
   @override
   void initState() {
@@ -141,19 +114,23 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     if (d == null && e == null) Future.microtask(_preloadDraft);
   }
 
-  Future<void> _preloadDraft() async {
-    if (!mounted || _title.text.isNotEmpty) return;
-    try {
-      final draft = await ref.read(draftStoreProvider).load('event', 'new');
-      if (draft == null || !mounted || _title.text.isNotEmpty) return;
-      if (draftIsExpired(
-        draft.updatedAtMs,
-        DateTime.now().toUtc().millisecondsSinceEpoch,
-      )) {
-        return;
-      }
-      _applyDraft(draft.json);
-    } catch (_) {}
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _saver ??= DraftAutosaver(
+      ref.read(draftStoreProvider),
+      'event',
+      _draftEntityId,
+    );
+    Future.microtask(() async {
+      try {
+        final repo = await ref.read(settingsRepositoryProvider.future);
+        _settings = repo;
+        await repo.setOpenSheet(
+          widget.event == null ? 'event_new' : 'event:${widget.event!.id}',
+        );
+      } catch (_) {}
+    });
   }
 
   void _applyDraft(Map<String, dynamic> j) {
@@ -183,51 +160,10 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     });
   }
 
-  Map<String, dynamic> _snapshot() => {
-    'title': _title.text,
-    'location': _location.text,
-    'notes': _notes.text,
-    'attendees': _attendees.text,
-    'calendarId': _calendarId,
-    'allDay': _allDay,
-    'colorId': _colorId,
-    'tzId': _tzId,
-    'addMeet': _addMeet,
-    'reminders': _reminders,
-    'alarmPreset': _alarmPreset,
-    'startMs': _start.millisecondsSinceEpoch,
-    'endMs': _end.millisecondsSinceEpoch,
-    'rrule': _rrule,
-  };
-
-  void _queueDraft() => _saver?.changed(_snapshot);
-
   void _changed(void Function() fn) {
     setState(fn);
     _queueDraft();
   }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _saver ??= DraftAutosaver(
-      ref.read(draftStoreProvider),
-      'event',
-      _draftEntityId,
-    );
-    Future.microtask(() async {
-      try {
-        final repo = await ref.read(settingsRepositoryProvider.future);
-        _settings = repo;
-        await repo.setOpenSheet(
-          widget.event == null ? 'event_new' : 'event:${widget.event!.id}',
-        );
-      } catch (_) {}
-    });
-  }
-
-  String _expectedSheet() =>
-      widget.event == null ? 'event_new' : 'event:${widget.event!.id}';
 
   @override
   void dispose() {
@@ -256,213 +192,6 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
     super.dispose();
   }
 
-  // _clearDraftAfterSave, _notesPayload, _persistOverflow, _pickDate,
-  // _pickTime, and _save live in event_editor_save.dart (extension on
-  // this state class).
-
   @override
-  Widget build(BuildContext context) {
-    final calsAsync = ref.watch(calendarsProvider);
-    return SafeArea(
-      child: Padding(
-        padding: sheetPadding(context),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                controller: _title,
-                autofocus: widget.event == null,
-                decoration: const InputDecoration(
-                  labelText: 'Title',
-                  border: OutlineInputBorder(),
-                ),
-                onSubmitted: (_) => _save(),
-              ),
-              const SizedBox(height: 8),
-              calsAsync.maybeWhen(
-                data: (cals) {
-                  final calendar = _calendarId == null
-                      ? null
-                      : cals.where((c) => c.id == _calendarId).firstOrNull;
-                  final source = calendar == null
-                      ? 'Select calendar'
-                      : sourceLabel(
-                              name: calendar.name,
-                              account: accountForSource(
-                                googleAccount: calendar.googleAccount,
-                                microsoftAccount: calendar.microsoftAccount,
-                              ),
-                              isLocal:
-                                  calendar.source != 'google' &&
-                                  calendar.source != 'microsoft',
-                            ) ??
-                            calendar.name;
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.calendar_today_outlined),
-                    title: Text(source),
-                    subtitle: const Text('Calendar source'),
-                    trailing: const Icon(Icons.swap_horiz),
-                    onTap: () async {
-                      final picked = await showCalendarSourcePicker(
-                        context,
-                        ref,
-                        selectedId: _calendarId,
-                      );
-                      if (picked != null) _changed(() => _calendarId = picked);
-                    },
-                  );
-                },
-                orElse: () => const SizedBox.shrink(),
-              ),
-              const SizedBox(height: 8),
-              _EventWhenSection(
-                allDay: _allDay,
-                start: _start,
-                end: _end,
-                onToggleAllDay: (v) => _changed(() {
-                  _allDay = v;
-                  if (v) {
-                    _start = DateTime(_start.year, _start.month, _start.day);
-                    _end = DateTime(_end.year, _end.month, _end.day);
-                    if (_end.isBefore(_start)) _end = _start;
-                  } else {
-                    if (!_end.isAfter(_start)) {
-                      _end = _start.add(const Duration(hours: 1));
-                    }
-                  }
-                }),
-                onPickDate: (isStart) => _pickDate(isStart),
-                onPickTime: (isStart) => _pickTime(isStart),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String?>(
-                initialValue: _repeatPresets.containsValue(_rrule)
-                    ? _rrule
-                    : '__custom__',
-                decoration: const InputDecoration(
-                  labelText: 'Repeat',
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  for (final e in _repeatPresets.entries)
-                    DropdownMenuItem(value: e.value, child: Text(e.key)),
-                  DropdownMenuItem(
-                    value: '__custom__',
-                    child: Text(
-                      _rrule == null
-                          ? 'Custom'
-                          : 'Custom: ${_summarizeRrule(context, _rrule!)}',
-                    ),
-                  ),
-                ],
-                onChanged: (v) async {
-                  if (v == '__custom__') {
-                    final result = await _showCustomRepeatDialog(
-                      context,
-                      ref,
-                      _rrule,
-                    );
-                    if (result != null) {
-                      _changed(() => _rrule = result.isEmpty ? null : result);
-                    }
-                  } else {
-                    _changed(() => _rrule = v);
-                  }
-                },
-              ),
-              const SizedBox(height: 8),
-              SwitchListTile(
-                title: const Text('Add Google Meet'),
-                value: _addMeet,
-                onChanged: (v) => _changed(() => _addMeet = v),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _attendees,
-                decoration: const InputDecoration(
-                  labelText: 'Invitees (comma-separated emails)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text('Color'),
-              _EventColorSection(
-                colorId: _colorId,
-                onChanged: (c) => _changed(() => _colorId = c),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String?>(
-                initialValue: _tzId,
-                decoration: const InputDecoration(
-                  labelText: 'Timezone',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem(
-                    value: null,
-                    child: Text('Floating (local)'),
-                  ),
-                  DropdownMenuItem(value: 'UTC', child: Text('UTC')),
-                  DropdownMenuItem(
-                    value: 'America/Sao_Paulo',
-                    child: Text('America/Sao_Paulo'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'America/New_York',
-                    child: Text('America/New_York'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'Europe/London',
-                    child: Text('Europe/London'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'Asia/Tokyo',
-                    child: Text('Asia/Tokyo'),
-                  ),
-                ],
-                onChanged: (v) => _changed(() => _tzId = v),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _location,
-                decoration: const InputDecoration(
-                  labelText: 'Location',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _notes,
-                decoration: const InputDecoration(
-                  labelText: 'Notes',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 8),
-              ReminderPicker(
-                offsets: _reminders,
-                onChanged: (v) => _changed(() => _reminders = v),
-              ),
-              const SizedBox(height: 8),
-              AlarmPresetPicker(
-                value: _alarmPreset,
-                onChanged: (v) => _changed(() => _alarmPreset = v),
-              ),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: (widget.event != null && _isMicrosoftEvent)
-                    ? null
-                    : () => _save(),
-                child: Text(widget.event == null ? 'Create' : 'Save'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => _buildEventEditor(context);
 }
