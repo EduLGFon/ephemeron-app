@@ -117,8 +117,9 @@ class _MonthViewState extends ConsumerState<MonthView> {
                                       dateKey(days[week * 7 + dow]) ==
                                       selectedKey,
                                   isPastDay:
-                                      dateKey(days[week * 7 + dow])
-                                          .compareTo(todayKey) <
+                                      dateKey(
+                                        days[week * 7 + dow],
+                                      ).compareTo(todayKey) <
                                       0,
                                   occurrences:
                                       byDay[dateKey(days[week * 7 + dow])] ??
