@@ -15,7 +15,6 @@ import 'package:ephemeron/domain/sources/source_move.dart';
 part 'event_repository/create.dart';
 part 'event_repository/move.dart';
 part 'event_repository/occurrence_ops.dart';
-part 'event_repository/delete.dart';
 part 'event_repository/calendars.dart';
 part 'event_repository/helpers.dart';
 
@@ -137,10 +136,15 @@ class _EventRepositoryBase {
 class EventRepository extends _EventRepositoryBase
     with
         _EventCreateOps,
-        _EventDeleteOps,
         _EventMoveOps,
         _EventOccurrenceOps,
         _EventCalendarOps,
         _EventHelperOps {
   EventRepository(super._db, super._occ);
+
+  /// Pure self-resolution over already-loaded rows (see [selfAttendeeOf]).
+  static EventAttendee? resolveSelf(
+    List<EventAttendee> atts,
+    List<String> accountEmails,
+  ) => _EventCalendarOps.resolveSelf(atts, accountEmails);
 }
