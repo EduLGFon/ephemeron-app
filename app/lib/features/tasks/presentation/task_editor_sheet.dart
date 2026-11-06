@@ -28,6 +28,9 @@ part 'task_editor_sheet/lifecycle.dart';
 part 'task_editor_sheet/save.dart';
 part 'task_editor_sheet/pickers.dart';
 part 'task_editor_sheet/sections.dart';
+part 'task_editor_sheet/sections/planned.dart';
+part 'task_editor_sheet/sections/repeat.dart';
+part 'task_editor_sheet/sections/due.dart';
 part 'task_editor_sheet/subtasks.dart';
 
 Future<void> showTaskEditor(
@@ -94,4 +97,7 @@ class _TaskEditorState extends _TaskEditorStateBase
         _TaskEditorLifecycle,
         _TaskEditorSave,
         _TaskEditorPickers,
-        _TaskEditorSections {}
+        _TaskEditorSections,
+        _TaskEditorSectionsPlanned,
+        _TaskEditorSectionsRepeat,
+        _TaskEditorSectionsDue {}
