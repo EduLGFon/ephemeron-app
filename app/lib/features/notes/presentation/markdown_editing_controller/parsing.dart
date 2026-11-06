@@ -57,8 +57,9 @@ List<_Segment> _parse(String text) {
     }
 
     // Task checkbox
-    final taskMatch = RegExp(r'^(\s*)([-*+])(\s+)(\[[ xX]\])(.*)$')
-        .firstMatch(line);
+    final taskMatch = RegExp(
+      r'^(\s*)([-*+])(\s+)(\[[ xX]\])(.*)$',
+    ).firstMatch(line);
     if (taskMatch != null) {
       out.add(_Segment(taskMatch.group(1)!, 0));
       out.add(_Segment(taskMatch.group(2)!, 0, marker: true));
