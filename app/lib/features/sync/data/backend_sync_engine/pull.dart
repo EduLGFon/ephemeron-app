@@ -30,7 +30,8 @@ mixin _BackendSyncPullOps on _BackendSyncEngineBase {
     // Pulled rows are in sync; do not echo them back on the next push.
     await _setCursor(_BackendSyncEngineBase._logsCursorKey, maxLogTs);
     await _setCursor(_BackendSyncEngineBase._focusCursorKey, maxFocusTs);
-    if (maxTs > since)
+    if (maxTs > since) {
       await _setCursor(_BackendSyncEngineBase._pullCursorKey, maxTs);
+    }
   }
 }
