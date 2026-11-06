@@ -13,7 +13,10 @@ import 'package:ephemeron/data/mappers/google_mappers.dart';
 import 'package:ephemeron/data/remote/google_api_client.dart';
 
 part 'sync_engine/push.dart';
-part 'sync_engine/pull.dart';
+part 'sync_engine/pull/discovery.dart';
+part 'sync_engine/pull/calendars.dart';
+part 'sync_engine/pull/tasks.dart';
+part 'sync_engine/pull/helpers.dart';
 
 enum SyncStatus { synced, syncing, offline, error }
 
